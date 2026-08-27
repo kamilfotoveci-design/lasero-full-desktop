@@ -34,8 +34,8 @@
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.Field}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.WarmAccent}" />
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">

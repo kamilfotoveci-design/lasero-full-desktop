@@ -65,7 +65,7 @@
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Průběh" FontWeight="SemiBold" Margin="0,0,8,0" />
-                        <TextBlock Text="{Binding GCode.SimulationTimeLabel}" FontFamily="{StaticResource Font.Mono}" Foreground="{StaticResource Brush.TextSecondary}" />
+                        <TextBlock Text="{Binding GCode.SimulationTimeLabel}" FontFamily="{StaticResource Font.Numeric}" Foreground="{StaticResource Brush.TextSecondary}" />
                     </StackPanel>
                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Margin="0,0,18,0"
                             Value="{Binding GCode.SimulationProgressPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

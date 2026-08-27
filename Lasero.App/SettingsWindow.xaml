@@ -32,7 +32,7 @@
         <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="36,28,36,18">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="25" Height="25" Margin="0,1,12,0" Foreground="{StaticResource Brush.WarmAccent}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="25" Height="25" Margin="0,1,12,0" Foreground="{StaticResource Brush.Accent}" />
                     <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="27" FontWeight="SemiBold" />
                 </StackPanel>
                 <TextBlock Text="Upravte výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení."

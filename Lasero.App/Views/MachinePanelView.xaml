@@ -26,7 +26,7 @@
             <Setter Property="FontSize" Value="12" />
         </Style>
         <Style x:Key="TelemetryValue" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+            <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,2,0,0" />
@@ -39,9 +39,9 @@
             <Setter Property="Padding" Value="10" />
         </Style>
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
-            <Setter Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.WarmAccentBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.WarmAccent}" />
+            <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
         </Style>
     </UserControl.Resources>
 
@@ -106,20 +106,15 @@
             </StackPanel>
         </Border>
 
+        <!-- Text-only. Four icon+label pairs in a 336px panel left roughly 50px per segment, so every
+             tab label was clipped mid-word; the icons were not carrying meaning a one-word tab needs
+             anyway. Tooltips still spell out what each tab holds. -->
         <Border Grid.Row="2" Style="{StaticResource SegmentedTrack}" Padding="3" Margin="0,0,0,2">
             <UniformGrid Columns="4">
-                <RadioButton x:Name="ConnectionPanelTab" IsChecked="True" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Připojení a pracovní plocha">
-                    <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojení" IconSize="14" TextMargin="5,0,0,0" />
-                </RadioButton>
-                <RadioButton x:Name="JogPanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Ruční posun os">
-                    <components:IconLabel IconData="{StaticResource Glyph.Pan}" Text="Pohyb" IconSize="14" TextMargin="5,0,0,0" />
-                </RadioButton>
-                <RadioButton x:Name="JobPanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Kontrola a spuštění gravírování">
-                    <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spuštění" IconSize="14" TextMargin="5,0,0,0" />
-                </RadioButton>
-                <RadioButton x:Name="ConsolePanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Pokročilá konzola GRBL">
-                    <components:IconLabel IconData="{StaticResource Glyph.Terminal}" Text="Konzola" IconSize="14" TextMargin="5,0,0,0" />
-                </RadioButton>
+                <RadioButton x:Name="ConnectionPanelTab" IsChecked="True" Content="Připojení" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Připojení a pracovní plocha" />
+                <RadioButton x:Name="JogPanelTab" Content="Pohyb" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Ruční posun os" />
+                <RadioButton x:Name="JobPanelTab" Content="Spuštění" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Kontrola a spuštění gravírování" />
+                <RadioButton x:Name="ConsolePanelTab" Content="Konzola" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Pokročilá konzola GRBL" />
             </UniformGrid>
         </Border>
 
@@ -129,32 +124,36 @@
                 <StackPanel Margin="0,10,0,8">
                     <TextBlock Text="Zařízení" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,9" />
                     <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="108" /></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
-                                <Grid>
-                                    <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}" />
-                                    <Button Width="40" Height="40" HorizontalAlignment="Right" Style="{StaticResource Button.Icon}"
-                                            Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Znovu vyhledat porty">
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="15" Height="15" />
-                                    </Button>
-                                </Grid>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" />
-                                <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}" />
-                            </StackPanel>
-                        </Grid>
+                        <!-- Port and baud rate stack instead of sharing a row. Side by side in a 336px
+                             inspector the port name had about 150px, which truncates every real device
+                             string ("SIMULÁTOR — Virtuální laser", "USB-SERIAL CH340 (COM3)"). The port
+                             is the field the operator actually reads, so it gets the full width; the
+                             refresh button sits beside it rather than floating on top of it. -->
+                        <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Margin="8,0,0,0"
+                                    Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Znovu vyhledat porty"
+                                    AutomationProperties.Name="Znovu vyhledat porty">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="15" Height="15" />
+                            </Button>
+                            <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}"
+                                      ToolTip="{Binding Connection.SelectedPort}" />
+                        </DockPanel>
+                        <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" Margin="0,10,0,6" />
+                        <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}"
+                                  HorizontalAlignment="Left" MinWidth="132" />
                         <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="10"
                                 Padding="9" Margin="0,8,0,0"
                                 Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
-                                                      Foreground="{StaticResource Brush.Accent}" Margin="0,1,8,0" />
+                            <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its
+                                 children with infinite width, so TextWrapping never engaged and the
+                                 sentence was simply cut off at the panel edge. -->
+                            <DockPanel>
+                                <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
+                                                      Foreground="{StaticResource Brush.Accent}" Margin="0,1,8,0" VerticalAlignment="Top" />
                                 <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                            </StackPanel>
+                            </DockPanel>
                         </Border>
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding Connection.ConnectCommand}"
                                 Margin="0,8,0,0" Padding="14,8">
@@ -178,7 +177,7 @@
                             </StackPanel>
                         </Border>
                         <TextBlock Text="{Binding Connection.WorkspaceMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.WorkspaceMessage, Converter={StaticResource NotNullToVisibility}}" />
-                        <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Mono}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.FirmwareBanner, Converter={StaticResource NotNullToVisibility}}" />
+                        <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Numeric}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.FirmwareBanner, Converter={StaticResource NotNullToVisibility}}" />
                         <Button Command="{Binding Connection.DisconnectCommand}" Margin="0,9,0,0">
                             <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit zařízení" />
                         </Button>
@@ -233,10 +232,10 @@
                             <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Resetovat řídicí jednotku" />
                         </Button>
                     </Expander>
-                    <Border Background="{StaticResource Brush.WarmAccentMuted}" BorderBrush="{StaticResource Brush.WarmAccentBorder}"
+                    <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,1,9,0" Foreground="{StaticResource Brush.WarmAccent}" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </StackPanel>
@@ -300,7 +299,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Odhad času" Style="{StaticResource MachineFieldLabel}" />
-                                <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" FontFamily="{StaticResource Font.Mono}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,8,0,0" />
                             </StackPanel>
                         </Grid>
 

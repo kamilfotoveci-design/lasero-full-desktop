@@ -24,9 +24,9 @@
             <Setter Property="Padding" Value="12" />
         </Style>
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
-            <Setter Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.WarmAccentBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.WarmAccent}" />
+            <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
         </Style>
     </UserControl.Resources>
 
@@ -100,13 +100,13 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="Posuv" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock FontFamily="{StaticResource Font.Mono}" FontWeight="SemiBold" Margin="0,5,0,0">
+                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,5,0,0">
                                         <Run Text="{Binding MachineStatus.FeedRate, StringFormat={}{0:0}, Mode=OneWay}" /><Run Text=" mm/min" />
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Výkon" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock FontFamily="{StaticResource Font.Mono}" FontWeight="SemiBold" Margin="0,5,0,0">
+                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,5,0,0">
                                         <Run Text="{Binding MachineStatus.SpindleSpeed, StringFormat={}{0:0}, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
@@ -121,7 +121,7 @@
                                 <Border Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="12">
                                     <StackPanel>
                                         <TextBlock Text="Poloha stroje" Style="{StaticResource Text.Muted}" />
-                                        <TextBlock FontFamily="{StaticResource Font.Mono}" Margin="0,7,0,0">
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Margin="0,7,0,0">
                                             <Run Text="X " /><Run Text="{Binding MachineStatus.MachineX, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                             <Run Text="   Y " /><Run Text="{Binding MachineStatus.MachineY, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                             <Run Text="   Z " /><Run Text="{Binding MachineStatus.MachineZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
@@ -131,7 +131,7 @@
                                 <Border Grid.Column="2" Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="12">
                                     <StackPanel>
                                         <TextBlock Text="Pracovní poloha" Style="{StaticResource Text.Muted}" />
-                                        <TextBlock FontFamily="{StaticResource Font.Mono}" Margin="0,7,0,0">
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Margin="0,7,0,0">
                                             <Run Text="X " /><Run Text="{Binding MachineStatus.WorkX, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                             <Run Text="   Y " /><Run Text="{Binding MachineStatus.WorkY, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                             <Run Text="   Z " /><Run Text="{Binding MachineStatus.WorkZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
@@ -140,7 +140,7 @@
                                 </Border>
                             </Grid>
 
-                            <TextBlock Text="{Binding MachineStatus.TriggeredPins, StringFormat=Piny: {0}}" FontFamily="{StaticResource Font.Mono}"
+                            <TextBlock Text="{Binding MachineStatus.TriggeredPins, StringFormat=Piny: {0}}" FontFamily="{StaticResource Font.Numeric}"
                                        Foreground="{DynamicResource Brush.Danger}" Margin="0,12,0,0"
                                        Visibility="{Binding MachineStatus.TriggeredPins, Converter={StaticResource NotNullToVisibility}}" />
                         </StackPanel>
@@ -220,7 +220,7 @@
                                     <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit" />
                                 </Button>
                             </StackPanel>
-                            <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Mono}"
+                            <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Numeric}"
                                        TextWrapping="Wrap" Margin="0,12,0,0"
                                        Visibility="{Binding Connection.FirmwareBanner, Converter={StaticResource NotNullToVisibility}}" />
                             <TextBlock Text="{Binding Connection.IdentificationMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,0"
@@ -234,7 +234,7 @@
                             <TextBlock Text="Rozměry se po připojení načtou přímo z nastavení GRBL ($130 a $131)."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="{StaticResource Font.Mono}" FontSize="18" FontWeight="SemiBold">
+                                <TextBlock FontFamily="{StaticResource Font.Numeric}" FontSize="18" FontWeight="SemiBold">
                                     <Run Text="{Binding Connection.WorkAreaWidthMm, StringFormat={}{0:0.#}, Mode=OneWay}" />
                                     <Run Text=" × " />
                                     <Run Text="{Binding Connection.WorkAreaHeightMm, StringFormat={}{0:0.#}, Mode=OneWay}" />

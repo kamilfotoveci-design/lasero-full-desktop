@@ -24,7 +24,7 @@
                     <Setter Property="Grid.Column" Value="2" />
                     <Setter Property="HorizontalAlignment" Value="Right" />
                     <Setter Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.WarmAccentBorder}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                     <Setter Property="CornerRadius" Value="10,10,3,10" />
                     <Setter Property="Margin" Value="56,0,0,12" />
                 </DataTrigger>

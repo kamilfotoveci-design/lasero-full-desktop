@@ -308,6 +308,14 @@ public sealed class GrblConnection : ILaserMachine
         {
             // Normal disconnect path.
         }
+        catch (ObjectDisposedException)
+        {
+            // Also a normal disconnect path, just a different race: Dispose can dispose the queue
+            // between this thread's cancellation check and its next TryTake, and GetConsumingEnumerable
+            // then throws instead of observing the cancellation. Unhandled on a background thread this
+            // takes the whole process down — it was intermittently killing the xunit test host.
+            // Nothing is in flight at this point; the queue is already being torn down.
+        }
     }
 
     private void OnLineReceived(string line)

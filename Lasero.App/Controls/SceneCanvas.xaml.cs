@@ -521,7 +521,7 @@ public partial class SceneCanvas : UserControl
             TopRuler.Children.Add(tick);
             _topRulerVisuals.Add(tick);
 
-            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 9, Foreground = labelBrush };
+            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 11, Foreground = labelBrush };
             Canvas.SetLeft(label, px + 3);
             Canvas.SetTop(label, 2);
             TopRuler.Children.Add(label);
@@ -535,7 +535,7 @@ public partial class SceneCanvas : UserControl
             LeftRuler.Children.Add(tick);
             _leftRulerVisuals.Add(tick);
 
-            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 9, Foreground = labelBrush };
+            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 11, Foreground = labelBrush };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - label.DesiredSize.Width));
             Canvas.SetTop(label, py - label.DesiredSize.Height / 2);

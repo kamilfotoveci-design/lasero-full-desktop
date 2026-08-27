@@ -15,23 +15,26 @@ public sealed class MainWindowNavigationTests
     }
 
     [Fact]
-    public void DesignerUsesCompactWorkingToolRailAndRealLayerPalette()
+    public void DesignerToolbarExposesEveryDrawingToolAndTheLayerPaletteIsWiredToTheScene()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
         var inspector = File.ReadAllText(Path.Combine(
             root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
 
-        Assert.Contains("x:Key=\"DesignerRailTool\"", xaml, StringComparison.Ordinal);
+        // These used to assert against a second, Visibility="Collapsed" tool rail that never
+        // rendered. That rail has been deleted; the assertions now target the toolbar the operator
+        // actually sees, which is the behaviour this test was really about.
         Assert.Contains("AppScreenToSidebarWidth", xaml, StringComparison.Ordinal);
-        Assert.Contains("<!-- Compact editor rail: only creation tools remain beside the canvas. -->", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"DesignerToolbarTool\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Compact editor rail", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Select", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Pan", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Rectangle", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Ellipse", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Line", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Text", xaml, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Importovat\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Importovat grafiku\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding GCode.Layers}\"", inspector, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding Scene.SelectedLayer, Mode=TwoWay}\"", inspector, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Scene.LayerPalette}\"", xaml, StringComparison.Ordinal);
@@ -44,7 +47,7 @@ public sealed class MainWindowNavigationTests
         var xaml = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(), "Lasero.App", "Views", "DesignerInspectorView.xaml"));
 
-        Assert.Contains("Text=\"Způsob zpracování\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Zpracování\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Čára\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Cut", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Výplň\"", xaml, StringComparison.Ordinal);

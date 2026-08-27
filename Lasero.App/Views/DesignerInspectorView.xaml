@@ -7,7 +7,7 @@
              xmlns:components="clr-namespace:Lasero.App.Components"
              xmlns:views="clr-namespace:Lasero.App.Views"
              xmlns:layers="clr-namespace:Lasero.Core.Layers;assembly=Lasero.Core"
-             MinWidth="360">
+             MinWidth="320">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
@@ -62,72 +62,73 @@
             </Border>
 
             <Grid Grid.Row="1">
+                <!--
+                    One vertical column, not a stack of boxes. This tab used to nest
+                    panel > bordered list > bordered settings card > bordered segmented track >
+                    bordered fields > bordered empty state, so six containers were competing to
+                    group things that spacing and a single hairline already group. Sections are now
+                    separated by whitespace and one rule; the only remaining borders belong to
+                    controls the user can actually type into or press.
+                -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding IsChecked, ElementName=LayersTabRadio, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Margin="16">
-                        <Grid Margin="0,0,0,12">
+                    <StackPanel Margin="18,16,18,20">
+
+                        <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <!-- WPF Grid does not clip children, so this subtitle used to render at its
-                                 full desired width straight underneath the button in the next column and
-                                 got painted over mid-word. Wrapping keeps the whole sentence readable at
-                                 any panel width. -->
-                            <StackPanel Margin="0,0,12,0">
-                                <TextBlock Text="Vrstvy zpracování" Style="{StaticResource PanelTitle}" Margin="0,0,0,3" />
-                                <TextBlock Text="Každá barva má vlastní způsob a sílu laseru." Style="{StaticResource Text.Muted}"
-                                           TextWrapping="Wrap" />
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="Vrstvy" Style="{StaticResource InspectorSectionTitle}" />
+                                <TextBlock Text="Každá vrstva má vlastní nastavení laseru."
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding Scene.AddLayerCommand}" VerticalAlignment="Top" Padding="13,0"
+                            <Button Grid.Column="1" Style="{StaticResource Button.Ghost}"
+                                    Command="{Binding Scene.AddLayerCommand}" VerticalAlignment="Top" Padding="10,0"
                                     ToolTip="Přidat novou prázdnou vrstvu">
                                 <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nová vrstva" IconSize="14" />
                             </Button>
                         </Grid>
 
-                        <Grid Margin="6,0,8,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="30" />
-                                <ColumnDefinition Width="7" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="46" />
-                                <ColumnDefinition Width="46" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="#" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="Vrstva a nastavení" Style="{StaticResource Text.Muted}" Margin="10,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Výstup" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" />
-                            <TextBlock Grid.Column="4" Text="Vidět" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" />
-                        </Grid>
-
+                        <!--
+                            The column headers (#, Vrstva a nastavení, Výstup, Vidět) are gone: the row
+                            says what each element is on its own, and the two state icons carry
+                            tooltips and accessible names. Four header labels for a two-icon row was
+                            density without information.
+                        -->
                         <ListBox x:Name="LayersList"
                                  ItemsSource="{Binding GCode.Layers}"
                                  SelectedItem="{Binding Scene.SelectedLayer, Mode=TwoWay}"
-                                 AlternationCount="1000"
-                                 MaxHeight="320"
-                                 BorderBrush="{StaticResource Brush.PanelBorder}"
-                                 BorderThickness="1"
-                                 Background="{StaticResource Brush.Field}"
+                                 MaxHeight="300"
+                                 Margin="0,0,0,4"
+                                 BorderThickness="0"
+                                 Background="Transparent"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                    <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
-                                    <Setter Property="BorderThickness" Value="0,0,0,1" />
                                     <Setter Property="Background" Value="Transparent" />
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
                                                 <Border x:Name="LayerRow"
                                                         Background="{TemplateBinding Background}"
-                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                                        BorderBrush="Transparent"
+                                                        BorderThickness="1"
+                                                        CornerRadius="8"
+                                                        Margin="0,1">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="LayerRow" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                                                    </Trigger>
                                                     <Trigger Property="IsSelected" Value="True">
-                                                        <Setter TargetName="LayerRow" Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
+                                                        <Setter TargetName="LayerRow" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                                                        <Setter TargetName="LayerRow" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
                                                     </Trigger>
                                                     <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                                        <Setter TargetName="LayerRow" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                                        <Setter TargetName="LayerRow" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -137,187 +138,281 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid MinHeight="50">
+                                    <Grid MinHeight="48" Margin="10,6,8,6">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="30" />
-                                            <ColumnDefinition Width="7" />
+                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="46" />
-                                            <ColumnDefinition Width="46" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource IndexToLayerNumber}}"
-                                                   VerticalAlignment="Center" HorizontalAlignment="Center" FontFamily="{StaticResource Font.Mono}"
-                                                   FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
-                                        <Border Grid.Column="1" Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}" />
-                                        <StackPanel Grid.Column="2" Margin="10,7" VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Border Width="14" Height="14" CornerRadius="3"
-                                                        Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
-                                                        BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" Margin="0,0,7,0" />
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
+
+                                        <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
+                                                BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
+                                                ToolTip="Barva vrstvy" />
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding ProcessingSummary}" Style="{StaticResource Text.Muted}"
-                                                       FontSize="12" Margin="21,3,0,0" TextTrimming="CharacterEllipsis" />
+                                                       FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
-                                        <CheckBox Grid.Column="3" IsChecked="{Binding IsEnabled}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                  ToolTip="Zapnout nebo vypnout zpracování této vrstvy" automation:AutomationProperties.Name="Zpracovat vrstvu" />
-                                        <CheckBox Grid.Column="4" IsChecked="{Binding IsVisible}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                  ToolTip="Zobrazit nebo skrýt vrstvu na plátně" automation:AutomationProperties.Name="Zobrazit vrstvu" />
+
+                                        <!--
+                                            Two full-size switches per row was more control than a
+                                            per-row on/off needs, and they made every row look like a
+                                            settings screen. Icon toggles say the same thing in a
+                                            third of the width and keep the name the loudest thing
+                                            in the row.
+                                        -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <ToggleButton Style="{StaticResource Toggle.LayerState}" IsChecked="{Binding IsEnabled}"
+                                                          automation:AutomationProperties.Name="Zpracovat vrstvu">
+                                                <ToggleButton.ToolTip>
+                                                    <ToolTip>
+                                                        <TextBlock>
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="Vrstva se nevyrábí. Kliknutím ji zařadíte do úlohy." />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="True">
+                                                                            <Setter Property="Text" Value="Vrstva se vyrábí. Kliknutím ji z úlohy vyřadíte." />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </ToolTip>
+                                                </ToggleButton.ToolTip>
+                                                <components:IconGlyph Width="16" Height="16">
+                                                    <components:IconGlyph.Style>
+                                                        <Style TargetType="components:IconGlyph">
+                                                            <Setter Property="IconData" Value="{StaticResource Glyph.ZapOff}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="True">
+                                                                    <Setter Property="IconData" Value="{StaticResource Glyph.Zap}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </components:IconGlyph.Style>
+                                                </components:IconGlyph>
+                                            </ToggleButton>
+                                            <ToggleButton Style="{StaticResource Toggle.LayerState}" IsChecked="{Binding IsVisible}"
+                                                          automation:AutomationProperties.Name="Zobrazit vrstvu na plátně">
+                                                <ToggleButton.ToolTip>
+                                                    <ToolTip>
+                                                        <TextBlock>
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="Vrstva je skrytá. Kliknutím ji zobrazíte." />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                                            <Setter Property="Text" Value="Vrstva je vidět. Kliknutím ji skryjete." />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </ToolTip>
+                                                </ToggleButton.ToolTip>
+                                                <components:IconGlyph Width="16" Height="16">
+                                                    <components:IconGlyph.Style>
+                                                        <Style TargetType="components:IconGlyph">
+                                                            <Setter Property="IconData" Value="{StaticResource Glyph.EyeOff}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                                    <Setter Property="IconData" Value="{StaticResource Glyph.Eye}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </components:IconGlyph.Style>
+                                                </components:IconGlyph>
+                                            </ToggleButton>
+                                        </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                            <Button Command="{Binding Scene.MoveSelectedLayerUpCommand}" Height="36" Padding="11,0" Margin="0,0,6,0"
+                        <!-- Reordering is secondary: it moves to ghost icon buttons that appear only
+                             once there is more than one layer to reorder. It used to be two permanent
+                             full-size labelled buttons sitting above an empty list. -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,0,0"
+                                    Visibility="{Binding Scene.CanReorderLayers, Converter={StaticResource BoolToVisibility}}">
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.MoveSelectedLayerUpCommand}"
                                     ToolTip="Posunout vrstvu výše ve výrobním pořadí"
                                     automation:AutomationProperties.Name="Posunout vrstvu nahoru">
-                                <components:IconLabel IconData="{StaticResource Glyph.ArrowUp}" Text="Výše" IconSize="13" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="15" Height="15" />
                             </Button>
-                            <Button Command="{Binding Scene.MoveSelectedLayerDownCommand}" Height="36" Padding="11,0"
+                            <Button Style="{StaticResource Button.GhostIcon}" Margin="0" Command="{Binding Scene.MoveSelectedLayerDownCommand}"
                                     ToolTip="Posunout vrstvu níže ve výrobním pořadí"
                                     automation:AutomationProperties.Name="Posunout vrstvu dolů">
-                                <components:IconLabel IconData="{StaticResource Glyph.ArrowDown}" Text="Níže" IconSize="13" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="15" Height="15" />
                             </Button>
                         </StackPanel>
 
-                        <Border Background="{StaticResource Brush.Field}"
-                                BorderBrush="{StaticResource Brush.PanelBorder}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16"
-                                Margin="0,14,0,0"
-                                Visibility="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot, Converter={StaticResource NotNullToVisibility}}"
-                                DataContext="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot}">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <Border Width="28" Height="28" CornerRadius="6"
-                                            Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
-                                            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" />
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontWeight="SemiBold" Height="36"
-                                                 ToolTip="Upravit název vrstvy" />
-                                    </StackPanel>
-                                </Grid>
-                                <TextBlock Text="Způsob zpracování"
-                                           Style="{StaticResource InspectorLabel}"
-                                           Margin="0,10,0,5" />
-                                <Border Style="{StaticResource SegmentedTrack}"
-                                        IsEnabled="{Binding IsEnabled}">
-                                    <UniformGrid Columns="3">
-                                        <RadioButton Content="Čára"
-                                                     GroupName="LayerProcessingMode"
-                                                     Style="{StaticResource Segment}"
-                                                     IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}"
-                                                     ToolTip="Laser sleduje obrys vektoru. Vhodné pro řezání a liniové gravírování."
-                                                     automation:AutomationProperties.Name="Zpracovat vrstvu jako čáru" />
-                                        <RadioButton Content="Výplň"
-                                                     GroupName="LayerProcessingMode"
-                                                     Style="{StaticResource Segment}"
-                                                     IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}"
-                                                     ToolTip="Laser vyplní vnitřní plochu vektoru řádky. Vhodné pro plné gravírování."
-                                                     automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň" />
-                                        <RadioButton Content="Výplň + čára"
-                                                     GroupName="LayerProcessingMode"
-                                                     Style="{StaticResource Segment}"
-                                                     IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=FillAndCut, Mode=TwoWay}"
-                                                     ToolTip="Laser nejdřív vyplní plochu a potom projede její obrys."
-                                                     automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň a obrys" />
-                                    </UniformGrid>
+                        <!-- Layer settings. Shown only when a layer is selected — progressive
+                             disclosure rather than every possible section at once. -->
+                        <StackPanel Visibility="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot, Converter={StaticResource NotNullToVisibility}}"
+                                    DataContext="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot}">
+
+                            <Border Style="{StaticResource InspectorRule}" />
+
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Width="26" Height="26" CornerRadius="6" VerticalAlignment="Center" Margin="0,0,10,0"
+                                        Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
+                                        BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
+                                        ToolTip="Barva vrstvy" />
+                                <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                         FontWeight="Medium" VerticalAlignment="Center"
+                                         ToolTip="Upravit název vrstvy"
+                                         automation:AutomationProperties.Name="Název vrstvy" />
+                            </Grid>
+
+                            <TextBlock Text="Zpracování" Style="{StaticResource InspectorSectionTitle}" FontSize="14" Margin="0,0,0,8" />
+                            <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding IsEnabled}">
+                                <UniformGrid Columns="3">
+                                    <RadioButton Content="Čára"
+                                                 GroupName="LayerProcessingMode"
+                                                 Style="{StaticResource Segment}"
+                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}"
+                                                 ToolTip="Laser sleduje obrys vektoru. Vhodné pro řezání a liniové gravírování."
+                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako čáru" />
+                                    <RadioButton Content="Výplň"
+                                                 GroupName="LayerProcessingMode"
+                                                 Style="{StaticResource Segment}"
+                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}"
+                                                 ToolTip="Laser vyplní vnitřní plochu vektoru řádky. Vhodné pro plné gravírování."
+                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň" />
+                                    <RadioButton Content="Výplň + čára"
+                                                 GroupName="LayerProcessingMode"
+                                                 Style="{StaticResource Segment}"
+                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=FillAndCut, Mode=TwoWay}"
+                                                 ToolTip="Laser nejdřív vyplní plochu a potom projede její obrys."
+                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň a obrys" />
+                                </UniformGrid>
+                            </Border>
+                            <TextBlock Margin="0,8,0,18" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                        <Setter Property="Text" Value="Laser pojede po obrysu vektoru." />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
+                                                <Setter Property="Text" Value="Laser vyplní uzavřenou plochu řádky." />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
+                                                <Setter Property="Text" Value="Laser nejdřív vyplní plochu a potom projede její obrys." />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <TextBlock Text="Nastavení" Style="{StaticResource InspectorSectionTitle}" FontSize="14" Margin="0,0,0,8" />
+                            <!-- Label left, value right, one row each: the three numbers that decide the
+                                 result are scannable as a column instead of three stacked label+field
+                                 pairs squeezed side by side. Units live inside the field. -->
+                            <Grid IsEnabled="{Binding IsEnabled}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="132" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Rychlost" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Rychlost posuvu laseru">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm/min" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Speed, StringFormat=0}"
+                                                 automation:AutomationProperties.Name="Rychlost v milimetrech za minutu" />
+                                    </DockPanel>
                                 </Border>
-                                <TextBlock Margin="0,6,0,10"
-                                           TextWrapping="Wrap">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-                                            <Setter Property="Text" Value="Laser pojede po obrysu vektoru." />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
-                                                    <Setter Property="Text" Value="Laser vyplní uzavřenou plochu řádky." />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
-                                                    <Setter Property="Text" Value="Laser nejdřív vyplní plochu a potom projede její obrys." />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
 
-                                <Grid IsEnabled="{Binding IsEnabled}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="72" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="Rychlost (mm/min)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Style="{StaticResource InspectorField}" Text="{Binding Speed, StringFormat=0}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Výkon (%)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Style="{StaticResource InspectorField}" Text="{Binding Power, StringFormat=0}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="4">
-                                        <TextBlock Text="Průchody" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Style="{StaticResource InspectorField}" Text="{Binding Passes, StringFormat=0}" />
-                                    </StackPanel>
-                                </Grid>
+                                <TextBlock Grid.Row="2" Text="Výkon" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Výkon laseru v procentech">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="%" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Power, StringFormat=0}"
+                                                 automation:AutomationProperties.Name="Výkon v procentech" />
+                                    </DockPanel>
+                                </Border>
 
-                                <StackPanel Margin="0,10,0,0" IsEnabled="{Binding IsEnabled}">
-                                    <StackPanel.Style>
-                                        <Style TargetType="StackPanel">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </StackPanel.Style>
-                                    <Button HorizontalAlignment="Stretch"
-                                            Padding="14,0"
-                                            Height="38"
-                                            Tag="{Binding}"
-                                            Click="OnApplyMaterialClick"
-                                            ToolTip="Vybrat ověřené parametry materiálu">
-                                        <components:IconLabel IconData="{StaticResource Glyph.Materials}"
-                                                              Text="Doporučené parametry"
-                                                              IconSize="15" />
-                                    </Button>
-                                    <Expander Header="Pokročilé nastavení výplně" Margin="0,8,0,0">
-                                        <StackPanel Margin="0,8,0,0">
-                                            <TextBlock Text="Rozestup řádků (mm)" Style="{StaticResource InspectorLabel}" />
-                                            <TextBox Style="{StaticResource InspectorField}"
-                                                     Text="{Binding FillLineIntervalMm, UpdateSourceTrigger=LostFocus, StringFormat=0.###}"
-                                                     ToolTip="Menší rozestup znamená jemnější gravírování a delší čas." />
-                                            <TextBlock Text="Menší hodnota vytvoří jemnější výplň, ale prodlouží dobu gravírování."
-                                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                        </StackPanel>
-                                    </Expander>
-                                </StackPanel>
+                                <TextBlock Grid.Row="4" Text="Průchody" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Row="4" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Kolikrát laser projede stejnou dráhu">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="×" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Passes, StringFormat=0}"
+                                                 automation:AutomationProperties.Name="Počet průchodů" />
+                                    </DockPanel>
+                                </Border>
+                            </Grid>
 
-                                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,12,0,10" />
-                                <Button Command="{Binding DataContext.Scene.DeleteSelectedLayerCommand, ElementName=InspectorRoot}"
-                                        Foreground="{StaticResource Brush.Danger}" HorizontalAlignment="Left"
-                                        ToolTip="Odstranit lze pouze vrstvu, kterou nepoužívá žádný objekt">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit prázdnou vrstvu" IconSize="14" />
+                            <StackPanel Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <Button HorizontalAlignment="Stretch"
+                                        Padding="14,0"
+                                        Tag="{Binding}"
+                                        Click="OnApplyMaterialClick"
+                                        ToolTip="Vybrat ověřené parametry materiálu">
+                                    <components:IconLabel IconData="{StaticResource Glyph.Materials}"
+                                                          Text="Doporučené parametry"
+                                                          IconSize="15" />
                                 </Button>
+                                <Expander Header="Pokročilé nastavení výplně" Margin="0,10,0,0">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="132" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Rozestup řádků" Style="{StaticResource TransformRowLabel}" />
+                                            <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}"
+                                                    ToolTip="Menší rozestup znamená jemnější gravírování a delší čas.">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                                    <TextBox Style="{StaticResource UnitField.Input}"
+                                                             Text="{Binding FillLineIntervalMm, UpdateSourceTrigger=LostFocus, StringFormat=0.###}"
+                                                             automation:AutomationProperties.Name="Rozestup řádků v milimetrech" />
+                                                </DockPanel>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="Menší hodnota vytvoří jemnější výplň, ale prodlouží dobu gravírování."
+                                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
-                        </Border>
 
-                        <Border Background="{StaticResource Brush.Field}"
-                                BorderBrush="{StaticResource Brush.PanelBorder}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="18"
-                                Margin="0,2,0,0">
-                            <Border.Style>
-                                <Style TargetType="Border">
+                            <Button Style="{StaticResource Button.Ghost}" Margin="0,18,0,0" HorizontalAlignment="Left" Padding="10,0"
+                                    Command="{Binding DataContext.Scene.DeleteSelectedLayerCommand, ElementName=InspectorRoot}"
+                                    Foreground="{StaticResource Brush.Danger}"
+                                    ToolTipService.ShowOnDisabled="True"
+                                    ToolTip="Odstranit lze pouze vrstvu, kterou nepoužívá žádný objekt">
+                                <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit vrstvu" IconSize="14" />
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Empty state. No card: it sits on the panel surface like every other
+                             section here. -->
+                        <StackPanel HorizontalAlignment="Center" MaxWidth="240" Margin="0,28,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding ElementName=LayersList, Path=HasItems}" Value="True">
@@ -325,22 +420,20 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </Border.Style>
-                            <StackPanel HorizontalAlignment="Center" MaxWidth="230">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="24" Height="24" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" />
-                                <TextBlock Text="Projekt zatím nemá vrstvy"
-                                           FontWeight="SemiBold"
-                                           TextAlignment="Center"
-                                           Margin="0,10,0,5" />
-                                <TextBlock Text="Importujte obrázek nebo SVG. Vrstva se vytvoří automaticky."
-                                           Style="{StaticResource Text.Muted}"
-                                           TextAlignment="Center"
-                                           TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <Button Command="{Binding GCode.LoadFileCommand}" Height="38" Padding="14,0">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat grafiku" IconSize="15" />
-                                </Button>
-                            </StackPanel>
-                        </Border>
+                            </StackPanel.Style>
+                            <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="24" Height="24" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
+                            <TextBlock Text="Zatím žádné vrstvy"
+                                       FontWeight="SemiBold"
+                                       TextAlignment="Center"
+                                       Margin="0,12,0,4" />
+                            <TextBlock Text="Nakreslete tvar nebo importujte grafiku. Vrstva se vytvoří automaticky."
+                                       Style="{StaticResource Text.Muted}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" Margin="0,0,0,14" />
+                            <Button Command="{Binding GCode.LoadFileCommand}" Padding="14,0" HorizontalAlignment="Center">
+                                <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat grafiku" IconSize="15" />
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 

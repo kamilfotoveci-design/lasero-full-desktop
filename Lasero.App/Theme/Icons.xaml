@@ -56,11 +56,25 @@
     <Geometry x:Key="Glyph.Connect">M9,17 H7 A5,5 0 0 1 7,7 H9 M15,7 H17 A5,5 0 1 1 17,17 H15 M8,12 H16</Geometry>
     <Geometry x:Key="Glyph.Disconnect">M15,7 H17 A5,5 0 0 1 17,17 H15 M9,17 H7 A5,5 0 0 1 7,7 H9 M4,4 L20,20</Geometry>
     <Geometry x:Key="Glyph.Refresh">M3,12 A9,9 0 0 1 12,3 A9.75,9.75 0 0 1 18.74,5.74 L21,8 M21,3 V8 H16 M21,12 A9,9 0 0 1 12,21 A9.75,9.75 0 0 1 5.26,18.26 L3,16 M8,16 H3 V21</Geometry>
-    <Geometry x:Key="Glyph.Frame">M3,7 V5 A2,2 0 0 1 5,3 H7 M17,3 H19 A2,2 0 0 1 21,5 V7 M21,17 V19 A2,2 0 0 1 19,21 H17 M7,21 H5 A2,2 0 0 1 3,19 V17</Geometry>
+    <!--
+        Frame is a machine motion: the head traces the job's outline so the operator can see where it
+        will burn. It used to reuse the corner-bracket geometry that Glyph.Fit uses for zoom-to-fit,
+        so the control that moves the machine and the control that changes the zoom were the same
+        picture, side by side at the bottom of the editor. A crossed frame reads as "the boundary of
+        the work" and shares nothing with the view controls.
+    -->
+    <Geometry x:Key="Glyph.Frame">M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22</Geometry>
     <Geometry x:Key="Glyph.Play">M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z</Geometry>
     <Geometry x:Key="Glyph.Pause">M6,3 H9 A1,1 0 0 1 10,4 V20 A1,1 0 0 1 9,21 H6 A1,1 0 0 1 5,20 V4 A1,1 0 0 1 6,3 Z M15,3 H18 A1,1 0 0 1 19,4 V20 A1,1 0 0 1 18,21 H15 A1,1 0 0 1 14,20 V4 A1,1 0 0 1 15,3 Z</Geometry>
     <Geometry x:Key="Glyph.Stop">M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z</Geometry>
-    <Geometry x:Key="Glyph.MachineHome">M15,21 V13 A1,1 0 0 0 14,12 H10 A1,1 0 0 0 9,13 V21 M3,10 A2,2 0 0 1 3.709,8.472 L10.709,2.472 A2,2 0 0 1 13.291,2.472 L20.291,8.472 A2,2 0 0 1 21,10 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 Z</Geometry>
+    <!--
+        Homing drives the physical axes to their limit switches. It was drawing the same house as
+        Glyph.Home, the button that navigates to the Home screen — one icon meaning both "go to the
+        dashboard" and "move the machine". Axes plus an arrow travelling to the datum corner says
+        what this actually does.
+    -->
+    <Geometry x:Key="Glyph.MachineHome">M4,3 V20 H21 M18,7 L8,17 M8,17 V11 M8,17 H14</Geometry>
+    <Geometry x:Key="Glyph.Link">M10,13 A5,5 0 0 0 17.54,13.54 L20.54,10.54 A5,5 0 0 0 13.47,3.47 L11.75,5.18 M14,11 A5,5 0 0 0 6.46,10.46 L3.46,13.46 A5,5 0 0 0 10.53,20.53 L12.24,18.82</Geometry>
     <Geometry x:Key="Glyph.Unlock">M5,11 H19 A2,2 0 0 1 21,13 V20 A2,2 0 0 1 19,22 H5 A2,2 0 0 1 3,20 V13 A2,2 0 0 1 5,11 Z M7,11 V7 A5,5 0 0 1 16.9,6</Geometry>
     <Geometry x:Key="Glyph.Lock">M5,11 H19 A2,2 0 0 1 21,13 V20 A2,2 0 0 1 19,22 H5 A2,2 0 0 1 3,20 V13 A2,2 0 0 1 5,11 Z M7,11 V7 A5,5 0 0 1 17,7 V11</Geometry>
     <Geometry x:Key="Glyph.Origin">M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M22,12 H18 M6,12 H2 M12,6 V2 M12,22 V18</Geometry>
@@ -104,4 +118,19 @@
     <Geometry x:Key="Glyph.Help">M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M9.09,9 A3,3 0 0 1 14.92,10 C14.92,12 11.92,13 11.92,13 M12,17 L12.01,17</Geometry>
     <Geometry x:Key="Glyph.ChevronRight">M9,18 L15,12 L9,6</Geometry>
     <Geometry x:Key="Glyph.ChevronDown">M6,9 L12,15 L18,9</Geometry>
+
+    <!--
+        Layer row state. Each state is told by a different SHAPE, not only by colour: a struck-through
+        bolt and a struck-through eye are legible as "off" without relying on the fill.
+        Zap = this layer is processed into the job. Eye = this layer is drawn on the canvas.
+    -->
+    <Geometry x:Key="Glyph.Zap">M13,2 L4.09,12.97 A1,1 0 0 0 4.87,14.6 H11 L11,22 L19.91,11.03 A1,1 0 0 0 19.13,9.4 H13 Z</Geometry>
+    <Geometry x:Key="Glyph.ZapOff">M10.51,4.86 L13,2 L12,7 M15.66,10 H19.13 A1,1 0 0 1 19.91,11.63 L18.06,13.9 M16.27,16.27 L11,22 L11,14.6 H4.87 A1,1 0 0 1 4.09,12.97 L7.73,8.5 M2,2 L22,22</Geometry>
+    <Geometry x:Key="Glyph.Eye">M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9</Geometry>
+    <Geometry x:Key="Glyph.EyeOff">M10.73,5.08 A10.74,10.74 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 20.49,14.84 M14.08,14.16 A3,3 0 0 1 9.84,9.92 M17.48,17.5 A10.75,10.75 0 0 1 2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 6.51,6.51 M2,2 L22,22</Geometry>
+
+    <Geometry x:Key="Glyph.More">M5,11 A1,1 0 1 0 5,13 A1,1 0 1 0 5,11 M12,11 A1,1 0 1 0 12,13 A1,1 0 1 0 12,11 M19,11 A1,1 0 1 0 19,13 A1,1 0 1 0 19,11</Geometry>
+
+    <!-- Drag affordance for reordering layer rows. -->
+    <Geometry x:Key="Glyph.GripVertical">M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17</Geometry>
 </ResourceDictionary>

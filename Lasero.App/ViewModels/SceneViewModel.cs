@@ -81,6 +81,10 @@ public partial class SceneViewModel : ObservableObject
     public bool CanDeleteSelectedLayer => SelectedLayer is not null && CountObjectsUsingLayer(SelectedLayer) == 0;
     public bool CanMoveSelectedLayerUp => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) > 0;
     public bool CanMoveSelectedLayerDown => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) is var index && index >= 0 && index < Layers.Count - 1;
+
+    /// <summary>Whether reordering is meaningful at all. Drives the visibility of the up/down
+    /// controls so they are not permanently parked above a list with nothing to reorder.</summary>
+    public bool CanReorderLayers => Layers.Count > 1;
     public string SelectedLayerUsageLabel
     {
         get
@@ -166,6 +170,7 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanDeleteSelectedLayer));
         OnPropertyChanged(nameof(CanMoveSelectedLayerUp));
         OnPropertyChanged(nameof(CanMoveSelectedLayerDown));
+        OnPropertyChanged(nameof(CanReorderLayers));
         OnPropertyChanged(nameof(SelectedLayerUsageLabel));
         DeleteSelectedLayerCommand.NotifyCanExecuteChanged();
         MoveSelectedLayerUpCommand.NotifyCanExecuteChanged();

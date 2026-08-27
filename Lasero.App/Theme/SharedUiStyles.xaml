@@ -19,7 +19,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
-                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" /></Trigger>
                         <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.46" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -96,5 +96,85 @@
 
     <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">
         <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- ===================== Numeric field with an integrated unit ===================== -->
+    <!--
+        "205.05 mm" reads as one control instead of an input plus a detached grey "mm" floating beside
+        it. The shell owns the surface, border and focus ring; the TextBox inside is chromeless so the
+        two never draw competing outlines. Focus is tracked with IsKeyboardFocusWithin because the
+        element that actually takes focus is the inner input, not the shell.
+    -->
+    <Style x:Key="UnitField.Shell" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="UnitField.Input" TargetType="TextBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.AccentMuted}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="UnitField.Suffix" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+        <Setter Property="Margin" Value="5,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- Row label inside the inspector's transform grid. -->
+    <Style x:Key="TransformRowLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- ===================== Inspector section rhythm ===================== -->
+    <!--
+        Sections are separated by space and a single hairline, not by nesting another bordered card
+        inside the panel that already has a border. Card-in-panel was the main reason the inspector
+        read as busy.
+    -->
+    <Style x:Key="InspectorSectionTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+    <Style x:Key="InspectorRule" TargetType="Border">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="Margin" Value="0,18,0,18" />
     </Style>
 </ResourceDictionary>

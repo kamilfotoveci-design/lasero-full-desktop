@@ -68,14 +68,14 @@
                                 <TextBlock Text="Rozpoznání obrysu" Style="{StaticResource PanelTitle}" />
                                 <DockPanel Margin="0,0,0,4">
                                     <TextBlock Text="Práh černé" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock Text="{Binding Threshold, StringFormat={}{0:0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Mono}" />
+                                    <TextBlock Text="{Binding Threshold, StringFormat={}{0:0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                 </DockPanel>
                                 <Slider Minimum="0" Maximum="255" Value="{Binding Threshold}" />
                                 <TextBlock Text="Vyšší hodnota zachytí i světlejší části obrázku." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,14" />
 
                                 <DockPanel Margin="0,0,0,4">
                                     <TextBlock Text="Vyhlazení křivek" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock Text="{Binding SimplificationPixels, StringFormat={}{0:0.0} px}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Mono}" />
+                                    <TextBlock Text="{Binding SimplificationPixels, StringFormat={}{0:0.0} px}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                 </DockPanel>
                                 <Slider Minimum="0" Maximum="5" TickFrequency="0.1" Value="{Binding SimplificationPixels}" />
                                 <TextBlock Text="Odstraní zbytečné body bez změny celkového tvaru." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,14" />

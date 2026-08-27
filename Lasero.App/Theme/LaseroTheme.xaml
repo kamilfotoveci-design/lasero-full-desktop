@@ -13,55 +13,83 @@
          button; 6 keeps the same restrained rounding as the rest of the chrome without the blob look. -->
     <conv:WidthToCornerRadiusConverter x:Key="HalfCornerRadius" DefaultRadius="6" />
 
-    <!-- Operational color roles. Amber guides navigation, blue marks precise selection,
-         black carries ordinary primary actions and red is reserved for danger/brand moments. -->
-    <SolidColorBrush x:Key="Brush.Accent" Color="#1F5FCC" po:Freeze="False" />
-    <!-- Foreground/fill for anything drawn on top of the accent — currently the scene canvas's
+    <!--
+        Neutral graphite + soft white + cobalt blue.
+
+        The palette this replaces ran three accents at once: amber for active navigation and the
+        active tool, blue for canvas selection and focus, and near-black for primary buttons — so
+        "this is the thing you are on" was told in a different colour depending on where you looked.
+        There is now one interaction colour. Blue means selected/active/primary everywhere: nav item,
+        tool, toggle, focus ring, canvas selection, Start.
+
+        Budget: roughly 90% neutral surfaces and text, 8% blue interaction, 2% semantic
+        green/amber/red. Red stays reserved for danger and the wordmark's brand dot; it is not a
+        third UI colour.
+    -->
+
+    <!-- Interaction -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#1D4ED8" po:Freeze="False" />
+    <!-- Foreground/fill for anything drawn on top of the accent — including the scene canvas's
          resize and rotate handles (blue outline, white core). SceneCanvas resolved this key with
          FindResource and it was never defined, so building the selection adorner threw
          ResourceReferenceKeyNotFoundException and took the whole app down via the global handler. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentMuted" Color="#EAF1FC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.WarmAccent" Color="#C98200" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.WarmAccentMuted" Color="#FFF4DC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.WarmAccentBorder" Color="#F0CC7A" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#16161A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentMuted" Color="#EFF6FF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#EFF6FF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#BFDBFE" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#2563EB" po:Freeze="False" />
+
+    <!-- Primary action is the interaction colour. It used to be near-black, which meant a black
+         "Náhled" in the header and a blue Start at the bottom were two different primary languages. -->
+    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryActionHover" Color="#1D4ED8" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
+
+    <!-- Brand. The wordmark's red dot only; not a UI colour. -->
     <SolidColorBrush x:Key="Brush.Brand" Color="#FF0000" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.BrandRed" Color="#FF0000" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Background" Color="#F6F4F0" po:Freeze="False" />
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="Brush.Background" Color="#F7F7F5" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.TitleBar" Color="#FFFFFF" po:Freeze="False" />
-    <!-- Distinct from Brush.Panel — gives the sidebar its own shell identity instead of reading as
-         just another content card, per the app-shell redesign. -->
-    <SolidColorBrush x:Key="Brush.Sidebar" Color="#FBFAF7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Sidebar" Color="#FFFFFF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F0EDE7" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E2DED8" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Field" Color="#F8F6F3" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#16161A" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6E6A66" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Success" Color="#1F9D55" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#EAF7EF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Warning" Color="#9A5D00" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Info" Color="#1F5FCC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#EEF4FE" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#B9CFF2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Danger" Color="#C0291F" po:Freeze="False" />
-    <!-- Tinted danger surfaces: a stop/abort control has to be unmistakable against the ordinary
-         bordered buttons next to it, without turning every destructive label bright red. -->
-    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#FCEDEB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#E8B4AE" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.HoverWash" Color="#16161A" po:Freeze="False" />
-    <!-- Toggle-switch OFF track. Named tokens rather than literals inside the template so the
-         switch reads from the same palette as everything else. -->
-    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E3DED6" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D5D0C8" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#CFC9C0" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A9A29A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F3F4F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Field" Color="#F3F4F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E4E5E2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D2D4D0" po:Freeze="False" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#171918" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#666B68" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#929793" po:Freeze="False" />
+
+    <!-- Disabled -->
+    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#F1F2F0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#A4A8A5" po:Freeze="False" />
+
+    <!-- Semantic. Used for state, never for decoration. -->
+    <SolidColorBrush x:Key="Brush.Success" Color="#15803D" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#F0FDF4" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#D97706" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarningMuted" Color="#FFFBEB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#FEF2F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#EFF6FF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#BFDBFE" po:Freeze="False" />
+
+    <!-- Component-level neutrals -->
+    <SolidColorBrush x:Key="Brush.HoverWash" Color="#171918" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E4E5E2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D2D4D0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D2D4D0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A4A8A5" po:Freeze="False" />
 
     <!-- Soft, diffuse, low-opacity shadow. Exactly one surface in the app carries it (the canvas). -->
     <DropShadowEffect x:Key="Shadow.Panel" Color="#000000" Opacity="0.32" BlurRadius="34" ShadowDepth="6" Direction="270" />
-    <SolidColorBrush x:Key="Brush.FocusRing" Color="#1F5FCC" po:Freeze="False" />
 
     <!-- Motion language: short and ease-out, no bounce or overshoot (DESIGN.md). An overshoot curve
          on press-release reads as playful, which is wrong for a machine-control workbench. -->
@@ -78,9 +106,23 @@
     <system:Double x:Key="Size.Control.Base">36</system:Double>
     <system:Double x:Key="Size.Control.Large">44</system:Double>
 
-    <!-- Segoe UI Variable is Windows' own optical-weight variable font family (Windows 11) — closer in warmth and proportion to SF Pro than classic Segoe UI. Falls back silently where absent. -->
-    <FontFamily x:Key="Font.Ui">Open Sans, Segoe UI Variable Text, Segoe UI</FontFamily>
-    <FontFamily x:Key="Font.Display">Open Sans SemiBold, Open Sans, Segoe UI Variable Display, Segoe UI</FontFamily>
+    <!--
+        Inter, bundled as an application resource (see the .csproj). The pack URI points at the
+        folder; the "#Inter" fragment names the family inside it. The trailing Segoe entries are a
+        safety net only — the bundled files mean they should never be reached.
+
+        Weight discipline: 400 body, 500 controls/labels/values, 600 headings and selected nav.
+        700 is reserved for a screen's own title.
+
+        Font.Numeric is the same family, not a monospace. Cascadia's fixed pitch made every value in
+        the inspector look like console output; Inter's tabular figures (Typography.NumeralAlignment
+        below) give column alignment without the terminal texture.
+    -->
+    <FontFamily x:Key="Font.Ui">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Display">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Numeric">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <!-- Genuinely fixed-pitch content only: the GRBL console and raw G-code, where column position
+         carries meaning. Not for ordinary numeric fields. -->
     <FontFamily x:Key="Font.Mono">Cascadia Mono,Consolas,Courier New</FontFamily>
     <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmark.png" CacheOption="OnLoad" />
     <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/KamilAvatar.png" CacheOption="OnLoad" />
@@ -102,6 +144,13 @@
 
     <Style x:Key="Text.Muted" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- Barely-there text for things like a layer's ordinal, where the value should be available
+         but must not compete with the name beside it. -->
+    <Style x:Key="Text.Faint" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
@@ -115,9 +164,14 @@
         <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
 
+    <!-- Tabular figures: every digit takes the same advance width, so coordinates, speeds and
+         dimensions stay in vertical columns as the values change. This is what the monospace font
+         was really being used for, without making the panel look like a terminal. -->
     <Style x:Key="Text.Numeric" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
     </Style>
 
     <!-- ===================== Panels ===================== -->
@@ -238,10 +292,93 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <!-- Icon buttons are square at the shared Base height so they line up with text buttons and
+         inputs on the same row. Call sites used to override this to 32/36/40 individually. -->
     <Style x:Key="Button.Icon" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Width" Value="34" />
-        <Setter Property="Height" Value="34" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="8" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+
+    <!-- Ghost: no fill, no border until hover. For dense clusters where a full bordered button per
+         action would turn the row into a grid of boxes. -->
+    <Style x:Key="Button.Ghost" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style x:Key="Button.GhostIcon" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!--
+        Per-row state icon (layer output / layer visibility). Compact and chromeless so a list of
+        rows does not turn into a grid of controls: the state is carried by the glyph itself
+        (bolt vs struck-through bolt, eye vs struck-through eye) plus colour, never colour alone.
+    -->
+    <Style x:Key="Toggle.LayerState" TargetType="ToggleButton">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Surface" Background="Transparent" CornerRadius="6" BorderBrush="Transparent" BorderThickness="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Square icon toggle. Same footprint as Button.Icon so it lines up in a row of icon buttons,
+         with an on-state in the one interaction colour rather than a second switch idiom. -->
+    <Style x:Key="Toggle.Icon" TargetType="ToggleButton">
+        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="Button.Jog" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -438,6 +575,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- For segment strips of three or four options in a narrow panel, where the default 12px side
+         padding is what pushes the labels into a clip. -->
+    <Style x:Key="Segment.Compact" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
+        <Setter Property="Padding" Value="4,5" />
+        <Setter Property="FontSize" Value="13" />
     </Style>
 
     <Style x:Key="SegmentedTrack" TargetType="Border">

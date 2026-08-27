@@ -12,7 +12,7 @@
         WindowStartupLocation="CenterScreen" WindowStyle="None" Background="{StaticResource Brush.Background}">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="72" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -23,6 +23,9 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
         <conv:AppScreenToSidebarWidthConverter x:Key="AppScreenToSidebarWidth" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:RgbColorToNameConverter x:Key="RgbColorToName" />
+        <conv:RgbColorMatchesConverter x:Key="RgbColorMatches" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
         <!-- Shared application styles stay centralized in SharedUiStyles.xaml. -->
@@ -64,9 +67,9 @@
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.WarmAccentBorder}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.WarmAccent}" />
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
@@ -97,27 +100,43 @@
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
+        <!--
+            Palette swatch. The outer button is 28px for a comfortable pointer target while the
+            colour chip itself stays 20px, and the active swatch gets a ring instead of leaving
+            twelve identical squares with no indication of which one is in play. Hover changes the
+            ring's colour rather than its thickness, so the chip no longer shifts by a pixel when
+            the pointer crosses it.
+        -->
         <Style x:Key="QuickLayerButton" TargetType="Button">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
             <Setter Property="Margin" Value="1,0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="LayerColor" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Ring" CornerRadius="7" BorderBrush="Transparent" BorderThickness="2" />
+                            <Border x:Name="LayerColor" Width="18" Height="18" CornerRadius="4"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="LayerColor" Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}" />
-                                <Setter TargetName="LayerColor" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
                             </Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="LayerColor" Property="Opacity" Value="0.68" /></Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="LayerColor" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="LayerColor" Property="Opacity" Value="0.68" />
+                            </Trigger>
+                            <!-- Tag carries the "is this the selected layer's colour" MultiBinding. -->
+                            <Trigger Property="Tag" Value="True">
+                                <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -136,7 +155,8 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="HorizontalContentAlignment" Value="Right" />
             <Setter Property="TextAlignment" Value="Right" />
-            <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+            <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
         </Style>
 
         <Style x:Key="TransformUnit" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
@@ -236,8 +256,8 @@
         <Style x:Key="NavButton.Home" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.WarmAccent}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -245,8 +265,8 @@
         <Style x:Key="NavButton.Designer" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.WarmAccent}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -254,8 +274,8 @@
         <Style x:Key="NavButton.Device" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.WarmAccent}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -263,8 +283,8 @@
         <Style x:Key="NavButton.Chat" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.WarmAccent}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -291,20 +311,24 @@
          binding fires even while a TextBox has focus. See OnPreviewKeyDown in the code-behind. -->
 
     <Grid>
+        <!-- Chrome budget: at 1366x768 the header/toolbar/status strip used to eat 276px before the
+             canvas got any. Every row here is sized to the smallest height that still gives its
+             controls a full click target. -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="72" />
-            <RowDefinition Height="0" />
-            <RowDefinition Height="0" />
+            <RowDefinition Height="60" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="58" />
+            <RowDefinition Height="56" />
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
         <Border Background="{StaticResource Brush.TitleBar}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
             <Grid>
+                <!-- The project-name column was a hard 160px, so a name longer than about twelve
+                     characters was ellipsed regardless of how much empty header there was. Auto with
+                     a MaxWidth lets it use the room it needs and gives it back when the window narrows. -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="160" />
-                    <ColumnDefinition Width="160" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" MaxWidth="280" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="138" />
@@ -312,50 +336,48 @@
 
                 <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="16,0">
                     <Image Source="{StaticResource Image.BrandWordmark}"
-                           Width="116" Height="40" Stretch="Uniform"
+                           Width="104" Height="34" Stretch="Uniform"
                            HorizontalAlignment="Left" VerticalAlignment="Center"
                            AutomationProperties.Name="Lasero" />
                 </Border>
 
-                <StackPanel Grid.Column="1" Margin="18,0,12,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="15" FontWeight="SemiBold"
-                                   MaxWidth="190" TextTrimming="CharacterEllipsis" />
-                        <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.WarmAccent}" Margin="8,0,0,0" VerticalAlignment="Center"
-                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" ToolTip="Projekt obsahuje neuložené změny" />
-                    </StackPanel>
-                    <TextBlock Text="Pracovní návrh" Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
+                <!-- Project identity on one line. "Pracovní návrh" was a constant second line that said
+                     the same thing on every project and cost 18px of header height to say it. The
+                     unsaved-changes dot carries the only state this area actually has. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="15" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               ToolTip="{Binding ProjectName}" />
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Accent}" Margin="8,0,0,0" VerticalAlignment="Center"
+                             Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" ToolTip="Projekt obsahuje neuložené změny" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" Padding="11" Margin="0,0,6,0" Command="{Binding Scene.UndoCommand}" ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
+                    <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.UndoCommand}" ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
                         <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="16" Height="16" />
                     </Button>
-                    <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" Padding="11" Margin="0,0,6,0" Command="{Binding Scene.RedoCommand}" ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
+                    <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.RedoCommand}" ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
                         <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="16" Height="16" />
                     </Button>
-                    <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" Padding="11" Margin="0,0,6,0" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
+                    <Button Style="{StaticResource Button.Icon}" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
                         <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="16" Height="16" />
                     </Button>
-                    <Button Style="{StaticResource PrimaryAction}" Height="40" Padding="16,0"
+                    <Button Style="{StaticResource Button.Regular}" Margin="8,0,0,0" Padding="14,0"
                             Command="{Binding GCode.PreviewSimulationCommand}"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                            ToolTip="Otevřít náhled dráhy">
+                            ToolTip="Otevřít náhled dráhy nástroje v samostatném okně">
                         <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Náhled" IconSize="15" TextMargin="7,0,0,0" />
                     </Button>
                 </StackPanel>
 
+                <!-- The connection pill that used to live here has moved out. Connection state was
+                     rendered in three places at once (here, the Device page header, the status strip);
+                     the persistent bottom-left strip is now the single source of visual truth for it,
+                     and the Device page keeps its own badge because there the machine is the subject. -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
                             Margin="16,0,12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
-                            CornerRadius="9" Padding="12,9" Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding Connection.StatusText}" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" />
-                        </StackPanel>
-                    </Border>
-                    <Button Style="{StaticResource Button.Regular}" Click="OnShowMachinePanelClick" Height="40" Padding="15,0"
+                    <Button Style="{StaticResource Button.Regular}" Click="OnShowMachinePanelClick" Padding="14,0"
                             ToolTip="Otevřít připojení, pohyb a přípravu stroje">
                         <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Stroj" IconSize="16" TextMargin="7,0,0,0" />
                     </Button>
@@ -375,128 +397,12 @@
             </Grid>
         </Border>
 
-        <!-- Menu bar -->
-        <Border Grid.Row="1" Visibility="Collapsed" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-            <Menu VerticalAlignment="Center" Margin="12,0">
-                <MenuItem Header="Soubor">
-                    <MenuItem Header="Nový projekt" Command="{Binding NewProjectCommand}" />
-                    <MenuItem Header="Otevřít projekt" Command="{Binding OpenProjectCommand}" />
-                    <MenuItem Header="Uložit projekt" Command="{Binding SaveProjectCommand}" InputGestureText="Ctrl+S" />
-                    <Separator />
-                    <MenuItem Header="Importovat grafiku" Command="{Binding GCode.LoadFileCommand}" />
-                    <Separator />
-                    <MenuItem Header="Nastavení" Click="OnSettingsClick" />
-                    <Separator />
-                    <MenuItem Header="Ukončit" Click="OnCloseClick" />
-                </MenuItem>
-                <MenuItem Header="Upravit">
-                    <MenuItem Header="Zpět" Command="{Binding Scene.UndoCommand}" InputGestureText="Ctrl+Z" />
-                    <MenuItem Header="Znovu" Command="{Binding Scene.RedoCommand}" InputGestureText="Ctrl+Y / Ctrl+Shift+Z" />
-                    <Separator />
-                    <MenuItem Header="Kopírovat" Command="{Binding Scene.CopyCommand}" InputGestureText="Ctrl+C" />
-                    <MenuItem Header="Vyjmout" Command="{Binding Scene.CutCommand}" InputGestureText="Ctrl+X" />
-                    <MenuItem Header="Vložit" Command="{Binding Scene.PasteCommand}" InputGestureText="Ctrl+V" />
-                    <Separator />
-                    <MenuItem Header="Duplikovat" Command="{Binding Scene.DuplicateCommand}" InputGestureText="Ctrl+D" />
-                    <MenuItem Header="Odstranit" Command="{Binding Scene.DeleteCommand}" InputGestureText="Del" />
-                    <Separator />
-                    <MenuItem Header="Vybrat vše" Command="{Binding Scene.SelectAllCommand}" InputGestureText="Ctrl+A" />
-                </MenuItem>
-                <MenuItem Header="Zobrazit">
-                    <MenuItem Header="Přiblížit" Click="OnZoomInClick" InputGestureText="Ctrl++" />
-                    <MenuItem Header="Oddálit" Click="OnZoomOutClick" InputGestureText="Ctrl+-" />
-                    <MenuItem Header="Přizpůsobit oknu" Click="OnFitToViewClick" InputGestureText="F / Ctrl+0" />
-                    <Separator />
-                     <MenuItem Header="Domov" Command="{Binding ShowHomeCommand}" />
-                     <MenuItem Header="Návrh" Command="{Binding ShowDesignerCommand}" />
-                     <MenuItem Header="Zařízení" Command="{Binding ShowDeviceCommand}" />
-                     <MenuItem Header="Lasero Chat" Command="{Binding ShowChatCommand}" />
-                 </MenuItem>
-                 <MenuItem Header="Uspořádat">
-                    <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
-                    <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
-                    <Separator />
-                     <MenuItem Header="Zarovnat vlevo" Command="{Binding Scene.AlignLeftCommand}" />
-                    <MenuItem Header="Zarovnat na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
-                    <MenuItem Header="Zarovnat vpravo" Command="{Binding Scene.AlignRightCommand}" />
-                    <Separator />
-                    <MenuItem Header="Zarovnat nahoru" Command="{Binding Scene.AlignTopCommand}" />
-                    <MenuItem Header="Zarovnat na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
-                    <MenuItem Header="Zarovnat dolů" Command="{Binding Scene.AlignBottomCommand}" />
-                    <Separator />
-                    <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
-                    <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
-                    <MenuItem Header="Převrátit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
-                    <MenuItem Header="Převrátit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
-                    <Separator />
-                    <MenuItem Header="Zamknout / odemknout" Command="{Binding Scene.ToggleLockCommand}" />
-                </MenuItem>
-                <MenuItem Header="Laserov&#xE9; n&#xE1;stroje">
-                    <MenuItem Header="Rámování" Command="{Binding GCode.RunFramingCommand}" />
-                    <Separator />
-                    <MenuItem Header="Najet do výchozí polohy" Command="{Binding Jog.HomeCommand}" />
-                    <MenuItem Header="Přejít na pracovní nulu" Command="{Binding Jog.GoToWorkZeroCommand}" />
-                    <MenuItem Header="Nastavit pracovní nulu zde" Command="{Binding Jog.SetOriginHereCommand}" />
-                    <MenuItem Header="Odemknout" Command="{Binding Jog.UnlockCommand}" />
-                    <MenuItem Header="Softwarový reset" Command="{Binding Jog.SoftResetCommand}" />
-                </MenuItem>
-                <MenuItem Header="Pomoc">
-                    <MenuItem Header="Klávesové zkratky" Click="OnKeyboardShortcutsClick" InputGestureText="F1" />
-                    <Separator />
-                    <MenuItem Header="O aplikaci" Click="OnAboutClick" />
-                </MenuItem>
-            </Menu>
-        </Border>
-
-        <!-- Command bar -->
-        <Border Grid.Row="2" Visibility="Collapsed" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="10,6">
-            <Grid>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding NewProjectCommand}" ToolTip="Nov&#xFD; projekt" AutomationProperties.Name="Nov&#xFD; projekt">
-                        <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="18" Height="18" />
-                    </Button>
-                    <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding OpenProjectCommand}" ToolTip="Otevřít projekt" AutomationProperties.Name="Otevřít projekt">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Open}" Width="18" Height="18" />
-                    </Button>
-                    <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt (Ctrl+S)" AutomationProperties.Name="Uložit projekt">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="18" Height="18" />
-                    </Button>
-                    <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="8,0,10,0" />
-                    <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.UndoCommand}" ToolTip="Zpět (Ctrl+Z)" AutomationProperties.Name="Zpět">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="18" Height="18" />
-                    </Button>
-                    <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.RedoCommand}" ToolTip="Znovu (Ctrl+Y)" AutomationProperties.Name="Znovu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="18" Height="18" />
-                    </Button>
-                </StackPanel>
-
-                <Button HorizontalAlignment="Center" Height="32" Padding="13,0"
-                        Command="{Binding GCode.PreviewSimulationCommand}"
-                        Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                        ToolTip="Otevřít plynulý náhled dráhy v samostatném okně">
-                    <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Náhled" />
-                </Button>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="7" Padding="9,5" Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,7,0" />
-                            <TextBlock Text="{Binding Connection.StatusText}" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" />
-                        </StackPanel>
-                    </Border>
-                    <Button Click="OnShowMachinePanelClick" Height="32" Padding="12,0" ToolTip="Otevřít připojení a ovládání stroje vedle plátna">
-                        <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Ovládání stroje" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-
         <!-- Main editor -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding CurrentScreen, Converter={StaticResource AppScreenToSidebarWidth}}" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="376" />
+                <ColumnDefinition Width="336" />
             </Grid.ColumnDefinitions>
 
             <!-- Stable application navigation. Design tools live beside the canvas so this rail
@@ -548,66 +454,6 @@
                         </Button>
                     </StackPanel>
                 </Grid>
-            </Border>
-
-            <!-- Compact editor rail: only creation tools remain beside the canvas. -->
-            <Border Grid.Column="0" Padding="8,10" Background="{DynamicResource Brush.Sidebar}"
-                    BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0"
-                    Visibility="Collapsed">
-                <StackPanel HorizontalAlignment="Center">
-                    <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" Command="{Binding ShowHomeCommand}"
-                            ToolTip="Zpět na domovskou obrazovku" AutomationProperties.Name="Domů">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Home}" Width="18" Height="18" />
-                    </Button>
-                    <Border Height="1" Width="32" Background="{StaticResource Brush.PanelBorder}" Margin="0,8" />
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
-                                 ToolTip="Výběr a úprava objektů (V)" AutomationProperties.Name="Výběr">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Select}" Width="18" Height="18" />
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pan, Mode=TwoWay}"
-                                 ToolTip="Posun plátna (H nebo kolečko myši)" AutomationProperties.Name="Posun plátna">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Pan}" Width="18" Height="18" />
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
-                                 ToolTip="Obdélník (R)" AutomationProperties.Name="Obdélník">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Rectangle}" Width="18" Height="18" />
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
-                                 ToolTip="Elipsa (E)" AutomationProperties.Name="Elipsa">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Ellipse}" Width="18" Height="18" />
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
-                                 ToolTip="Čára (L)" AutomationProperties.Name="Čára">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Line}" Width="18" Height="18" />
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource DesignerRailTool}" GroupName="DesignerRailTools"
-                                 IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
-                                 ToolTip="Text (T)" AutomationProperties.Name="Text">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Text}" Width="18" Height="18" />
-                    </RadioButton>
-                    <Menu Background="Transparent" Width="40" Margin="0,2">
-                        <MenuItem Padding="10" ToolTip="Další tvary" AutomationProperties.Name="Další tvary">
-                            <MenuItem.Header><components:IconGlyph IconData="{StaticResource Glyph.Polygon}" Width="18" Height="18" /></MenuItem.Header>
-                            <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
-                            <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
-                            <MenuItem Header="Šestiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Hexagon}" />
-                            <MenuItem Header="Osmiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Octagon}" />
-                            <Separator />
-                            <MenuItem Header="Hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Star}" />
-                            <MenuItem Header="Dvojitá hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.DoubleStar}" />
-                        </MenuItem>
-                    </Menu>
-                    <Border Height="1" Width="32" Background="{StaticResource Brush.PanelBorder}" Margin="0,8" />
-                    <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" Command="{Binding GCode.LoadFileCommand}"
-                            ToolTip="Importovat SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Import}" Width="18" Height="18" />
-                    </Button>
-                </StackPanel>
             </Border>
 
             <!-- Home dashboard -->
@@ -698,136 +544,202 @@
                     </Grid>
                 </Border>
 
-                <!-- Selection controls occupy their own contextual row. They never cover the artwork. -->
+                <!--
+                    One contextual bar, not three. Position/size/rotation, the selection readout and
+                    the object actions used to occupy separate stacked rows; together with the header
+                    and the tool bar that was four horizontal layers stacked above the artwork. They
+                    are all properties of "the thing you have selected", so they belong on one line.
+
+                    Values carry their unit inside the field (UnitField) instead of trailing a
+                    detached grey "mm", which is what made the old bar read as a spreadsheet.
+                -->
                 <Border Grid.Row="1"
                         Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                        BorderThickness="0,0,0,1" Padding="14,8"
+                        BorderThickness="0,0,0,1" Padding="14,7"
                         Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <!-- Persistent field labels and units make the transform bar understandable
-                             without relying on placeholders, icons, or hover-only help. -->
-                        <WrapPanel VerticalAlignment="Center"
+                    <DockPanel LastChildFill="False">
+
+                        <!-- Object actions. Icon-only with tooltips and accessible names: spelled-out
+                             labels for Lock/Duplicate/Delete cost roughly 200px that the property
+                             fields need in order to stay on one row. -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.GroupSelectionCommand}"
+                                    Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Seskupit výběr · Ctrl+G" AutomationProperties.Name="Seskupit výběr">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="16" Height="16" />
+                            </Button>
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UniteSelectionCommand}"
+                                    Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Sjednotit uzavřené vektory do jednoho tvaru · Ctrl+Shift+U" AutomationProperties.Name="Sjednotit tvary">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="16" Height="16" />
+                            </Button>
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UngroupSelectionCommand}"
+                                    Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Rozdělit skupinu nebo text na části · Ctrl+Shift+G" AutomationProperties.Name="Rozdělit skupinu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="16" Height="16" />
+                            </Button>
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.TraceSelectedRasterCommand}"
+                                    Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Převést bitmapu na vektorové obrysy · Alt+T" AutomationProperties.Name="Trasovat bitmapu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="16" Height="16" />
+                            </Button>
+
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.ToggleLockCommand}"
+                                    AutomationProperties.Name="Zamknout nebo odemknout výběr">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Zamknout výběr proti úpravám" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True">
+                                                            <Setter Property="Text" Value="Odemknout výběr" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                                <components:IconGlyph Width="16" Height="16">
+                                    <components:IconGlyph.Style>
+                                        <Style TargetType="components:IconGlyph">
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Unlock}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True">
+                                                    <Setter Property="IconData" Value="{StaticResource Glyph.Lock}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </components:IconGlyph.Style>
+                                </components:IconGlyph>
+                            </Button>
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DuplicateCommand}"
+                                    ToolTip="Duplikovat výběr · Ctrl+D" AutomationProperties.Name="Duplikovat výběr">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="16" Height="16" />
+                            </Button>
+                            <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DeleteCommand}"
+                                    Foreground="{StaticResource Brush.Danger}"
+                                    ToolTip="Odstranit výběr · Delete" AutomationProperties.Name="Odstranit výběr">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="16" Height="16" />
+                            </Button>
+
+                            <!-- Overflow. It used to be bare text with no border, background or
+                                 chevron, so nothing signalled that it could be clicked. -->
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="2,0,0,0">
+                                <MenuItem Padding="10,9" ToolTip="Další úpravy: otočení, zrcadlení, pořadí a zarovnání"
+                                          AutomationProperties.Name="Další úpravy">
+                                    <MenuItem.Header>
+                                        <components:IconGlyph IconData="{StaticResource Glyph.More}" Width="16" Height="16" />
+                                    </MenuItem.Header>
+                                    <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
+                                    <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
+                                    <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
+                                    <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
+                                    <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
+                                    <MenuItem Header="Zarovnat" Visibility="{Binding Scene.HasMultipleSelection, Converter={StaticResource BoolToVisibility}}">
+                                        <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
+                                        <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
+                                        <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
+                                        <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
+                                        <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Zobrazit na plátně" IsCheckable="True" IsChecked="{Binding Scene.Selected.IsVisible}" />
+                                    <MenuItem Header="Zahrnout do úlohy" IsCheckable="True" IsChecked="{Binding Scene.Selected.IncludeInOutput}" />
+                                </MenuItem>
+                            </Menu>
+                        </StackPanel>
+
+                        <!-- Selection readout. Plain text: it is information, not an action, and the
+                             blue pill it used to sit in made it look like the row's primary button. -->
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding Scene.SelectionSummary}"
+                                   Foreground="{StaticResource Brush.TextSecondary}" FontWeight="Medium"
+                                   MaxWidth="120" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Scene.SelectionSummary}"
+                                   VerticalAlignment="Center" Margin="2,0,14,0" />
+
+                        <WrapPanel DockPanel.Dock="Left" VerticalAlignment="Center"
                                    Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
                             <StackPanel Style="{StaticResource TransformGroup}">
                                 <TextBlock Text="X" Style="{StaticResource TransformLabel}" />
-                                <TextBox Style="{StaticResource TransformField}" Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}"
-                                         KeyDown="OnTransformFieldKeyDown"
-                                         IsEnabled="{Binding Scene.CanEditSelectedPosition}" ToolTip="Poloha středu objektu na ose X" />
-                                <TextBlock Text="mm" Style="{StaticResource TransformUnit}" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
+                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
+                                        ToolTip="Poloha středu objektu na ose X">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
                             <StackPanel Style="{StaticResource TransformGroup}">
                                 <TextBlock Text="Y" Style="{StaticResource TransformLabel}" />
-                                <TextBox Style="{StaticResource TransformField}" Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}"
-                                         KeyDown="OnTransformFieldKeyDown"
-                                         IsEnabled="{Binding Scene.CanEditSelectedPosition}" ToolTip="Poloha středu objektu na ose Y" />
-                                <TextBlock Text="mm" Style="{StaticResource TransformUnit}" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
+                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
+                                        ToolTip="Poloha středu objektu na ose Y">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
                             <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="Šířka" Style="{StaticResource TransformLabel}" />
-                                <TextBox Style="{StaticResource TransformField}" Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}"
-                                         KeyDown="OnTransformFieldKeyDown"
-                                         IsEnabled="{Binding Scene.CanTransformSelectedObject}" ToolTip="Výsledná šířka objektu" />
-                                <TextBlock Text="mm" Style="{StaticResource TransformUnit}" />
+                                <TextBlock Text="Š" Style="{StaticResource TransformLabel}" ToolTip="Šířka" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
+                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                        ToolTip="Výsledná šířka objektu">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="Výška" Style="{StaticResource TransformLabel}" />
-                                <TextBox Style="{StaticResource TransformField}" Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}"
-                                         KeyDown="OnTransformFieldKeyDown"
-                                         IsEnabled="{Binding Scene.CanTransformSelectedObject}" ToolTip="Výsledná výška objektu" />
-                                <TextBlock Text="mm" Style="{StaticResource TransformUnit}" />
+                            <StackPanel Style="{StaticResource TransformGroup}" Margin="0,3,6,3">
+                                <TextBlock Text="V" Style="{StaticResource TransformLabel}" ToolTip="Výška" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
+                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                        ToolTip="Výsledná výška objektu">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
+                            <!-- Aspect lock reads as a link between width and height, so it sits between
+                                 them as an icon toggle instead of a switch with its own written label. -->
+                            <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                          IsChecked="{Binding Scene.LockAspectRatio}"
+                                          IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                          Margin="0,3,16,3"
+                                          ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
+                                          AutomationProperties.Name="Zachovat poměr stran">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="16" Height="16" />
+                            </ToggleButton>
                             <StackPanel Style="{StaticResource TransformGroup}">
-                                <CheckBox Content="Poměr stran" IsChecked="{Binding Scene.LockAspectRatio}" VerticalAlignment="Center"
-                                          IsEnabled="{Binding Scene.CanTransformSelectedObject}" ToolTip="Při změně šířky nebo výšky zachovat proporce" AutomationProperties.Name="Zachovat poměr stran" />
-                            </StackPanel>
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="Otočení" Style="{StaticResource TransformLabel}" />
-                                <TextBox Style="{StaticResource TransformField}" Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}"
-                                         KeyDown="OnTransformFieldKeyDown"
-                                         IsEnabled="{Binding Scene.CanRotateSelectedObject}" ToolTip="Otočení objektu" />
-                                <TextBlock Text="°" Style="{StaticResource TransformUnit}" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="15" Height="15"
+                                                      Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"
+                                                      ToolTip="Otočení" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="72" Margin="6,0,0,0"
+                                        IsEnabled="{Binding Scene.CanRotateSelectedObject}"
+                                        ToolTip="Otočení objektu ve stupních">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
                         </WrapPanel>
-
-                        <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,6,0,5" />
-
-                        <WrapPanel VerticalAlignment="Center">
-                            <Border Background="{StaticResource Brush.AccentMuted}"
-                                    BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1"
-                                    CornerRadius="10" Padding="8,4" Margin="0,0,8,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Scene.SelectionSummary}" FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Brush.Accent}" />
-                            </Border>
-
-                            <WrapPanel VerticalAlignment="Center">
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.GroupSelectionCommand}"
-                                        Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTip="Seskupit výběr; jednotlivé části zůstanou zachované (Ctrl+G)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Group}" Text="Seskupit" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.UniteSelectionCommand}"
-                                        Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTip="Geometricky sjednotit uzavřené vektory do jednoho tvaru (Ctrl+Shift+U)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Union}" Text="Sjednotit" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.UngroupSelectionCommand}"
-                                        Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTip="Rozdělit skupinu nebo text na samostatné části (Ctrl+Shift+G)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Ungroup}" Text="Rozdělit" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.TraceSelectedRasterCommand}"
-                                        Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTip="Převést bitmapu na upravitelné vektorové obrysy (Alt+T)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Vector}" Text="Trasovat bitmapu" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                            </WrapPanel>
-
-                            <WrapPanel VerticalAlignment="Center">
-                                <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,4,0">
-                                    <MenuItem Header="Další úpravy" Padding="10,7">
-                                        <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
-                                        <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
-                                        <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
-                                        <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
-                                        <Separator />
-                                        <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
-                                        <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
-                                        <MenuItem Header="Zarovnat" Visibility="{Binding Scene.HasMultipleSelection, Converter={StaticResource BoolToVisibility}}">
-                                            <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
-                                            <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
-                                            <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
-                                            <Separator />
-                                            <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
-                                            <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
-                                            <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Zobrazit na plátně" IsCheckable="True" IsChecked="{Binding Scene.Selected.IsVisible}" />
-                                        <MenuItem Header="Zahrnout do úlohy" IsCheckable="True" IsChecked="{Binding Scene.Selected.IncludeInOutput}" />
-                                    </MenuItem>
-                                </Menu>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.ToggleLockCommand}" ToolTip="Zamknout nebo odemknout výběr">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Lock}" IconSize="14" TextMargin="5,0,0,0">
-                                        <components:IconLabel.Style>
-                                            <Style TargetType="components:IconLabel">
-                                                <Setter Property="Text" Value="Zamknout" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True"><Setter Property="Text" Value="Odemknout" /></DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </components:IconLabel.Style>
-                                    </components:IconLabel>
-                                </Button>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.DuplicateCommand}" ToolTip="Vytvořit kopii výběru (Ctrl+D)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Duplicate}" Text="Duplikovat" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource TransformActionButton}" Command="{Binding Scene.DeleteCommand}"
-                                        Foreground="{StaticResource Brush.Danger}" ToolTip="Odstranit výběr (Delete)">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit" IconSize="14" TextMargin="5,0,0,0" />
-                                </Button>
-                            </WrapPanel>
-                        </WrapPanel>
-                    </StackPanel>
+                    </DockPanel>
                 </Border>
 
                 <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="20,0,0,20"
@@ -859,12 +771,16 @@
                                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
         </Grid>
 
-        <!-- Persistent job strip: current state first, then the safe frame/run sequence. -->
-        <Border Grid.Row="4"
+        <!--
+            Three deliberate zones: machine/job state on the left, the layer palette in the middle,
+            job execution on the right. This is the app's one authoritative connection indicator —
+            the header pill and the duplicate badges that used to repeat it are gone.
+        -->
+        <Border Grid.Row="2"
                 Background="{StaticResource Brush.TitleBar}"
                 BorderBrush="{StaticResource Brush.PanelBorder}"
                 BorderThickness="0,1,0,0"
-                Padding="16,8">
+                Padding="16,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -878,19 +794,42 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8"
-                                 Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}"
-                                 VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <!-- The connection line can be a whole firmware banner. Cap and trim it so a
-                             long string cannot push the rest of the strip out of the window. -->
-                        <TextBlock Text="{Binding Connection.StatusText}" FontWeight="SemiBold"
+                        <!-- State is told three ways at once: a shape (which glyph), a word, and a
+                             semantic colour. Never colour alone. -->
+                        <components:IconGlyph Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <components:IconGlyph.Style>
+                                <Style TargetType="components:IconGlyph">
+                                    <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Connection.IsConnecting}" Value="True">
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Refresh}" />
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Connection.IsConnected}" Value="True">
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </components:IconGlyph.Style>
+                        </components:IconGlyph>
+                        <TextBlock Text="{Binding Connection.StatusText}" FontWeight="Medium"
                                    MaxWidth="300" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding Connection.StatusText}" VerticalAlignment="Center" />
+
+                        <!-- Contextual repair action. A disconnected machine is the single most common
+                             reason Start is unavailable, so the fix sits next to the statement of the
+                             problem instead of only in a tooltip. -->
+                        <Button Style="{StaticResource Button.Ghost}" Command="{Binding ShowDeviceCommand}"
+                                Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="12"
+                                Foreground="{StaticResource Brush.Accent}"
+                                Content="Připojit"
+                                ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
+                                Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
+
                         <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center" />
 
-                        <!-- A failed job used to render as plain grey text the same weight as "Bez úlohy".
-                             Fault states now carry an icon and the danger colour as well as the word, so
-                             the state is never signalled by colour alone nor by nothing at all. -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <StackPanel.Resources>
                                 <Style x:Key="JobFaultIcon" TargetType="components:IconGlyph">
@@ -914,6 +853,9 @@
                                         <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Aborted}">
                                             <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" /><Setter Property="FontWeight" Value="SemiBold" />
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}">
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" /><Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Completed}">
                                             <Setter Property="Foreground" Value="{StaticResource Brush.Success}" /><Setter Property="FontWeight" Value="SemiBold" />
                                         </DataTrigger>
@@ -924,88 +866,95 @@
                             <TextBlock Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" Style="{StaticResource JobStateText}" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- The job name only appears once there is a job. It used to read "Žádný soubor"
-                             next to a project full of artwork, which described the G-code, not the project. -->
                         <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}" />
                         <TextBlock Text="{Binding GCode.FileLabel}"
                                    Foreground="{StaticResource Brush.TextSecondary}"
-                                   MaxWidth="220" TextTrimming="CharacterEllipsis"
+                                   MaxWidth="200" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}" />
                         <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
                         <TextBlock Text="{Binding GCode.LastMessage}"
                                    Foreground="{StaticResource Brush.TextSecondary}"
-                                   MaxWidth="280"
+                                   MaxWidth="260"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding GCode.LastMessage}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
                     </StackPanel>
-                    <!-- Only present while a job is actually streaming. An always-on 0% track read as a
-                         stray hairline rule across the bottom of the window. -->
                     <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,6,0,0"
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
 
-                <Border Grid.Column="1" Margin="0,0,18,0" Padding="8,5" CornerRadius="8"
-                        BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
-                        Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                        ToolTip="Vyberte objekt a kliknutím mu přiřaďte výrobní barvu">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Vrstvy" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,10,0" />
-                        <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="0,0,9,0" />
-                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                          <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
-                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Style="{StaticResource QuickLayerButton}"
-                                            Background="{Binding Converter={StaticResource RgbColorToBrush}}"
-                                            Command="{Binding DataContext.Scene.ChangeSelectedLayerColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"
-                                            ToolTip="Použít barvu na vybraný objekt"
-                                            AutomationProperties.Name="Použít barvu na vybraný objekt" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
-                </Border>
+                <!-- The swatches used to float unexplained in the middle of the window. The label says
+                     what they are for, and the swatch matching the selected layer is marked. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0"
+                            Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
+                            ToolTip="Vyberte objekt a kliknutím mu přiřaďte výrobní barvu">
+                    <TextBlock Text="Barva vrstvy" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource QuickLayerButton}"
+                                        Background="{Binding Converter={StaticResource RgbColorToBrush}}"
+                                        Command="{Binding DataContext.Scene.ChangeSelectedLayerColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{Binding Converter={StaticResource RgbColorToName}}"
+                                        AutomationProperties.Name="{Binding Converter={StaticResource RgbColorToName}}">
+                                    <Button.Tag>
+                                        <MultiBinding Converter="{StaticResource RgbColorMatches}">
+                                            <Binding />
+                                            <Binding Path="DataContext.Scene.SelectedLayer.Color" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                        </MultiBinding>
+                                    </Button.Tag>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
 
+                <!--
+                    Job execution. Start is the one dominant control in the application: primary blue,
+                    Large height, wider padding. Frame stays neutral and secondary — it is the check
+                    you run before Start, not a competing action. Neither changes machine semantics;
+                    availability is still decided entirely by CanRun/CanFrame and the preflight.
+                -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
-                            Height="40" Padding="14,0" Margin="0,0,8,0"
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="16,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.FrameActionTooltip}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámování" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámování" IconSize="16" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}"
-                            Height="40" Padding="14,0" Margin="0,0,8,0"
-                            ToolTip="Pozastavit nebo pokračovat v úloze">
-                        <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" />
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="16,0" Margin="0,0,10,0"
+                            ToolTip="Pozastavit úlohu">
+                        <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="16" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}"
-                            Height="40" Padding="14,0" Margin="0,0,8,0"
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="16,0" Margin="0,0,10,0"
                             ToolTip="Pokračovat v pozastavené úloze">
-                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="16" TextMargin="8,0,0,0" />
                     </Button>
-                    <!-- While the machine is moving, stopping it is the most important thing on screen.
-                         This used to be a red-text outline button sitting next to a solid black Start,
-                         so the abort control read as quieter than the control that starts the laser. -->
                     <Button Style="{StaticResource JobActiveStopButton}"
                             Command="{Binding GCode.AbortCommand}"
-                            Height="40" Padding="18,0" Margin="0,0,8,0"
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="20,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="Okamžitě zastavit pohyb i laser">
-                        <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="16" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobStartActionButton}"
                             Command="{Binding GCode.RunJobCommand}"
-                            Height="40" Padding="18,0"
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="26,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.StartActionTooltip}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spustit" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spustit" IconSize="16" TextMargin="8,0,0,0" />
                     </Button>
                 </StackPanel>
             </Grid>
