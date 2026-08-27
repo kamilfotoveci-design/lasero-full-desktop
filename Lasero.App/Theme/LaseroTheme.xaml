@@ -272,8 +272,17 @@
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
                         </Trigger>
+                        <!--
+                            Disabled is a described state, not a faded one. Opacity 0.35 made a
+                            control look half-rendered — the operator reads that as "broken", not as
+                            "not available yet". A flat disabled surface with disabled text keeps the
+                            shape legible, and the pointer stops promising it can be pressed.
+                        -->
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.35" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DisabledSurface}" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -551,25 +560,48 @@
 
     <!-- ===================== Segmented control (2-choice RadioButton pair) ===================== -->
 
+    <!--
+        Segmented choice. The selected segment used to be a pale grey fill on a pale grey track,
+        which on the layer's processing mode meant the difference between "cut" and "engrave" — two
+        completely different machine behaviours — was told by about one shade of grey.
+
+        Selected now says so four ways: white surface, accent border, accent text and a heavier
+        weight. Hover is a neutral wash and deliberately shares nothing with it, so hovering an
+        unselected segment can never be mistaken for having chosen it.
+    -->
     <Style x:Key="Segment" TargetType="RadioButton">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="12,5" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bg" CornerRadius="7" Background="Transparent" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="Bg" CornerRadius="7" Background="Transparent"
+                            BorderBrush="Transparent" BorderThickness="1"
+                            Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <!-- Plain Setters, not a ColorAnimation — Bg's Background is reassigned to the
-                             shared StaticResource brush wholesale on check, not animated in-place, so
-                             there's no risk of mutating (and leaking) that shared brush's Color. -->
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <!-- Declared after hover so a hovered selected segment still reads as selected. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Panel}" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

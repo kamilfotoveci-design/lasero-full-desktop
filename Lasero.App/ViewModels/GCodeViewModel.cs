@@ -50,6 +50,8 @@ public partial class GCodeViewModel : ObservableObject
 
     [ObservableProperty] private GCodeDocument? _document;
     [ObservableProperty] private string _fileLabel = "Žádný soubor";
+
+    partial void OnFileLabelChanged(string value) => OnPropertyChanged(nameof(JobSourceLabel));
     [ObservableProperty] private JobRunState _jobState = JobRunState.Idle;
     [ObservableProperty] private int _currentLine;
     [ObservableProperty] private int _totalLines;
@@ -110,6 +112,23 @@ public partial class GCodeViewModel : ObservableObject
         ? "—"
         : $"{_timeEstimate.RapidDistanceMm:N0} mm ({FormatDuration(_timeEstimate.RapidDuration)})";
 
+    /// <summary>
+    /// Whether there is anything to make. Artwork on the canvas counts, not just a generated
+    /// document — the G-code is produced on demand, so panels that keyed off Document alone told an
+    /// operator with a rectangle on screen to go and open a design first.
+    /// </summary>
+    public bool HasJobContent => _scene.Objects.Count > 0 || Document is { Segments.Count: > 0 };
+
+    /// <summary>
+    /// What the job is, named for what the operator can see. FileLabel describes the generated
+    /// G-code, so before regeneration it read "Žádný soubor" next to a canvas full of artwork.
+    /// </summary>
+    public string JobSourceLabel => Document is not null
+        ? FileLabel
+        : _scene.Objects.Count > 0
+            ? "Návrh na plátně"
+            : "Žádný návrh";
+
     public IReadOnlyList<JobOriginAnchor> OriginAnchors { get; } = Enum.GetValues<JobOriginAnchor>();
     public double[] SimulationSpeedPresets { get; } = [1, 2, 5, 10, 20, 50];
     public bool SupportsPlacementMode => ImportKind != ImportKind.GCode;
@@ -143,6 +162,8 @@ public partial class GCodeViewModel : ObservableObject
         {
             RegenerateFromSceneCommand.NotifyCanExecuteChanged();
             PreviewSimulationCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(HasJobContent));
+            OnPropertyChanged(nameof(JobSourceLabel));
         };
         _scene.Changed += OnSceneChanged;
 
@@ -794,6 +815,8 @@ public partial class GCodeViewModel : ObservableObject
     {
         IsCurrentDocumentFramed = false;
         PreflightMessage = null;
+        OnPropertyChanged(nameof(HasJobContent));
+        OnPropertyChanged(nameof(JobSourceLabel));
         RefreshCommands();
     }
 

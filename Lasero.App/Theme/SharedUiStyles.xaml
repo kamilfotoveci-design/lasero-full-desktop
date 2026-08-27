@@ -14,13 +14,36 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
-                    </Border>
+                    <Grid>
+                        <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                        </Border>
+                        <!--
+                            Active-screen marker. The selected nav item is told by a tinted surface,
+                            accent text and a heavier weight — but all three are colour or weight, so
+                            a solid bar on the leading edge adds a cue that survives being
+                            desaturated. The screen-specific NavButton.* styles switch it on.
+                        -->
+                        <Border x:Name="ActiveBar" Width="3" HorizontalAlignment="Left" Margin="0,7"
+                                CornerRadius="2" Background="Transparent" />
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
-                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" /></Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.46" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.PanelBorder}" /></Trigger>
+                        <!-- The per-screen NavButton.* styles cannot reach a template element from a
+                             Style trigger, so they flag the active item through Tag and the template
+                             turns that into the marker bar. -->
+                        <Trigger Property="Tag" Value="Active">
+                            <Setter TargetName="ActiveBar" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="NavBackground" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                            <Setter TargetName="NavBackground" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

@@ -323,10 +323,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnShowMachinePanelClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Opens device settings. This used to switch to the Designer screen and flip the inspector to
+    /// its machine tab — which, if the operator was already there, changed nothing visible and read
+    /// as a dead button. The header now does what its label says.
+    /// </summary>
+    private void OnDeviceSettingsClick(object sender, RoutedEventArgs e)
     {
-        _viewModel.ShowDesignerCommand.Execute(null);
-        DesignerInspector.ShowMachineTab();
+        var dialog = new DeviceSettingsWindow(_viewModel) { Owner = this };
+        dialog.ShowDialog();
     }
 
     // SceneCanvas.ZoomIn/ZoomOut/FitToView have always been public — nothing in this window ever

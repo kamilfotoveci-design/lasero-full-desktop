@@ -249,7 +249,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Top"
                             MaxWidth="250"
-                            Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}, ConverterParameter=Invert}">
+                            Visibility="{Binding GCode.HasJobContent, Converter={StaticResource InverseBoolToVisibility}}">
                     <components:IconGlyph IconData="{StaticResource Glyph.Open}"
                                           Width="28" Height="28"
                                           HorizontalAlignment="Center"
@@ -274,13 +274,13 @@
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}">
+                              Visibility="{Binding GCode.HasJobContent, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="0,10,0,8">
                         <TextBlock Text="Připravený návrh" Style="{StaticResource MachineFieldLabel}" />
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding GCode.FileLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.FileLabel}" />
+                                <TextBlock Text="{Binding GCode.JobSourceLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.JobSourceLabel}" />
                                 <TextBlock Style="{StaticResource Text.Muted}" Margin="0,2,0,0">
                                     <Run Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" /><Run Text="  ·  " /><Run Text="{Binding GCode.CurrentLine}" /><Run Text=" / " /><Run Text="{Binding GCode.TotalLines}" />
                                 </TextBlock>

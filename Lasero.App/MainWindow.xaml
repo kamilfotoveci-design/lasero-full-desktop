@@ -63,20 +63,35 @@
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!--
+                                Three distinct states, in this order so a hovered or pressed active
+                                tool still reads as the active one. Hover is neutral and shares no
+                                colour with selected, so passing the pointer over a tool can never be
+                                mistaken for having picked it. Pressed is a momentary darkening.
+                            -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelBorderStrong}" />
+                            </Trigger>
+                            <!-- Selected: tinted surface, a full-strength accent border rather than
+                                 the pale one, accent icon/text and a heavier weight. Four cues, so
+                                 the active tool survives both colour-blindness and a quick glance. -->
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                 <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
                                 <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -187,15 +202,9 @@
         </Style>
 
         <Style x:Key="JobPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryAction}">
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-                    <Setter Property="Opacity" Value="0.72" />
-                    <Setter Property="Cursor" Value="Arrow" />
-                </Trigger>
-            </Style.Triggers>
+            <!-- Disabled is inherited from the base Button template. Each job button used to describe
+                 its own faded variant, which meant three slightly different disabled looks in one
+                 row of controls. -->
         </Style>
 
         <Style x:Key="JobIdleActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -231,15 +240,9 @@
         </Style>
 
         <Style x:Key="JobDangerButton" TargetType="Button" BasedOn="{StaticResource Button.DangerSolid}">
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-                    <Setter Property="Opacity" Value="0.72" />
-                    <Setter Property="Cursor" Value="Arrow" />
-                </Trigger>
-            </Style.Triggers>
+            <!-- Disabled is inherited from the base Button template. Each job button used to describe
+                 its own faded variant, which meant three slightly different disabled looks in one
+                 row of controls. -->
         </Style>
 
         <Style x:Key="JobActiveStopButton" TargetType="Button" BasedOn="{StaticResource JobDangerButton}">
@@ -256,6 +259,7 @@
         <Style x:Key="NavButton.Home" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}">
+                    <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -265,6 +269,7 @@
         <Style x:Key="NavButton.Designer" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
+                    <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -274,6 +279,7 @@
         <Style x:Key="NavButton.Device" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}">
+                    <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -283,6 +289,7 @@
         <Style x:Key="NavButton.Chat" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}">
+                    <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -373,9 +380,10 @@
                      and the Device page keeps its own badge because there the machine is the subject. -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
                             Margin="16,0,12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource Button.Regular}" Click="OnShowMachinePanelClick" Padding="14,0"
-                            ToolTip="Otevřít připojení, pohyb a přípravu stroje">
-                        <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Stroj" IconSize="16" TextMargin="7,0,0,0" />
+                    <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="14,0"
+                            ToolTip="Otevřít nastavení gravírky — pracovní plocha, osa Z, bezpečnost"
+                            AutomationProperties.Name="Nastavení zařízení">
+                        <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" IconSize="16" TextMargin="7,0,0,0" />
                     </Button>
                 </StackPanel>
 
