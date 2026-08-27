@@ -1,0 +1,379 @@
+<UserControl x:Class="Lasero.App.Views.MachinePanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Lasero.App.Converters"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             Loaded="OnLoaded"
+             Unloaded="OnUnloaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <conv:BooleanToConnectionBrushConverter x:Key="ConnectedToBrush" />
+        <conv:MachineModeToLabelConverter x:Key="ModeToLabel" />
+        <conv:MachineModeToBrushConverter x:Key="ModeToBrush" />
+        <conv:MachineAlertKindToBrushConverter x:Key="AlertKindToBrush" />
+        <conv:EnumToBooleanConverter x:Key="EnumToBool" />
+        <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
+
+        <Style x:Key="MachineSectionTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="MachineFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="TelemetryValue" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+        <Style x:Key="JogPadButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="MinHeight" Value="46" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
+            <Setter Property="Background" Value="{StaticResource Brush.WarmAccentMuted}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.WarmAccentBorder}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.WarmAccent}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource Brush.Field}"
+                BorderBrush="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
+                BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8"
+                Visibility="{Binding MachineStatus.HasActiveAlert, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <TextBlock Text="{Binding MachineStatus.ActiveAlert.Message}" TextWrapping="Wrap"
+                           Foreground="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
+                           Margin="0,0,28,0" />
+                <Button HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Button.Icon}"
+                        Width="24" Height="24" Padding="5" Command="{Binding MachineStatus.DismissAlertCommand}"
+                        ToolTip="Zavřít upozornění">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="12" Height="12" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Background="{StaticResource Brush.Field}"
+                BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                CornerRadius="10" Padding="10" Margin="0,0,0,8">
+            <StackPanel>
+                <Grid Margin="0,0,0,7">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="7" Height="7" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,7,0" />
+                        <TextBlock Text="{Binding Connection.StatusText}" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
+                            <Ellipse Width="7" Height="7" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,6,0" />
+                            <TextBlock Text="{Binding MachineStatus.Mode, Converter={StaticResource ModeToLabel}}" Style="{StaticResource Text.Muted}" />
+                        </StackPanel>
+                        <Button Height="36" MinHeight="36" Padding="12,0" Command="{Binding Connection.ConnectCommand}"
+                                Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
+                                ToolTip="Připojit vybrané zařízení">
+                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" IconSize="14" TextMargin="5,0,0,0" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="X mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkX, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="Y mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkY, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="Z mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkZ, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="3"><TextBlock Text="F" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.FeedRate, StringFormat={}{0:0}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="S" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.SpindleSpeed, StringFormat={}{0:0}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource SegmentedTrack}" Padding="3" Margin="0,0,0,2">
+            <UniformGrid Columns="4">
+                <RadioButton x:Name="ConnectionPanelTab" IsChecked="True" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Připojení a pracovní plocha">
+                    <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojení" IconSize="14" TextMargin="5,0,0,0" />
+                </RadioButton>
+                <RadioButton x:Name="JogPanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Ruční posun os">
+                    <components:IconLabel IconData="{StaticResource Glyph.Pan}" Text="Pohyb" IconSize="14" TextMargin="5,0,0,0" />
+                </RadioButton>
+                <RadioButton x:Name="JobPanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Kontrola a spuštění gravírování">
+                    <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spuštění" IconSize="14" TextMargin="5,0,0,0" />
+                </RadioButton>
+                <RadioButton x:Name="ConsolePanelTab" Style="{StaticResource Segment}" GroupName="MachinePanelTab" ToolTip="Pokročilá konzola GRBL">
+                    <components:IconLabel IconData="{StaticResource Glyph.Terminal}" Text="Konzola" IconSize="14" TextMargin="5,0,0,0" />
+                </RadioButton>
+            </UniformGrid>
+        </Border>
+
+        <Grid Grid.Row="3">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Visibility="{Binding IsChecked, ElementName=ConnectionPanelTab, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Margin="0,10,0,8">
+                    <TextBlock Text="Zařízení" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,9" />
+                    <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="108" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
+                                <Grid>
+                                    <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}" />
+                                    <Button Width="40" Height="40" HorizontalAlignment="Right" Style="{StaticResource Button.Icon}"
+                                            Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Znovu vyhledat porty">
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="15" Height="15" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" />
+                                <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}" />
+                            </StackPanel>
+                        </Grid>
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="10"
+                                Padding="9" Margin="0,8,0,0"
+                                Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
+                                                      Foreground="{StaticResource Brush.Accent}" Margin="0,1,8,0" />
+                                <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding Connection.ConnectCommand}"
+                                Margin="0,8,0,0" Padding="14,8">
+                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení" Foreground="White" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
+                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
+                                BorderThickness="1" CornerRadius="10" Padding="10">
+                            <StackPanel>
+                                <TextBlock Text="Pracovní plocha" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,9" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="Šířka (mm)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Connection.WorkAreaWidthMm, UpdateSourceTrigger=PropertyChanged, StringFormat=0.##}" /></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Výška (mm)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Connection.WorkAreaHeightMm, UpdateSourceTrigger=PropertyChanged, StringFormat=0.##}" /></StackPanel>
+                                </Grid>
+                                <Button Command="{Binding Connection.SaveWorkspaceAsDefaultCommand}" Margin="0,8,0,0">
+                                    <components:IconLabel IconData="{StaticResource Glyph.Save}" Text="Uložit plochu pro tento stroj" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="{Binding Connection.WorkspaceMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.WorkspaceMessage, Converter={StaticResource NotNullToVisibility}}" />
+                        <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Mono}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.FirmwareBanner, Converter={StaticResource NotNullToVisibility}}" />
+                        <Button Command="{Binding Connection.DisconnectCommand}" Margin="0,9,0,0">
+                            <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit zařízení" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Visibility="{Binding IsChecked, ElementName=JogPanelTab, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Margin="0,10,0,8" IsEnabled="{Binding Connection.IsConnected}">
+                    <Grid Margin="0,0,0,9">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="Ruční posun" Style="{StaticResource MachineSectionTitle}" />
+                        <TextBlock Grid.Column="1" Text="XY / Z" Style="{StaticResource Text.Muted}" />
+                    </Grid>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="XY krok (mm)" Style="{StaticResource MachineFieldLabel}" /><ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.StepSizeMm}" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="XY rychlost (mm/min)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Jog.JogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" /></StackPanel>
+                    </Grid>
+                    <Grid HorizontalAlignment="Center" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="14" /><ColumnDefinition Width="50" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="50" /><RowDefinition Height="50" /><RowDefinition Height="50" /></Grid.RowDefinitions>
+                        <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Y plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="X minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="X plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Y minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYNegCommand}" ToolTip="Vpravo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownRight}" Width="16" Height="16" /></Button>
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="Z" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                        <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="16" Height="16" /></Button>
+                    </Grid>
+                    <Grid Margin="0,0,0,9">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Z krok (mm)" Style="{StaticResource MachineFieldLabel}" /><ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.ZStepSizeMm}" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="Z rychlost (mm/min)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Jog.ZJogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" /></StackPanel>
+                    </Grid>
+                    <Grid Margin="0,0,0,7">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="7" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Button Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nula zde" /></Button>
+                        <Button Grid.Column="2" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Na nulu XY" /></Button>
+                    </Grid>
+                    <Button Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,7"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout zařízení ($X)" /></Button>
+                    <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.CancelJogCommand}"><components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit ruční pohyb" /></Button>
+                    <Expander Header="Pokročilé ovládání" Margin="0,8,0,0">
+                        <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
+                                ToolTip="Resetuje řídicí jednotku. Použijte pouze při chybě nebo nereagujícím stroji.">
+                            <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Resetovat řídicí jednotku" />
+                        </Button>
+                    </Expander>
+                    <Border Background="{StaticResource Brush.WarmAccentMuted}" BorderBrush="{StaticResource Brush.WarmAccentBorder}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,1,9,0" Foreground="{StaticResource Brush.WarmAccent}" />
+                            <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
+                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid Visibility="{Binding IsChecked, ElementName=JobPanelTab, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Margin="12,26"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Top"
+                            MaxWidth="250"
+                            Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}, ConverterParameter=Invert}">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Open}"
+                                          Width="28" Height="28"
+                                          HorizontalAlignment="Center"
+                                          Foreground="{StaticResource Brush.TextSecondary}" />
+                    <TextBlock Text="Vyberte návrh k výrobě"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               Margin="0,12,0,5" />
+                    <TextBlock Text="Otevřete obrázek, SVG nebo hotový G-code."
+                               Style="{StaticResource Text.Muted}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,14" />
+                    <Button Command="{Binding GCode.LoadFileCommand}"
+                            Style="{StaticResource Button.Primary}"
+                            HorizontalAlignment="Center"
+                            Padding="16,0">
+                        <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Vybrat návrh" />
+                    </Button>
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}">
+                    <StackPanel Margin="0,10,0,8">
+                        <TextBlock Text="Připravený návrh" Style="{StaticResource MachineFieldLabel}" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding GCode.FileLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.FileLabel}" />
+                                <TextBlock Style="{StaticResource Text.Muted}" Margin="0,2,0,0">
+                                    <Run Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" /><Run Text="  ·  " /><Run Text="{Binding GCode.CurrentLine}" /><Run Text=" / " /><Run Text="{Binding GCode.TotalLines}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding GCode.LoadFileCommand}" Margin="8,0,0,0" Padding="10,0" ToolTip="Vybrat jiný návrh">
+                                <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Jiný návrh" />
+                            </Button>
+                        </Grid>
+                        <ProgressBar Value="{Binding GCode.ProgressPercent}" Height="4" Margin="0,0,0,10" />
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="92" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Použitý materiál" Style="{StaticResource MachineFieldLabel}" />
+                                <TextBox Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Název materiálu se uloží do historie úlohy" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Odhad času" Style="{StaticResource MachineFieldLabel}" />
+                                <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" FontFamily="{StaticResource Font.Mono}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,9">
+                            <StackPanel>
+                                <TextBlock Text="Kde má gravírování začít?" FontWeight="SemiBold" Margin="0,0,0,7" />
+                                <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding GCode.SupportsPlacementMode}">
+                                    <UniformGrid Columns="2">
+                                        <RadioButton Content="Tam, kde je laser"
+                                                     Style="{StaticResource Segment}"
+                                                     GroupName="JobPlacementMode"
+                                                     ToolTip="Začátek úlohy se zarovná k poloze, kam laser přesunete šipkami."
+                                                     IsChecked="{Binding GCode.PlacementMode, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=CurrentPosition}" />
+                                        <RadioButton Content="Podle návrhu (0,0)"
+                                                     Style="{StaticResource Segment}"
+                                                     GroupName="JobPlacementMode"
+                                                     ToolTip="Použijí se souřadnice návrhu; bod 0,0 je pracovní nula stroje."
+                                                     IsChecked="{Binding GCode.PlacementMode, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=AbsoluteCoordinates}" />
+                                    </UniformGrid>
+                                </Border>
+                                <TextBlock Text="{Binding GCode.PlacementLabel}"
+                                           Style="{StaticResource Text.Muted}"
+                                           TextWrapping="Wrap"
+                                           ToolTip="{Binding GCode.PlacementLabel}"
+                                           Margin="1,6,1,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Margin="0,0,0,9">
+                            <Button Command="{Binding GCode.RunFramingCommand}">
+                                <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Ukázat pracovní oblast" />
+                            </Button>
+                        </Grid>
+
+                        <Expander Header="Nastavení kontroly oblasti" Margin="0,0,0,9">
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="112" /></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Způsob kontroly" Style="{StaticResource MachineFieldLabel}" />
+                                    <Border Style="{StaticResource SegmentedTrack}">
+                                        <UniformGrid Columns="2">
+                                            <RadioButton Content="Celý obrys" Style="{StaticResource Segment}" IsChecked="{Binding GCode.FramingMode, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=FullOutline}" />
+                                            <RadioButton Content="Pouze rohy" Style="{StaticResource Segment}" IsChecked="{Binding GCode.FramingMode, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=CornersOnly}" />
+                                        </UniformGrid>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Rychlost (mm/min)" Style="{StaticResource MachineFieldLabel}" />
+                                    <TextBox Text="{Binding GCode.FramingFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" />
+                                </StackPanel>
+                            </Grid>
+                        </Expander>
+
+                        <TextBlock Text="{Binding GCode.PreflightMessage}" Foreground="{StaticResource Brush.Danger}" TextWrapping="Wrap" Margin="0,0,0,6" Visibility="{Binding GCode.PreflightMessage, Converter={StaticResource NotNullToVisibility}}" />
+                        <TextBlock Text="{Binding GCode.LastMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,6" Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <Grid Visibility="{Binding IsChecked, ElementName=ConsolePanelTab, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,8">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Konzola GRBL" Style="{StaticResource MachineSectionTitle}" /><TextBlock Grid.Column="1" Text="Pokročilé" Style="{StaticResource Text.Muted}" /></Grid>
+                <Border Grid.Row="1" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10">
+                    <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto" Padding="8">
+                        <ItemsControl ItemsSource="{Binding Console.Lines}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="11" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    </ScrollViewer>
+                </Border>
+                <Grid Grid.Row="2" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBox FontFamily="{StaticResource Font.Mono}" Text="{Binding Console.CommandInput, UpdateSourceTrigger=PropertyChanged}" KeyDown="OnConsoleInputKeyDown" />
+                    <Button Grid.Column="1" Command="{Binding Console.SendCommand}" Margin="8,0,0,0"><components:IconLabel IconData="{StaticResource Glyph.Send}" Text="Odeslat" /></Button>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

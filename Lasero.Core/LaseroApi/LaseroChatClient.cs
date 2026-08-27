@@ -1,0 +1,143 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+
+namespace Lasero.Core.LaseroApi;
+
+/// <summary>
+/// Sends a complete, bounded conversation to Lasero's authenticated Kamil endpoint.
+/// Token refresh, local history and UI state intentionally stay outside this module.
+/// </summary>
+public sealed class LaseroChatClient
+{
+    private const string ChatUrl = "https://lasero.net/.netlify/functions/gemini";
+    private const string Model = "gemini-3.1-flash-lite";
+    private readonly HttpClient _http;
+
+    public LaseroChatClient(HttpClient http) => _http = http;
+
+    public async Task<string> SendAsync(
+        string idToken,
+        IReadOnlyList<LaseroChatTurn> conversation,
+        LaseroChatContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idToken);
+        ArgumentNullException.ThrowIfNull(conversation);
+        ArgumentNullException.ThrowIfNull(context);
+
+        var contents = conversation
+            .Where(turn => !string.IsNullOrWhiteSpace(turn.Text))
+            .TakeLast(24)
+            .Select(turn => new
+            {
+                role = turn.Role == LaseroChatRole.Assistant ? "model" : "user",
+                parts = new[] { new { text = turn.Text.Trim() } },
+            })
+            .ToArray();
+
+        if (contents.Length == 0)
+            throw new ArgumentException("Konverzace neobsahuje žádnou zprávu.", nameof(conversation));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, ChatUrl)
+        {
+            Content = JsonContent.Create(new
+            {
+                model = Model,
+                body = new
+                {
+                    contents,
+                    generationConfig = new
+                    {
+                        maxOutputTokens = 900,
+                        temperature = 0.35,
+                    },
+                },
+                ctx = new
+                {
+                    machineName = context.MachineName ?? string.Empty,
+                    machine = context.MachineId ?? string.Empty,
+                    power = context.PowerWatts,
+                    type = context.LaserType,
+                    laserDesc = context.LaserDescription,
+                    experience = context.Experience,
+                    software = "Lasero Desktop",
+                    matName = context.MaterialName ?? string.Empty,
+                    matDesc = string.Empty,
+                    lang = "cs",
+                    activeOp = context.Operation,
+                    chatTurnCount = contents.Length,
+                },
+            }),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", idToken);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new LaseroChatException(LaseroChatFailure.Authentication, "Platnost přihlášení skončila. Přihlaste se prosím znovu.");
+        if ((int)response.StatusCode == 429)
+            throw new LaseroChatException(LaseroChatFailure.RateLimited, "Kamil je nyní vytížený. Zkuste zprávu odeslat za chvíli.");
+
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            throw new LaseroChatException(LaseroChatFailure.Server, "Lasero Chat nyní neodpovídá. Zkuste to prosím znovu.");
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var text = document.RootElement
+                .GetProperty("candidates")[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString();
+
+            return !string.IsNullOrWhiteSpace(text)
+                ? text.Trim()
+                : throw new LaseroChatException(LaseroChatFailure.InvalidResponse, "Kamil vrátil prázdnou odpověď. Zkuste otázku položit znovu.");
+        }
+        catch (LaseroChatException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw new LaseroChatException(LaseroChatFailure.InvalidResponse, "Odpověď Lasero Chatu se nepodařilo přečíst.", exception);
+        }
+    }
+}
+
+public enum LaseroChatRole
+{
+    User,
+    Assistant,
+}
+
+public sealed record LaseroChatTurn(LaseroChatRole Role, string Text);
+
+public sealed record LaseroChatContext(
+    string? MachineName,
+    string? MachineId,
+    int PowerWatts,
+    string LaserType,
+    string LaserDescription,
+    string Experience,
+    string? MaterialName,
+    string? Operation);
+
+public enum LaseroChatFailure
+{
+    Authentication,
+    RateLimited,
+    Server,
+    InvalidResponse,
+}
+
+public sealed class LaseroChatException : Exception
+{
+    public LaseroChatException(LaseroChatFailure failure, string message, Exception? innerException = null)
+        : base(message, innerException) => Failure = failure;
+
+    public LaseroChatFailure Failure { get; }
+}

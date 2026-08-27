@@ -1,0 +1,637 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"
+                    xmlns:conv="clr-namespace:Lasero.App.Converters">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Icons.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- DefaultRadius applies to auto-width text buttons (icon buttons/jog pads set an explicit Width
+         and get a true circle from the width/2 branch instead). 10 read as a full pill on a ~34px-tall
+         button; 6 keeps the same restrained rounding as the rest of the chrome without the blob look. -->
+    <conv:WidthToCornerRadiusConverter x:Key="HalfCornerRadius" DefaultRadius="6" />
+
+    <!-- Operational color roles. Amber guides navigation, blue marks precise selection,
+         black carries ordinary primary actions and red is reserved for danger/brand moments. -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#1F5FCC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentMuted" Color="#EAF1FC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarmAccent" Color="#C98200" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarmAccentMuted" Color="#FFF4DC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarmAccentBorder" Color="#F0CC7A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#16161A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Brand" Color="#FF0000" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.BrandRed" Color="#FF0000" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Background" Color="#F6F4F0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TitleBar" Color="#FFFFFF" po:Freeze="False" />
+    <!-- Distinct from Brush.Panel — gives the sidebar its own shell identity instead of reading as
+         just another content card, per the app-shell redesign. -->
+    <SolidColorBrush x:Key="Brush.Sidebar" Color="#FBFAF7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F0EDE7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E2DED8" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Field" Color="#F8F6F3" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#16161A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6E6A66" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#1F9D55" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#EAF7EF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#9A5D00" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Info" Color="#1F5FCC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#EEF4FE" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#B9CFF2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#C0291F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.HoverWash" Color="#16161A" po:Freeze="False" />
+
+    <!-- Soft, diffuse, low-opacity shadows — a stark/dark shadow is the tell of a "dark mode template"; a real elevated surface (Apple-style) reads as light and airy even in dark UI. -->
+    <DropShadowEffect x:Key="Shadow.Panel" Color="#000000" Opacity="0.32" BlurRadius="34" ShadowDepth="6" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Accent" Color="#FE0000" Opacity="0.35" BlurRadius="18" ShadowDepth="0" />
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#1F5FCC" po:Freeze="False" />
+
+    <!-- Motion language: quick, soft-eased, occasionally a touch of spring overshoot on release — never linear, never abrupt. -->
+    <Duration x:Key="Motion.Fast">0:0:0.1</Duration>
+    <Duration x:Key="Motion.Base">0:0:0.18</Duration>
+    <CubicEase x:Key="Ease.Out" EasingMode="EaseOut" />
+    <BackEase x:Key="Ease.Spring" EasingMode="EaseOut" Amplitude="0.6" />
+
+    <!-- 4pt spacing scale (4/8/12/16/20/24/32) — enforced as literal multiples throughout instead of ad hoc margins. -->
+
+    <!-- Segoe UI Variable is Windows' own optical-weight variable font family (Windows 11) — closer in warmth and proportion to SF Pro than classic Segoe UI. Falls back silently where absent. -->
+    <FontFamily x:Key="Font.Ui">Open Sans, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Display">Open Sans SemiBold, Open Sans, Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Mono">Cascadia Mono,Consolas,Courier New</FontFamily>
+    <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmark.png" CacheOption="OnLoad" />
+    <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/KamilAvatar.png" CacheOption="OnLoad" />
+
+    <!-- ===================== Base ===================== -->
+
+    <Style TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource Brush.Background}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+    </Style>
+
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+
+    <Style x:Key="Text.Muted" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style x:Key="Text.Heading" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+
+    <Style x:Key="Text.Numeric" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+
+    <!-- ===================== Panels ===================== -->
+
+    <!--
+        Only ONE element in the whole app carries a drop shadow — the workspace/scene canvas (see
+        WorkspaceCanvas.xaml) — that's the one deliberate focal point. Every other surface, editor
+        chrome and dashboard cards alike, is flat/bordered: shadow-on-every-card is the single most
+        reliable "generic template" tell. Dashboard cards (SharedUiStyles.xaml's Card/MetricCard/
+        ThumbnailCard) converge on this same flat philosophy rather than carrying their own shadow.
+    -->
+    <Style TargetType="Border" x:Key="Panel">
+    </Style>
+
+    <Style x:Key="Badge" TargetType="Border">
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+    </Style>
+
+    <!-- ===================== Buttons ===================== -->
+
+    <!--
+        Every button is a 3-layer stack (base fill → hover wash → content) so
+        hover/press feedback is a pure OPACITY fade on an always-instance-local
+        overlay Border, never a Color animation on the (possibly StaticResource-
+        shared) Background brush — animating a shared brush's Color would leak
+        across every button using that resource at once.
+    -->
+    <Style TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="PressScale" />
+                        </Grid.RenderTransform>
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                        <Border x:Name="Hover"
+                                Background="{StaticResource Brush.HoverWash}"
+                                Opacity="0"
+                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                        <Border x:Name="FocusRing"
+                                BorderBrush="{StaticResource Brush.FocusRing}"
+                                BorderThickness="0"
+                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="{TemplateBinding Padding}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.14" Duration="0:0:0.05" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.96" Duration="0:0:0.05" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.96" Duration="0:0:0.05" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat, no glow — the file-level comment on the "Panel" style above already commits this app to
+         exactly one shadow (the canvas). A permanent red glow under every primary button contradicted
+         that rule and read as generic AI-glow styling rather than restrained Windows 11 chrome. -->
+    <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="{StaticResource Brush.PrimaryAction}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryAction}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.OnPrimaryAction}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="Button.Icon" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
+    <Style x:Key="Button.Jog" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Width" Value="52" />
+        <Setter Property="Height" Value="52" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="Margin" Value="3" />
+    </Style>
+
+    <Style x:Key="Button.JogCenter" TargetType="Button" BasedOn="{StaticResource Button.Jog}">
+        <Setter Property="Background" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+    </Style>
+
+    <Style x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+        <Setter Property="BorderBrush" Value="#4D2323" />
+    </Style>
+
+    <!-- Title bar chrome buttons: flat until hover, close turns red. -->
+    <Style x:Key="Button.Chrome" TargetType="Button">
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#22242C" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Button.ChromeClose" TargetType="Button" BasedOn="{StaticResource Button.Chrome}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== iOS-style toggle switch (replaces CheckBox) ===================== -->
+
+    <Style TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Literal (not StaticResource) colors here on purpose: the ColorAnimations
+                             below target these Borders' Background brushes directly, and animating a
+                             shared StaticResource brush would leak the color change to every other
+                             control using that same brush instance across the whole app. -->
+                        <Border x:Name="Track" Width="38" Height="22" CornerRadius="11" Background="#E3DED6" BorderBrush="#D5D0C8" BorderThickness="1">
+                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="8" Background="#FFFFFF" HorizontalAlignment="Left" Margin="2,0,0,0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="ThumbSlide" X="0" />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbSlide" Storyboard.TargetProperty="X" To="16" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                        <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#1F5FCC" Duration="{StaticResource Motion.Base}" />
+                                        <ColorAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#FFFFFF" Duration="{StaticResource Motion.Base}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbSlide" Storyboard.TargetProperty="X" To="0" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                        <ColorAnimation Storyboard.TargetName="Track" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#E3DED6" Duration="{StaticResource Motion.Base}" />
+                                        <ColorAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#FFFFFF" Duration="{StaticResource Motion.Base}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                            <Setter TargetName="Track" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Each Border in the toggle template above needs its OWN brush instance
+         (not a shared StaticResource) since ColorAnimation targets it directly —
+         achieved simply by writing literal Background colors above rather than
+         {StaticResource ...} for Track/Thumb, so WPF allocates a fresh Freezable
+         per control instance automatically. -->
+
+    <!-- ===================== Segmented control (2-choice RadioButton pair) ===================== -->
+
+    <Style x:Key="Segment" TargetType="RadioButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bg" CornerRadius="7" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Plain Setters, not a ColorAnimation — Bg's Background is reassigned to the
+                             shared StaticResource brush wholesale on check, not animated in-place, so
+                             there's no risk of mutating (and leaking) that shared brush's Color. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SegmentedTrack" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.Field}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Padding" Value="2" />
+    </Style>
+
+    <!-- ===================== Inputs ===================== -->
+
+    <Style TargetType="TextBox">
+        <Setter Property="Background" Value="{StaticResource Brush.Field}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="PasswordBox">
+        <Setter Property="Background" Value="{StaticResource Brush.Field}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="PasswordChar" Value="●" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox">
+        <Setter Property="Background" Value="{StaticResource Brush.Field}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton x:Name="Toggle"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                      ClickMode="Press">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                                        <Grid Margin="{TemplateBinding Padding}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="16" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="1" Data="{StaticResource Glyph.ChevronDown}" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.6" StrokeLineJoin="Round" Stretch="Uniform" Width="10" Height="10" RenderTransformOrigin="0.5,0.5">
+                                                <Path.RenderTransform>
+                                                    <RotateTransform Angle="180" />
+                                                </Path.RenderTransform>
+                                            </Path>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <Popup x:Name="Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                            <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Panel}">
+                                <ScrollViewer Margin="4">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AccentMuted}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== Menu bar ===================== -->
+    <!-- WPF's default Menu/MenuItem chrome is the classic Win32 blue-highlight look, which would
+         clash with every other flat, custom-templated control in this theme — this mirrors the same
+         hover-wash/no-3D-border language as the Button style above. Only top-level headers with a flat
+         submenu of leaf items are needed anywhere in this app, so a single Placement="Bottom" popup is
+         enough — there's no cascading sub-submenu case to handle. -->
+    <Style TargetType="Menu">
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style TargetType="Separator">
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Margin" Value="4,4" />
+    </Style>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Grid>
+                        <Border x:Name="Bg" Background="Transparent" CornerRadius="6">
+                            <ContentPresenter x:Name="HeaderHost" ContentSource="Header" RecognizesAccessKey="True"
+                                              Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+                        </Border>
+                        <Popup x:Name="Popup" Placement="Bottom" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                               AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                            <Border Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="4" Effect="{StaticResource Shadow.Panel}" MinWidth="180">
+                                <StackPanel IsItemsHost="True" />
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Field}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== Progress ===================== -->
+
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}"
+                            TextElement.Foreground="{TemplateBinding Foreground}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource Brush.Field}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Height" Value="6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid ClipToBounds="True">
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="3" />
+                        <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}"
+                                CornerRadius="3" HorizontalAlignment="Left" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== Lists ===================== -->
+
+    <Style TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style TargetType="ListBoxItem">
+        <Setter Property="Padding" Value="2,1" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Slim, quiet scrollbars for the light workbench. -->
+    <Style TargetType="ScrollBar">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid>
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="#BDB7AE" CornerRadius="4" Margin="2" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

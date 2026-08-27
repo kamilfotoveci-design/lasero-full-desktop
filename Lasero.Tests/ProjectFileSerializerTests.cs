@@ -1,0 +1,299 @@
+using System.IO;
+using System.IO.Compression;
+using Lasero.App;
+using Lasero.Core.Jobs;
+using Lasero.Core.Layers;
+
+namespace Lasero.Tests;
+
+public sealed class ProjectFileSerializerTests : IDisposable
+{
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "lasero-project-tests", Guid.NewGuid().ToString("N"));
+
+    public ProjectFileSerializerTests() => Directory.CreateDirectory(_directory);
+
+    [Fact]
+    public void Save_CanOverwriteExistingProject()
+    {
+        var path = Path.Combine(_directory, "project.lasero");
+        ProjectFileSerializer.Save(path, new LaseroProjectFile { Name = "První" });
+
+        ProjectFileSerializer.Save(path, new LaseroProjectFile { Name = "Druhý" });
+
+        Assert.Equal("Druhý", ProjectFileSerializer.Load(path).Name);
+    }
+
+    [Fact]
+    public void Save_DoesNotLeaveTemporaryFiles()
+    {
+        var path = Path.Combine(_directory, "project.lasero");
+
+        ProjectFileSerializer.Save(path, new LaseroProjectFile { Name = "Projekt" });
+
+        Assert.Single(Directory.GetFiles(_directory));
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public void Load_RemainsCompatibleWithPlainJsonProjects()
+    {
+        var path = Path.Combine(_directory, "legacy.lasero");
+        File.WriteAllText(path, ProjectFileSerializer.Serialize(new LaseroProjectFile { Name = "Starší" }));
+
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal("Starší", loaded.Name);
+    }
+
+    [Fact]
+    public void RecoveryStore_CanReplaceAndRestoreSnapshot()
+    {
+        var store = new ProjectRecoveryStore(_directory);
+        store.Save(new LaseroProjectFile { Name = "První" });
+        store.Save(new LaseroProjectFile { Name = "Druhý" });
+
+        Assert.True(store.HasSnapshot);
+        Assert.Equal("Druhý", store.TryLoad()!.Name);
+
+        store.Discard();
+        Assert.False(store.HasSnapshot);
+    }
+
+    [Fact]
+    public void Save_EmbedsRasterAssetAndLoadsWithoutOriginalFile()
+    {
+        var sourcePath = Path.Combine(_directory, "source.png");
+        var projectPath = Path.Combine(_directory, "embedded.lasero");
+        var cachePath = Path.Combine(_directory, "cache");
+        var expectedBytes = new byte[] { 1, 2, 3, 4, 5 };
+        File.WriteAllBytes(sourcePath, expectedBytes);
+        var project = new LaseroProjectFile
+        {
+            Objects =
+            [
+                new ProjectObject
+                {
+                    Name = "Logo",
+                    RasterFilePath = sourcePath,
+                    RasterOptions = new Lasero.Core.Import.RasterImportOptions(),
+                }
+            ]
+        };
+
+        ProjectFileSerializer.Save(projectPath, project);
+        File.Delete(sourcePath);
+
+        var loaded = ProjectFileSerializer.Load(projectPath, cachePath);
+        var extractedPath = loaded.Objects[0].RasterFilePath;
+        Assert.NotNull(extractedPath);
+        Assert.True(File.Exists(extractedPath));
+        Assert.Equal(expectedBytes, File.ReadAllBytes(extractedPath));
+
+        using var archive = ZipFile.OpenRead(projectPath);
+        using var reader = new StreamReader(archive.GetEntry("project.json")!.Open());
+        var manifest = reader.ReadToEnd();
+        Assert.DoesNotContain(sourcePath, manifest, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(archive.GetEntry("assets/raster-0000.png"));
+    }
+
+    [Fact]
+    public void FailedAssetSave_PreservesPreviousProject()
+    {
+        var projectPath = Path.Combine(_directory, "safe.lasero");
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Původní" });
+        var invalid = new LaseroProjectFile
+        {
+            Name = "Poškozený",
+            Objects = [new ProjectObject { Name = "Chybějící", RasterFilePath = Path.Combine(_directory, "missing.png") }]
+        };
+
+        Assert.Throws<FileNotFoundException>(() => ProjectFileSerializer.Save(projectPath, invalid));
+
+        Assert.Equal("Původní", ProjectFileSerializer.Load(projectPath).Name);
+        Assert.Single(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void SaveAndLoadPreservesPhysicalJobPlacement()
+    {
+        var path = Path.Combine(_directory, "placement.lasero");
+        var project = new LaseroProjectFile
+        {
+            Name = "Umístěný projekt",
+            Placement = new ProjectJobPlacement
+            {
+                Mode = JobPlacementMode.CurrentPosition,
+                Anchor = JobOriginAnchor.TopLeft, ReferenceX = 125.5, ReferenceY = 84.25,
+            },
+        };
+
+        ProjectFileSerializer.Save(path, project);
+        var loaded = ProjectFileSerializer.Load(path);
+        Assert.NotNull(loaded.Placement);
+        Assert.Equal(JobPlacementMode.CurrentPosition, loaded.Placement.Mode);
+        Assert.Equal(JobOriginAnchor.TopLeft, loaded.Placement.Anchor);
+        Assert.Equal(125.5, loaded.Placement.ReferenceX);
+        Assert.Equal(84.25, loaded.Placement.ReferenceY);
+    }
+
+    [Fact]
+    public void OlderPlacementWithoutModeMigratesToCurrentPosition()
+    {
+        const string json = """
+            {
+              "Version": 3,
+              "Name": "Starší projekt",
+              "Objects": [],
+              "Layers": [],
+              "Placement": {
+                "Anchor": "TopLeft",
+                "ReferenceX": 20,
+                "ReferenceY": 30
+              }
+            }
+            """;
+
+        var loaded = ProjectFileSerializer.Deserialize(json);
+
+        Assert.NotNull(loaded.Placement);
+        Assert.Equal(JobPlacementMode.CurrentPosition, loaded.Placement.Mode);
+    }
+
+    [Fact]
+    public void SaveAndLoadPreservesStableLayerIdsAndManufacturingOrder()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var path = Path.Combine(_directory, "layer-order.lasero");
+        var project = new LaseroProjectFile
+        {
+            Layers =
+            [
+                new ProjectLayer { Id = firstId, Name = "Nejdřív čára", Color = new RgbColor(220, 40, 40), Mode = LayerMode.Cut },
+                new ProjectLayer { Id = secondId, Name = "Potom výplň", Color = new RgbColor(30, 80, 210), Mode = LayerMode.Fill },
+            ],
+        };
+
+        ProjectFileSerializer.Save(path, project);
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal(6, loaded.Version);
+        Assert.Collection(loaded.Layers,
+            layer => Assert.Equal((firstId, "Nejdřív čára"), (layer.Id, layer.Name)),
+            layer => Assert.Equal((secondId, "Potom výplň"), (layer.Id, layer.Name)));
+    }
+
+    [Fact]
+    public void SaveAndLoadPreservesShapeLayerId()
+    {
+        var layerId = Guid.NewGuid();
+        var path = Path.Combine(_directory, "shape-layer-id.lasero");
+        var project = new LaseroProjectFile
+        {
+            Layers = [new ProjectLayer { Id = layerId, Name = "Obrys", Color = RgbColor.Red, Mode = LayerMode.Cut }],
+            Objects =
+            [
+                new ProjectObject
+                {
+                    Shapes =
+                    [
+                        new ProjectShape
+                        {
+                            LayerId = layerId,
+                            LayerColor = RgbColor.Red,
+                            PreferredMode = LayerMode.Cut,
+                            IsClosed = false,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        ProjectFileSerializer.Save(path, project);
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal(6, loaded.Version);
+        Assert.Equal(layerId, loaded.Objects[0].Shapes[0].LayerId);
+    }
+
+    [Fact]
+    public void SaveAndLoadPreservesCompoundGeometryIdentity()
+    {
+        var geometrySetId = Guid.NewGuid();
+        var path = Path.Combine(_directory, "compound-geometry-id.lasero");
+        var project = new LaseroProjectFile
+        {
+            Objects =
+            [
+                new ProjectObject
+                {
+                    Shapes =
+                    [
+                        new ProjectShape
+                        {
+                            GeometrySetId = geometrySetId,
+                            LayerColor = RgbColor.Black,
+                            PreferredMode = LayerMode.Cut,
+                            IsClosed = true,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        ProjectFileSerializer.Save(path, project);
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal(geometrySetId, loaded.Objects[0].Shapes[0].GeometrySetId);
+    }
+
+    [Fact]
+    public void LegacyShapeWithoutLayerIdMigratesByColor()
+    {
+        var layerId = Guid.NewGuid();
+        var json = $$"""
+            {
+              "Version": 5,
+              "Name": "Starší geometrie",
+              "Layers": [
+                {
+                  "Id": "{{layerId}}",
+                  "Color": { "R": 220, "G": 40, "B": 40 },
+                  "Name": "Obrys",
+                  "Mode": "Cut"
+                }
+              ],
+              "Objects": [
+                {
+                  "Shapes": [
+                    {
+                      "Points": [],
+                      "IsClosed": false,
+                      "LayerColor": { "R": 220, "G": 40, "B": 40 },
+                      "PreferredMode": "Cut"
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+
+        var loaded = ProjectFileSerializer.Deserialize(json);
+
+        Assert.Equal(6, loaded.Version);
+        Assert.Equal(layerId, loaded.Objects[0].Shapes[0].LayerId);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_directory))
+                Directory.Delete(_directory, recursive: true);
+        }
+        catch
+        {
+            // The OS may briefly retain a ZIP handle after a failed assertion.
+        }
+    }
+}

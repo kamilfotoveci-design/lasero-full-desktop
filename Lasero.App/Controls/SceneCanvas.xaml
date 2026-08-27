@@ -1,0 +1,86 @@
+<UserControl x:Class="Lasero.App.Controls.SceneCanvas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             Focusable="True"
+             KeyDown="OnCanvasKeyDown"
+             KeyUp="OnCanvasKeyUp"
+             LostKeyboardFocus="OnCanvasLostKeyboardFocus">
+    <Border Effect="{StaticResource Shadow.Panel}">
+        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="20" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="26" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Corner tile, and the two ruler strips — same fixed size as the classic
+                     Excel/LightBurn ruler convention: rulers stay a constant screen size while
+                     only their tick positions pan/zoom with the canvas. -->
+                <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,1" />
+                <Canvas x:Name="TopRuler" Grid.Row="0" Grid.Column="1" Background="{StaticResource Brush.Panel}" ClipToBounds="True" />
+                <Canvas x:Name="LeftRuler" Grid.Row="1" Grid.Column="0" Background="{StaticResource Brush.Panel}" ClipToBounds="True" />
+
+                <Canvas x:Name="DrawCanvas" Grid.Row="1" Grid.Column="1" Background="Transparent" ClipToBounds="True"
+                        SizeChanged="OnSizeChanged"
+                        PreviewMouseLeftButtonDown="OnDrawCanvasPreviewMouseLeftButtonDown"
+                        PreviewMouseLeftButtonUp="OnDrawCanvasPreviewMouseLeftButtonUp"
+                        PreviewMouseDown="OnDrawCanvasMouseDown"
+                        PreviewMouseUp="OnDrawCanvasMouseUp"
+                        PreviewMouseWheel="OnDrawCanvasMouseWheel"
+                        MouseLeftButtonDown="OnDrawCanvasMouseLeftButtonDown"
+                        MouseLeftButtonUp="OnDrawCanvasMouseLeftButtonUp"
+                        MouseMove="OnDrawCanvasMouseMove">
+                    <Canvas.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                            <MenuItem Header="Vyjmout" Command="{Binding Scene.CutCommand}" InputGestureText="Ctrl+X">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Cut}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Kopírovat" Command="{Binding Scene.CopyCommand}" InputGestureText="Ctrl+C">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Copy}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Vložit" Command="{Binding Scene.PasteCommand}" InputGestureText="Ctrl+V">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Paste}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Duplikovat" Command="{Binding Scene.DuplicateCommand}" InputGestureText="Ctrl+D">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Odstranit" Command="{Binding Scene.DeleteCommand}" InputGestureText="Del">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="15" Height="15" Foreground="{StaticResource Brush.Danger}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Trasovat bitmapu" Command="{Binding Scene.TraceSelectedRasterCommand}" InputGestureText="Alt+T">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
+                            <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
+                            <MenuItem Header="Převrátit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
+                            <MenuItem Header="Převrátit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
+                            <Separator />
+                            <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
+                            <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
+                            <Separator />
+                            <MenuItem Header="Seskupit vybrané" Command="{Binding Scene.GroupSelectionCommand}" InputGestureText="Ctrl+G">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Sjednotit vektor" Command="{Binding Scene.UniteSelectionCommand}" InputGestureText="Ctrl+Shift+U">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Rozdělit skupinu na části" Command="{Binding Scene.UngroupSelectionCommand}" InputGestureText="Ctrl+Shift+G">
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="15" Height="15" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Zamknout / odemknout" Command="{Binding Scene.ToggleLockCommand}" />
+                            <Separator />
+                            <MenuItem Header="Vybrat vše" Command="{Binding Scene.SelectAllCommand}" InputGestureText="Ctrl+A" />
+                        </ContextMenu>
+                    </Canvas.ContextMenu>
+                </Canvas>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

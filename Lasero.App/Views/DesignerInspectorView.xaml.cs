@@ -1,0 +1,68 @@
+using System.Windows;
+using System.Windows.Controls;
+using Lasero.App.ViewModels;
+using Lasero.Core.Layers;
+using Lasero.Core.Materials;
+
+namespace Lasero.App.Views;
+
+public partial class DesignerInspectorView : UserControl
+{
+    public DesignerInspectorView()
+    {
+        InitializeComponent();
+    }
+
+    public void ShowMachineTab() => MachineTabRadio.IsChecked = true;
+
+    private void OnApplyMaterialClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel ||
+            sender is not Button { Tag: LayerSettings layer } button)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu();
+        var recommended = new MenuItem
+        {
+            Header = $"Doporučené · {viewModel.Materials.ActiveProfileLabel}"
+        };
+        foreach (var recipe in viewModel.Materials.RecipesFor(layer.Mode))
+        {
+            var item = new MenuItem
+            {
+                Header = $"{recipe.MaterialName} · {recipe.SpeedMmPerMinute:0} mm/min · {recipe.PowerPercent:0} %"
+            };
+            item.Click += (_, _) => ApplyRecipe(layer, recipe.Mode, recipe.SpeedMmPerMinute,
+                recipe.PowerPercent, recipe.Passes, recipe.FillLineIntervalMm);
+            recommended.Items.Add(item);
+        }
+        menu.Items.Add(recommended);
+
+        var personal = new MenuItem { Header = "Moje recepty", IsEnabled = viewModel.Materials.Presets.Count > 0 };
+        foreach (var preset in viewModel.Materials.Presets.Where(preset => preset.Mode == layer.Mode))
+        {
+            var item = new MenuItem
+            {
+                Header = $"{preset.Name} · {preset.Speed:0} mm/min · {preset.Power:0} %"
+            };
+            item.Click += (_, _) => ApplyRecipe(layer, preset.Mode, preset.Speed, preset.Power,
+                preset.Passes, preset.FillLineIntervalMm);
+            personal.Items.Add(item);
+        }
+        menu.Items.Add(personal);
+
+        menu.PlacementTarget = button;
+        menu.IsOpen = true;
+    }
+
+    private static void ApplyRecipe(LayerSettings layer, LayerMode mode, double speed, double power, int passes, double lineInterval)
+    {
+        layer.Mode = mode;
+        layer.Speed = speed;
+        layer.Power = power;
+        layer.Passes = passes;
+        layer.FillLineIntervalMm = lineInterval;
+    }
+}

@@ -1,0 +1,258 @@
+<UserControl x:Class="Lasero.App.Views.ChatView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Lasero.App.ViewModels"
+             xmlns:conv="clr-namespace:Lasero.App.Converters"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             Loaded="OnLoaded" Unloaded="OnUnloaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:NotNullToVisibilityConverter x:Key="NullToVisibility" />
+
+        <Style x:Key="ChatBubble" TargetType="Border">
+            <Setter Property="Grid.Column" Value="1" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10,10,10,3" />
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="Margin" Value="0,0,56,12" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                    <Setter Property="Grid.Column" Value="2" />
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.WarmAccentBorder}" />
+                    <Setter Property="CornerRadius" Value="10,10,3,10" />
+                    <Setter Property="Margin" Value="56,0,0,12" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250" />
+            <ColumnDefinition Width="0" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Background="{DynamicResource Brush.Sidebar}" BorderBrush="{DynamicResource Brush.PanelBorder}"
+                BorderThickness="1,1,0,1" CornerRadius="8,0,0,8" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Margin="4,2,4,12">
+                    <StackPanel>
+                        <TextBlock Text="Lasero Chat" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Historie konverzací" Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                    <Button HorizontalAlignment="Right" VerticalAlignment="Center" Width="32" Height="32"
+                            Style="{StaticResource Button.Icon}" Command="{Binding Chat.NewChatCommand}"
+                            ToolTip="Nová konverzace" AutomationProperties.Name="Nová konverzace">
+                        <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="15" Height="15" />
+                    </Button>
+                </Grid>
+
+                <Border Grid.Row="1" Height="1" Background="{DynamicResource Brush.PanelBorder}" Margin="0,0,0,8" />
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,28"
+                                Visibility="{Binding Chat.HasSessions, Converter={StaticResource InverseBoolToVisibility}}">
+                        <components:IconGlyph IconData="{StaticResource Glyph.History}" Width="22" Height="22"
+                                              HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
+                        <TextBlock Text="Zatím bez historie" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,9,0,4" />
+                        <TextBlock Text="Nová konverzace se uloží automaticky."
+                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Chat.Sessions}"
+                                  Visibility="{Binding Chat.HasSessions, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ChatSessionItem}">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Style="{StaticResource NavButton}" Padding="10,8" Margin="0"
+                                            Command="{Binding DataContext.Chat.OpenChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" ToolTip="{Binding Title}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="Medium" />
+                                            <TextBlock Text="{Binding UpdatedLabel}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="1" Width="32" Height="32" Padding="8" Margin="4,0,0,0"
+                                            VerticalAlignment="Center" Style="{StaticResource Button.Icon}"
+                                            Command="{Binding DataContext.Chat.DeleteChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" ToolTip="Odstranit konverzaci"
+                                            AutomationProperties.Name="Odstranit konverzaci">
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="14" Height="14" />
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </Grid>
+                </ScrollViewer>
+
+                <Border Grid.Row="3" Background="{DynamicResource Brush.Field}" CornerRadius="9" Padding="10" Margin="0,10,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Ellipse Width="7" Height="7" VerticalAlignment="Top" Margin="0,4,7,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Chat.IsOffline}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Grid.Column="1" Text="{Binding Chat.AvailabilityText}" TextWrapping="Wrap" Style="{StaticResource Text.Muted}" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Column="2" Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.PanelBorder}"
+                BorderThickness="1" CornerRadius="0,8,8,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="64" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="20,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Kamil" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="Asistent pro materiály, parametry a řešení problémů" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"
+                                Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
+                        <Ellipse Width="72" Height="72" HorizontalAlignment="Center">
+                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
+                        </Ellipse>
+                        <TextBlock Text="S čím vám Kamil pomůže?" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,7" />
+                        <TextBlock Text="Zeptejte se na bezpečné parametry, materiály nebo výsledek gravírování. Doporučení před ostrou úlohou vždy ověřte na odřezku."
+                                   TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" LineHeight="20" />
+                        <ItemsControl ItemsSource="{Binding Chat.SuggestedQuestions}" Margin="0,20,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding}" Margin="0,0,0,7" Padding="13,9" HorizontalContentAlignment="Left"
+                                            Command="{Binding DataContext.Chat.UseSuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  Padding="22,20" Visibility="{Binding Chat.HasMessages, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Chat.Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ChatMessageItem}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="30" Height="30" Margin="0,3,10,0" VerticalAlignment="Top"
+                                                 Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}">
+                                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
+                                        </Ellipse>
+                                        <Border Style="{StaticResource ChatBubble}" MaxWidth="720">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                    <TextBlock Text="{Binding Author}" FontWeight="SemiBold" FontSize="11" />
+                                                    <TextBlock Text="  ·  " Foreground="{DynamicResource Brush.PanelBorder}" />
+                                                    <TextBlock Text="{Binding TimeLabel}" Style="{StaticResource Text.Muted}" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="20" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="1" Margin="22,0,22,14" Padding="12,9" CornerRadius="8"
+                            Background="{StaticResource Brush.Field}"
+                            Visibility="{Binding Chat.IsBusy, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Ellipse Width="28" Height="28" VerticalAlignment="Center">
+                                <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Grid.Column="2" Text="Kamil připravuje odpověď…"
+                                       Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="18,14">
+                    <StackPanel>
+                        <Border Visibility="{Binding Chat.StatusMessage, Converter={StaticResource NullToVisibility}}"
+                                Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.Warning}"
+                                BorderThickness="1" CornerRadius="8" Padding="10,7" Margin="0,0,0,10">
+                            <TextBlock Text="{Binding Chat.StatusMessage}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}" />
+                        </Border>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ChatInput" Text="{Binding Chat.Input, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="46" MaxHeight="120"
+                                     MaxLength="4000"
+                                     Padding="13,11" VerticalContentAlignment="Center" KeyDown="OnInputKeyDown"
+                                     ToolTip="Enter odešle, Shift+Enter vloží nový řádek"
+                                     AutomationProperties.Name="Zpráva pro Lasero Chat" />
+                            <Button Grid.Column="1" Width="46" Height="46" Margin="10,0,0,0" Padding="12"
+                                    Style="{StaticResource Button.Primary}"
+                                    Background="{StaticResource Brush.BrandRed}" BorderBrush="{StaticResource Brush.BrandRed}"
+                                    Command="{Binding Chat.SendCommand}"
+                                    ToolTip="Odeslat zprávu" AutomationProperties.Name="Odeslat zprávu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Send}" Foreground="White" Width="18" Height="18" />
+                            </Button>
+                        </Grid>
+                        <TextBlock Text="Enter odešle · Shift+Enter nový řádek" Style="{StaticResource Text.Muted}" Margin="2,7,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,18 @@
+<Application x:Class="Lasero.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Lasero.App"
+             xmlns:converters="clr-namespace:Lasero.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/LaseroTheme.xaml" />
+                <ResourceDictionary Source="Theme/SharedUiStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:InverseBooleanConverter x:Key="InverseBoolConverter" />
+            <Style TargetType="{x:Type Window}">
+                <Setter Property="Icon" Value="pack://application:,,,/Assets/Lasero.ico" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

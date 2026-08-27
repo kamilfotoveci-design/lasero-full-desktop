@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "better-icons": {
+      "source": "better-auth/better-icons",
+      "sourceType": "github",
+      "skillPath": "skills/SKILL.md",
+      "computedHash": "b16a2f5830f3db40695fdd58d415a631e9fb6170a0cc5d3b56469d17e53596bc"
+    },
+    "cleanui": {
+      "source": "peterhdd/cleanui",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "53dd3b8bedf70e2624a205dcdd64d6ca296c20bd1c7c0cb1e772f087ca3e6928"
+    },
+    "uncodixfy": {
+      "source": "cyxzdev/Uncodixfy",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "67258ac5262012a1aae03fbdc6d73b77754a5c03028c0416edda5b64f0c9d5d4"
+    },
+    "winui-design": {
+      "source": "microsoft/win-dev-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/winui/skills/winui-design/SKILL.md",
+      "computedHash": "d6c1daeecb3cd47af2862f8d6e817fd6fef8438c6dd82b7cda1bff406c763582"
+    }
+  }
+}

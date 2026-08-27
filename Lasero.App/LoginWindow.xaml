@@ -1,0 +1,177 @@
+<Window x:Class="Lasero.App.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Lasero.App.Converters"
+        xmlns:components="clr-namespace:Lasero.App.Components"
+        Title="Přihlášení do Lasero" Width="780" Height="570" MinWidth="780" MinHeight="570"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="{StaticResource Brush.Background}">
+    <Window.Resources>
+        <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <Style x:Key="LoginPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryBlue}">
+            <Setter Property="Content" Value="Přihlásit se" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                    <Setter Property="Content" Value="Pracuji…" />
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="286" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Background="{StaticResource Brush.Sidebar}"
+                BorderBrush="{StaticResource Brush.PanelBorder}"
+                BorderThickness="0,0,1,0"
+                Padding="32,36">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="{StaticResource Image.BrandWordmark}" Width="138" Height="42" Stretch="Uniform"
+                               HorizontalAlignment="Left" AutomationProperties.Name="Lasero" />
+                        <TextBlock Text="DESKTOP" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="Tvořte s jistotou."
+                               FontFamily="{StaticResource Font.Display}"
+                               FontSize="24"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Margin="0,34,0,12" />
+                    <TextBlock Text="Návrh, doporučené parametry a bezpečné ovládání gravírky na jednom místě."
+                               Foreground="{StaticResource Brush.TextSecondary}"
+                               TextWrapping="Wrap"
+                               LineHeight="20" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="18" Height="18" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                        <TextBlock Text="Přehledný návrh a náhled práce" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="18" Height="18" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                        <TextBlock Text="Doporučené hodnoty pro materiály" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Chat}" Width="18" Height="18" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                        <TextBlock Text="Pomoc od Kamily v Lasero Chatu" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2"
+                           Text="Po prvním přihlášení si vás Lasero zapamatuje."
+                           Style="{StaticResource Text.Muted}"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" Padding="48,38">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Vítejte zpět"
+                               FontFamily="{StaticResource Font.Display}"
+                               FontSize="26"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="Přihlaste se stejným účtem jako na lasero.net."
+                               Foreground="{StaticResource Brush.TextSecondary}"
+                               Margin="0,6,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True"
+                                 Height="3"
+                                 Margin="0,0,0,18"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+
+                    <TextBlock Text="E-mailová adresa" FontWeight="SemiBold" FontSize="12" />
+                    <TextBox x:Name="EmailInput"
+                             Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
+                             MaxLength="254"
+                             Height="42"
+                             Margin="0,7,0,4"
+                             AutomationProperties.Name="E-mail" />
+                    <TextBlock Text="{Binding EmailError}"
+                               Foreground="{StaticResource Brush.Danger}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="2,0,0,12"
+                               MinHeight="14" />
+
+                    <TextBlock Text="Heslo" FontWeight="SemiBold" FontSize="12" />
+                    <PasswordBox x:Name="PasswordInput"
+                                 PasswordChanged="OnPasswordChanged"
+                                 MaxLength="256"
+                                 Height="42"
+                                 Margin="0,7,0,4"
+                                 AutomationProperties.Name="Heslo" />
+                    <TextBlock Text="{Binding PasswordError}"
+                               Foreground="{StaticResource Brush.Danger}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="2,0,0,2"
+                               MinHeight="14" />
+
+                    <Button Content="Zapomenuté heslo"
+                            Command="{Binding RequestPasswordResetCommand}"
+                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            Margin="0,0,0,12"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource Brush.Info}" />
+
+                    <Button Click="OnSignInClick"
+                            IsDefault="True"
+                            Style="{StaticResource LoginPrimary}"
+                            Height="44"
+                            AutomationProperties.Name="Přihlásit se do Lasero" />
+
+                    <Border Background="{StaticResource Brush.Field}"
+                            BorderBrush="{StaticResource Brush.PanelBorder}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="11"
+                            Margin="0,14,0,0"
+                            Visibility="{Binding StatusMessage, Converter={StaticResource NotNullToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <components:IconGlyph IconData="{StaticResource Glyph.Info}"
+                                                  Width="17" Height="17"
+                                                  Margin="0,1,9,0"
+                                                  Foreground="{StaticResource Brush.TextSecondary}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding StatusMessage}"
+                                       Foreground="{StaticResource Brush.TextPrimary}"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2"
+                           Text="První přihlášení vyžaduje internet. Potom můžete editor používat i offline."
+                           Style="{StaticResource Text.Muted}"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

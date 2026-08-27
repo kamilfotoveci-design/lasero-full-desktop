@@ -1,0 +1,107 @@
+<Window x:Class="Lasero.App.OnboardingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:components="clr-namespace:Lasero.App.Components"
+        Title="Začínáme s Lasero" Width="820" Height="590" MinWidth="820" MinHeight="590"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{StaticResource Brush.Background}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="72" />
+        </Grid.RowDefinitions>
+
+        <Border Background="{StaticResource Brush.Panel}"
+                BorderBrush="{StaticResource Brush.PanelBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="36,28,36,24">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="První projekt ve 3 krocích"
+                               FontFamily="{StaticResource Font.Display}"
+                               FontSize="26" FontWeight="SemiBold" />
+                    <TextBlock Text="Lasero vás provede od připojení stroje až po bezpečné spuštění."
+                               Style="{StaticResource Text.Muted}" Margin="0,7,0,0" />
+                </StackPanel>
+                <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Center">
+                    <TextBlock Text="Přibližně 2 minuty" FontWeight="SemiBold" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="36,30,36,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Panel}" Padding="20">
+                <StackPanel>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />
+                    </Border>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <TextBlock Text="Připojte gravírku" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
+                    <TextBlock Text="Vyberete port, Lasero rozpozná GRBL a načte pracovní plochu. Pro zkoušení lze použít virtuální stroj."
+                               Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource Panel}" Padding="20">
+                <StackPanel>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />
+                    </Border>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <TextBlock Text="Vyberte materiál" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
+                    <TextBlock Text="Vzorník doporučí bezpečné výchozí hodnoty výkonu a rychlosti. Před ostrou prací je ověříte na odřezu."
+                               Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource Panel}" Padding="20">
+                <StackPanel>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />
+                    </Border>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <TextBlock Text="Připravte návrh" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
+                    <TextBlock Text="Vytvoříte nebo importujete grafiku, zkontrolujete oblast a před spuštěním uvidíte náhled celé práce."
+                               Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Grid.ColumnSpan="5" Background="{StaticResource Brush.InfoMuted}"
+                    BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="10"
+                    Padding="14,12" Margin="0,18,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="18" Height="18" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
+                    <TextBlock Grid.Column="1" Text="Rámování před spuštěním ověří, že se návrh vejde na materiál. Lasero ho nabídne vždy před první úlohou."
+                               TextWrapping="Wrap" Foreground="{StaticResource Brush.TextPrimary}" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource Brush.TitleBar}"
+                BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="36,14">
+            <Grid>
+                <CheckBox x:Name="DontShowAgain" Content="Příště tento úvod přeskočit" VerticalAlignment="Center" />
+                <Button Content="Otevřít Lasero" Style="{StaticResource PrimaryBlue}" IsDefault="True"
+                        Click="OnStartClick" HorizontalAlignment="Right" MinWidth="150" Height="42" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

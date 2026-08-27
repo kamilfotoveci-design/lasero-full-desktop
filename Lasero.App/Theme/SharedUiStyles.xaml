@@ -1,0 +1,100 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Nav labels use TextPrimary, not TextSecondary — this is primary wayfinding text, not de-emphasised
+         caption text. Reserve the muted tone for genuinely secondary content; a nav item that's merely
+         "not currently selected" should not read as if it were disabled. -->
+    <Style x:Key="NavButton" TargetType="Button">
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Margin" Value="0,2,0,2" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.WarmAccentMuted}" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.46" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="InspectorSection" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+    <Style x:Key="PanelTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="{DynamicResource Brush.PrimaryAction}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryAction}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.OnPrimaryAction}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Effect" Value="{x:Null}" />
+    </Style>
+
+    <!-- Compatibility alias for older views; new UI should use PrimaryAction. -->
+    <Style x:Key="PrimaryBlue" TargetType="Button" BasedOn="{StaticResource PrimaryAction}" />
+
+    <!-- Flat, bordered, no shadow — same philosophy as LaseroTheme.xaml's editor "Panel" style, so
+         dashboard surfaces and editor chrome read as one consistent visual language rather than two. -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="20" />
+    </Style>
+
+    <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Padding" Value="18,16" />
+        <Setter Property="MinHeight" Value="102" />
+    </Style>
+
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LineHeight" Value="34" />
+    </Style>
+
+    <Style x:Key="PageSubtitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+
+    <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+
+    <Style x:Key="Button.Regular" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Height" Value="40" />
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+
+    <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="Height" Value="44" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Padding" Value="20,10" />
+    </Style>
+
+    <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Padding" Value="0" />
+    </Style>
+</ResourceDictionary>
