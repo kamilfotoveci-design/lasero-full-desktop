@@ -68,11 +68,16 @@
                     <StackPanel Margin="16">
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel>
+                            <!-- WPF Grid does not clip children, so this subtitle used to render at its
+                                 full desired width straight underneath the button in the next column and
+                                 got painted over mid-word. Wrapping keeps the whole sentence readable at
+                                 any panel width. -->
+                            <StackPanel Margin="0,0,12,0">
                                 <TextBlock Text="Vrstvy zpracování" Style="{StaticResource PanelTitle}" Margin="0,0,0,3" />
-                                <TextBlock Text="Každá barva má vlastní způsob a sílu laseru." Style="{StaticResource Text.Muted}" />
+                                <TextBlock Text="Každá barva má vlastní způsob a sílu laseru." Style="{StaticResource Text.Muted}"
+                                           TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding Scene.AddLayerCommand}" Height="38" Padding="13,0"
+                            <Button Grid.Column="1" Command="{Binding Scene.AddLayerCommand}" VerticalAlignment="Top" Padding="13,0"
                                     ToolTip="Přidat novou prázdnou vrstvu">
                                 <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nová vrstva" IconSize="14" />
                             </Button>
@@ -142,7 +147,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource IndexToLayerNumber}}"
                                                    VerticalAlignment="Center" HorizontalAlignment="Center" FontFamily="{StaticResource Font.Mono}"
-                                                   FontSize="10" Foreground="{StaticResource Brush.TextSecondary}" />
+                                                   FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                         <Border Grid.Column="1" Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}" />
                                         <StackPanel Grid.Column="2" Margin="10,7" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
@@ -152,7 +157,7 @@
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                             <TextBlock Text="{Binding ProcessingSummary}" Style="{StaticResource Text.Muted}"
-                                                       FontSize="11" Margin="21,3,0,0" TextTrimming="CharacterEllipsis" />
+                                                       FontSize="12" Margin="21,3,0,0" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                         <CheckBox Grid.Column="3" IsChecked="{Binding IsEnabled}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                   ToolTip="Zapnout nebo vypnout zpracování této vrstvy" automation:AutomationProperties.Name="Zpracovat vrstvu" />

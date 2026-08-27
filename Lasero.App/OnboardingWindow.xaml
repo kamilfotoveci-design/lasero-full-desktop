@@ -47,7 +47,7 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Panel}" Padding="20">
+            <Border Grid.Column="0" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />
@@ -59,7 +59,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="2" Style="{StaticResource Panel}" Padding="20">
+            <Border Grid.Column="2" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />
@@ -71,7 +71,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="4" Style="{StaticResource Panel}" Padding="20">
+            <Border Grid.Column="4" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.WarmAccentMuted}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.WarmAccent}" />

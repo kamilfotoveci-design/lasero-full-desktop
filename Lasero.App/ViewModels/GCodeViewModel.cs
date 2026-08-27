@@ -304,6 +304,51 @@ public partial class GCodeViewModel : ObservableObject
         && IsMachineReadyForPhysicalAction()
         && JobState is not (JobRunState.Preparing or JobRunState.Framing or JobRunState.Running or JobRunState.Paused);
 
+    /// <summary>
+    /// Why Start/Frame is currently unavailable, in the operator's words, or null when it is available.
+    ///
+    /// The preflight already produced these sentences — but only inside the command bodies, which never
+    /// run while the button is disabled. So the one moment the operator needs the reason was the one
+    /// moment it was unreachable. These read the same <see cref="JobPreflight"/> result and change no
+    /// gating: CanRun/CanFrame decide availability exactly as before.
+    /// </summary>
+    [ObservableProperty] private string? _startBlockedReason;
+    [ObservableProperty] private string? _frameBlockedReason;
+
+    /// <summary>True while the machine is actually working on something, so progress UI can appear
+    /// only then instead of showing a permanent empty 0% track.</summary>
+    public bool IsJobActive => JobState is JobRunState.Preparing or JobRunState.Framing
+        or JobRunState.Running or JobRunState.Paused;
+
+    public string StartActionTooltip => StartBlockedReason ?? "Spustit připravenou úlohu";
+    public string FrameActionTooltip => FrameBlockedReason ?? "Ověřit obrys a umístění úlohy před spuštěním";
+
+    partial void OnJobStateChanged(JobRunState value) => OnPropertyChanged(nameof(IsJobActive));
+
+    partial void OnStartBlockedReasonChanged(string? value) => OnPropertyChanged(nameof(StartActionTooltip));
+    partial void OnFrameBlockedReasonChanged(string? value) => OnPropertyChanged(nameof(FrameActionTooltip));
+
+    private void RefreshBlockedReasons()
+    {
+        StartBlockedReason = CanRun() ? null : DescribeBlockedAction(EvaluatePreflight());
+        FrameBlockedReason = CanFrame()
+            ? null
+            : DescribeBlockedAction(EvaluatePreflight(includeFramingRequirement: false));
+    }
+
+    private string DescribeBlockedAction(JobPreflightResult preflight)
+    {
+        if (preflight.FirstBlockingIssue is { } blocking) return blocking.Message;
+        return JobState switch
+        {
+            JobRunState.Preparing => "Úloha se právě připravuje.",
+            JobRunState.Framing => "Právě probíhá rámování.",
+            JobRunState.Running => "Úloha už běží.",
+            JobRunState.Paused => "Úloha je pozastavená. Pokračujte v ní, nebo ji zastavte.",
+            _ => "Úlohu zatím nelze spustit.",
+        };
+    }
+
     public JobPreflightResult EvaluatePreflight(bool includeFramingRequirement = true) => JobPreflight.Evaluate(new JobPreflightContext
     {
         IsConnected = _connection.State == GrblConnectionState.Connected,
@@ -726,6 +771,7 @@ public partial class GCodeViewModel : ObservableObject
         PauseResumeSimulationCommand.NotifyCanExecuteChanged();
         RestartSimulationCommand.NotifyCanExecuteChanged();
         CloseSimulationCommand.NotifyCanExecuteChanged();
+        RefreshBlockedReasons();
     }
 
     partial void OnDocumentChanged(GCodeDocument? value)

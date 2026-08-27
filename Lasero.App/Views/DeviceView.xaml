@@ -434,7 +434,7 @@
                                     <ItemsControl ItemsSource="{Binding Console.Lines}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="11" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="12" TextWrapping="Wrap" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

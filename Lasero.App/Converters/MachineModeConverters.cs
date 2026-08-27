@@ -34,7 +34,9 @@ public sealed class MachineModeToLabelConverter : IValueConverter
         GrblMachineMode.Check => "KONTROLA",
         GrblMachineMode.Home => "HOMING",
         GrblMachineMode.Sleep => "SPÁNEK",
-        _ => "NEPŘIPOJENO",
+        // Unknown is also the state of a freshly connected controller that has not reported yet —
+        // labelling it "NEPŘIPOJENO" contradicted the connection indicator sitting right next to it.
+        _ => "ČEKÁM NA STAV",
     };
 
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture) =>

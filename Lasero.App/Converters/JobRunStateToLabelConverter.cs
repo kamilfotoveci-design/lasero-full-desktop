@@ -8,7 +8,10 @@ public sealed class JobRunStateToLabelConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture) => value switch
     {
-        JobRunState.Idle => "Připraveno",
+        // Idle used to render as "Připraveno" too, so a disconnected app with no job loaded announced
+        // "Nepřipojeno · Připraveno". Idle means there is nothing to run; Ready means a job has been
+        // prepared and cleared preflight. Only Ready may claim readiness.
+        JobRunState.Idle => "Bez úlohy",
         JobRunState.Preparing => "Připravuji",
         JobRunState.Ready => "Připraveno",
         JobRunState.Framing => "Rámování",

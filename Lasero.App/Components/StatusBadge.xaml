@@ -9,7 +9,7 @@
     <Border Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="7" Padding="10,6">
         <StackPanel Orientation="Horizontal">
             <Ellipse Width="8" Height="8" Fill="{Binding IsConnected, ElementName=Root, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,7,0" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding StatusText, ElementName=Root}" Foreground="{DynamicResource Brush.TextSecondary}" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding StatusText, ElementName=Root}" Foreground="{DynamicResource Brush.TextSecondary}" FontSize="12" VerticalAlignment="Center" />
         </StackPanel>
     </Border>
 </UserControl>

@@ -192,7 +192,7 @@
                                         <Border Style="{StaticResource ChatBubble}" MaxWidth="720">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                    <TextBlock Text="{Binding Author}" FontWeight="SemiBold" FontSize="11" />
+                                                    <TextBlock Text="{Binding Author}" FontWeight="SemiBold" FontSize="12" />
                                                     <TextBlock Text="  ·  " Foreground="{DynamicResource Brush.PanelBorder}" />
                                                     <TextBlock Text="{Binding TimeLabel}" Style="{StaticResource Text.Muted}" />
                                                 </StackPanel>
