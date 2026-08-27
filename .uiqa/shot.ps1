@@ -49,6 +49,13 @@ $target = if ($WindowTitle) { $found | Where-Object { $_.Title -like "*$WindowTi
 if (-not $target) { Write-Output "NO_MATCH"; exit 4 }
 [void][Win]::SetForegroundWindow($target.H)
 Start-Sleep -Milliseconds 700
+# Re-read the rect AFTER settling. The enumeration above measures before the window has finished
+# responding to a resize, and sizing the bitmap from that stale value silently crops the right and
+# bottom edges — which reads as UI clipping that is not actually there.
+$fresh = New-Object Win+RECT
+[void][Win]::GetWindowRect($target.H, [ref]$fresh)
+$target.W = $fresh.R - $fresh.L
+$target.Ht = $fresh.B - $fresh.T
 $bmp = New-Object System.Drawing.Bitmap($target.W, $target.Ht)
 $g = [System.Drawing.Graphics]::FromImage($bmp)
 $hdc = $g.GetHdc()

@@ -16,6 +16,14 @@ public partial class IconLabel : UserControl
     public static readonly DependencyProperty TextMarginProperty = DependencyProperty.Register(
         nameof(TextMargin), typeof(Thickness), typeof(IconLabel), new PropertyMetadata(new Thickness(8, 0, 0, 0)));
 
+    /// <summary>
+    /// Hides the label, leaving the icon. Set through a Style trigger rather than locally at each
+    /// call site — Text is assigned locally in XAML, and a local value outranks a Style setter, so
+    /// a width-driven trigger cannot blank it out that way.
+    /// </summary>
+    public static readonly DependencyProperty CompactModeProperty = DependencyProperty.Register(
+        nameof(CompactMode), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
+
     public Geometry? IconData
     {
         get => (Geometry?)GetValue(IconDataProperty);
@@ -38,6 +46,12 @@ public partial class IconLabel : UserControl
     {
         get => (Thickness)GetValue(TextMarginProperty);
         set => SetValue(TextMarginProperty, value);
+    }
+
+    public bool CompactMode
+    {
+        get => (bool)GetValue(CompactModeProperty);
+        set => SetValue(CompactModeProperty, value);
     }
 
     public IconLabel() => InitializeComponent();

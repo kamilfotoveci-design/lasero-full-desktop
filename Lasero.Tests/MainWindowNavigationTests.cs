@@ -25,11 +25,19 @@ public sealed class MainWindowNavigationTests
         // These used to assert against a second, Visibility="Collapsed" tool rail that never
         // rendered. That rail has been deleted; the assertions now target the toolbar the operator
         // actually sees, which is the behaviour this test was really about.
-        Assert.Contains("AppScreenToSidebarWidth", xaml, StringComparison.Ordinal);
+        // The canvas column takes the space nothing else claims, and the inspector is a resizable
+        // pixel column between bounds — replacing a converter that ignored its input and returned a
+        // constant sidebar width.
+        Assert.Contains("<ColumnDefinition Width=\"*\" MinWidth=\"420\" />", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"InspectorColumn\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("AppScreenToSidebarWidth", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"DesignerToolbarTool\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Compact editor rail", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Select", xaml, StringComparison.Ordinal);
-        Assert.Contains("ConverterParameter=Pan", xaml, StringComparison.Ordinal);
+        // Pan is deliberately not a toolbar tool: it is always available on the middle mouse button
+        // and on space+drag, so a mode you had to enter and leave to do the same thing was only a
+        // state to get stuck in. DesignerTool.Pan itself still exists and still works.
+        Assert.DoesNotContain("ConverterParameter=Pan", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Rectangle", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Ellipse", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Line", xaml, StringComparison.Ordinal);

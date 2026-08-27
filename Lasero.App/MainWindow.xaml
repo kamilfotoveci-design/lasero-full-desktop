@@ -22,8 +22,8 @@
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
-        <conv:AppScreenToSidebarWidthConverter x:Key="AppScreenToSidebarWidth" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:IsBelowWidthConverter x:Key="IsBelowWidth" />
         <conv:RgbColorToNameConverter x:Key="RgbColorToName" />
         <conv:RgbColorMatchesConverter x:Key="RgbColorMatches" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -399,10 +399,17 @@
 
         <!-- Main editor -->
         <Grid Grid.Row="1">
+            <!--
+                The inspector is a fixed pixel column so the canvas ("*") absorbs every other pixel
+                the window has, and MinWidth on the canvas stops the inspector from being dragged
+                wide enough to squeeze the workspace out. The nav width used to come from a converter
+                that took CurrentScreen and returned a constant 176 regardless of it.
+            -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{Binding CurrentScreen, Converter={StaticResource AppScreenToSidebarWidth}}" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="336" />
+                <ColumnDefinition Width="164" />
+                <ColumnDefinition Width="*" MinWidth="420" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="InspectorColumn" Width="336" MinWidth="280" MaxWidth="560" />
             </Grid.ColumnDefinitions>
 
             <!-- Stable application navigation. Design tools live beside the canvas so this rail
@@ -457,68 +464,88 @@
             </Border>
 
             <!-- Home dashboard -->
-            <views:HomeView Grid.Column="1" Grid.ColumnSpan="2" Margin="16"
+            <views:HomeView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"
                              Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Home}" />
 
             <!-- Device workspace -->
-            <views:DeviceView Grid.Column="1" Grid.ColumnSpan="2" Margin="16"
+            <views:DeviceView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"
                               Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Device}" />
 
             <!-- Account-scoped assistant. History remains available without a network connection. -->
-            <views:ChatView Grid.Column="1" Grid.ColumnSpan="2" Margin="16"
+            <views:ChatView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Chat}" />
 
             <!-- Workspace -->
-            <Grid Grid.Column="1" Background="{StaticResource Brush.Background}"
+            <Grid x:Name="WorkspaceArea" Grid.Column="1" Background="{StaticResource Brush.Background}"
                   Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
+                <Grid.Resources>
+                    <!--
+                        Adaptive toolbar labels. Bound to the workspace column's own width, not the
+                        window's: the operator can drag the inspector wider, which takes space from
+                        the toolbar without the window changing size at all. The binding is not
+                        circular — this column is sized "*", so its width does not depend on what the
+                        toolbar decides to render.
+
+                        740 is where this specific toolbar stops fitting on one row, measured, not a
+                        generic breakpoint. Below it the labels drop and the tools become icons with
+                        their existing tooltips and accessible names; nothing is removed.
+                    -->
+                    <Style x:Key="AdaptiveToolLabel" TargetType="components:IconLabel">
+                        <Style.Triggers>
+                            <DataTrigger Value="True"
+                                         Binding="{Binding ActualWidth, ElementName=WorkspaceArea, Converter={StaticResource IsBelowWidth}, ConverterParameter=740}">
+                                <Setter Property="CompactMode" Value="True" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Resources>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <!-- Primary design tools stay directly above the canvas. At narrower widths they
-                     wrap into a compact second row instead of being clipped or hidden. -->
-                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" MinHeight="56"
+                <!-- Primary design tools stay directly above the canvas. When the column gets narrow
+                     the labels collapse to icons before anything wraps or clips. -->
+                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" MinHeight="52"
                         Background="{StaticResource Brush.Panel}"
                         BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
-                        Padding="14,8">
+                        Padding="12,6">
                     <DockPanel LastChildFill="False">
                         <WrapPanel DockPanel.Dock="Left">
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
                                          ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Výběr">
-                                <components:IconLabel IconData="{StaticResource Glyph.Select}" Text="Výběr" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Select}" Text="Výběr" IconSize="16" TextMargin="6,0,0,0" />
                             </RadioButton>
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
-                                         IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pan, Mode=TwoWay}"
-                                         ToolTip="Posouvat plátno (H nebo prostřední tlačítko myši)" AutomationProperties.Name="Posun plátna">
-                                <components:IconLabel IconData="{StaticResource Glyph.Pan}" Text="Posun" IconSize="16" TextMargin="6,0,0,0" />
-                            </RadioButton>
+                            <!-- No Pan tool button. Panning is already always available on the middle
+                                 mouse button and on space+drag, so a mode you had to switch into (and
+                                 back out of) to do the same thing only added a state to get stuck in.
+                                 DesignerTool.Pan itself still exists and still works. -->
                             <Border Width="1" Height="24" Background="{StaticResource Brush.PanelBorder}" Margin="5,8,10,8" />
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
                                          ToolTip="Nakreslit obdélník (R)" AutomationProperties.Name="Obdélník">
-                                <components:IconLabel IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník" IconSize="16" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
                                          ToolTip="Nakreslit elipsu (E)" AutomationProperties.Name="Elipsa">
-                                <components:IconLabel IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa" IconSize="16" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
                                          ToolTip="Nakreslit čáru (L)" AutomationProperties.Name="Čára">
-                                <components:IconLabel IconData="{StaticResource Glyph.Line}" Text="Čára" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Line}" Text="Čára" IconSize="16" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
                                          ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
-                                <components:IconLabel IconData="{StaticResource Glyph.Text}" Text="Text" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Text}" Text="Text" IconSize="16" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,6,0">
                                 <MenuItem Padding="11,9" ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy">
                                     <MenuItem.Header>
-                                        <components:IconLabel IconData="{StaticResource Glyph.Polygon}" Text="Tvary" IconSize="16" TextMargin="6,0,0,0" />
+                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Polygon}" Text="Tvary" IconSize="16" TextMargin="6,0,0,0" />
                                     </MenuItem.Header>
                                     <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
                                     <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
@@ -532,7 +559,7 @@
                             <Border Width="1" Height="24" Background="{StaticResource Brush.PanelBorder}" Margin="5,8,10,8" />
                             <Button Height="36" Padding="12,0" Command="{Binding GCode.LoadFileCommand}"
                                     ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
-                                <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="16" TextMargin="6,0,0,0" />
                             </Button>
                         </WrapPanel>
                     </DockPanel>
@@ -690,6 +717,10 @@
                                     </DockPanel>
                                 </Border>
                             </StackPanel>
+                            <!-- Size travels as one unit: width, height and the aspect lock that ties
+                                 them together. They used to be three independent items in the
+                                 WrapPanel, so a narrow window could put the lock — or the rotation
+                                 field — on its own line, away from the values it belongs to. -->
                             <StackPanel Style="{StaticResource TransformGroup}">
                                 <TextBlock Text="Š" Style="{StaticResource TransformLabel}" ToolTip="Šířka" />
                                 <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
@@ -701,8 +732,14 @@
                                                  Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                                     </DockPanel>
                                 </Border>
-                            </StackPanel>
-                            <StackPanel Style="{StaticResource TransformGroup}" Margin="0,3,6,3">
+                                <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                              IsChecked="{Binding Scene.LockAspectRatio}"
+                                              IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                              Margin="4,0"
+                                              ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
+                                              AutomationProperties.Name="Zachovat poměr stran">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="16" Height="16" />
+                                </ToggleButton>
                                 <TextBlock Text="V" Style="{StaticResource TransformLabel}" ToolTip="Výška" />
                                 <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
                                         IsEnabled="{Binding Scene.CanTransformSelectedObject}"
@@ -714,16 +751,6 @@
                                     </DockPanel>
                                 </Border>
                             </StackPanel>
-                            <!-- Aspect lock reads as a link between width and height, so it sits between
-                                 them as an icon toggle instead of a switch with its own written label. -->
-                            <ToggleButton Style="{StaticResource Toggle.Icon}"
-                                          IsChecked="{Binding Scene.LockAspectRatio}"
-                                          IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                                          Margin="0,3,16,3"
-                                          ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
-                                          AutomationProperties.Name="Zachovat poměr stran">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="16" Height="16" />
-                            </ToggleButton>
                             <StackPanel Style="{StaticResource TransformGroup}">
                                 <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="15" Height="15"
                                                       Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"
@@ -766,8 +793,46 @@
                 </Border>
             </Grid>
 
+            <!--
+                Inspector splitter. Only meaningful on the Designer screen — the other screens span
+                the canvas, splitter and inspector columns, so there is nothing to resize there.
+                A 6px grab strip is the usual desktop trade-off: wide enough to hit without aiming,
+                narrow enough to read as an edge rather than a gutter.
+            -->
+            <GridSplitter x:Name="InspectorSplitter" Grid.Column="2"
+                          Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Cursor="SizeWE"
+                          DragCompleted="OnInspectorSplitterDragCompleted"
+                          Focusable="False"
+                          AutomationProperties.Name="Změnit šířku panelu vlastností"
+                          ToolTip="Přetažením změníte šířku panelu"
+                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Grid Background="{TemplateBinding Background}">
+                            <!-- The visible line stays a hairline in the panel border colour; only the
+                                 invisible grab area is 6px. -->
+                            <Border x:Name="Line" Width="1" HorizontalAlignment="Center"
+                                    Background="{StaticResource Brush.PanelBorder}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Line" Property="Background" Value="{StaticResource Brush.Accent}" />
+                                <Setter TargetName="Line" Property="Width" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="Line" Property="Background" Value="{StaticResource Brush.Accent}" />
+                                <Setter TargetName="Line" Property="Width" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
             <!-- One integrated workbench: design, processing and machine operation remain beside the canvas. -->
-            <views:DesignerInspectorView x:Name="DesignerInspector" Grid.Column="2"
+            <views:DesignerInspectorView x:Name="DesignerInspector" Grid.Column="3"
                                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
         </Grid>
 
@@ -921,6 +986,20 @@
                     availability is still decided entirely by CanRun/CanFrame and the preflight.
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!--
+                        Live estimate of how long the job would take with the layers switched on right
+                        now. It sits with the execution controls because that is where the operator
+                        decides whether to commit; it recalculates from the scene without touching the
+                        job document, so reading it never invalidates a completed framing pass.
+                    -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0"
+                                Visibility="{Binding GCode.HasLiveEstimate, Converter={StaticResource BoolToVisibility}}"
+                                ToolTip="Odhadovaný čas gravírování podle vrstev, které máte zapnuté ve výstupu">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Clock}" Width="15" Height="15"
+                                              Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding GCode.LiveEstimatedTimeLabel}" Style="{StaticResource Text.Numeric}"
+                                   VerticalAlignment="Center" Margin="7,0,0,0" />
+                    </StackPanel>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="16,0" Margin="0,0,10,0"

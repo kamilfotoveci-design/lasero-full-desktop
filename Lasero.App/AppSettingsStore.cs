@@ -10,6 +10,27 @@ public sealed class AppSettings
     public DevicePreferences Device { get; set; } = new();
     public SafetyPreferences Safety { get; set; } = new();
     public MachinePreferences Machine { get; set; } = new();
+    public WorkspacePreferences Workspace { get; set; } = new();
+}
+
+/// <summary>
+/// Editor chrome the operator has arranged for themselves. Panel sizing is a preference, not project
+/// data — it must never reach the document or the machine.
+/// </summary>
+public sealed class WorkspacePreferences
+{
+    /// <summary>Width of the right-hand inspector in device-independent pixels. Clamped on load to
+    /// the same bounds the splitter enforces, so a hand-edited or stale settings file cannot start
+    /// the app with the workspace collapsed.</summary>
+    public double InspectorWidth { get; set; } = DefaultInspectorWidth;
+
+    public const double DefaultInspectorWidth = 336;
+    public const double MinInspectorWidth = 280;
+    public const double MaxInspectorWidth = 560;
+
+    public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
+        ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
+        : DefaultInspectorWidth;
 }
 
 public sealed class DevicePreferences
@@ -125,6 +146,8 @@ public sealed class AppSettingsStore
         settings.Device ??= new DevicePreferences();
         settings.Safety ??= new SafetyPreferences();
         settings.Machine ??= new MachinePreferences();
+        settings.Workspace ??= new WorkspacePreferences();
+        settings.Workspace.InspectorWidth = settings.Workspace.ClampedInspectorWidth;
         settings.Machine.Profiles ??= new Dictionary<string, MachineProfilePreferences>(StringComparer.OrdinalIgnoreCase);
         if (settings.Device.BaudRate <= 0) settings.Device.BaudRate = 115200;
         if (settings.Machine.WorkAreaWidthMm <= 0) settings.Machine.WorkAreaWidthMm = 500;

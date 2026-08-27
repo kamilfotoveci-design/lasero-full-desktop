@@ -27,6 +27,9 @@ public partial class SceneCanvas : UserControl
 {
     private const double MarginPx = 20;
     private const double HandleSizePx = 8;
+    // Invisible grab area around each grip. Interaction geometry only — it never reaches the scene
+    // model or the toolpath.
+    private const double HandleHitSizePx = 20;
     private const double RotateHandleOffsetPx = 26;
     private const double MinScale = 0.05;
     private const double MaxScale = 200;
@@ -598,6 +601,24 @@ public partial class SceneCanvas : UserControl
             var world = obj.Transform.Apply(local, obj.LocalPivot);
             var screen = new Point(ToCanvasX(world.X), ToCanvasY(world.Y));
 
+            // Two elements per grip: an invisible target you can actually hit, and a small square
+            // that shows where it is. An 8px grip demands pixel-accurate aiming, which is why the
+            // corners felt unresponsive even once the event routing was fixed. The visual stays 8px
+            // so the selection does not turn into a row of chunky boxes.
+            var target = new Rectangle
+            {
+                Width = HandleHitSizePx,
+                Height = HandleHitSizePx,
+                Fill = Brushes.Transparent,
+                Tag = (obj, handle),
+                Cursor = CursorForHandle(handle),
+            };
+            target.MouseLeftButtonDown += OnResizeHandleMouseLeftButtonDown;
+            Canvas.SetLeft(target, screen.X - HandleHitSizePx / 2);
+            Canvas.SetTop(target, screen.Y - HandleHitSizePx / 2);
+            DrawCanvas.Children.Add(target);
+            _selectionVisuals.Add(target);
+
             var square = new Rectangle
             {
                 Width = HandleSizePx,
@@ -605,10 +626,8 @@ public partial class SceneCanvas : UserControl
                 Fill = SelectionHandleFill,
                 Stroke = SelectionBrush,
                 StrokeThickness = 1.2,
-                Tag = (obj, handle),
-                Cursor = CursorForHandle(handle),
+                IsHitTestVisible = false,
             };
-            square.MouseLeftButtonDown += OnResizeHandleMouseLeftButtonDown;
             Canvas.SetLeft(square, screen.X - HandleSizePx / 2);
             Canvas.SetTop(square, screen.Y - HandleSizePx / 2);
             DrawCanvas.Children.Add(square);
@@ -788,13 +807,24 @@ public partial class SceneCanvas : UserControl
         DrawCanvas.CaptureMouse();
     }
 
+    /// <summary>
+    /// Whether a hit-tested element is part of the selection adorner (a resize grip or the rotate
+    /// grip). Both tag themselves with the object they belong to, which is what distinguishes them
+    /// from ordinary scene geometry.
+    /// </summary>
+    private static bool IsSelectionHandle(object? source) => source switch
+    {
+        Rectangle { Tag: ValueTuple<SceneObject, ResizeHandle> } => true,
+        Ellipse { Tag: SceneObject } => true,
+        _ => false,
+    };
+
     private void OnResizeHandleMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (ViewModel is null) return;
         var (obj, handle) = ((SceneObject, ResizeHandle))((Rectangle)sender).Tag;
         e.Handled = true;
         Focus();
-
         _dragMode = DragMode.Resize;
         _activeSingleObject = obj;
         _activeResizeHandle = handle;
@@ -843,6 +873,17 @@ public partial class SceneCanvas : UserControl
     private void OnDrawCanvasPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (ViewModel is null) return;
+
+        // Selection handles win over everything else on the canvas.
+        //
+        // This is a tunnelling handler on the parent canvas, so it runs before the bubbling
+        // MouseLeftButtonDown on the handle itself. With a drawing tool active it called BeginDraw
+        // and set Handled, so grabbing a corner started a new rectangle instead of resizing the
+        // selected one — the handles were simply dead whenever a shape tool was chosen. With Select
+        // active the object underneath won the hit test instead, turning a corner drag into a move.
+        // Bailing out here lets the handle's own handler run in both cases.
+        if (IsSelectionHandle(e.OriginalSource)) return;
+
         var screen = e.GetPosition(DrawCanvas);
 
         if (_isSpacePressed || ViewModel.ActiveTool == DesignerTool.Pan)

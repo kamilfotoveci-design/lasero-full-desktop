@@ -8,9 +8,25 @@
                               Width="{Binding IconSize, ElementName=Root}"
                               Height="{Binding IconSize, ElementName=Root}"
                               Foreground="{Binding Foreground, ElementName=Root}" />
+        <!-- CompactMode drops the label so a toolbar can degrade to icons instead of wrapping or
+             clipping when the window gets narrow. Collapsed rather than hidden, so the icon closes
+             up and the margin disappears with it. -->
         <TextBlock Text="{Binding Text, ElementName=Root}"
                    Margin="{Binding TextMargin, ElementName=Root}"
                    VerticalAlignment="Center"
-                   Foreground="{Binding Foreground, ElementName=Root}" />
+                   Foreground="{Binding Foreground, ElementName=Root}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CompactMode, ElementName=Root}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Text, ElementName=Root}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
     </StackPanel>
 </UserControl>

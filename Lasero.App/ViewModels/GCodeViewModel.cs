@@ -12,6 +12,7 @@ using Lasero.Core.Layers;
 using Lasero.Core.Machines;
 using Lasero.Core.Scene;
 using Microsoft.Win32;
+using Serilog;
 
 namespace Lasero.App.ViewModels;
 
@@ -43,6 +44,7 @@ public partial class GCodeViewModel : ObservableObject
     private JobTimeEstimate? _timeEstimate;
     private readonly DispatcherTimer _simulationTimer;
     private readonly DispatcherTimer _runTimer;
+    private readonly DispatcherTimer _liveEstimateTimer;
     private readonly System.Diagnostics.Stopwatch _runStopwatch = new();
     private DateTime _lastSimulationTickUtc;
     private bool _isFramingOperation;
@@ -136,6 +138,8 @@ public partial class GCodeViewModel : ObservableObject
         _simulationTimer.Tick += OnSimulationTick;
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _runTimer.Tick += (_, _) => UpdateRunTiming();
+        _liveEstimateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _liveEstimateTimer.Tick += (_, _) => RecalculateLiveEstimate();
     }
 
     [RelayCommand]
@@ -247,6 +251,73 @@ public partial class GCodeViewModel : ObservableObject
         if (ImportKind == ImportKind.GCode) return;
         _sceneDocumentDirty = true;
         IsCurrentDocumentFramed = false;
+        ScheduleLiveEstimate();
+    }
+
+    /// <summary>
+    /// Running estimate of how long the job would take with the layers the operator has switched on
+    /// right now. Answers "what does this cost me?" before committing to anything, and reacts to a
+    /// layer being toggled or its speed/power/passes edited.
+    /// </summary>
+    [ObservableProperty] private string _liveEstimatedTimeLabel = "—";
+    [ObservableProperty] private bool _hasLiveEstimate;
+
+    private void ScheduleLiveEstimate()
+    {
+        // Debounced: a single speed edit raises Changed on every keystroke, and the estimate has to
+        // build the whole toolpath to be honest about fills and passes. Restarting the timer
+        // coalesces a burst of edits into one recalculation.
+        _liveEstimateTimer.Stop();
+        _liveEstimateTimer.Start();
+    }
+
+    private void RecalculateLiveEstimate()
+    {
+        _liveEstimateTimer.Stop();
+
+        // A loaded .gcode file is its own source of truth — there is no scene to price.
+        if (ImportKind == ImportKind.GCode)
+        {
+            HasLiveEstimate = Document is not null;
+            LiveEstimatedTimeLabel = Document is not null ? FormatDuration(EstimatedDuration) : "—";
+            return;
+        }
+
+        if (_scene.Objects.Count == 0)
+        {
+            HasLiveEstimate = false;
+            LiveEstimatedTimeLabel = "—";
+            return;
+        }
+
+        // Once there is artwork the readout stays put and shows "—" when nothing is switched on,
+        // rather than vanishing and shifting the buttons beside it every time a layer is toggled.
+        HasLiveEstimate = true;
+
+        try
+        {
+            // Deliberately does NOT touch Document. Assigning it would reset the framing flag and the
+            // job state as a side effect of merely editing a layer, so this builds a throwaway
+            // toolpath purely to measure it. Nothing here talks to the machine.
+            var preview = GCodeParser.Parse(BuildSceneGCode(0, 0), "Odhad");
+            if (preview.RawLines.Count == 0 || preview.BoundingBox.IsEmpty)
+            {
+                HasLiveEstimate = false;
+                LiveEstimatedTimeLabel = "—";
+                return;
+            }
+
+            LiveEstimatedTimeLabel = FormatDuration(JobTimeEstimator.Estimate(preview).Duration);
+            HasLiveEstimate = true;
+        }
+        catch (Exception ex)
+        {
+            // An estimate is informational. If the scene cannot currently be turned into a toolpath,
+            // say nothing rather than showing a number that might be wrong.
+            Log.Warning(ex, "Live engraving time estimate failed");
+            HasLiveEstimate = false;
+            LiveEstimatedTimeLabel = "—";
+        }
     }
 
     private void EnsureSceneDocumentCurrent(bool refreshCurrentPosition = false)
@@ -778,6 +849,7 @@ public partial class GCodeViewModel : ObservableObject
     {
         IsCurrentDocumentFramed = false;
         PreflightMessage = null;
+        ScheduleLiveEstimate();
         RefreshCommands();
     }
 

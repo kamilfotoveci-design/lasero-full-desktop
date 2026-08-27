@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows.Shell;
@@ -350,9 +351,33 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
+    /// <summary>
+    /// Restores the operator's inspector width. Clamped by the store, so a stale or hand-edited
+    /// settings file cannot open the app with the workspace crushed or the panel off-screen.
+    /// </summary>
+    private void RestoreWorkspaceLayout()
+    {
+        InspectorColumn.Width = new GridLength(_viewModel.SettingsStore.Current.Workspace.ClampedInspectorWidth);
+    }
+
+    private void OnInspectorSplitterDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        try
+        {
+            _viewModel.SettingsStore.Current.Workspace.InspectorWidth = InspectorColumn.ActualWidth;
+            _viewModel.SettingsStore.Save();
+        }
+        catch (Exception ex)
+        {
+            // Panel sizing is a convenience; failing to remember it must never interrupt the session.
+            Log.Warning(ex, "Failed to persist inspector width");
+        }
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
+        RestoreWorkspaceLayout();
 
         var workArea = SystemParameters.WorkArea;
         MinWidth = Math.Min(MinWidth, Math.Max(800, workArea.Width - 16));

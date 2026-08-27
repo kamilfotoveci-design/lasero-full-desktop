@@ -35,7 +35,7 @@
 
     <Border Background="{StaticResource Brush.Panel}"
             BorderBrush="{StaticResource Brush.PanelBorder}"
-            BorderThickness="1,0,0,0"
+            BorderThickness="0"
             CornerRadius="0">
         <Grid>
             <Grid.RowDefinitions>

@@ -14,6 +14,11 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly ProjectRecoveryStore _recoveryStore;
     private readonly AppSettingsStore _settingsStore;
+
+    /// <summary>Exposed so the window can persist editor chrome (panel sizing). MainWindow is
+    /// constructed directly rather than resolved from the container, so it has no other route to
+    /// the store.</summary>
+    public AppSettingsStore SettingsStore => _settingsStore;
     private readonly RecentProjectsStore _recentProjectsStore;
     private readonly JobHistoryStore _jobHistoryStore;
 
