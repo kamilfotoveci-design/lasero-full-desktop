@@ -55,7 +55,7 @@
 
         <Border Grid.Row="0" Background="{StaticResource Brush.Field}"
                 BorderBrush="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
-                BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8"
+                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,8"
                 Visibility="{Binding MachineStatus.HasActiveAlert, Converter={StaticResource BoolToVisibility}}">
             <Grid>
                 <TextBlock Text="{Binding MachineStatus.ActiveAlert.Message}" TextWrapping="Wrap"
@@ -71,7 +71,7 @@
 
         <Border Grid.Row="1" Background="{StaticResource Brush.Field}"
                 BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
-                CornerRadius="10" Padding="10" Margin="0,0,0,8">
+                CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,8">
             <StackPanel>
                 <Grid Margin="0,0,0,7">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -142,7 +142,7 @@
                         <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" Margin="0,10,0,6" />
                         <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}"
                                   HorizontalAlignment="Left" MinWidth="132" />
-                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="10"
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}"
                                 Padding="9" Margin="0,8,0,0"
                                 Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its
@@ -163,7 +163,7 @@
 
                     <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                                BorderThickness="1" CornerRadius="10" Padding="10">
+                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10">
                             <StackPanel>
                                 <TextBlock Text="Pracovní plocha" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,9" />
                                 <Grid>
@@ -233,7 +233,7 @@
                         </Button>
                     </Expander>
                     <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
+                            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,10,0,0">
                         <StackPanel Orientation="Horizontal">
                             <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
@@ -291,19 +291,18 @@
                         </Grid>
                         <ProgressBar Value="{Binding GCode.ProgressPercent}" Height="4" Margin="0,0,0,10" />
 
+                        <!-- The "Použitý materiál" text box is gone. MaterialName is already filled in
+                             automatically when a recipe is applied from the materials library, so the
+                             field was a second, manual way to say the same thing — one that changed
+                             nothing about the job and only ever reached the history log. -->
                         <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="92" /></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Použitý materiál" Style="{StaticResource MachineFieldLabel}" />
-                                <TextBox Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Název materiálu se uloží do historie úlohy" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Odhad času" Style="{StaticResource MachineFieldLabel}" />
-                                <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,8,0,0" />
-                            </StackPanel>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Odhad času" Style="{StaticResource MachineFieldLabel}" Margin="0" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding GCode.EstimatedTimeLabel}"
+                                       Style="{StaticResource Text.Numeric}" VerticalAlignment="Center" />
                         </Grid>
 
-                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,9">
+                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,9">
                             <StackPanel>
                                 <TextBlock Text="Kde má gravírování začít?" FontWeight="SemiBold" Margin="0,0,0,7" />
                                 <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding GCode.SupportsPlacementMode}">
@@ -362,7 +361,7 @@
             <Grid Visibility="{Binding IsChecked, ElementName=ConsolePanelTab, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,8">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Konzola GRBL" Style="{StaticResource MachineSectionTitle}" /><TextBlock Grid.Column="1" Text="Pokročilé" Style="{StaticResource Text.Muted}" /></Grid>
-                <Border Grid.Row="1" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10">
+                <Border Grid.Row="1" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}">
                     <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto" Padding="8">
                         <ItemsControl ItemsSource="{Binding Console.Lines}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="12" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                     </ScrollViewer>

@@ -8,10 +8,24 @@
         <ResourceDictionary Source="Icons.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- DefaultRadius applies to auto-width text buttons (icon buttons/jog pads set an explicit Width
-         and get a true circle from the width/2 branch instead). 10 read as a full pill on a ~34px-tall
-         button; 6 keeps the same restrained rounding as the rest of the chrome without the blob look. -->
-    <conv:WidthToCornerRadiusConverter x:Key="HalfCornerRadius" DefaultRadius="6" />
+    <!--
+        Radius system. Four values, each with a job, so equivalent controls share a geometry instead
+        of each screen inventing its own. Before this the app used 2, 3, 4, 5, 6, 7, 8, 9, 10 and 12
+        more or less interchangeably, and icon buttons rendered as full circles while the text button
+        beside them was 6 and the input beside that was 8.
+
+        Xs  chips and swatches under ~18px, where 6 would read as a circle
+        Sm  icon buttons, segments, list rows, small inner surfaces
+        Md  buttons, inputs, selects, menu items — anything you type in or press
+        Lg  panels, cards, dialogs, popups
+
+        Genuinely circular things (numbered step badges, the toggle track) keep their own radius:
+        those are circles by intent, not rounded rectangles that drifted.
+    -->
+    <CornerRadius x:Key="Radius.Xs">4</CornerRadius>
+    <CornerRadius x:Key="Radius.Sm">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Md">8</CornerRadius>
+    <CornerRadius x:Key="Radius.Lg">12</CornerRadius>
 
     <!--
         Neutral graphite + soft white + cobalt blue.
@@ -184,7 +198,7 @@
         ThumbnailCard) converge on this same flat philosophy rather than carrying their own shadow.
     -->
     <Style x:Key="Badge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="CornerRadius" Value="999" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -222,15 +236,15 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                                CornerRadius="{StaticResource Radius.Md}" />
                         <Border x:Name="Hover"
                                 Background="{StaticResource Brush.HoverWash}"
                                 Opacity="0"
-                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                                CornerRadius="{StaticResource Radius.Md}" />
                         <Border x:Name="FocusRing"
                                 BorderBrush="{StaticResource Brush.FocusRing}"
                                 BorderThickness="0"
-                                CornerRadius="{TemplateBinding Width, Converter={StaticResource HalfCornerRadius}}" />
+                                CornerRadius="{StaticResource Radius.Md}" />
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="{TemplateBinding Padding}" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -335,7 +349,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Surface" Background="Transparent" CornerRadius="6" BorderBrush="Transparent" BorderThickness="1">
+                    <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -365,7 +379,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{StaticResource Radius.Sm}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -506,7 +520,7 @@
                                 Background="{StaticResource Brush.ToggleTrackOff}"
                                 BorderBrush="{StaticResource Brush.ToggleTrackOffBorder}" BorderThickness="1"
                                 VerticalAlignment="Center">
-                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="8" Background="#FFFFFF" HorizontalAlignment="Left" Margin="2,0,0,0">
+                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="{StaticResource Radius.Md}" Background="#FFFFFF" HorizontalAlignment="Left" Margin="2,0,0,0">
                                 <Border.RenderTransform>
                                     <TranslateTransform x:Name="ThumbSlide" X="0" />
                                 </Border.RenderTransform>
@@ -578,7 +592,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bg" CornerRadius="7" Background="Transparent"
+                    <Border x:Name="Bg" CornerRadius="{StaticResource Radius.Sm}" Background="Transparent"
                             BorderBrush="Transparent" BorderThickness="1"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -620,7 +634,7 @@
         <Setter Property="Background" Value="{StaticResource Brush.Field}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Padding" Value="2" />
     </Style>
 
@@ -638,7 +652,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
                         <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -664,7 +678,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="PasswordBox">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
                         <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -700,7 +714,7 @@
                                          closed dropdown pointed UP — the universal "already open"
                                          signal. It now points down at rest and flips only while the
                                          popup is actually open. -->
-                                    <Border x:Name="FieldBg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                                    <Border x:Name="FieldBg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
                                         <Grid Margin="{TemplateBinding Padding}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -727,7 +741,7 @@
                         </ToggleButton>
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <Popup x:Name="Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Panel}">
+                            <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Panel}">
                                 <ScrollViewer Margin="4">
                                     <ItemsPresenter />
                                 </ScrollViewer>
@@ -754,7 +768,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="Bg" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -792,13 +806,13 @@
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <Grid>
-                        <Border x:Name="Bg" Background="Transparent" CornerRadius="6">
+                        <Border x:Name="Bg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}">
                             <ContentPresenter x:Name="HeaderHost" ContentSource="Header" RecognizesAccessKey="True"
                                               Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                         </Border>
                         <Popup x:Name="Popup" Placement="Bottom" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                                AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="4" Effect="{StaticResource Shadow.Panel}" MinWidth="180">
+                            <Border Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="4" Effect="{StaticResource Shadow.Panel}" MinWidth="180">
                                 <StackPanel IsItemsHost="True" />
                             </Border>
                         </Popup>
@@ -829,7 +843,7 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="6"
+                            CornerRadius="{StaticResource Radius.Sm}"
                             Padding="{TemplateBinding Padding}"
                             TextElement.Foreground="{TemplateBinding Foreground}">
                         <ContentPresenter />
@@ -848,15 +862,15 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
                     <Grid x:Name="Root" ClipToBounds="True">
-                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="3" />
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Xs}" />
                         <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}"
-                                CornerRadius="3" HorizontalAlignment="Left" />
+                                CornerRadius="{StaticResource Radius.Xs}" HorizontalAlignment="Left" />
                         <!-- Indeterminate was unstyled, so a "working…" bar rendered as an empty track
                              and read as a stalled 0%. A full-width bar breathing between two opacities
                              says "running, duration unknown" without claiming a percentage.
                              Deliberately no position animation: a Storyboard inside a template trigger
                              has to be freezable, so it cannot read the bar's actual width. -->
-                        <Border x:Name="Pulse" Background="{TemplateBinding Foreground}" CornerRadius="3" Opacity="0" />
+                        <Border x:Name="Pulse" Background="{TemplateBinding Foreground}" CornerRadius="{StaticResource Radius.Xs}" Opacity="0" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsIndeterminate" Value="True">
@@ -895,7 +909,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="RowBg" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="RowBg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -931,7 +945,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}" CornerRadius="4" Margin="2" />
+                    <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}" CornerRadius="{StaticResource Radius.Xs}" Margin="2" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.ScrollThumbHover}" />

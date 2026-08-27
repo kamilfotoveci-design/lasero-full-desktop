@@ -115,7 +115,7 @@
                                                         Background="{TemplateBinding Background}"
                                                         BorderBrush="Transparent"
                                                         BorderThickness="1"
-                                                        CornerRadius="8"
+                                                        CornerRadius="{StaticResource Radius.Md}"
                                                         Margin="0,1">
                                                     <ContentPresenter />
                                                 </Border>
@@ -145,7 +145,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center" Margin="0,0,10,0"
+                                        <Border Width="14" Height="14" CornerRadius="{StaticResource Radius.Xs}" VerticalAlignment="Center" Margin="0,0,10,0"
                                                 Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                                 BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
                                                 ToolTip="Barva vrstvy" />
@@ -258,7 +258,7 @@
 
                             <Grid Margin="0,0,0,16">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Border Width="26" Height="26" CornerRadius="6" VerticalAlignment="Center" Margin="0,0,10,0"
+                                <Border Width="26" Height="26" CornerRadius="{StaticResource Radius.Sm}" VerticalAlignment="Center" Margin="0,0,10,0"
                                         Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                         BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
                                         ToolTip="Barva vrstvy" />

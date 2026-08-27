@@ -36,7 +36,7 @@
                 </Grid.RowDefinitions>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Image Source="{StaticResource Image.BrandWordmark}" Width="138" Height="42" Stretch="Uniform"
+                        <Image Source="{StaticResource Image.BrandWordmark}" Width="138" Height="{StaticResource Size.Control.Base}" Stretch="Uniform"
                                HorizontalAlignment="Left" AutomationProperties.Name="Lasero" />
                         <TextBlock Text="DESKTOP" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12"
                                    FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -103,7 +103,7 @@
                     <TextBox x:Name="EmailInput"
                              Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
                              MaxLength="254"
-                             Height="42"
+                             Height="{StaticResource Size.Control.Base}"
                              Margin="0,7,0,4"
                              AutomationProperties.Name="E-mail" />
                     <TextBlock Text="{Binding EmailError}"
@@ -117,7 +117,7 @@
                     <PasswordBox x:Name="PasswordInput"
                                  PasswordChanged="OnPasswordChanged"
                                  MaxLength="256"
-                                 Height="42"
+                                 Height="{StaticResource Size.Control.Base}"
                                  Margin="0,7,0,4"
                                  AutomationProperties.Name="Heslo" />
                     <TextBlock Text="{Binding PasswordError}"
@@ -145,7 +145,7 @@
                     <Border Background="{StaticResource Brush.Field}"
                             BorderBrush="{StaticResource Brush.PanelBorder}"
                             BorderThickness="1"
-                            CornerRadius="8"
+                            CornerRadius="{StaticResource Radius.Md}"
                             Padding="11"
                             Margin="0,14,0,0"
                             Visibility="{Binding StatusMessage, Converter={StaticResource NotNullToVisibility}}">

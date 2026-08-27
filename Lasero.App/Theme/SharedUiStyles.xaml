@@ -15,7 +15,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
-                        <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Md}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
                         </Border>
                         <!--
@@ -25,7 +25,7 @@
                             desaturated. The screen-specific NavButton.* styles switch it on.
                         -->
                         <Border x:Name="ActiveBar" Width="3" HorizontalAlignment="Left" Margin="0,7"
-                                CornerRadius="2" Background="Transparent" />
+                                CornerRadius="{StaticResource Radius.Xs}" Background="Transparent" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
@@ -53,7 +53,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Lg}" />
         <Setter Property="Padding" Value="16" />
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
@@ -80,7 +80,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Lg}" />
         <Setter Property="Padding" Value="20" />
     </Style>
 
@@ -107,13 +107,13 @@
     </Style>
 
     <Style x:Key="Button.Regular" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Height" Value="40" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
     </Style>
 
     <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-        <Setter Property="Height" Value="44" />
-        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Large}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Large}" />
         <Setter Property="Padding" Value="20,10" />
     </Style>
 
@@ -132,7 +132,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="8,0" />
         <Style.Triggers>

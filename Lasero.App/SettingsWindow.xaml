@@ -20,7 +20,7 @@
                     <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="16" FontWeight="SemiBold" />
                 </StackPanel>
                 <TextBlock Text="NASTAVENÍ" Style="{StaticResource Text.Heading}" Margin="10,0,0,8" />
-                <Border Background="{StaticResource Brush.AccentMuted}" CornerRadius="8" Padding="10,9" Margin="0,0,0,5">
+                <Border Background="{StaticResource Brush.AccentMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,9" Margin="0,0,0,5">
                     <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="18" Height="18" Foreground="{StaticResource Brush.Info}" Margin="0,0,10,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
                 </Border>
                 <TextBlock Text="Připojení stroje a pohyb os najdete v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="10,14,10,0" />
@@ -161,7 +161,7 @@
                                     </Border>
                                 </Grid>
 
-                                <Border Background="{StaticResource Brush.Field}" CornerRadius="8" Padding="11" Margin="0,0,0,12">
+                                <Border Background="{StaticResource Brush.Field}" CornerRadius="{StaticResource Radius.Md}" Padding="11" Margin="0,0,0,12">
                                     <StackPanel>
                                         <TextBlock Text="Lasero Pro je aktivní" FontWeight="SemiBold"
                                                    Visibility="{Binding Account.IsPremium, Converter={StaticResource BoolToVisibility}}" />

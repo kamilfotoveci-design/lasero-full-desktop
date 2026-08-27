@@ -49,7 +49,7 @@
                     <Border Style="{StaticResource Card}" Padding="28"
                             Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}">
                         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
-                            <Border Width="48" Height="48" CornerRadius="12"
+                            <Border Width="48" Height="48" CornerRadius="{StaticResource Radius.Lg}"
                                     Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="22" Height="22"
                                                       Foreground="{StaticResource Brush.Accent}" />
@@ -183,7 +183,7 @@
                             </StackPanel>
                             <TextBlock Text="Doporučené parametry vám pomohou začít bezpečně. Před ostrou úlohou je vždy ověřte na odřezku."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />
-                            <Button Click="OnMaterialsClick" Height="40">
+                            <Button Click="OnMaterialsClick">
                                 <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Otevřít vzorník materiálů" />
                             </Button>
 

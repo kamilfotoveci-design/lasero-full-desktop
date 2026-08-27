@@ -26,7 +26,7 @@
 
         <StackPanel Grid.Row="1" Margin="26,24">
             <TextBlock Text="Text" FontWeight="SemiBold" Margin="0,0,0,6" />
-            <TextBox x:Name="TextValueInput" Height="42" MaxLength="200"
+            <TextBox x:Name="TextValueInput" Height="{StaticResource Size.Control.Base}" MaxLength="200"
                      AutomationProperties.Name="Text pro vložení" />
 
             <Grid Margin="0,18,0,0">
@@ -38,7 +38,7 @@
                 <StackPanel>
                     <TextBlock Text="Výška textu" FontWeight="SemiBold" Margin="0,0,0,6" />
                     <Grid>
-                        <TextBox x:Name="HeightInput" Text="12" Height="42" Padding="10,6,42,6"
+                        <TextBox x:Name="HeightInput" Text="12" Height="{StaticResource Size.Control.Base}" Padding="10,6,42,6"
                                  AutomationProperties.Name="Výška textu v milimetrech" />
                         <TextBlock Text="mm" HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Margin="0,0,12,0" Foreground="{StaticResource Brush.TextSecondary}"
@@ -47,7 +47,7 @@
                 </StackPanel>
                 <Border Grid.Column="2" Background="{StaticResource Brush.InfoMuted}"
                         BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1"
-                        CornerRadius="9" Padding="12" VerticalAlignment="Bottom" MinHeight="42">
+                        CornerRadius="{StaticResource Radius.Md}" Padding="12" VerticalAlignment="Bottom" MinHeight="{StaticResource Size.Control.Base}">
                     <StackPanel Orientation="Horizontal">
                         <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
                                               Margin="0,0,8,0" Foreground="{StaticResource Brush.Info}" />
@@ -66,9 +66,9 @@
                 BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0"
                 Padding="26,13">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Zrušit" IsCancel="True" MinWidth="96" Height="42" Margin="0,0,8,0" />
+                <Button Content="Zrušit" IsCancel="True" MinWidth="96" Height="{StaticResource Size.Control.Base}" Margin="0,0,8,0" />
                 <Button Content="Přidat text" Style="{StaticResource PrimaryBlue}"
-                        MinWidth="132" Height="42" Click="OnAddClick" IsDefault="True" />
+                        MinWidth="132" Height="{StaticResource Size.Control.Base}" Click="OnAddClick" IsDefault="True" />
             </StackPanel>
         </Border>
     </Grid>

@@ -84,7 +84,7 @@
             </Border>
 
             <Border Grid.Row="1" Grid.ColumnSpan="5" Background="{StaticResource Brush.InfoMuted}"
-                    BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="10"
+                    BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}"
                     Padding="14,12" Margin="0,18,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -100,7 +100,7 @@
             <Grid>
                 <CheckBox x:Name="DontShowAgain" Content="Příště tento úvod přeskočit" VerticalAlignment="Center" />
                 <Button Content="Otevřít Lasero" Style="{StaticResource PrimaryBlue}" IsDefault="True"
-                        Click="OnStartClick" HorizontalAlignment="Right" MinWidth="150" Height="42" />
+                        Click="OnStartClick" HorizontalAlignment="Right" MinWidth="150" Height="{StaticResource Size.Control.Base}" />
             </Grid>
         </Border>
     </Grid>

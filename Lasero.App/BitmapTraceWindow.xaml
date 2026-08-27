@@ -22,7 +22,7 @@
                     <TextBlock Text="Trasovat bitmapu" FontFamily="{StaticResource Font.Display}" FontSize="21" FontWeight="SemiBold" />
                     <TextBlock Text="Převeďte černobílý motiv na upravitelné vektorové obrysy." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                 </StackPanel>
-                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Brush.AccentMuted}" CornerRadius="8" Padding="10,6">
+                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Brush.AccentMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,6">
                     <TextBlock Text="{Binding ResultSummary}" Foreground="{StaticResource Brush.Accent}" FontWeight="SemiBold" FontSize="12" />
                 </Border>
             </Grid>
@@ -34,7 +34,7 @@
                 <ColumnDefinition Width="340" />
             </Grid.ColumnDefinitions>
 
-            <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="20">
+            <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="20">
                 <Grid>
                     <Viewbox Stretch="Uniform">
                         <Grid Width="{Binding PreviewWidthMm}" Height="{Binding PreviewHeightMm}" Background="White">
@@ -43,7 +43,7 @@
                         </Grid>
                     </Viewbox>
                     <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                            BorderThickness="1" CornerRadius="8" Padding="12,8"
+                            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
                             Visibility="{Binding IsComputing, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
                             <ProgressBar Width="72" Height="4" IsIndeterminate="True" Margin="0,0,10,0" />
@@ -86,7 +86,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource Brush.AccentMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="8" Padding="12">
+                        <Border Background="{StaticResource Brush.AccentMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
                             <StackPanel Orientation="Horizontal">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="16" Height="16" Foreground="{StaticResource Brush.Accent}" Margin="0,1,9,0" />
                                 <TextBlock Text="Bitmapa bude nahrazena jedním seskupeným vektorovým objektem. Původní stav lze obnovit pomocí Ctrl+Z."

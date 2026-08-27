@@ -24,7 +24,7 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="Surface"
                                 Background="Transparent"
-                                CornerRadius="8"
+                                CornerRadius="{StaticResource Radius.Md}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter VerticalAlignment="Center"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
@@ -290,7 +290,7 @@
                         <Border Background="{StaticResource Brush.Field}"
                                 BorderBrush="{StaticResource Brush.PanelBorder}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="{StaticResource Radius.Md}"
                                 Padding="14">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

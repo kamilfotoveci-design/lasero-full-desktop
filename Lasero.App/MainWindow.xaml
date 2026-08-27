@@ -58,7 +58,7 @@
                         <Border x:Name="Surface" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
@@ -132,8 +132,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Border x:Name="Ring" CornerRadius="7" BorderBrush="Transparent" BorderThickness="2" />
-                            <Border x:Name="LayerColor" Width="18" Height="18" CornerRadius="4"
+                            <Border x:Name="Ring" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="2" />
+                            <Border x:Name="LayerColor" Width="18" Height="18" CornerRadius="{StaticResource Radius.Xs}"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -569,7 +569,7 @@
                     </DockPanel>
                 </Border>
 
-                <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="10" Padding="0" ClipToBounds="True">
+                <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="0" ClipToBounds="True">
                     <Grid>
                         <controls:SceneCanvas x:Name="DesignerCanvas" ViewModel="{Binding Scene}" WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}" WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
                     </Grid>
@@ -775,14 +775,14 @@
 
                 <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="20,0,0,20"
                         Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                        BorderThickness="1" CornerRadius="7" Padding="10,7"
+                        BorderThickness="1" CornerRadius="{StaticResource Radius.Sm}" Padding="10,7"
                         ToolTip="Další zkratky najdete v nabídce Pomoc → Klávesové zkratky">
                     <TextBlock Text="Kolečko nebo mezerník + tažení: posun   ·   Ctrl + kolečko: přiblížení"
                                Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" />
                 </Border>
 
                 <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,20"
-                        Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="9" Padding="4">
+                        Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="4">
                     <StackPanel Orientation="Horizontal">
                         <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnZoomOutClick" ToolTip="Oddálit" AutomationProperties.Name="Oddálit">
                             <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="14" Height="14" />

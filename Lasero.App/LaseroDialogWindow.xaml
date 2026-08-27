@@ -14,11 +14,11 @@
         </DataTemplate>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="8" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="{StaticResource Radius.Md}" GlassFrameThickness="0" />
     </shell:WindowChrome.WindowChrome>
 
     <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-            BorderThickness="1" CornerRadius="8" Effect="{StaticResource Shadow.Panel}">
+            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Effect="{StaticResource Shadow.Panel}">
         <Grid>
             <Grid.RowDefinitions><RowDefinition Height="38" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
