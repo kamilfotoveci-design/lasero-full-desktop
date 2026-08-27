@@ -14,6 +14,17 @@ public sealed record JobTimeEstimate
     public required TimeSpan Duration { get; init; }
     public required IReadOnlyList<TimeSpan> SegmentStartTimes { get; init; }
     public required IReadOnlyList<TimeSpan> SegmentDurations { get; init; }
+
+    /// <summary>
+    /// Split of the same total into the two things that actually consume it: distance travelled with
+    /// the laser working, and distance travelled repositioning between shapes. A bare total says a
+    /// job takes twelve minutes; this says whether that is twelve minutes of burning or mostly the
+    /// head flying around because the path order is poor.
+    /// </summary>
+    public required double CutDistanceMm { get; init; }
+    public required TimeSpan CutDuration { get; init; }
+    public required double RapidDistanceMm { get; init; }
+    public required TimeSpan RapidDuration { get; init; }
 }
 
 /// <summary>Builds one timing model from the exact parsed toolpath used by preview and execution.</summary>
@@ -27,6 +38,10 @@ public static class JobTimeEstimator
         var starts = new List<TimeSpan>(document.Segments.Count);
         var durations = new List<TimeSpan>(document.Segments.Count);
         var elapsed = TimeSpan.Zero;
+        var cutDistance = 0d;
+        var rapidDistance = 0d;
+        var cutTime = TimeSpan.Zero;
+        var rapidTime = TimeSpan.Zero;
 
         foreach (var segment in document.Segments)
         {
@@ -42,6 +57,17 @@ public static class JobTimeEstimator
             var duration = TimeSpan.FromMinutes(travel / speed) + profile.CommandOverhead;
             durations.Add(duration);
             elapsed += duration;
+
+            if (segment.IsRapid)
+            {
+                rapidDistance += travel;
+                rapidTime += duration;
+            }
+            else
+            {
+                cutDistance += travel;
+                cutTime += duration;
+            }
         }
 
         return new JobTimeEstimate
@@ -49,6 +75,10 @@ public static class JobTimeEstimator
             Duration = elapsed,
             SegmentStartTimes = starts,
             SegmentDurations = durations,
+            CutDistanceMm = cutDistance,
+            CutDuration = cutTime,
+            RapidDistanceMm = rapidDistance,
+            RapidDuration = rapidTime,
         };
     }
 

@@ -363,12 +363,8 @@
                     <Button Style="{StaticResource Button.Icon}" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
                         <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="16" Height="16" />
                     </Button>
-                    <Button Style="{StaticResource Button.Regular}" Margin="8,0,0,0" Padding="14,0"
-                            Command="{Binding GCode.PreviewSimulationCommand}"
-                            Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                            ToolTip="Otevřít náhled dráhy nástroje v samostatném okně">
-                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Náhled" IconSize="15" TextMargin="7,0,0,0" />
-                    </Button>
+                    <!-- The preview used to be opened from here as well. One entry point only: it now
+                         lives beside Frame and Start, with the job actions it informs. -->
                 </StackPanel>
 
                 <!-- The connection pill that used to live here has moved out. Connection state was
@@ -987,19 +983,20 @@
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <!--
-                        Live estimate of how long the job would take with the layers switched on right
-                        now. It sits with the execution controls because that is where the operator
-                        decides whether to commit; it recalculates from the scene without touching the
-                        job document, so reading it never invalidates a completed framing pass.
+                        Time is reported on demand, not as a permanent readout. A number sitting in the
+                        corner invites trust it has not earned: it is a model of the toolpath, and the
+                        operator cannot tell what went into it. Behind this button the same estimate
+                        arrives with the preview that produced it, broken into cutting versus
+                        repositioning, so the figure is something you can check rather than just read.
                     -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0"
-                                Visibility="{Binding GCode.HasLiveEstimate, Converter={StaticResource BoolToVisibility}}"
-                                ToolTip="Odhadovaný čas gravírování podle vrstev, které máte zapnuté ve výstupu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Clock}" Width="15" Height="15"
-                                              Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding GCode.LiveEstimatedTimeLabel}" Style="{StaticResource Text.Numeric}"
-                                   VerticalAlignment="Center" Margin="7,0,0,0" />
-                    </StackPanel>
+                    <Button Style="{StaticResource Button.Regular}" Command="{Binding GCode.PreviewSimulationCommand}"
+                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
+                            Padding="16,0" Margin="0,0,10,0"
+                            ToolTipService.ShowOnDisabled="True"
+                            ToolTip="Zobrazit náhled dráhy a odhadovaný čas úlohy podle zapnutých vrstev"
+                            Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
+                        <components:IconLabel IconData="{StaticResource Glyph.Clock}" Text="Odhad času" IconSize="16" TextMargin="8,0,0,0" />
+                    </Button>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="16,0" Margin="0,0,10,0"

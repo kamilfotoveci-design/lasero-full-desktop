@@ -21,6 +21,22 @@ public sealed class JobSimulationTests
     }
 
     [Fact]
+    public void EstimateSplitsCuttingFromRepositioningAndTheTwoAccountForTheWholeJob()
+    {
+        // 120mm rapid at 120mm/min = 1 minute, then 60mm cut at 60mm/min = 1 minute.
+        var document = GCodeParser.Parse(["G0 X120 Y0", "G1 X180 Y0 F60"], "rapid-then-cut");
+
+        var estimate = JobTimeEstimator.Estimate(document, ExactProfile);
+
+        Assert.Equal(60, estimate.CutDistanceMm, 3);
+        Assert.Equal(120, estimate.RapidDistanceMm, 3);
+        Assert.Equal(TimeSpan.FromMinutes(1), estimate.CutDuration);
+        Assert.Equal(TimeSpan.FromMinutes(1), estimate.RapidDuration);
+        // The split is a decomposition of the same total, not a second opinion about it.
+        Assert.Equal(estimate.Duration, estimate.CutDuration + estimate.RapidDuration);
+    }
+
+    [Fact]
     public void ScrubbingToHalfTimeReturnsHalfwayPositionAndProgress()
     {
         var document = GCodeParser.Parse(["G1 X60 Y0 F60"], "one-minute-line");

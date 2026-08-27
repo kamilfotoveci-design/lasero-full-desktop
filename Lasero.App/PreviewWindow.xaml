@@ -60,13 +60,26 @@
             <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,1,0,0" Padding="18,14">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Průběh" FontWeight="SemiBold" Margin="0,0,8,0" />
                         <TextBlock Text="{Binding GCode.SimulationTimeLabel}" FontFamily="{StaticResource Font.Numeric}" Foreground="{StaticResource Brush.TextSecondary}" />
                     </StackPanel>
+
+                    <!-- The estimate, and what it is made of. A single total tells the operator how
+                         long to wait; the split tells them whether the time is going into the
+                         material or into the head travelling between shapes. -->
+                    <WrapPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,12,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,6,0" Text="Dráha řezu" />
+                        <TextBlock Text="{Binding GCode.CutBreakdownLabel}" Style="{StaticResource Text.Numeric}" VerticalAlignment="Center" Margin="0,0,18,0" />
+                        <TextBlock Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,6,0" Text="Rychlé přesuny" />
+                        <TextBlock Text="{Binding GCode.RapidBreakdownLabel}" Style="{StaticResource Text.Numeric}" VerticalAlignment="Center" Margin="0,0,18,0" />
+                        <TextBlock Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,6,0" Text="Celkový odhad" />
+                        <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" Style="{StaticResource Text.Numeric}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </WrapPanel>
                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Margin="0,0,18,0"
                             Value="{Binding GCode.SimulationProgressPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             ToolTip="Posunout přehrávání na zvolené místo" />
@@ -96,7 +109,7 @@
                         <TextBlock Text="×" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="{StaticResource Brush.TextSecondary}" />
                     </StackPanel>
 
-                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0" Style="{StaticResource Text.Muted}"
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Style="{StaticResource Text.Muted}"
                                Text="Modrá trasa je již přehraná. Červená značí práci laseru, přerušovaná šedá rychlý přesun bez gravírování." />
                 </Grid>
             </Border>

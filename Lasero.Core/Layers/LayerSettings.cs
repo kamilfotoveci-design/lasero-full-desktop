@@ -37,11 +37,34 @@ public sealed partial class LayerSettings : ObservableObject
     public string ProcessingSummary => $"{ModeLabel} · {Speed:0} mm/min · {Power:0.#} % · {Passes}×";
 
     partial void OnColorChanged(RgbColor value) => OnPropertyChanged(nameof(ColorHex));
+    partial void OnModeChanging(LayerMode oldValue, LayerMode newValue)
+    {
+        // Cutting and filling are not the same operation at the same speed. Cut runs slow and hot to
+        // get through material; fill runs fast and light to darken a surface. Switching mode used to
+        // keep whatever speed was there, so a layer moved from Čára to Výplň kept its 350 mm/min
+        // cutting feed and the job estimate ballooned into hours for a palm-sized fill.
+        //
+        // Only values the operator has not touched are migrated: if Speed/Power still match the old
+        // mode's defaults they move to the new mode's defaults, and anything deliberately typed in is
+        // left exactly as it is.
+        var previous = DefaultsFor(oldValue);
+        var next = DefaultsFor(newValue);
+
+        if (AreClose(Speed, previous.Speed)) Speed = next.Speed;
+        if (AreClose(Power, previous.Power)) Power = next.Power;
+    }
+
     partial void OnModeChanged(LayerMode value)
     {
         OnPropertyChanged(nameof(ModeLabel));
         OnPropertyChanged(nameof(ProcessingSummary));
     }
+
+    private static (double Speed, double Power) DefaultsFor(LayerMode mode) => mode == LayerMode.Cut
+        ? (350d, 95d)
+        : (3000d, 30d);
+
+    private static bool AreClose(double a, double b) => Math.Abs(a - b) < 0.001;
     partial void OnSpeedChanged(double value) => OnPropertyChanged(nameof(ProcessingSummary));
     partial void OnPowerChanged(double value) => OnPropertyChanged(nameof(ProcessingSummary));
     partial void OnPassesChanged(int value) => OnPropertyChanged(nameof(ProcessingSummary));

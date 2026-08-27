@@ -90,6 +90,8 @@ public static class ToolpathBuilder
         var interval = Math.Max(0.02, layer.FillLineIntervalMm);
         var feed = Fmt(layer.Speed);
 
+        var leftToRight = true;
+
         for (int pass = 0; pass < layer.Passes; pass++)
         {
             for (var y = minY + interval / 2; y <= maxY; y += interval)
@@ -113,13 +115,30 @@ public static class ToolpathBuilder
                 // pairs of consecutive crossings are "inside" runs. This is what
                 // makes holes in letters (O, A, ...) fill correctly.
                 xs.Sort();
+
+                // Serpentine: alternate scan direction line by line, so the head ends each pass
+                // where the next one begins. Every line used to be cut left-to-right with a full-width
+                // rapid back to the left margin in between, which on a solid fill meant the machine
+                // travelled roughly as far repositioning as it did engraving — a 150x100mm fill spent
+                // about half its run time flying back and forth doing nothing.
+                //
+                // Only the order of the runs changes. Each run is still bracketed by M4 before and M5
+                // after, the laser is still off for every G0, and the set of engraved spans is
+                // identical — this cannot burn anything the previous version did not.
+                var reverse = leftToRight is false;
                 for (int i = 0; i + 1 < xs.Count; i += 2)
                 {
-                    lines.Add($"G0 X{Fmt(xs[i])} Y{Fmt(y)}");
+                    var pairIndex = reverse ? xs.Count - 2 - (i / 2) * 2 : i;
+                    var from = reverse ? xs[pairIndex + 1] : xs[pairIndex];
+                    var to = reverse ? xs[pairIndex] : xs[pairIndex + 1];
+
+                    lines.Add($"G0 X{Fmt(from)} Y{Fmt(y)}");
                     lines.Add($"M4 S{Fmt(layer.Power)}");
-                    lines.Add($"G1 X{Fmt(xs[i + 1])} Y{Fmt(y)} F{feed}");
+                    lines.Add($"G1 X{Fmt(to)} Y{Fmt(y)} F{feed}");
                     lines.Add("M5");
                 }
+
+                leftToRight = !leftToRight;
             }
         }
     }
