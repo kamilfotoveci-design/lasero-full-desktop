@@ -20,6 +20,7 @@
         <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
         <conv:BooleanToConnectionBrushConverter x:Key="ConnectedToBrush" />
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
+        <conv:JobRunStateToStatePillKindConverter x:Key="JobStateToPillKind" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
@@ -359,20 +360,8 @@
                              Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" ToolTip="Projekt obsahuje neuložené změny" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.UndoCommand}" ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.RedoCommand}" ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.Icon}" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <!-- The preview used to be opened from here as well. One entry point only: it now
-                         lives beside Frame and Start, with the job actions it informs. -->
-                </StackPanel>
+                <!-- File and history commands moved down to the one command row above the canvas.
+                     The title bar is identity: wordmark, project, unsaved state, window buttons. -->
 
                 <!-- The connection pill that used to live here has moved out. Connection state was
                      rendered in three places at once (here, the Device page header, the status strip);
@@ -491,8 +480,9 @@
                         toolbar decides to render.
 
                         740 is where this specific toolbar stops fitting on one row, measured, not a
-                        generic breakpoint. Below it the labels drop and the tools become icons with
-                        their existing tooltips and accessible names; nothing is removed.
+                        generic breakpoint. The tools are icon-only at every width now, so Import is
+                        the only label left to drop — below 740 it collapses to its icon, keeping its
+                        tooltip and accessible name. Nothing is removed.
                     -->
                     <Style x:Key="AdaptiveToolLabel" TargetType="components:IconLabel">
                         <Style.Triggers>
@@ -510,46 +500,77 @@
                 </Grid.RowDefinitions>
                 <!-- Primary design tools stay directly above the canvas. When the column gets narrow
                      the labels collapse to icons before anything wraps or clips. -->
-                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" MinHeight="52"
+                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" Height="46"
                         Background="{StaticResource Brush.Panel}"
                         BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
-                        Padding="12,6">
+                        Padding="8,0">
                     <DockPanel LastChildFill="False">
-                        <WrapPanel DockPanel.Dock="Left">
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!--
+                                One command row: file, history, tools, view. Tools are icon-only. The
+                                labels that used to sit beside them read well on a wide window, but they
+                                are also what pushed file, history and view commands onto other
+                                surfaces, which is how one workspace ended up spread across the title
+                                bar, this row and a floating overlay. Every button keeps its tooltip,
+                                its shortcut and its accessible name.
+                            -->
+                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding NewProjectCommand}"
+                                    ToolTip="Nový projekt" AutomationProperties.Name="Nový projekt">
+                                <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding OpenProjectCommand}"
+                                    ToolTip="Otevřít projekt" AutomationProperties.Name="Otevřít projekt">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Open}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding SaveProjectCommand}"
+                                    ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
+                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.UndoCommand}"
+                                    ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.RedoCommand}"
+                                    ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
                                          ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Výběr">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Select}" Text="Výběr" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Select}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <!-- No Pan tool button. Panning is already always available on the middle
                                  mouse button and on space+drag, so a mode you had to switch into (and
                                  back out of) to do the same thing only added a state to get stuck in.
-                                 DesignerTool.Pan itself still exists and still works. -->
-                            <Border Width="1" Height="24" Background="{StaticResource Brush.PanelBorder}" Margin="5,8,10,8" />
+                                 DesignerTool.Pan itself still exists and still works. This is the one
+                                 point where the design system's reference toolbar, which does draw a
+                                 Pan tool, is deliberately not followed. -->
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
                                          ToolTip="Nakreslit obdélník (R)" AutomationProperties.Name="Obdélník">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Rectangle}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
                                          ToolTip="Nakreslit elipsu (E)" AutomationProperties.Name="Elipsa">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Ellipse}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
                                          ToolTip="Nakreslit čáru (L)" AutomationProperties.Name="Čára">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Line}" Text="Čára" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Line}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
                                          ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Text}" Text="Text" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Text}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,6,0">
                                 <MenuItem Padding="11,9" ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy">
                                     <MenuItem.Header>
-                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Polygon}" Text="Tvary" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Polygon}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                                     </MenuItem.Header>
                                     <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
                                     <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
@@ -560,12 +581,36 @@
                                     <MenuItem Header="Dvojitá hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.DoubleStar}" />
                                 </MenuItem>
                             </Menu>
-                            <Border Width="1" Height="24" Background="{StaticResource Brush.PanelBorder}" Margin="5,8,10,8" />
-                            <Button Height="36" Padding="12,0" Command="{Binding GCode.LoadFileCommand}"
-                                    ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
+                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
+                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnZoomOutClick"
+                                    ToolTip="Oddálit" AutomationProperties.Name="Oddálit">
+                                <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </Button>
-                        </WrapPanel>
+                            <!-- The readout is the canvas's own scale, not a number the chrome keeps.
+                                 SceneCanvas.ZoomPercent is read-only for exactly that reason. -->
+                            <TextBlock Text="{Binding ZoomPercent, ElementName=DesignerCanvas, StringFormat={}{0} %}"
+                                       MinWidth="54" TextAlignment="Center" VerticalAlignment="Center"
+                                       FontFamily="{StaticResource Font.Numeric}" FontWeight="Medium"
+                                       Typography.NumeralAlignment="Tabular"
+                                       Foreground="{StaticResource Brush.TextSecondary}"
+                                       ToolTip="Měřítko plátna" />
+                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnZoomInClick"
+                                    ToolTip="Přiblížit" AutomationProperties.Name="Přiblížit">
+                                <components:IconGlyph IconData="{StaticResource Glyph.ZoomIn}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnFitToViewClick"
+                                    ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Import keeps its label. It opens a file dialog rather than switching a
+                             mode, and it is the one thing in this row a first-time owner has to find. -->
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Height="32" Padding="10,0"
+                                VerticalAlignment="Center" Command="{Binding GCode.LoadFileCommand}"
+                                ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
+                            <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
+                        </Button>
                     </DockPanel>
                 </Border>
 
@@ -781,20 +826,6 @@
                                Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
                 </Border>
 
-                <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,20"
-                        Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="4">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnZoomOutClick" ToolTip="Oddálit" AutomationProperties.Name="Oddálit">
-                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                        <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnFitToViewClick" ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu" Margin="3,0">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                        <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnZoomInClick" ToolTip="Přiblížit" AutomationProperties.Name="Přiblížit">
-                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomIn}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                    </StackPanel>
-                </Border>
             </Grid>
 
             <!--
@@ -864,28 +895,29 @@
                     </Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal">
                         <!-- State is told three ways at once: a shape (which glyph), a word, and a
-                             semantic colour. Never colour alone. -->
-                        <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <components:IconGlyph.Style>
-                                <Style TargetType="components:IconGlyph">
+                             semantic colour. Never colour alone. The shared state pill carries all
+                             three, so the command bar, the Home device card and the machine panel
+                             stopped each drawing their own indicator. -->
+                        <components:StatusBadge StatusText="{Binding Connection.StatusText}"
+                                                ToolTip="{Binding Connection.StatusText}"
+                                                MaxWidth="320">
+                            <components:StatusBadge.Style>
+                                <Style TargetType="components:StatusBadge">
+                                    <Setter Property="Kind" Value="Neutral" />
                                     <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
-                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Connection.IsConnecting}" Value="True">
+                                            <Setter Property="Kind" Value="Warning" />
                                             <Setter Property="IconData" Value="{StaticResource Glyph.Refresh}" />
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Connection.IsConnected}" Value="True">
+                                            <Setter Property="Kind" Value="Ready" />
                                             <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </components:IconGlyph.Style>
-                        </components:IconGlyph>
-                        <TextBlock Text="{Binding Connection.StatusText}" FontWeight="Medium"
-                                   MaxWidth="300" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Connection.StatusText}" VerticalAlignment="Center" />
+                            </components:StatusBadge.Style>
+                        </components:StatusBadge>
 
                         <!-- Contextual repair action. A disconnected machine is the single most common
                              reason Start is unavailable, so the fix sits next to the statement of the
@@ -897,43 +929,25 @@
                                 ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
                                 Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
-                        <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center" />
-
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <StackPanel.Resources>
-                                <Style x:Key="JobFaultIcon" TargetType="components:IconGlyph">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Error}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Faulted}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Aborted}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                                <Style x:Key="JobStateText" TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                        <components:StatusBadge Margin="10,0,0,0"
+                                                StatusText="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}"
+                                                Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
+                            <components:StatusBadge.Style>
+                                <Style TargetType="components:StatusBadge">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Error}">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" /><Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Faulted}">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" /><Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Aborted}">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" /><Setter Property="FontWeight" Value="SemiBold" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" /><Setter Property="FontWeight" Value="SemiBold" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Completed}">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" /><Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </StackPanel.Resources>
-                            <components:IconGlyph Style="{StaticResource JobFaultIcon}" IconData="{StaticResource Glyph.Warning}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" Style="{StaticResource JobStateText}" VerticalAlignment="Center" />
-                        </StackPanel>
+                            </components:StatusBadge.Style>
+                        </components:StatusBadge>
 
                         <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}" />

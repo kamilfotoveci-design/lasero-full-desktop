@@ -34,13 +34,18 @@ public partial class SceneCanvas : UserControl
     private const double MinScale = 0.05;
     private const double MaxScale = 200;
 
+    /// <summary>Pixels per millimetre at rest. This is what the zoom readout calls 100%: the scale
+    /// the canvas opens at and returns to on an empty scene, not a physical 1:1, which would depend
+    /// on the monitor.</summary>
+    private const double DefaultScale = 4;
+
     private static readonly ResizeHandle[] AllResizeHandles = Enum.GetValues<ResizeHandle>();
     private Brush SelectionBrush => (Brush)FindResource("Brush.Accent");
     private Brush SelectionHandleFill => (Brush)FindResource("Brush.OnAccent");
 
     private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw }
 
-    private double _scale = 4;
+    private double _scale = DefaultScale;
     private double _offsetXMm;
     private double _offsetYMm;
 
@@ -194,6 +199,16 @@ public partial class SceneCanvas : UserControl
         ApplyFit(box);
     }
 
+    private static readonly DependencyPropertyKey ZoomPercentPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(ZoomPercent), typeof(int), typeof(SceneCanvas), new PropertyMetadata(100));
+
+    /// <summary>Current zoom as a whole percentage of <see cref="DefaultScale"/>, for the toolbar
+    /// readout. Read-only: the canvas owns the scale, and a settable property would let the chrome
+    /// claim a zoom the view is not at.</summary>
+    public static readonly DependencyProperty ZoomPercentProperty = ZoomPercentPropertyKey.DependencyProperty;
+
+    public int ZoomPercent => (int)GetValue(ZoomPercentProperty);
+
     public void ZoomIn() => ZoomAroundCenter(1.25);
     public void ZoomOut() => ZoomAroundCenter(0.8);
 
@@ -215,7 +230,7 @@ public partial class SceneCanvas : UserControl
 
         if (box.IsEmpty)
         {
-            _scale = 4;
+            _scale = DefaultScale;
             _offsetXMm = -ActualWidth / 2 / _scale;
             _offsetYMm = -ActualHeight / 2 / _scale;
         }
@@ -283,6 +298,7 @@ public partial class SceneCanvas : UserControl
 
     private void RepositionAll()
     {
+        SetValue(ZoomPercentPropertyKey, (int)Math.Round(_scale / DefaultScale * 100));
         RedrawGrid();
         if (ViewModel is not null)
             foreach (var obj in ViewModel.Objects)

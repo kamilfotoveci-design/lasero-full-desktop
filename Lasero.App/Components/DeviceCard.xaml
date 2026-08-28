@@ -15,8 +15,20 @@
                     <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
                 </StackPanel>
                 <components:StatusBadge Grid.Column="1" HorizontalAlignment="Right"
-                                        IsConnected="{Binding IsConnected, ElementName=Root}"
-                                        StatusText="{Binding StatusText, ElementName=Root}" />
+                                        StatusText="{Binding StatusText, ElementName=Root}">
+                    <components:StatusBadge.Style>
+                        <Style TargetType="components:StatusBadge">
+                            <Setter Property="Kind" Value="Neutral" />
+                            <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsConnected, ElementName=Root}" Value="True">
+                                    <Setter Property="Kind" Value="Ready" />
+                                    <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </components:StatusBadge.Style>
+                </components:StatusBadge>
             </Grid>
             <TextBlock Text="{Binding FirmwareBanner, ElementName=Root}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,10"
                        Visibility="{Binding FirmwareBanner, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
