@@ -275,7 +275,7 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="Padding" Value="14,0" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="Cursor" Value="Hand" />
@@ -374,9 +374,9 @@
     <!-- Icon buttons are square at the shared Base height so they line up with text buttons and
          inputs on the same row. Call sites used to override this to 32/36/40 individually. -->
     <Style x:Key="Button.Icon" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="8" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Padding" Value="7" />
         <Setter Property="Margin" Value="0,0,6,0" />
     </Style>
 
@@ -572,7 +572,7 @@
                             ThumbSlide only carries the transition: it animates from an offset back to
                             0, so its resting value is always 0 and never fights the alignment Setter.
                         -->
-                        <Border x:Name="Track" Width="38" Height="22" CornerRadius="{StaticResource Radius.Pill}"
+                        <Border x:Name="Track" Width="40" Height="22" CornerRadius="{StaticResource Radius.Pill}"
                                 Background="{StaticResource Brush.ToggleTrackOff}"
                                 BorderBrush="{StaticResource Brush.ToggleTrackOffBorder}" BorderThickness="1"
                                 VerticalAlignment="Center">
@@ -641,9 +641,10 @@
     -->
     <Style x:Key="Segment" TargetType="RadioButton">
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
-        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="MinHeight" Value="30" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -862,7 +863,8 @@
 
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
@@ -894,10 +896,10 @@
     <!-- ===================== Progress ===================== -->
 
     <Style TargetType="ToolTip">
-        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
-        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
+        <Setter Property="Background" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Padding" Value="9,6" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">

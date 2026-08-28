@@ -21,7 +21,7 @@
     -->
     <Border x:Name="Surface"
             CornerRadius="{StaticResource Radius.Pill}"
-            Padding="9,0"
+            Padding="8,0,10,0"
             Height="26"
             VerticalAlignment="Center">
         <Border.Style>

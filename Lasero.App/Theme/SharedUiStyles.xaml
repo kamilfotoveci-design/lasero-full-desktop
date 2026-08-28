@@ -4,9 +4,9 @@
          caption text. Reserve the muted tone for genuinely secondary content; a nav item that's merely
          "not currently selected" should not read as if it were disabled. -->
     <Style x:Key="NavButton" TargetType="Button">
-        <Setter Property="Height" Value="44" />
-        <Setter Property="Margin" Value="0,2,0,2" />
-        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Margin" Value="0,1,0,1" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
@@ -114,7 +114,7 @@
     <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
         <Setter Property="Height" Value="{StaticResource Size.Control.Large}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Large}" />
-        <Setter Property="Padding" Value="20,10" />
+        <Setter Property="Padding" Value="18,0" />
     </Style>
 
     <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -134,7 +134,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Padding" Value="10,0" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
@@ -179,6 +179,19 @@
     <Style x:Key="TransformRowLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+    </Style>
+
+    <!--
+        Status strip item. The strip used to be a run of TextBlocks with literal "  ·  " separators
+        between them, so every item had to arrange its own spacing and nothing lined up. An item is
+        a compact row with its own hit area: icon, label, and a tabular value where it has one.
+    -->
+    <Style x:Key="StatusItem" TargetType="Border">
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- ===================== Inspector section rhythm ===================== -->

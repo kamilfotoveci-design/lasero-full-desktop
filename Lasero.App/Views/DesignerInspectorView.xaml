@@ -138,7 +138,7 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid MinHeight="48" Margin="10,6,8,6">
+                                    <Grid MinHeight="48" Margin="4,0,8,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
