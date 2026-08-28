@@ -145,7 +145,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <Border Width="14" Height="14" CornerRadius="{StaticResource Radius.Xs}" VerticalAlignment="Center" Margin="0,0,10,0"
+                                        <Border Width="18" Height="18" CornerRadius="{StaticResource Radius.Sm}" VerticalAlignment="Center" Margin="0,0,10,0"
                                                 Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                                 BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
                                                 ToolTip="Barva vrstvy" />

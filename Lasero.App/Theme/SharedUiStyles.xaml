@@ -19,13 +19,13 @@
                             <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
                         </Border>
                         <!--
-                            Active-screen marker. The selected nav item is told by a tinted surface,
-                            accent text and a heavier weight — but all three are colour or weight, so
-                            a solid bar on the leading edge adds a cue that survives being
-                            desaturated. The screen-specific NavButton.* styles switch it on.
+                            Active-screen marker. The selected item is told by a tinted surface,
+                            accent text, a heavier weight and the icon it already carries. The leading
+                            bar this used to draw was a fourth cue on the same row, and it is the one
+                            the design system does not have.
                         -->
-                        <Border x:Name="ActiveBar" Width="3" HorizontalAlignment="Left" Margin="0,7"
-                                CornerRadius="{StaticResource Radius.Xs}" Background="Transparent" />
+                        <Border x:Name="ActiveBar" Width="0" HorizontalAlignment="Left" Margin="0"
+                                Background="Transparent" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
@@ -129,8 +129,8 @@
         element that actually takes focus is the inner input, not the shell.
     -->
     <Style x:Key="UnitField.Shell" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />

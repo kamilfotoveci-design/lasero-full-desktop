@@ -818,13 +818,6 @@
                     </DockPanel>
                 </Border>
 
-                <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="20,0,0,20"
-                        Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                        BorderThickness="1" CornerRadius="{StaticResource Radius.Sm}" Padding="10,7"
-                        ToolTip="Další zkratky najdete v nabídce Pomoc → Klávesové zkratky">
-                    <TextBlock Text="Kolečko nebo mezerník + tažení: posun   ·   Ctrl + kolečko: přiblížení"
-                               Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
-                </Border>
 
             </Grid>
 
@@ -949,16 +942,20 @@
                             </components:StatusBadge.Style>
                         </components:StatusBadge>
 
-                        <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center"
-                                   Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}" />
-                        <TextBlock Text="{Binding GCode.FileLabel}"
-                                   Foreground="{StaticResource Brush.TextSecondary}"
-                                   MaxWidth="200" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center"
-                                   Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}" />
-                        <TextBlock Text="  ·  " Foreground="{StaticResource Brush.PanelBorder}" VerticalAlignment="Center"
-                                   Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0"
+                                    Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}">
+                            <components:IconGlyph IconData="{StaticResource Glyph.Project}"
+                                                  Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                  Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding GCode.FileLabel}"
+                                       Foreground="{StaticResource Brush.TextSecondary}"
+                                       FontSize="{StaticResource Size.Text.Meta}"
+                                       MaxWidth="200" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center" />
+                        </StackPanel>
                         <TextBlock Text="{Binding GCode.LastMessage}"
+                                   Margin="10,0,0,0"
+                                   FontSize="{StaticResource Size.Text.Meta}"
                                    Foreground="{StaticResource Brush.TextSecondary}"
                                    MaxWidth="260"
                                    TextTrimming="CharacterEllipsis"
