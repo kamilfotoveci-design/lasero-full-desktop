@@ -7,7 +7,7 @@
         <Canvas Width="24" Height="24">
             <Path Data="{Binding IconData, ElementName=Root}"
                   Stroke="{Binding Foreground, ElementName=Root}"
-                  StrokeThickness="1.8"
+                  StrokeThickness="{StaticResource Size.Icon.Stroke}"
                   StrokeStartLineCap="Round"
                   StrokeEndLineCap="Round"
                   StrokeLineJoin="Round"

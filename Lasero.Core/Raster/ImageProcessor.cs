@@ -12,6 +12,7 @@ public sealed record ImageProcessingOptions
 
     /// <summary>Tone-mapping precedence when multiple are set: dithering &gt; threshold &gt; continuous grayscale.</summary>
     public bool UseDithering { get; init; }
+    public DitheringAlgorithm DitheringAlgorithm { get; init; } = DitheringAlgorithm.Stucki;
     public bool UseThreshold { get; init; }
     public byte ThresholdValue { get; init; } = 128;
 }
@@ -46,7 +47,7 @@ public static class ImageProcessor
         }
 
         var power = options.UseDithering
-            ? Dither(tone, width, height)
+            ? Dither(tone, width, height, options.DitheringAlgorithm)
             : ToneMapContinuous(tone, options);
 
         return new ProcessedImage { Width = width, Height = height, PowerFraction = power };
@@ -71,9 +72,7 @@ public static class ImageProcessor
         return power;
     }
 
-    /// <summary>Floyd-Steinberg error diffusion, binarizing darkness (1 - luminance/255) against a 0.5
-    /// threshold. Deterministic — no RNG — so it's a stable, testable transform for a given input.</summary>
-    private static double[] Dither(double[] tone, int width, int height)
+    private static double[] Dither(double[] tone, int width, int height, DitheringAlgorithm algorithm)
     {
         var darkness = new double[tone.Length];
         for (int i = 0; i < tone.Length; i++)
@@ -90,10 +89,28 @@ public static class ImageProcessor
                 power[idx] = burn ? 1.0 : 0.0;
                 var error = old - (burn ? 1.0 : 0.0);
 
-                Diffuse(darkness, width, height, x + 1, y, error * 7.0 / 16.0);
-                Diffuse(darkness, width, height, x - 1, y + 1, error * 3.0 / 16.0);
-                Diffuse(darkness, width, height, x, y + 1, error * 5.0 / 16.0);
-                Diffuse(darkness, width, height, x + 1, y + 1, error * 1.0 / 16.0);
+                if (algorithm == DitheringAlgorithm.Stucki)
+                {
+                    Diffuse(darkness, width, height, x + 1, y, error * 8.0 / 42.0);
+                    Diffuse(darkness, width, height, x + 2, y, error * 4.0 / 42.0);
+                    Diffuse(darkness, width, height, x - 2, y + 1, error * 2.0 / 42.0);
+                    Diffuse(darkness, width, height, x - 1, y + 1, error * 4.0 / 42.0);
+                    Diffuse(darkness, width, height, x, y + 1, error * 8.0 / 42.0);
+                    Diffuse(darkness, width, height, x + 1, y + 1, error * 4.0 / 42.0);
+                    Diffuse(darkness, width, height, x + 2, y + 1, error * 2.0 / 42.0);
+                    Diffuse(darkness, width, height, x - 2, y + 2, error * 1.0 / 42.0);
+                    Diffuse(darkness, width, height, x - 1, y + 2, error * 2.0 / 42.0);
+                    Diffuse(darkness, width, height, x, y + 2, error * 4.0 / 42.0);
+                    Diffuse(darkness, width, height, x + 1, y + 2, error * 2.0 / 42.0);
+                    Diffuse(darkness, width, height, x + 2, y + 2, error * 1.0 / 42.0);
+                }
+                else
+                {
+                    Diffuse(darkness, width, height, x + 1, y, error * 7.0 / 16.0);
+                    Diffuse(darkness, width, height, x - 1, y + 1, error * 3.0 / 16.0);
+                    Diffuse(darkness, width, height, x, y + 1, error * 5.0 / 16.0);
+                    Diffuse(darkness, width, height, x + 1, y + 1, error * 1.0 / 16.0);
+                }
             }
         }
         return power;

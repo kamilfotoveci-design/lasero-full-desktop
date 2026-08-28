@@ -18,33 +18,33 @@
     </shell:WindowChrome.WindowChrome>
 
     <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Effect="{StaticResource Shadow.Panel}">
+            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Effect="{StaticResource Shadow.Modal}">
         <Grid>
             <Grid.RowDefinitions><RowDefinition Height="38" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
             <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="14,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold" />
                     </StackPanel>
                     <Button HorizontalAlignment="Right" Width="32" Height="32" Style="{StaticResource Button.ChromeClose}"
                             Click="OnCancelClick" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Zavřít">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="13" Height="13" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                     </Button>
                 </Grid>
             </Border>
 
             <Grid Grid.Row="1" Margin="22,22,22,20">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="44" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <Border x:Name="IconSurface" Width="36" Height="36" CornerRadius="18" VerticalAlignment="Top"
-                        Background="{StaticResource Brush.AccentMuted}">
-                    <components:IconGlyph x:Name="DialogIcon" IconData="{StaticResource Glyph.Info}" Width="18" Height="18"
+                <Border x:Name="IconSurface" Width="36" Height="36" CornerRadius="{StaticResource Radius.Pill}" VerticalAlignment="Top"
+                        Background="{StaticResource Brush.InfoMuted}">
+                    <components:IconGlyph x:Name="DialogIcon" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                           Foreground="{StaticResource Brush.Info}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                    <TextBlock x:Name="TitleText" FontFamily="{StaticResource Font.Display}" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock x:Name="TitleText" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
                                Foreground="{StaticResource Brush.TextPrimary}" TextWrapping="Wrap" />
-                    <TextBlock x:Name="MessageText" Margin="0,8,0,0" FontSize="13" LineHeight="20"
+                    <TextBlock x:Name="MessageText" Margin="0,8,0,0" FontSize="{StaticResource Size.Text.Body}" LineHeight="20"
                                Foreground="{StaticResource Brush.TextSecondary}" TextWrapping="Wrap" />
                 </StackPanel>
             </Grid>

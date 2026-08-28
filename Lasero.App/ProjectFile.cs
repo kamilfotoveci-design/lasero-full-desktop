@@ -15,7 +15,7 @@ namespace Lasero.App;
 
 public sealed class LaseroProjectFile
 {
-    public int Version { get; set; } = 6;
+    public int Version { get; set; } = 7;
     public string Name { get; set; } = "Nový projekt";
     public List<ProjectObject> Objects { get; set; } = [];
     public List<ProjectLayer> Layers { get; set; } = [];
@@ -69,6 +69,7 @@ public sealed class ProjectLayer
     public double FillLineIntervalMm { get; set; }
     public bool IsEnabled { get; set; } = true;
     public bool IsVisible { get; set; } = true;
+    public bool IsRaster { get; set; }
 }
 
 public static class ProjectFileSerializer

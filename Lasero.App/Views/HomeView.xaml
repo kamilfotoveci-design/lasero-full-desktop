@@ -51,13 +51,13 @@
                         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
                             <Border Width="48" Height="48" CornerRadius="{StaticResource Radius.Lg}"
                                     Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="22" Height="22"
+                                <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
                                                       Foreground="{StaticResource Brush.Accent}" />
                             </Border>
                             <TextBlock Text="Vytvořte první projekt" FontFamily="{StaticResource Font.Display}"
-                                       FontSize="24" FontWeight="SemiBold" Margin="0,18,0,8" />
+                                       FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,18,0,8" />
                             <TextBlock Text="Nemusíte nastavovat všechno najednou. Připravte návrh, vyberte materiál a před spuštěním zkontrolujte jeho umístění."
-                                       Foreground="{StaticResource Brush.TextSecondary}" FontSize="14"
+                                       Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Body}"
                                        TextWrapping="Wrap" MaxWidth="650" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,20,0,24">
@@ -70,11 +70,11 @@
                             </StackPanel>
 
                             <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,0,0,18" />
-                            <TextBlock Text="Jak probíhá první gravírování" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock Text="Jak probíhá první gravírování" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,12" />
 
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource Brush.SelectedSurface}">
+                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}">
                                     <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,16,0">
@@ -87,7 +87,7 @@
                             </Grid>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource Brush.Field}">
+                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.Field}">
                                     <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,16,0">
@@ -100,7 +100,7 @@
                             </Grid>
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource Brush.Field}">
+                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.Field}">
                                     <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,16,0">
@@ -120,8 +120,8 @@
                             <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Project}" Width="18" Height="18" Margin="0,0,9,0" />
-                                    <TextBlock Text="Nedávné projekty" Style="{StaticResource PanelTitle}" FontSize="16" Margin="0" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Project}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" />
+                                    <TextBlock Text="Nedávné projekty" Style="{StaticResource PanelTitle}" Margin="0" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Command="{Binding ShowDesignerCommand}" Content="Otevřít návrh" />
                             </Grid>
@@ -144,15 +144,15 @@
                             Visibility="{Binding Home.HasTodayJobs, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="18" Height="18" Margin="0,0,9,0" />
-                                <TextBlock Text="Dnešní dokončené úlohy" Style="{StaticResource PanelTitle}" FontSize="16" Margin="0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" />
+                                <TextBlock Text="Dnešní dokončené úlohy" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
                             <ItemsControl ItemsSource="{Binding Home.TodayJobs}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="16" Height="16" Foreground="{StaticResource Brush.Success}" />
+                                            <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Success}" />
                                             <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                                 <TextBlock Text="{Binding MaterialName}" Style="{StaticResource Text.Muted}" Visibility="{Binding MaterialName, Converter={StaticResource NotNullToVisibility}}" />
@@ -178,8 +178,8 @@
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="18" Height="18" Margin="0,0,9,0" Foreground="{StaticResource Brush.Accent}" />
-                                <TextBlock Text="Materiál" Style="{StaticResource PanelTitle}" FontSize="16" Margin="0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{StaticResource Brush.Accent}" />
+                                <TextBlock Text="Materiál" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
                             <TextBlock Text="Doporučené parametry vám pomohou začít bezpečně. Před ostrou úlohou je vždy ověřte na odřezku."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />

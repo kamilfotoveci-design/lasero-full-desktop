@@ -177,7 +177,7 @@
         <Style x:Key="TransformUnit" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
         </Style>
 
         <!-- One label + field + unit travels as a single unit. Previously each of the three was a
@@ -198,7 +198,7 @@
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="Padding" Value="10,0" />
             <Setter Property="Margin" Value="3,0" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         </Style>
 
         <Style x:Key="JobPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryAction}">
@@ -352,7 +352,7 @@
                      the same thing on every project and cost 18px of header height to say it. The
                      unsaved-changes dot carries the only state this area actually has. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="15" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                ToolTip="{Binding ProjectName}" />
                     <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Accent}" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -362,13 +362,13 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.UndoCommand}" ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="16" Height="16" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
                     <Button Style="{StaticResource Button.Icon}" Command="{Binding Scene.RedoCommand}" ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="16" Height="16" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
                     <Button Style="{StaticResource Button.Icon}" Command="{Binding SaveProjectCommand}" ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="16" Height="16" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
                     <!-- The preview used to be opened from here as well. One entry point only: it now
                          lives beside Frame and Start, with the job actions it informs. -->
@@ -383,19 +383,19 @@
                     <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="14,0"
                             ToolTip="Otevřít nastavení gravírky — pracovní plocha, osa Z, bezpečnost"
                             AutomationProperties.Name="Nastavení zařízení">
-                        <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" IconSize="16" TextMargin="7,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
                     </Button>
                 </StackPanel>
 
                 <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="MinimizeButton" Style="{StaticResource Button.Chrome}" Click="OnMinimizeClick" AutomationProperties.Name="Minimalizovat">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="14" Height="14" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
                     <Button x:Name="MaximizeButton" Style="{StaticResource Button.Chrome}" Click="OnMaximizeClick" AutomationProperties.Name="Maximalizovat">
-                        <components:IconGlyph x:Name="MaximizeGlyph" IconData="{StaticResource Glyph.Maximize}" Width="13" Height="13" />
+                        <components:IconGlyph x:Name="MaximizeGlyph" IconData="{StaticResource Glyph.Maximize}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                     </Button>
                     <Button x:Name="CloseButton" Style="{StaticResource Button.ChromeClose}" Click="OnCloseClick" AutomationProperties.Name="Zavřít">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="13" Height="13" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -432,19 +432,19 @@
                     <StackPanel Grid.Row="0">
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
-                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="18" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Designer}" Command="{Binding ShowDesignerCommand}"
                                 ToolTip="Pracovní plocha pro přípravu grafiky" AutomationProperties.Name="Návrh">
-                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="18" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton}" Click="OnMaterialsClick"
                                 ToolTip="Materiály a doporučené parametry gravírování" AutomationProperties.Name="Materiály">
-                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="18" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Device}" Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="18" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Chat}" Command="{Binding ShowChatCommand}"
                                  ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
@@ -461,7 +461,7 @@
                         <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="8,8,8,12" />
                         <Button Style="{StaticResource NavButton}" Click="OnSettingsClick"
                                 ToolTip="Předvolby aplikace a pracovní plochy" AutomationProperties.Name="Nastavení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="18" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -519,7 +519,7 @@
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
                                          ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Výběr">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Select}" Text="Výběr" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Select}" Text="Výběr" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <!-- No Pan tool button. Panning is already always available on the middle
                                  mouse button and on space+drag, so a mode you had to switch into (and
@@ -529,27 +529,27 @@
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
                                          ToolTip="Nakreslit obdélník (R)" AutomationProperties.Name="Obdélník">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
                                          ToolTip="Nakreslit elipsu (E)" AutomationProperties.Name="Elipsa">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
                                          ToolTip="Nakreslit čáru (L)" AutomationProperties.Name="Čára">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Line}" Text="Čára" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Line}" Text="Čára" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
                                          ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Text}" Text="Text" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Text}" Text="Text" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </RadioButton>
                             <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,6,0">
                                 <MenuItem Padding="11,9" ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy">
                                     <MenuItem.Header>
-                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Polygon}" Text="Tvary" IconSize="16" TextMargin="6,0,0,0" />
+                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Polygon}" Text="Tvary" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                                     </MenuItem.Header>
                                     <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
                                     <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
@@ -563,7 +563,7 @@
                             <Border Width="1" Height="24" Background="{StaticResource Brush.PanelBorder}" Margin="5,8,10,8" />
                             <Button Height="36" Padding="12,0" Command="{Binding GCode.LoadFileCommand}"
                                     ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
-                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="16" TextMargin="6,0,0,0" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="6,0,0,0" />
                             </Button>
                         </WrapPanel>
                     </DockPanel>
@@ -597,22 +597,22 @@
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.GroupSelectionCommand}"
                                     Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}"
                                     ToolTip="Seskupit výběr · Ctrl+G" AutomationProperties.Name="Seskupit výběr">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UniteSelectionCommand}"
                                     Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}"
                                     ToolTip="Sjednotit uzavřené vektory do jednoho tvaru · Ctrl+Shift+U" AutomationProperties.Name="Sjednotit tvary">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UngroupSelectionCommand}"
                                     Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
                                     ToolTip="Rozdělit skupinu nebo text na části · Ctrl+Shift+G" AutomationProperties.Name="Rozdělit skupinu">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.TraceSelectedRasterCommand}"
                                     Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}"
                                     ToolTip="Převést bitmapu na vektorové obrysy · Alt+T" AutomationProperties.Name="Trasovat bitmapu">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
 
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.ToggleLockCommand}"
@@ -633,7 +633,7 @@
                                         </TextBlock>
                                     </ToolTip>
                                 </Button.ToolTip>
-                                <components:IconGlyph Width="16" Height="16">
+                                <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}">
                                     <components:IconGlyph.Style>
                                         <Style TargetType="components:IconGlyph">
                                             <Setter Property="IconData" Value="{StaticResource Glyph.Unlock}" />
@@ -648,12 +648,12 @@
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DuplicateCommand}"
                                     ToolTip="Duplikovat výběr · Ctrl+D" AutomationProperties.Name="Duplikovat výběr">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DeleteCommand}"
                                     Foreground="{StaticResource Brush.Danger}"
                                     ToolTip="Odstranit výběr · Delete" AutomationProperties.Name="Odstranit výběr">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="16" Height="16" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
 
                             <!-- Overflow. It used to be bare text with no border, background or
@@ -662,7 +662,7 @@
                                 <MenuItem Padding="10,9" ToolTip="Další úpravy: otočení, zrcadlení, pořadí a zarovnání"
                                           AutomationProperties.Name="Další úpravy">
                                     <MenuItem.Header>
-                                        <components:IconGlyph IconData="{StaticResource Glyph.More}" Width="16" Height="16" />
+                                        <components:IconGlyph IconData="{StaticResource Glyph.More}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                     </MenuItem.Header>
                                     <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
                                     <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
@@ -742,7 +742,7 @@
                                               Margin="4,0"
                                               ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
                                               AutomationProperties.Name="Zachovat poměr stran">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="16" Height="16" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                 </ToggleButton>
                                 <TextBlock Text="V" Style="{StaticResource TransformLabel}" ToolTip="Výška" />
                                 <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
@@ -756,7 +756,7 @@
                                 </Border>
                             </StackPanel>
                             <StackPanel Style="{StaticResource TransformGroup}">
-                                <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="15" Height="15"
+                                <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                                       Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"
                                                       ToolTip="Otočení" />
                                 <Border Style="{StaticResource UnitField.Shell}" Width="72" Margin="6,0,0,0"
@@ -778,20 +778,20 @@
                         BorderThickness="1" CornerRadius="{StaticResource Radius.Sm}" Padding="10,7"
                         ToolTip="Další zkratky najdete v nabídce Pomoc → Klávesové zkratky">
                     <TextBlock Text="Kolečko nebo mezerník + tažení: posun   ·   Ctrl + kolečko: přiblížení"
-                               Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" />
+                               Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
                 </Border>
 
                 <Border Grid.Row="2" Panel.ZIndex="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,20"
                         Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="4">
                     <StackPanel Orientation="Horizontal">
                         <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnZoomOutClick" ToolTip="Oddálit" AutomationProperties.Name="Oddálit">
-                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="14" Height="14" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                         </Button>
                         <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnFitToViewClick" ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu" Margin="3,0">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="14" Height="14" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                         </Button>
                         <Button Width="36" Height="36" Padding="9" Style="{StaticResource Button.Icon}" Click="OnZoomInClick" ToolTip="Přiblížit" AutomationProperties.Name="Přiblížit">
-                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomIn}" Width="14" Height="14" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.ZoomIn}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                         </Button>
                     </StackPanel>
                 </Border>
@@ -865,7 +865,7 @@
                     <StackPanel Orientation="Horizontal">
                         <!-- State is told three ways at once: a shape (which glyph), a word, and a
                              semantic colour. Never colour alone. -->
-                        <components:IconGlyph Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" VerticalAlignment="Center" Margin="0,0,8,0">
                             <components:IconGlyph.Style>
                                 <Style TargetType="components:IconGlyph">
                                     <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
@@ -891,7 +891,7 @@
                              reason Start is unavailable, so the fix sits next to the statement of the
                              problem instead of only in a tooltip. -->
                         <Button Style="{StaticResource Button.Ghost}" Command="{Binding ShowDeviceCommand}"
-                                Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="12"
+                                Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
                                 Foreground="{StaticResource Brush.Accent}"
                                 Content="Připojit"
                                 ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
@@ -931,7 +931,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </StackPanel.Resources>
-                            <components:IconGlyph Style="{StaticResource JobFaultIcon}" IconData="{StaticResource Glyph.Warning}" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <components:IconGlyph Style="{StaticResource JobFaultIcon}" IconData="{StaticResource Glyph.Warning}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Margin="0,0,6,0" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" Style="{StaticResource JobStateText}" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -1003,26 +1003,26 @@
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="Zobrazit náhled dráhy a odhadovaný čas úlohy podle zapnutých vrstev"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Clock}" Text="Odhad času" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Clock}" Text="Odhad času" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.FrameActionTooltip}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámování" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámování" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTip="Pozastavit úlohu">
-                        <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTip="Pokračovat v pozastavené úloze">
-                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobActiveStopButton}"
                             Command="{Binding GCode.AbortCommand}"
@@ -1030,7 +1030,7 @@
                             Padding="20,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="Okamžitě zastavit pohyb i laser">
-                        <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobStartActionButton}"
                             Command="{Binding GCode.RunJobCommand}"
@@ -1038,7 +1038,7 @@
                             Padding="26,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.StartActionTooltip}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spustit" IconSize="16" TextMargin="8,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spustit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                 </StackPanel>
             </Grid>

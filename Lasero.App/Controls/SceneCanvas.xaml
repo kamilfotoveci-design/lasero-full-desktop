@@ -6,7 +6,7 @@
              KeyDown="OnCanvasKeyDown"
              KeyUp="OnCanvasKeyUp"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
-    <Border Effect="{StaticResource Shadow.Panel}">
+    <Border Effect="{StaticResource Shadow.Sheet}">
         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions>
@@ -38,23 +38,23 @@
                     <Canvas.ContextMenu>
                         <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                             <MenuItem Header="Vyjmout" Command="{Binding Scene.CutCommand}" InputGestureText="Ctrl+X">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Cut}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Cut}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Kopírovat" Command="{Binding Scene.CopyCommand}" InputGestureText="Ctrl+C">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Copy}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Copy}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Vložit" Command="{Binding Scene.PasteCommand}" InputGestureText="Ctrl+V">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Paste}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Paste}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Duplikovat" Command="{Binding Scene.DuplicateCommand}" InputGestureText="Ctrl+D">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Odstranit" Command="{Binding Scene.DeleteCommand}" InputGestureText="Del">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="15" Height="15" Foreground="{StaticResource Brush.Danger}" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Danger}" /></MenuItem.Icon>
                             </MenuItem>
                             <Separator />
                             <MenuItem Header="Trasovat bitmapu" Command="{Binding Scene.TraceSelectedRasterCommand}" InputGestureText="Alt+T">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <Separator />
                             <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
@@ -66,13 +66,13 @@
                             <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
                             <Separator />
                             <MenuItem Header="Seskupit vybrané" Command="{Binding Scene.GroupSelectionCommand}" InputGestureText="Ctrl+G">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Sjednotit vektor" Command="{Binding Scene.UniteSelectionCommand}" InputGestureText="Ctrl+Shift+U">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Rozdělit skupinu na části" Command="{Binding Scene.UngroupSelectionCommand}" InputGestureText="Ctrl+Shift+G">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="15" Height="15" /></MenuItem.Icon>
+                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Zamknout / odemknout" Command="{Binding Scene.ToggleLockCommand}" />
                             <Separator />

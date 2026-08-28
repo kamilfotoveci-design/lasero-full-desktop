@@ -365,16 +365,42 @@ public class SceneViewModelTests
 
             var layer = Assert.Single(viewModel.Layers);
             Assert.Equal("Bitmapa", layer.Name);
+            Assert.True(layer.IsRaster);
             Assert.Equal(LayerMode.Fill, layer.Mode);
             Assert.Equal(1234, layer.Speed);
             Assert.Equal(42, layer.Power);
             Assert.Equal(2, layer.Passes);
             Assert.Equal(0.1, layer.FillLineIntervalMm, precision: 6);
+            var importedObject = Assert.Single(viewModel.Objects);
+            Assert.True(importedObject.IsRaster);
+            Assert.All(importedObject.LocalShapes, shape => Assert.Equal(layer.Id, shape.LayerId));
         }
         finally
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void DeletingLastBitmapRemovesItsLayerAndUndoRestoresBoth()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        var layer = SceneObjectFactory.CreateRasterLayer(bitmap.RasterOptions!);
+        bitmap.AssignToLayer(layer);
+        viewModel.Layers.Add(layer);
+        viewModel.Objects.Add(bitmap);
+        viewModel.SelectedObjects.Add(bitmap);
+
+        viewModel.DeleteCommand.Execute(null);
+
+        Assert.Empty(viewModel.Objects);
+        Assert.Empty(viewModel.Layers);
+
+        viewModel.UndoCommand.Execute(null);
+
+        Assert.Same(bitmap, Assert.Single(viewModel.Objects));
+        Assert.Same(layer, Assert.Single(viewModel.Layers));
     }
 
     [Fact]

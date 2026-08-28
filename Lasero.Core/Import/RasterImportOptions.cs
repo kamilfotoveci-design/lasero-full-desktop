@@ -27,9 +27,10 @@ public sealed record RasterImportOptions
 
     public bool Invert { get; init; }
 
-    /// <summary>Deterministic Floyd-Steinberg dithering instead of continuous grayscale power. Takes
+    /// <summary>Deterministic error-diffusion dithering instead of continuous grayscale power. Takes
     /// precedence over UseThreshold when both are set.</summary>
-    public bool UseDithering { get; init; }
+    public bool UseDithering { get; init; } = true;
+    public Raster.DitheringAlgorithm DitheringAlgorithm { get; init; } = Raster.DitheringAlgorithm.Stucki;
 
     /// <summary>Null = aspect ratio preserved (height derived from TargetWidthMm and the image's own
     /// pixel aspect). Set explicitly to allow non-uniform scaling.</summary>

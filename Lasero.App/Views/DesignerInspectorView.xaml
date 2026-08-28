@@ -10,6 +10,7 @@
              MinWidth="320">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
@@ -23,11 +24,10 @@
 
         <Style x:Key="InspectorLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="Margin" Value="0,0,0,6" />
-            <Setter Property="FontSize" Value="13" />
         </Style>
         <Style x:Key="InspectorModeSegment" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
             <Setter Property="Height" Value="36" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -50,12 +50,12 @@
                                      IsChecked="True"
                                      Style="{StaticResource InspectorModeSegment}"
                                      GroupName="InspectorTab">
-                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Vrstvy" IconSize="16" TextMargin="7,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Vrstvy" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
                         </RadioButton>
                         <RadioButton x:Name="MachineTabRadio"
                                      Style="{StaticResource InspectorModeSegment}"
                                      GroupName="InspectorTab">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Stroj" IconSize="16" TextMargin="7,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Stroj" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
                         </RadioButton>
                     </UniformGrid>
                 </Border>
@@ -85,7 +85,7 @@
                             <Button Grid.Column="1" Style="{StaticResource Button.Ghost}"
                                     Command="{Binding Scene.AddLayerCommand}" VerticalAlignment="Top" Padding="10,0"
                                     ToolTip="Přidat novou prázdnou vrstvu">
-                                <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nová vrstva" IconSize="14" />
+                                <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nová vrstva" IconSize="{StaticResource Size.Icon.Sm}" />
                             </Button>
                         </Grid>
 
@@ -153,7 +153,7 @@
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding ProcessingSummary}" Style="{StaticResource Text.Muted}"
-                                                       FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                                       FontSize="{StaticResource Size.Text.Meta}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
 
                                         <!--
@@ -182,7 +182,7 @@
                                                         </TextBlock>
                                                     </ToolTip>
                                                 </ToggleButton.ToolTip>
-                                                <components:IconGlyph Width="16" Height="16">
+                                                <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}">
                                                     <components:IconGlyph.Style>
                                                         <Style TargetType="components:IconGlyph">
                                                             <Setter Property="IconData" Value="{StaticResource Glyph.ZapOff}" />
@@ -213,7 +213,7 @@
                                                         </TextBlock>
                                                     </ToolTip>
                                                 </ToggleButton.ToolTip>
-                                                <components:IconGlyph Width="16" Height="16">
+                                                <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}">
                                                     <components:IconGlyph.Style>
                                                         <Style TargetType="components:IconGlyph">
                                                             <Setter Property="IconData" Value="{StaticResource Glyph.EyeOff}" />
@@ -240,12 +240,12 @@
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.MoveSelectedLayerUpCommand}"
                                     ToolTip="Posunout vrstvu výše ve výrobním pořadí"
                                     automation:AutomationProperties.Name="Posunout vrstvu nahoru">
-                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="15" Height="15" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <Button Style="{StaticResource Button.GhostIcon}" Margin="0" Command="{Binding Scene.MoveSelectedLayerDownCommand}"
                                     ToolTip="Posunout vrstvu níže ve výrobním pořadí"
                                     automation:AutomationProperties.Name="Posunout vrstvu dolů">
-                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="15" Height="15" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                         </StackPanel>
 
@@ -268,8 +268,32 @@
                                          automation:AutomationProperties.Name="Název vrstvy" />
                             </Grid>
 
-                            <TextBlock Text="Zpracování" Style="{StaticResource InspectorSectionTitle}" FontSize="14" Margin="0,0,0,8" />
-                            <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding IsEnabled}">
+                            <Border Padding="12,10"
+                                    Margin="0,0,0,16"
+                                    CornerRadius="{StaticResource Radius.Md}"
+                                    Background="{StaticResource Brush.PanelRaised}"
+                                    BorderBrush="{StaticResource Brush.PanelBorder}"
+                                    BorderThickness="1"
+                                    Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Image}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                                          VerticalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock Text="Obrázek" FontWeight="SemiBold" />
+                                        <TextBlock Text="Černobílé gravírování · Stucki"
+                                                   Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="Zpracování" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8"
+                                       Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding IsEnabled}"
+                                    Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
                                 <UniformGrid Columns="3">
                                     <RadioButton Content="Čára"
                                                  GroupName="LayerProcessingMode"
@@ -291,7 +315,8 @@
                                                  automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň a obrys" />
                                 </UniformGrid>
                             </Border>
-                            <TextBlock Margin="0,8,0,18" TextWrapping="Wrap">
+                            <TextBlock Margin="0,8,0,18" TextWrapping="Wrap"
+                                       Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
                                         <Setter Property="Text" Value="Laser pojede po obrysu vektoru." />
@@ -307,7 +332,7 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <TextBlock Text="Nastavení" Style="{StaticResource InspectorSectionTitle}" FontSize="14" Margin="0,0,0,8" />
+                            <TextBlock Text="Nastavení" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8" />
                             <!-- Label left, value right, one row each: the three numbers that decide the
                                  result are scannable as a column instead of three stacked label+field
                                  pairs squeezed side by side. Units live inside the field. -->
@@ -373,9 +398,23 @@
                                         ToolTip="Vybrat ověřené parametry materiálu">
                                     <components:IconLabel IconData="{StaticResource Glyph.Materials}"
                                                           Text="Doporučené parametry"
-                                                          IconSize="15" />
+                                                          IconSize="{StaticResource Size.Icon.Sm}" />
                                 </Button>
-                                <Expander Header="Pokročilé nastavení výplně" Margin="0,10,0,0">
+                                <Expander Margin="0,10,0,0">
+                                    <Expander.Header>
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Pokročilé nastavení výplně" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot}" Value="True">
+                                                            <Setter Property="Text" Value="Nastavení obrázku" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Expander.Header>
                                     <StackPanel Margin="0,10,0,0">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -393,8 +432,18 @@
                                                 </DockPanel>
                                             </Border>
                                         </Grid>
-                                        <TextBlock Text="Menší hodnota vytvoří jemnější výplň, ale prodlouží dobu gravírování."
-                                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                        <TextBlock TextWrapping="Wrap" Margin="0,8,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                                    <Setter Property="Text" Value="Menší hodnota vytvoří jemnější výplň, ale prodlouží dobu gravírování." />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot}" Value="True">
+                                                            <Setter Property="Text" Value="Určuje vzdálenost gravírovaných řádků. Obraz je při importu převeden do černobílého rastru metodou Stucki." />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
@@ -404,7 +453,7 @@
                                     Foreground="{StaticResource Brush.Danger}"
                                     ToolTipService.ShowOnDisabled="True"
                                     ToolTip="Odstranit lze pouze vrstvu, kterou nepoužívá žádný objekt">
-                                <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit vrstvu" IconSize="14" />
+                                <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit vrstvu" IconSize="{StaticResource Size.Icon.Sm}" />
                             </Button>
                         </StackPanel>
 
@@ -421,7 +470,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </StackPanel.Style>
-                            <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="24" Height="24" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
                             <TextBlock Text="Zatím žádné vrstvy"
                                        FontWeight="SemiBold"
                                        TextAlignment="Center"
@@ -431,7 +480,7 @@
                                        TextAlignment="Center"
                                        TextWrapping="Wrap" Margin="0,0,0,14" />
                             <Button Command="{Binding GCode.LoadFileCommand}" Padding="14,0" HorizontalAlignment="Center">
-                                <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat grafiku" IconSize="15" />
+                                <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat grafiku" IconSize="{StaticResource Size.Icon.Sm}" />
                             </Button>
                         </StackPanel>
                     </StackPanel>

@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using Lasero.Core.Import;
+using Lasero.Core.Raster;
 
 namespace Lasero.Tests;
 
@@ -10,6 +11,15 @@ public sealed class RasterImporterTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "lasero-raster-import-tests", Guid.NewGuid().ToString("N"));
 
     public RasterImporterTests() => Directory.CreateDirectory(_directory);
+
+    [Fact]
+    public void DefaultBitmapSettingsUseBlackAndWhiteStuckiDithering()
+    {
+        var options = new RasterImportOptions();
+
+        Assert.True(options.UseDithering);
+        Assert.Equal(DitheringAlgorithm.Stucki, options.DitheringAlgorithm);
+    }
 
     [Fact]
     public void PassesRepeatTheExactToolpathUsedByExecutionAndTimeEstimation()

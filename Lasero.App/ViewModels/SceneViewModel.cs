@@ -73,8 +73,7 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.SelectMany(item => item.LocalShapes).Count() >= 2 &&
         SelectedObjects.SelectMany(item => item.LocalShapes).All(shape => shape.IsClosed && shape.Points.Count >= 3);
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
-    public bool IsSelectedLayerRaster => SelectedLayer is not null &&
-        SelectedLayer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor);
+    public bool IsSelectedLayerRaster => SelectedLayer?.IsRaster == true;
     public bool CanEditSelectedLayerColor => SelectedLayer is not null && !IsSelectedLayerRaster;
     public bool CanAssignSelectionToLayer => HasSelection && SelectedObjects.All(item => !item.IsRaster) &&
         SelectedLayer is not null && !IsSelectedLayerRaster;
@@ -158,6 +157,7 @@ public partial class SceneViewModel : ObservableObject
     }
 
     private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item =>
+        (layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty)) ||
         item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
             ? shape.LayerId == layer.Id
             : shape.LayerColor.IsApproximately(layer.Color)));
@@ -215,8 +215,9 @@ public partial class SceneViewModel : ObservableObject
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void ImportRasterFile(string path, RasterImportOptions options)
     {
-        var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path));
-        PlaceAndAdd(obj, [SceneObjectFactory.CreateRasterLayer(options)]);
+        var layer = SceneObjectFactory.CreateRasterLayer(options);
+        var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path), layer);
+        PlaceAndAdd(obj, [layer]);
     }
 
     [RelayCommand(CanExecute = nameof(CanTraceSelectedRaster))]
@@ -347,6 +348,7 @@ public partial class SceneViewModel : ObservableObject
             FillLineIntervalMm = source.FillLineIntervalMm,
             IsEnabled = source.IsEnabled,
             IsVisible = source.IsVisible,
+            IsRaster = source.IsRaster,
         };
         Layers.Insert(Layers.IndexOf(source) + 1, copy);
         SelectedLayer = copy;
@@ -1064,6 +1066,7 @@ public partial class SceneViewModel : ObservableObject
                 FillLineIntervalMm = layer.FillLineIntervalMm,
                 IsEnabled = layer.IsEnabled,
                 IsVisible = layer.IsVisible,
+                IsRaster = layer.IsRaster,
             }).ToList(),
         };
     }
@@ -1098,6 +1101,7 @@ public partial class SceneViewModel : ObservableObject
                 FillLineIntervalMm = layer.FillLineIntervalMm,
                 IsEnabled = layer.IsEnabled,
                 IsVisible = layer.IsVisible,
+                IsRaster = layer.IsRaster || layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor),
             })
             .ToList();
 

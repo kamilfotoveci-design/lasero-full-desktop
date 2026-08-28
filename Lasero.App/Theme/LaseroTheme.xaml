@@ -26,6 +26,16 @@
     <CornerRadius x:Key="Radius.Sm">6</CornerRadius>
     <CornerRadius x:Key="Radius.Md">8</CornerRadius>
     <CornerRadius x:Key="Radius.Lg">12</CornerRadius>
+    <!--
+        Pill means fully round, and it is the token for circles too: WPF clamps a radius to half the
+        smaller side, so 999 on a 34x34 badge is a circle and on a 38x22 track is a pill. Hardcoding
+        half the box (17, 11, 14) works only until someone resizes the box, and expressing a circle
+        as Radius.Md works only until Md changes.
+
+        Composite radii — a footer rounded on two corners, a chat bubble with one square corner —
+        stay literal. XAML has no arithmetic, so a composite token would restate its scalar anyway.
+    -->
+    <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
 
     <!--
         Neutral graphite + soft white + cobalt blue.
@@ -49,20 +59,18 @@
          FindResource and it was never defined, so building the selection adorner threw
          ResourceReferenceKeyNotFoundException and took the whole app down via the global handler. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentMuted" Color="#EFF6FF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#EFF6FF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#BFDBFE" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.FocusRing" Color="#2563EB" po:Freeze="False" />
 
-    <!-- Primary action is the interaction colour. It used to be near-black, which meant a black
-         "Náhled" in the header and a blue Start at the bottom were two different primary languages. -->
-    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#2563EB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PrimaryActionHover" Color="#1D4ED8" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
+    <!-- Primary action is the interaction colour, so it uses Brush.Accent directly. It used to be
+         near-black, which meant a black "Náhled" in the header and a blue Start at the bottom were
+         two different primary languages. The removed Brush.PrimaryAction, Brush.PrimaryActionHover and
+         Brush.OnPrimaryAction were a second set of names for Accent/AccentHover/OnAccent at identical
+         values, so a reader had no way to tell which of the two sets a control was supposed to use. -->
 
     <!-- Brand. The wordmark's red dot only; not a UI colour. -->
     <SolidColorBrush x:Key="Brush.Brand" Color="#FF0000" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.BrandRed" Color="#FF0000" po:Freeze="False" />
 
     <!-- Surfaces -->
     <SolidColorBrush x:Key="Brush.Background" Color="#F7F7F5" po:Freeze="False" />
@@ -96,14 +104,31 @@
     <SolidColorBrush x:Key="Brush.InfoBorder" Color="#BFDBFE" po:Freeze="False" />
 
     <!-- Component-level neutrals -->
+    <!--
+        Hover and press are one mechanic, not two: an ink wash over whatever the control already is,
+        at 6% for hover and 14% for press (see the Button template). That is why there is no
+        Brush.AccentPressed or Brush.DangerPressed — a per-kind pressed colour would be a second
+        mechanic for the same state, and it would have to be re-derived for every new button kind.
+        The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.
+    -->
     <SolidColorBrush x:Key="Brush.HoverWash" Color="#171918" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E4E5E2" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D2D4D0" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D2D4D0" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A4A8A5" po:Freeze="False" />
 
-    <!-- Soft, diffuse, low-opacity shadow. Exactly one surface in the app carries it (the canvas). -->
-    <DropShadowEffect x:Key="Shadow.Panel" Color="#000000" Opacity="0.32" BlurRadius="34" ShadowDepth="6" Direction="270" />
+    <!--
+        Elevation ladder. Docked panels get a border, never a shadow — the canvas stays the focus.
+        A single Shadow.Panel at opacity 0.32 / blur 34 used to serve all four jobs below, which made
+        a dropdown as heavy as a modal and put a 34px blur under the canvas sheet.
+
+        Sheet is paper on a desk, not a floating surface. Tooltip barely lifts. Dropdown is light.
+        Modal is the only real one.
+    -->
+    <DropShadowEffect x:Key="Shadow.Sheet" Color="#171918" Opacity="0.10" BlurRadius="6" ShadowDepth="1" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Tooltip" Color="#171918" Opacity="0.14" BlurRadius="12" ShadowDepth="2" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#171918" Opacity="0.16" BlurRadius="18" ShadowDepth="4" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Modal" Color="#171918" Opacity="0.22" BlurRadius="48" ShadowDepth="14" Direction="270" />
 
     <!-- Motion language: short and ease-out, no bounce or overshoot (DESIGN.md). An overshoot curve
          on press-release reads as playful, which is wrong for a machine-control workbench. -->
@@ -116,6 +141,36 @@
     <!-- Control heights. Three sizes only: Compact for dense toolbars and inline editors, Base for
          ordinary buttons/inputs, Large for a screen's primary action. Before these existed the app
          used 32/34/36/38/40/42/44 more or less interchangeably, which is why nothing lined up. -->
+    <!--
+        Type sizes. These exist because every view was picking its own literal FontSize: 12 for most
+        body text, then 15/17/21/22/24/26/27 scattered across headings. Four steps cover the whole
+        product, and nothing renders below Meta.
+    -->
+    <system:Double x:Key="Size.Text.Title">22</system:Double>
+    <system:Double x:Key="Size.Text.Section">15</system:Double>
+    <system:Double x:Key="Size.Text.Body">13</system:Double>
+    <system:Double x:Key="Size.Text.Meta">12</system:Double>
+
+    <!--
+        Icon sizes. Five steps, each with a job. Before these existed the app rendered icons at 10,
+        12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25, 28 and 30 across 112 sites, and Glyph.Close alone
+        appeared at four different sizes in the same dismiss role.
+
+        Chrome  window buttons and dismiss glyphs — the one place below Sm, by platform convention
+        Sm      inside compact controls and the status bar
+        Md      toolbars and the navigation rail
+        Lg      window and panel header identity, machine state
+        Xl      empty-state and onboarding art
+    -->
+    <system:Double x:Key="Size.Icon.Chrome">12</system:Double>
+    <system:Double x:Key="Size.Icon.Sm">16</system:Double>
+    <system:Double x:Key="Size.Icon.Md">18</system:Double>
+    <system:Double x:Key="Size.Icon.Lg">20</system:Double>
+    <system:Double x:Key="Size.Icon.Xl">24</system:Double>
+    <!-- The exported SVG assets in docs/design/icons-custom all carry stroke-width 1.75. The renderer
+         said 1.8, so the shipped icons and the design assets were never quite the same weight. -->
+    <system:Double x:Key="Size.Icon.Stroke">1.75</system:Double>
+
     <system:Double x:Key="Size.Control.Compact">32</system:Double>
     <system:Double x:Key="Size.Control.Base">36</system:Double>
     <system:Double x:Key="Size.Control.Large">44</system:Double>
@@ -147,7 +202,7 @@
         <Setter Property="Background" Value="{StaticResource Brush.Background}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
@@ -158,23 +213,24 @@
 
     <Style x:Key="Text.Muted" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
     </Style>
 
     <!-- Barely-there text for things like a layer's ordinal, where the value should be available
          but must not compete with the name beside it. -->
     <Style x:Key="Text.Faint" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
     </Style>
 
     <Style x:Key="Text.Heading" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <!-- Was 11px: a section heading that renders smaller than the body text under it reads as a
-             caption, not a heading, and flattens the panel hierarchy. -->
-        <Setter Property="FontSize" Value="12" />
+        <!-- Was 11px, then 12px: a section heading that renders smaller than the body text under it
+             reads as a caption, not a heading, and flattens the panel hierarchy. Body is 13, so 12
+             was still losing that contest. -->
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
 
@@ -198,7 +254,7 @@
         ThumbnailCard) converge on this same flat philosophy rather than carrying their own shadow.
     -->
     <Style x:Key="Badge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -221,7 +277,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="16,10" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -308,9 +364,9 @@
          exactly one shadow (the canvas). A permanent red glow under every primary button contradicted
          that rule and read as generic AI-glow styling rather than restrained Windows 11 chrome. -->
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{StaticResource Brush.PrimaryAction}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryAction}" />
-        <Setter Property="Foreground" Value="{StaticResource Brush.OnPrimaryAction}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
@@ -412,7 +468,7 @@
     </Style>
 
     <Style x:Key="Button.JogCenter" TargetType="Button" BasedOn="{StaticResource Button.Jog}">
-        <Setter Property="Background" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
     </Style>
 
@@ -431,7 +487,7 @@
     </Style>
 
     <Style x:Key="Button.DangerSolid" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Foreground" Value="{StaticResource Brush.OnPrimaryAction}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
         <Setter Property="Background" Value="{StaticResource Brush.Danger}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
@@ -480,7 +536,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Danger}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.OnPrimaryAction}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DangerMuted}" />
@@ -516,11 +572,11 @@
                             ThumbSlide only carries the transition: it animates from an offset back to
                             0, so its resting value is always 0 and never fights the alignment Setter.
                         -->
-                        <Border x:Name="Track" Width="38" Height="22" CornerRadius="11"
+                        <Border x:Name="Track" Width="38" Height="22" CornerRadius="{StaticResource Radius.Pill}"
                                 Background="{StaticResource Brush.ToggleTrackOff}"
                                 BorderBrush="{StaticResource Brush.ToggleTrackOffBorder}" BorderThickness="1"
                                 VerticalAlignment="Center">
-                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="{StaticResource Radius.Md}" Background="#FFFFFF" HorizontalAlignment="Left" Margin="2,0,0,0">
+                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="{StaticResource Radius.Pill}" Background="#FFFFFF" HorizontalAlignment="Left" Margin="2,0,0,0">
                                 <Border.RenderTransform>
                                     <TranslateTransform x:Name="ThumbSlide" X="0" />
                                 </Border.RenderTransform>
@@ -586,7 +642,7 @@
     <Style x:Key="Segment" TargetType="RadioButton">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="12,5" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="Template">
@@ -627,7 +683,6 @@
          padding is what pushes the labels into a clip. -->
     <Style x:Key="Segment.Compact" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
         <Setter Property="Padding" Value="4,5" />
-        <Setter Property="FontSize" Value="13" />
     </Style>
 
     <Style x:Key="SegmentedTrack" TargetType="Border">
@@ -648,7 +703,7 @@
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -673,7 +728,7 @@
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource Brush.AccentMuted}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
         <Setter Property="PasswordChar" Value="●" />
         <Setter Property="Template">
             <Setter.Value>
@@ -741,7 +796,7 @@
                         </ToggleButton>
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <Popup x:Name="Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Panel}">
+                            <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Dropdown}">
                                 <ScrollViewer Margin="4">
                                     <ItemsPresenter />
                                 </ScrollViewer>
@@ -772,8 +827,14 @@
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <!-- IsHighlighted is the item the pointer or arrow key is over, not the answer.
+                             It used to wear the cobalt selection tint, so hovering a dropdown looked
+                             exactly like having picked something. Hover is a neutral wash. -->
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AccentMuted}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Field}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -790,7 +851,7 @@
     <Style TargetType="Menu">
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
     </Style>
 
     <Style TargetType="Separator">
@@ -812,7 +873,7 @@
                         </Border>
                         <Popup x:Name="Popup" Placement="Bottom" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                                AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="4" Effect="{StaticResource Shadow.Panel}" MinWidth="180">
+                            <Border Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="4" Effect="{StaticResource Shadow.Dropdown}" MinWidth="180">
                                 <StackPanel IsItemsHost="True" />
                             </Border>
                         </Popup>
@@ -918,7 +979,7 @@
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.AccentMuted}" />
+                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">

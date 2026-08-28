@@ -25,9 +25,10 @@ public sealed partial class LayerSettings : ObservableObject
 
     [ObservableProperty] private bool _isEnabled = true;
     [ObservableProperty] private bool _isVisible = true;
+    [ObservableProperty] private bool _isRaster;
 
     public string ColorHex => Color.ToHex();
-    public string ModeLabel => Mode switch
+    public string ModeLabel => IsRaster ? "Obrázek" : Mode switch
     {
         LayerMode.Cut => "Čára",
         LayerMode.Fill => "Výplň",
@@ -55,6 +56,12 @@ public sealed partial class LayerSettings : ObservableObject
     }
 
     partial void OnModeChanged(LayerMode value)
+    {
+        OnPropertyChanged(nameof(ModeLabel));
+        OnPropertyChanged(nameof(ProcessingSummary));
+    }
+
+    partial void OnIsRasterChanged(bool value)
     {
         OnPropertyChanged(nameof(ModeLabel));
         OnPropertyChanged(nameof(ProcessingSummary));

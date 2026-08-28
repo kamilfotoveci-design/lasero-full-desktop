@@ -24,7 +24,7 @@
                 <StackPanel>
                     <TextBlock Text="První projekt ve 3 krocích"
                                FontFamily="{StaticResource Font.Display}"
-                               FontSize="26" FontWeight="SemiBold" />
+                               FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                     <TextBlock Text="Lasero vás provede od připojení stroje až po bezpečné spuštění."
                                Style="{StaticResource Text.Muted}" Margin="0,7,0,0" />
                 </StackPanel>
@@ -49,10 +49,10 @@
 
             <Border Grid.Column="0" Style="{StaticResource Card}">
                 <StackPanel>
-                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                    <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
                     </Border>
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připojte gravírku" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vyberete port, Lasero rozpozná GRBL a načte pracovní plochu. Pro zkoušení lze použít virtuální stroj."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
@@ -61,10 +61,10 @@
 
             <Border Grid.Column="2" Style="{StaticResource Card}">
                 <StackPanel>
-                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                    <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
                     </Border>
-                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Vyberte materiál" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vzorník doporučí bezpečné výchozí hodnoty výkonu a rychlosti. Před ostrou prací je ověříte na odřezu."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
@@ -73,10 +73,10 @@
 
             <Border Grid.Column="4" Style="{StaticResource Card}">
                 <StackPanel>
-                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                    <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
                         <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
                     </Border>
-                    <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="24" Height="24" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připravte návrh" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vytvoříte nebo importujete grafiku, zkontrolujete oblast a před spuštěním uvidíte náhled celé práce."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
@@ -88,7 +88,7 @@
                     Padding="14,12" Margin="0,18,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="18" Height="18" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
                     <TextBlock Grid.Column="1" Text="Rámování před spuštěním ověří, že se návrh vejde na materiál. Lasero ho nabídne vždy před první úlohou."
                                TextWrapping="Wrap" Foreground="{StaticResource Brush.TextPrimary}" />
                 </Grid>

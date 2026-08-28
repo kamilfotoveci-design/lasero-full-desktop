@@ -47,13 +47,14 @@ public static class SceneObjectFactory
         Passes = options.Passes,
         FillLineIntervalMm = options.LineIntervalMm,
         IsEnabled = true,
+        IsRaster = true,
     };
 
     /// <summary>Wraps a raster (PNG/JPG/BMP) import into a SceneObject. Its LocalShapes is just a
     /// rectangle outline for canvas display and resize handles — the actual engraving G-code is produced
     /// by RasterImporter directly from the file (see GCodeViewModel.RegenerateFromScene), not from this outline.</summary>
     [SupportedOSPlatform("windows")]
-    public static SceneObject FromRaster(string filePath, RasterImportOptions options, string name)
+    public static SceneObject FromRaster(string filePath, RasterImportOptions options, string name, Layers.LayerSettings layer)
     {
         var (widthMm, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, options.TargetWidthMm);
         var bounds = new BoundingBox2D(0, 0, widthMm, heightMm);
@@ -70,7 +71,8 @@ public static class SceneObjectFactory
                 new Position(0, 0, 0),
             ],
             IsClosed = true,
-            LayerColor = RasterPlaceholderColor,
+            LayerId = layer.Id,
+            LayerColor = layer.Color,
             PreferredMode = Layers.LayerMode.Cut,
         };
 

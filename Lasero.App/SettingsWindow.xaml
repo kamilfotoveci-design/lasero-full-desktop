@@ -17,11 +17,11 @@
         <Border Visibility="Collapsed" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="14,22">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="10,0,0,26">
-                    <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                 </StackPanel>
                 <TextBlock Text="NASTAVENÍ" Style="{StaticResource Text.Heading}" Margin="10,0,0,8" />
-                <Border Background="{StaticResource Brush.AccentMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,9" Margin="0,0,0,5">
-                    <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="18" Height="18" Foreground="{StaticResource Brush.Info}" Margin="0,0,10,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
+                <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,9" Margin="0,0,0,5">
+                    <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Foreground="{StaticResource Brush.Info}" Margin="0,0,10,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
                 </Border>
                 <TextBlock Text="Připojení stroje a pohyb os najdete v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="10,14,10,0" />
                 <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="10,18,10,18" />
@@ -32,8 +32,8 @@
         <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="36,28,36,18">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="25" Height="25" Margin="0,1,12,0" Foreground="{StaticResource Brush.Accent}" />
-                    <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="27" FontWeight="SemiBold" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" Foreground="{StaticResource Brush.Accent}" />
+                    <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                 </StackPanel>
                 <TextBlock Text="Upravte výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení."
                            Style="{StaticResource Text.Muted}" Margin="37,0,0,24" />
@@ -199,7 +199,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <TextBlock x:Name="SettingsErrorText" Foreground="{StaticResource Brush.Danger}" VerticalAlignment="Center" Margin="0,0,16,0" TextWrapping="Wrap" />
                 <Button IsDefault="True" Style="{StaticResource PrimaryBlue}" Click="OnCloseClick" Padding="18,0">
-                    <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Uložit a zavřít" Foreground="{StaticResource Brush.OnPrimaryAction}" />
+                    <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Uložit a zavřít" Foreground="{StaticResource Brush.OnAccent}" />
                 </Button>
             </StackPanel>
         </Border>

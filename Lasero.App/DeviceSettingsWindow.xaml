@@ -70,9 +70,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="21" Height="21" Margin="0,0,11,0" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,0,11,0" />
                     <StackPanel>
-                        <TextBlock Text="Nastavení zařízení" FontFamily="{StaticResource Font.Display}" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Nastavení zařízení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ViewModel.Connection.ActiveMachineName}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
                     </StackPanel>
                 </StackPanel>
@@ -94,16 +94,16 @@
                     Padding="14,20">
                 <StackPanel>
                     <RadioButton x:Name="WorkspaceTab" IsChecked="True" Style="{StaticResource DeviceSettingsNav}" GroupName="DeviceSettingsTab">
-                        <components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Rozměry a profil" IconSize="18" TextMargin="10,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Rozměry a profil" IconSize="{StaticResource Size.Icon.Md}" TextMargin="10,0,0,0" />
                     </RadioButton>
                     <RadioButton x:Name="MotionTab" Style="{StaticResource DeviceSettingsNav}" GroupName="DeviceSettingsTab">
-                        <components:IconLabel IconData="{StaticResource Glyph.ArrowRight}" Text="Pohyb os" IconSize="18" TextMargin="10,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.ArrowRight}" Text="Pohyb os" IconSize="{StaticResource Size.Icon.Md}" TextMargin="10,0,0,0" />
                     </RadioButton>
                     <RadioButton x:Name="ConnectionTab" Style="{StaticResource DeviceSettingsNav}" GroupName="DeviceSettingsTab">
-                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojení GRBL" IconSize="18" TextMargin="10,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojení GRBL" IconSize="{StaticResource Size.Icon.Md}" TextMargin="10,0,0,0" />
                     </RadioButton>
                     <RadioButton x:Name="SafetyTab" Style="{StaticResource DeviceSettingsNav}" GroupName="DeviceSettingsTab">
-                        <components:IconLabel IconData="{StaticResource Glyph.Warning}" Text="Bezpečnost" IconSize="18" TextMargin="10,0,0,0" />
+                        <components:IconLabel IconData="{StaticResource Glyph.Warning}" Text="Bezpečnost" IconSize="{StaticResource Size.Icon.Md}" TextMargin="10,0,0,0" />
                     </RadioButton>
                 </StackPanel>
             </Border>
@@ -112,7 +112,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding IsChecked, ElementName=WorkspaceTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="28,24">
-                        <TextBlock Text="Rozměry a profil" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="Rozměry a profil" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Pracovní plocha se po připojení načte z GRBL parametrů $130 a $131. Hodnoty zde můžete opravit a uložit jako výchozí."
                                    Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left" Margin="0,5,0,20" />
 
@@ -168,7 +168,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding IsChecked, ElementName=MotionTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="28,24">
-                        <TextBlock Text="Pohyb os" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="Pohyb os" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Výchozí vzdálenosti a rychlosti pro ruční ovládání stroje."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
@@ -214,7 +214,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding IsChecked, ElementName=ConnectionTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="28,24">
-                        <TextBlock Text="Připojení GRBL" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="Připojení GRBL" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Komunikační parametry se použijí při příštím připojení zařízení."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
@@ -231,7 +231,7 @@
                                                     Style="{StaticResource Button.Icon}"
                                                     Command="{Binding ViewModel.Connection.RefreshPortsCommand}"
                                                     ToolTip="Znovu vyhledat zařízení">
-                                                <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="15" Height="15" />
+                                                <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                             </Button>
                                         </Grid>
                                     </StackPanel>
@@ -271,7 +271,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding IsChecked, ElementName=SafetyTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="28,24">
-                        <TextBlock Text="Bezpečnost" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="Bezpečnost" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Kontroly, které pomáhají zabránit nechtěnému pohybu nebo spuštění laseru."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
@@ -294,7 +294,7 @@
                                 Padding="14">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="18" Height="18" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="Bezpečný výstup G-code" FontWeight="SemiBold" />
                                     <TextBlock Text="LASERO generuje milimetry (G21), absolutní souřadnice (G90) a dynamický výkon laseru (M4). Pokročilé příkazy zůstávají v GRBL konzoli."

@@ -54,6 +54,7 @@ public static class RasterImporter
         Contrast = options.Contrast,
         Invert = options.Invert,
         UseDithering = options.UseDithering,
+        DitheringAlgorithm = options.DitheringAlgorithm,
         UseThreshold = options.UseThreshold,
         ThresholdValue = options.ThresholdValue,
     };

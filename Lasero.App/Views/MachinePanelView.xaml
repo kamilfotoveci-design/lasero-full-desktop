@@ -18,16 +18,16 @@
 
         <Style x:Key="MachineSectionTitle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
-            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style x:Key="MachineFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="Margin" Value="0,0,0,6" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
         </Style>
         <Style x:Key="TelemetryValue" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,2,0,0" />
         </Style>
@@ -64,7 +64,7 @@
                 <Button HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Button.Icon}"
                         Width="24" Height="24" Padding="5" Command="{Binding MachineStatus.DismissAlertCommand}"
                         ToolTip="Zavřít upozornění">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="12" Height="12" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                 </Button>
             </Grid>
         </Border>
@@ -88,7 +88,7 @@
                         <Button Height="36" MinHeight="36" Padding="12,0" Command="{Binding Connection.ConnectCommand}"
                                 Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
                                 ToolTip="Připojit vybrané zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" IconSize="14" TextMargin="5,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="5,0,0,0" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -134,7 +134,7 @@
                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Margin="8,0,0,0"
                                     Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Znovu vyhledat porty"
                                     AutomationProperties.Name="Znovu vyhledat porty">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="15" Height="15" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                             </Button>
                             <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}"
                                       ToolTip="{Binding Connection.SelectedPort}" />
@@ -149,7 +149,7 @@
                                  children with infinite width, so TextWrapping never engaged and the
                                  sentence was simply cut off at the panel edge. -->
                             <DockPanel>
-                                <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
+                                <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                                       Foreground="{StaticResource Brush.Accent}" Margin="0,1,8,0" VerticalAlignment="Top" />
                                 <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
@@ -201,18 +201,18 @@
                     <Grid HorizontalAlignment="Center" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="14" /><ColumnDefinition Width="50" /></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="50" /><RowDefinition Height="50" /><RowDefinition Height="50" /></Grid.RowDefinitions>
-                        <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Y plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="X minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="X plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Y minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYNegCommand}" ToolTip="Vpravo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownRight}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Y plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="X minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="X plus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Y minus"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYNegCommand}" ToolTip="Vpravo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <TextBlock Grid.Row="0" Grid.Column="4" Text="Z" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
-                        <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="16" Height="16" /></Button>
-                        <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="16" Height="16" /></Button>
+                        <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                     </Grid>
                     <Grid Margin="0,0,0,9">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -235,7 +235,7 @@
                     <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,10,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </StackPanel>
@@ -251,11 +251,11 @@
                             MaxWidth="250"
                             Visibility="{Binding GCode.HasJobContent, Converter={StaticResource InverseBoolToVisibility}}">
                     <components:IconGlyph IconData="{StaticResource Glyph.Open}"
-                                          Width="28" Height="28"
+                                          Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                           HorizontalAlignment="Center"
                                           Foreground="{StaticResource Brush.TextSecondary}" />
                     <TextBlock Text="Vyberte návrh k výrobě"
-                               FontSize="15"
+                               FontSize="{StaticResource Size.Text.Section}"
                                FontWeight="SemiBold"
                                TextAlignment="Center"
                                Margin="0,12,0,5" />
@@ -363,7 +363,7 @@
                 <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Konzola GRBL" Style="{StaticResource MachineSectionTitle}" /><TextBlock Grid.Column="1" Text="Pokročilé" Style="{StaticResource Text.Muted}" /></Grid>
                 <Border Grid.Row="1" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}">
                     <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto" Padding="8">
-                        <ItemsControl ItemsSource="{Binding Console.Lines}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="12" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Console.Lines}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                     </ScrollViewer>
                 </Border>
                 <Grid Grid.Row="2" Margin="0,8,0,0">

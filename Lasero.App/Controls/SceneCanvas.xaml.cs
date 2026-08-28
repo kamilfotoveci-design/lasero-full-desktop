@@ -398,11 +398,11 @@ public partial class SceneCanvas : UserControl
         for (var i = 0; i < paths.Count && i < shapes.Count; i++)
         {
             paths[i].Data = BuildGeometry(shapes[i]);
-            var layerColor = obj.IsRaster ? SceneObjectFactory.RasterEngravingColor : shapes[i].LayerColor;
+            var layerColor = shapes[i].LayerColor;
             var color = Color.FromRgb(layerColor.R, layerColor.G, layerColor.B);
             paths[i].Stroke = new SolidColorBrush(color);
             paths[i].StrokeThickness = 1.4;
-            var layerId = obj.IsRaster ? Guid.Empty : shapes[i].LayerId;
+            var layerId = shapes[i].LayerId;
             paths[i].Fill = shapes[i].IsClosed && ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut
                 ? new SolidColorBrush(color)
                 : null;
@@ -417,7 +417,7 @@ public partial class SceneCanvas : UserControl
     {
         if (!obj.IsVisible) return false;
         if (obj.IsRaster)
-            return ViewModel?.IsLayerVisible(SceneObjectFactory.RasterEngravingColor) ?? true;
+            return obj.LocalShapes.Any(shape => ViewModel?.IsLayerVisible(shape.LayerId, shape.LayerColor) ?? true);
         return obj.LocalShapes.Any(shape => ViewModel?.IsLayerVisible(shape.LayerId, shape.LayerColor) ?? true);
     }
 
@@ -940,9 +940,7 @@ public partial class SceneCanvas : UserControl
             _scale,
             (obj, shape) => obj.IsRaster ||
                 ViewModel.LayerModeFor(shape.LayerId, shape.LayerColor) is LayerMode.Fill or LayerMode.FillAndCut,
-            (obj, shape) => obj.IsVisible && (obj.IsRaster
-                ? ViewModel.IsLayerVisible(SceneObjectFactory.RasterEngravingColor)
-                : ViewModel.IsLayerVisible(shape.LayerId, shape.LayerColor)));
+            (obj, shape) => obj.IsVisible && ViewModel.IsLayerVisible(shape.LayerId, shape.LayerColor));
     }
 
     private void OnDrawCanvasPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)

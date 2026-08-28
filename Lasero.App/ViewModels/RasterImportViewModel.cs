@@ -38,7 +38,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _maxPower;
     [ObservableProperty] private double _dpi;
     [ObservableProperty] private int _passes = 1;
-    [ObservableProperty] private RasterToneMode _toneMode = RasterToneMode.Grayscale;
+    [ObservableProperty] private RasterToneMode _toneMode = RasterToneMode.Dither;
     [ObservableProperty] private double _thresholdValue = 128;
     [ObservableProperty] private bool _invert;
     [ObservableProperty] private double _brightness;
@@ -76,7 +76,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         _feedRatePerMinute = feedRatePerMinute;
         _maxPower = maxPower;
         _dpi = dpi;
-        _toneMode = useThreshold ? RasterToneMode.Threshold : RasterToneMode.Grayscale;
+        _toneMode = useThreshold ? RasterToneMode.Threshold : RasterToneMode.Dither;
         _thresholdValue = thresholdValue;
 
         var (_, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, targetWidthMm);
@@ -97,6 +97,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         UseThreshold = ToneMode == RasterToneMode.Threshold,
         ThresholdValue = (byte)Math.Clamp(ThresholdValue, 0, 255),
         UseDithering = ToneMode == RasterToneMode.Dither,
+        DitheringAlgorithm = DitheringAlgorithm.Stucki,
         Brightness = Brightness,
         Contrast = Contrast,
         Invert = Invert,

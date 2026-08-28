@@ -1,0 +1,979 @@
+<title>Lasero Precision Workbench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
+
+<style>
+/* ============================================================
+   Two colour worlds on one page.
+
+   --c-*  document chassis. Graphite, IBM Plex. Never appears in the product.
+   --l-*  Lasero product tokens. Exact values, named exactly as the Figma
+          variables and carrying their WPF Brush key in the markup.
+
+   Single theme on purpose: a specimen sheet for a light-only Windows
+   application has to render the product's surfaces identically whatever the
+   viewer's OS is set to, or the specimen lies about the product.
+   ============================================================ */
+:root {
+  --c-ground: #0E1113;
+  --c-raised: #171B1E;
+  --c-sunk: #0A0D0E;
+  --c-rule: #262C30;
+  --c-rule-soft: #1C2124;
+  --c-ink: #E6EAEC;
+  --c-ink-2: #A8B2B8;
+  --c-ink-3: #6E787E;
+  --c-accent: #2563EB;
+  --c-accent-soft: #1B3A78;
+
+  /* Lasero — Primitives */
+  --l-gray-0: #FFFFFF;   --l-gray-25: #F7F7F5;  --l-gray-50: #F3F4F2;
+  --l-gray-100: #EDEEEB; --l-gray-150: #E4E5E2; --l-gray-200: #D2D4D0;
+  --l-gray-300: #A4A8A5; --l-gray-400: #929793; --l-gray-500: #666B68;
+  --l-gray-900: #171918;
+  --l-blue-50: #EFF6FF;  --l-blue-200: #BFDBFE; --l-blue-500: #2563EB;
+  --l-blue-600: #1D4ED8; --l-blue-700: #1E40AF;
+  --l-green-50: #F0FDF4; --l-green-600: #15803D;
+  --l-amber-50: #FFFBEB; --l-amber-600: #D97706;
+  --l-red-50: #FEF2F2;   --l-red-200: #FECACA;  --l-red-600: #DC2626;
+  --l-red-700: #B91C1C;  --l-red-800: #991B1B;  --l-brand-red: #FF0000;
+
+  /* Lasero — semantic */
+  --l-bg-app: var(--l-gray-25);
+  --l-bg-workspace: var(--l-gray-100);
+  --l-bg-canvas: var(--l-gray-0);
+  --l-surface: var(--l-gray-0);
+  --l-surface-subtle: var(--l-gray-50);
+  --l-border: var(--l-gray-150);
+  --l-border-strong: var(--l-gray-200);
+  --l-text-primary: var(--l-gray-900);
+  --l-text-secondary: var(--l-gray-500);
+  --l-text-muted: var(--l-gray-400);
+  --l-text-on-primary: var(--l-gray-0);
+  --l-primary: var(--l-blue-500);
+  --l-primary-hover: var(--l-blue-600);
+  --l-primary-pressed: var(--l-blue-700);
+  --l-selected-bg: var(--l-blue-50);
+  --l-selected-border: var(--l-blue-200);
+  --l-focus: var(--l-blue-500);
+  --l-success: var(--l-green-600);
+  --l-success-bg: var(--l-green-50);
+  --l-warning: var(--l-amber-600);
+  --l-warning-bg: var(--l-amber-50);
+  --l-error: var(--l-red-600);
+  --l-error-bg: var(--l-red-50);
+  --l-error-border: var(--l-red-200);
+  --l-destructive: var(--l-red-600);
+  --l-destructive-hover: var(--l-red-700);
+  --l-destructive-pressed: var(--l-red-800);
+  --l-disabled-surface: #F1F2F0;
+  --l-disabled-text: var(--l-gray-300);
+
+  /* Lasero — geometry */
+  --l-r-xs: 4px; --l-r-sm: 6px; --l-r-md: 8px; --l-r-lg: 12px; --l-r-pill: 999px;
+  --l-wash-hover: linear-gradient(rgba(23,25,24,.06), rgba(23,25,24,.06));
+  --l-wash-press: linear-gradient(rgba(23,25,24,.14), rgba(23,25,24,.14));
+  --l-s4: 4px; --l-s8: 8px; --l-s12: 12px; --l-s16: 16px; --l-s24: 24px; --l-s32: 32px;
+
+  /* Lasero — elevation */
+  --l-elev-tooltip: 0 2px 8px rgba(23,25,24,.12);
+  --l-elev-dropdown: 0 4px 12px rgba(23,25,24,.10), 0 1px 2px rgba(23,25,24,.06);
+  --l-elev-modal: 0 16px 40px rgba(23,25,24,.16), 0 2px 6px rgba(23,25,24,.08);
+
+  --font-doc: "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+  --font-product: Inter, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--c-ground);
+  color: var(--c-ink);
+  font-family: var(--font-doc);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- document shell ---------- */
+.shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 0; max-width: 1480px; margin: 0 auto; }
+
+.index { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 40px 24px 40px 32px; border-right: 1px solid var(--c-rule); }
+.index-mark { display: flex; align-items: baseline; gap: 5px; margin-bottom: 4px; }
+.index-mark b { font-family: var(--font-product); font-weight: 600; font-size: 19px; letter-spacing: 1.6px; }
+.index-mark i { width: 5px; height: 5px; border-radius: 50%; background: var(--l-brand-red); display: block; }
+.index-sub { font-family: var(--font-data); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-ink-3); margin-bottom: 28px; }
+.index nav { display: flex; flex-direction: column; gap: 1px; }
+.index a { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px 5px 10px; border-radius: 5px; color: var(--c-ink-2); text-decoration: none; font-size: 13.5px; border-left: 2px solid transparent; }
+.index a:hover { background: var(--c-raised); color: var(--c-ink); }
+.index a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 1px; }
+.index a em { font-family: var(--font-data); font-size: 10.5px; color: var(--c-ink-3); font-style: normal; }
+.index .grp { font-family: var(--font-data); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); margin: 22px 0 6px 10px; }
+
+main { padding: 40px 48px 120px; min-width: 0; }
+
+.masthead { border-bottom: 1px solid var(--c-rule); padding-bottom: 32px; margin-bottom: 8px; }
+.masthead h1 { font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; margin: 0 0 14px; text-wrap: balance; max-width: 20ch; }
+.masthead p { margin: 0; max-width: 68ch; color: var(--c-ink-2); }
+.masthead p + p { margin-top: 12px; }
+.note { margin-top: 24px; border-left: 2px solid var(--c-accent); background: var(--c-raised); padding: 14px 18px; border-radius: 0 6px 6px 0; }
+.note p { font-size: 14px; max-width: 78ch; }
+.note b { color: var(--c-ink); font-weight: 600; }
+
+section { padding-top: 56px; }
+.head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--c-rule); padding-bottom: 12px; margin-bottom: 24px; }
+.head h2 { font-size: 25px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
+.head .tag { font-family: var(--font-data); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-ink-3); border: 1px solid var(--c-rule); padding: 2px 7px; border-radius: 3px; }
+.lede { color: var(--c-ink-2); max-width: 74ch; margin: -8px 0 24px; font-size: 14.5px; }
+.lede code, p code, li code { font-family: var(--font-data); font-size: .87em; color: var(--c-ink); background: var(--c-raised); padding: 1px 5px; border-radius: 3px; }
+h3.sub { font-family: var(--font-data); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); margin: 36px 0 14px; font-weight: 500; }
+h3.sub:first-of-type { margin-top: 0; }
+
+/* the lit panel: every product specimen sits in one */
+.stage { background: var(--l-bg-app); border: 1px solid var(--c-rule); border-radius: 10px; padding: 28px; overflow-x: auto; }
+.stage.flush { padding: 0; }
+.stage.plain { background: var(--l-surface); }
+.p { font-family: var(--font-product); color: var(--l-text-primary); }
+
+/* ---------- colour ---------- */
+.tokens { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tokens th { text-align: left; font-family: var(--font-data); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); font-weight: 500; padding: 0 14px 8px 0; border-bottom: 1px solid var(--c-rule); }
+.tokens td { padding: 7px 14px 7px 0; border-bottom: 1px solid var(--c-rule-soft); vertical-align: middle; }
+.tokens tr:last-child td { border-bottom: 0; }
+.tokens .sw { width: 56px; }
+.tokens .sw i { display: block; width: 52px; height: 26px; border-radius: var(--l-r-sm); border: 1px solid var(--l-border); }
+.tokens .nm { font-family: var(--font-data); font-size: 12px; color: var(--c-ink); white-space: nowrap; }
+.tokens .hex { font-family: var(--font-data); font-size: 12px; color: var(--c-ink-3); white-space: nowrap; }
+.tokens .wpf { font-family: var(--font-data); font-size: 11.5px; color: var(--c-accent); white-space: nowrap; }
+.tokens .use { color: var(--c-ink-2); font-size: 13px; }
+.grpname td { padding-top: 22px; }
+.grpname b { font-family: var(--font-data); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink); font-weight: 600; }
+
+/* ---------- type ramp ---------- */
+.ramp { display: grid; gap: 0; }
+.ramp-row { display: grid; grid-template-columns: 190px 108px 1fr; gap: 24px; align-items: baseline; padding: 13px 0; border-bottom: 1px solid var(--l-border); }
+.ramp-row:last-child { border-bottom: 0; }
+.ramp-name { font-family: var(--font-data); font-size: 11.5px; color: var(--l-text-secondary); }
+.ramp-spec { font-family: var(--font-data); font-size: 11.5px; color: var(--l-text-muted); }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ---------- spacing / radius ---------- */
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 40px 62px 1fr; gap: 16px; align-items: center; }
+.bar-row i { display: block; height: 22px; background: var(--l-primary); border-radius: 2px; }
+.radii { display: flex; gap: 16px; flex-wrap: wrap; }
+.radii figure { margin: 0; width: 132px; }
+.radii .box { height: 58px; background: var(--l-surface-subtle); border: 1px solid var(--l-border-strong); }
+.radii figcaption { font-family: var(--font-product); margin-top: 8px; text-align: center; }
+.elevs { display: flex; gap: 20px; flex-wrap: wrap; }
+.elevs .card { width: 190px; height: 92px; background: var(--l-surface); border-radius: var(--l-r-lg); display: grid; place-items: center; font-family: var(--font-product); font-size: 12px; color: var(--l-text-secondary); }
+
+/* ---------- icons ---------- */
+.iconwall { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.iconwall figure { margin: 0; background: var(--l-surface); border: 1px solid var(--l-border); border-radius: var(--l-r-sm); padding: 12px 4px 9px; display: grid; justify-items: center; gap: 7px; }
+.iconwall figcaption { font-family: var(--font-data); font-size: 10px; color: var(--l-text-muted); text-align: center; word-break: break-word; line-height: 1.35; }
+.iconwall.custom figure { background: var(--l-selected-bg); border-color: var(--l-selected-border); }
+.iconwall.custom figcaption { color: var(--l-text-secondary); }
+svg.ic { display: block; color: var(--l-text-primary); flex: none; }
+.sizerow { display: flex; align-items: flex-end; gap: 28px; }
+.sizerow figure { margin: 0; display: grid; justify-items: center; gap: 8px; }
+.sizerow figcaption { font-family: var(--font-data); font-size: 11px; color: var(--l-text-muted); }
+
+/* ============================================================
+   PRODUCT COMPONENTS — exact specimen CSS
+   ============================================================ */
+.btn { font-family: var(--font-product); font-size: 13px; font-weight: 500; line-height: 16px;
+  height: 36px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
+  border-radius: var(--l-r-md); border: 1px solid transparent; background: none; cursor: default; white-space: nowrap; }
+.btn svg { color: currentColor; }
+
+.btn.primary { background: var(--l-primary); color: var(--l-text-on-primary); }
+.btn.primary.hover { background-image: var(--l-wash-hover); }
+.btn.primary.press { background-image: var(--l-wash-press); }
+.btn.primary.focus { background: var(--l-primary); box-shadow: 0 0 0 2px var(--l-surface), 0 0 0 4px var(--l-focus); }
+
+.btn.secondary { background: var(--l-surface); color: var(--l-text-primary); border-color: var(--l-border-strong); }
+.btn.secondary.hover { background-image: var(--l-wash-hover); }
+.btn.secondary.press { background-image: var(--l-wash-press); }
+.btn.secondary.focus { border-color: var(--l-focus); border-width: 2px; padding: 0 13px; }
+
+.btn.ghost { background: transparent; color: var(--l-text-secondary); }
+.btn.ghost.hover { background-image: var(--l-wash-hover); color: var(--l-text-primary); }
+.btn.ghost.press { background-image: var(--l-wash-press); color: var(--l-text-primary); }
+.btn.ghost.focus { border-color: var(--l-focus); border-width: 2px; padding: 0 13px; }
+
+.btn.destructive { background: var(--l-destructive); color: var(--l-text-on-primary); }
+.btn.destructive.hover { background-image: var(--l-wash-hover); }
+.btn.destructive.press { background-image: var(--l-wash-press); }
+.btn.destructive.focus { background: var(--l-destructive); box-shadow: 0 0 0 2px var(--l-surface), 0 0 0 4px var(--l-focus); }
+
+.btn.disabled { background: var(--l-disabled-surface) !important; color: var(--l-disabled-text) !important; border-color: transparent !important; box-shadow: none !important; }
+.btn.ghost.disabled { background: transparent !important; }
+.btn.loading svg { opacity: .65; }
+.btn.large { height: 44px; padding: 0 18px; font-size: 13px; }
+
+.ibtn { width: 32px; height: 32px; border-radius: var(--l-r-sm); border: 1px solid transparent; background: transparent;
+  display: inline-grid; place-items: center; color: var(--l-text-secondary); cursor: default; }
+.ibtn.hover { background-image: var(--l-wash-hover); color: var(--l-text-primary); }
+.ibtn.press { background-image: var(--l-wash-press); color: var(--l-text-primary); }
+.ibtn.selected { background: var(--l-selected-bg); border-color: var(--l-primary); color: var(--l-primary); }
+.ibtn.focus { border-color: var(--l-focus); border-width: 2px; }
+.ibtn.disabled { color: var(--l-disabled-text); background: transparent; }
+
+.field { font-family: var(--font-product); font-size: 13px; line-height: 18px; color: var(--l-text-primary);
+  height: 36px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--l-surface); border: 1px solid var(--l-border-strong); border-radius: var(--l-r-md); min-width: 0; }
+.field.subtle { background: var(--l-surface-subtle); }
+.field.focus { border-color: var(--l-focus); border-width: 2px; padding: 0 9px; }
+.field.error { border-color: var(--l-error); background: var(--l-error-bg); }
+.field.disabled { background: var(--l-disabled-surface); border-color: var(--l-border); color: var(--l-disabled-text); }
+.field .ph { color: var(--l-text-muted); }
+.field .val { font-weight: 500; font-variant-numeric: tabular-nums; }
+.field .unit { color: var(--l-text-muted); font-size: 12px; margin-left: auto; padding-left: 8px; flex: none; }
+.field .lead { color: var(--l-text-muted); flex: none; display: grid; }
+.field.compact { height: 32px; }
+.stepper { display: grid; margin: -1px -10px -1px 0; border-left: 1px solid var(--l-border); align-self: stretch; flex: none; }
+.stepper button { all: unset; width: 24px; display: grid; place-items: center; color: var(--l-text-muted); cursor: default; }
+.stepper button:first-child { border-bottom: 1px solid var(--l-border); }
+.stepper button:hover { background: var(--l-surface-subtle); color: var(--l-text-primary); }
+
+.cbx { font-family: var(--font-product); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; color: var(--l-text-primary); }
+.cbx i { width: 18px; height: 18px; border-radius: var(--l-r-sm); border: 1px solid var(--l-border-strong); background: var(--l-surface); display: grid; place-items: center; flex: none; color: var(--l-text-on-primary); }
+.cbx.on i { background: var(--l-primary); border-color: var(--l-primary); }
+.cbx.focus i { box-shadow: 0 0 0 2px var(--l-surface), 0 0 0 4px var(--l-focus); }
+.cbx.disabled { color: var(--l-disabled-text); }
+.cbx.disabled i { background: var(--l-disabled-surface); border-color: var(--l-border); }
+
+.tgl { width: 40px; height: 22px; border-radius: var(--l-r-pill); background: var(--l-border); border: 1px solid var(--l-border-strong); position: relative; flex: none; display: block; }
+.tgl::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--l-surface); box-shadow: 0 1px 2px rgba(23,25,24,.2); }
+.tgl.on { background: var(--l-primary); border-color: var(--l-primary); }
+.tgl.on::after { left: 20px; }
+.tgl.disabled { background: var(--l-disabled-surface); border-color: var(--l-border); }
+.tgl.focus { box-shadow: 0 0 0 2px var(--l-surface), 0 0 0 4px var(--l-focus); }
+
+.seg { display: inline-flex; background: var(--l-surface-subtle); border: 1px solid var(--l-border); border-radius: var(--l-r-md); padding: 2px; gap: 2px; }
+.seg button { all: unset; font-family: var(--font-product); font-size: 13px; font-weight: 500; line-height: 16px;
+  height: 30px; padding: 0 12px; border-radius: var(--l-r-sm); display: inline-flex; align-items: center; gap: 6px;
+  color: var(--l-text-secondary); cursor: default; }
+.seg button.on { background: var(--l-primary); color: var(--l-text-on-primary); }
+.seg button.hov { background-image: var(--l-wash-hover); color: var(--l-text-primary); }
+.seg button.dis { color: var(--l-disabled-text); }
+
+.tool { width: 34px; height: 34px; border-radius: var(--l-r-sm); border: 1px solid transparent; background: transparent;
+  display: inline-grid; place-items: center; color: var(--l-text-secondary); }
+.tool.hover { background-image: var(--l-wash-hover); color: var(--l-text-primary); }
+.tool.selected { background: var(--l-selected-bg); border-color: var(--l-primary); color: var(--l-primary); }
+.tool.disabled { color: var(--l-disabled-text); }
+
+.panelhead { font-family: var(--font-product); display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px;
+  border-bottom: 1px solid var(--l-border); background: var(--l-surface); }
+.panelhead b { font-size: 13px; font-weight: 600; line-height: 18px; }
+.panelhead .sp { margin-left: auto; }
+
+.inspector { font-family: var(--font-product); background: var(--l-surface); border-left: 1px solid var(--l-border); width: 336px; flex: none; }
+.isec { padding: 16px 12px; border-bottom: 1px solid var(--l-border); display: grid; gap: 12px; }
+.isec > h4 { font-size: 13px; font-weight: 600; line-height: 18px; margin: 0; }
+
+.layer { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 4px; border-radius: var(--l-r-sm); }
+.layer .grip { color: var(--l-text-muted); display: grid; }
+.layer .chip { width: 18px; height: 18px; border-radius: var(--l-r-sm); flex: none; }
+.layer .body { min-width: 0; flex: 1; }
+.layer .nm { font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layer .meta { font-size: 12px; line-height: 16px; color: var(--l-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layer.hover { background-image: var(--l-wash-hover); }
+.layer.selected { background: var(--l-selected-bg); box-shadow: inset 0 0 0 1px var(--l-selected-border); }
+.layer .eye { color: var(--l-text-muted); display: grid; }
+.layer.off .nm, .layer.off .meta { color: var(--l-text-muted); }
+
+.prow { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: center; }
+.prow > label { font-family: var(--font-product); font-size: 12px; font-weight: 500; line-height: 16px; color: var(--l-text-secondary); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.mstat { font-family: var(--font-product); font-size: 12px; font-weight: 500; line-height: 16px;
+  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px 0 8px; border-radius: var(--l-r-pill); }
+.mstat i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.mstat.ready { background: var(--l-success-bg); color: var(--l-success); }
+.mstat.ready i { background: var(--l-success); }
+.mstat.run { background: var(--l-selected-bg); color: var(--l-primary); }
+.mstat.run i { background: var(--l-primary); }
+.mstat.pause { background: var(--l-warning-bg); color: var(--l-warning); }
+.mstat.pause i { background: var(--l-warning); }
+.mstat.alarm { background: var(--l-error-bg); color: var(--l-error); }
+.mstat.alarm i { background: var(--l-error); }
+.mstat.off { background: var(--l-surface-subtle); color: var(--l-text-muted); }
+.mstat.off i { background: var(--l-gray-300); }
+
+.sitem { font-family: var(--font-product); font-size: 12px; line-height: 16px; color: var(--l-text-secondary);
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--l-r-sm); }
+.sitem b { font-weight: 500; color: var(--l-text-primary); font-variant-numeric: tabular-nums; }
+.sitem .sq { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.sitem.hover { background-image: var(--l-wash-hover); }
+
+/* overlays */
+.ov { font-family: var(--font-product); background: var(--l-surface); border: 1px solid var(--l-border); }
+.modal { width: 420px; border-radius: var(--l-r-lg); box-shadow: var(--l-elev-modal); overflow: hidden; }
+.modal .mh { padding: 20px 24px 0; }
+.modal .mh h4 { font-size: 15px; font-weight: 600; line-height: 20px; margin: 0 0 8px; }
+.modal .mh p { font-size: 13px; line-height: 18px; color: var(--l-text-secondary); margin: 0; }
+.modal .mf { display: flex; justify-content: flex-end; gap: 8px; padding: 24px; }
+.menu { width: 224px; border-radius: var(--l-r-lg); box-shadow: var(--l-elev-dropdown); padding: 4px; }
+.menu button { all: unset; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  height: 32px; padding: 0 8px; border-radius: var(--l-r-sm); font-size: 13px; line-height: 18px; color: var(--l-text-primary); cursor: default; }
+.menu button .k { margin-left: auto; font-size: 12px; color: var(--l-text-muted); font-variant-numeric: tabular-nums; }
+.menu button svg { color: var(--l-text-secondary); }
+.menu button.hov { background-image: var(--l-wash-hover); }
+.menu button.on { background: var(--l-selected-bg); color: var(--l-primary); }
+.menu button.on svg { color: var(--l-primary); }
+.menu button.dis { color: var(--l-disabled-text); }
+.menu button.dis svg { color: var(--l-disabled-text); }
+.menu button.danger { color: var(--l-destructive); }
+.menu button.danger svg { color: var(--l-destructive); }
+.menu hr { border: 0; border-top: 1px solid var(--l-border); margin: 4px 0; }
+.pop { width: 268px; border-radius: var(--l-r-lg); box-shadow: var(--l-elev-dropdown); padding: 16px; display: grid; gap: 12px; }
+.pop h5 { font-size: 13px; font-weight: 600; line-height: 18px; margin: 0; }
+.pop p { font-size: 12px; line-height: 16px; color: var(--l-text-secondary); margin: 0; }
+.tip { font-family: var(--font-product); background: var(--l-gray-900); color: var(--l-gray-0); font-size: 12px; line-height: 16px;
+  padding: 6px 9px; border-radius: var(--l-r-sm); box-shadow: var(--l-elev-tooltip); display: inline-block; }
+.tip .k { color: var(--l-gray-300); margin-left: 6px; }
+.toast { font-family: var(--font-product); width: 348px; background: var(--l-surface); border: 1px solid var(--l-border);
+  border-radius: var(--l-r-lg); box-shadow: var(--l-elev-dropdown); padding: 12px 12px 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
+.toast .tb { flex: 1; min-width: 0; }
+.toast b { display: block; font-size: 13px; font-weight: 500; line-height: 18px; }
+.toast p { margin: 2px 0 0; font-size: 12px; line-height: 16px; color: var(--l-text-secondary); }
+.toast.ok { border-left: 3px solid var(--l-success); }
+.toast.warn { border-left: 3px solid var(--l-warning); }
+.toast.err { border-left: 3px solid var(--l-error); }
+
+.ovgrid { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+
+/* ---------- reference chrome, true pixel sizes ---------- */
+.ref { font-family: var(--font-product); background: var(--l-bg-app); border: 1px solid var(--l-border); border-radius: 10px; overflow: hidden; min-width: 1080px; }
+.titlebar { height: 60px; background: var(--l-surface); border-bottom: 1px solid var(--l-border); display: flex; align-items: center; gap: 12px; padding: 0 12px; }
+.wordmark { display: flex; align-items: baseline; gap: 4px; padding-right: 4px; }
+.wordmark b { font-size: 15px; font-weight: 600; letter-spacing: 1.4px; }
+.wordmark i { width: 4px; height: 4px; border-radius: 50%; background: var(--l-brand-red); display: block; }
+.toolbar { height: 46px; background: var(--l-surface); border-bottom: 1px solid var(--l-border); display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.tsep { width: 1px; height: 22px; background: var(--l-border); margin: 0 6px; flex: none; }
+.statusbar { height: 56px; background: var(--l-surface); border-top: 1px solid var(--l-border); display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+.canvas { background: var(--l-bg-workspace); flex: 1; min-width: 0; display: grid; place-items: center; padding: 24px; }
+.sheet { background: var(--l-bg-canvas); border: 1px solid var(--l-border); box-shadow: 0 1px 3px rgba(23,25,24,.06); width: 100%; max-width: 460px; aspect-ratio: 4 / 3; position: relative; }
+.sheet .obj { position: absolute; left: 18%; top: 22%; width: 44%; height: 40%; border: 1.5px solid var(--l-primary); background: var(--l-blue-50); }
+.sheet .obj::before, .sheet .obj::after { content: ""; position: absolute; width: 7px; height: 7px; background: var(--l-surface); border: 1.5px solid var(--l-primary); }
+.sheet .obj::before { left: -4px; top: -4px; }
+.sheet .obj::after { right: -4px; bottom: -4px; }
+.rail { width: 164px; flex: none; background: var(--l-surface); border-right: 1px solid var(--l-border); padding: 8px; display: grid; gap: 2px; align-content: start; }
+.navitem { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--l-r-md); font-size: 13px; font-weight: 500; line-height: 18px; color: var(--l-text-secondary); }
+.navitem svg { color: currentColor; }
+.navitem.on { background: var(--l-selected-bg); color: var(--l-primary); }
+.navitem.hov { background: var(--l-surface-subtle); color: var(--l-text-primary); }
+.editor { display: flex; align-items: stretch; min-height: 428px; }
+
+.dim { position: relative; }
+.dimlabel { font-family: var(--font-data); font-size: 10.5px; color: var(--c-ink-3); letter-spacing: .04em; display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+.dimlabel::before { content: ""; height: 1px; width: 22px; background: var(--c-rule); flex: none; }
+
+.splash { width: 560px; height: 320px; background: var(--l-bg-app); border: 1px solid var(--l-border); border-radius: var(--l-r-lg);
+  display: grid; place-content: center; justify-items: center; gap: var(--l-s32); box-shadow: var(--l-elev-modal); }
+.splash .wm { display: flex; align-items: baseline; gap: 8px; }
+.splash .wm b { font-family: var(--font-product); font-size: 34px; font-weight: 600; letter-spacing: 3px; color: var(--l-text-primary); }
+.splash .wm i { width: 8px; height: 8px; border-radius: 50%; background: var(--l-brand-red); display: block; }
+.splash .track { width: 148px; height: 2px; background: var(--l-border); border-radius: 2px; overflow: hidden; }
+.splash .track span { display: block; height: 100%; width: 38%; background: var(--l-primary); border-radius: 2px; animation: slide 1.5s ease-in-out infinite; }
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(363%); } }
+.splash .cap { font-family: var(--font-product); font-size: 12px; line-height: 16px; color: var(--l-text-muted); }
+
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.row.tight { gap: 8px; }
+.col { display: grid; gap: 12px; }
+.statelab { font-family: var(--font-data); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--l-text-muted); }
+.mtx { display: grid; grid-template-columns: 100px repeat(6, minmax(120px, 1fr)); gap: 10px; align-items: center; min-width: 880px; }
+.mtx .kind { font-family: var(--font-data); font-size: 11px; color: var(--l-text-secondary); }
+.mtx6 { grid-template-columns: 100px repeat(7, minmax(56px, 1fr)); min-width: 620px; }
+
+.rules { display: grid; gap: 10px; margin-top: 20px; padding-left: 0; list-style: none; }
+.rules li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 14px; color: var(--c-ink-2); max-width: 82ch; }
+.rules li b { color: var(--c-ink); font-weight: 600; }
+.rules li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c-accent); margin-top: 9px; }
+
+.gaps { margin-top: 8px; }
+.gaps table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.gaps th { text-align: left; font-family: var(--font-data); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); font-weight: 500; padding: 0 16px 8px 0; border-bottom: 1px solid var(--c-rule); }
+.gaps td { padding: 9px 16px 9px 0; border-bottom: 1px solid var(--c-rule-soft); color: var(--c-ink-2); vertical-align: top; }
+.gaps td:first-child { font-family: var(--font-data); font-size: 11.5px; color: var(--c-ink); white-space: nowrap; }
+.gaps tr:last-child td { border-bottom: 0; }
+.gaps td.closed { color: var(--c-ink-3); }
+.gaps td.withdrawn { color: var(--c-ink-3); }
+.gaps td.withdrawn::before { content: "withdrawn"; display: inline-block; font-family: var(--font-data); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-ink-2); border: 1px solid var(--c-rule); padding: 0 5px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; }
+.gaps td.closed::before { content: "closed"; display: inline-block; font-family: var(--font-data); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-ground); background: var(--c-accent); padding: 1px 5px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (max-width: 1100px) {
+  .shell { grid-template-columns: 1fr; }
+  .index { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--c-rule); padding: 28px 24px; }
+  .index nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  main { padding: 32px 24px 90px; }
+  .masthead h1 { font-size: 30px; }
+}
+</style>
+
+<div class="shell">
+  <aside class="index">
+    <div class="index-mark"><b>LASERO</b><i></i></div>
+    <div class="index-sub">Design foundation</div>
+    <nav>
+      <div class="grp">Foundations</div>
+      <a href="#color">Color <em>31</em></a>
+      <a href="#type">Type <em>10</em></a>
+      <a href="#geometry">Spacing &amp; radius <em>10</em></a>
+      <a href="#elevation">Elevation <em>3</em></a>
+      <a href="#icons">Icons <em>64</em></a>
+      <div class="grp">Components</div>
+      <a href="#buttons">Buttons</a>
+      <a href="#inputs">Inputs</a>
+      <a href="#selection">Selection</a>
+      <a href="#editor">Editor</a>
+      <a href="#overlays">Overlays</a>
+      <div class="grp">Reference</div>
+      <a href="#ref-toolbar">Top toolbar</a>
+      <a href="#ref-inspector">Right inspector</a>
+      <a href="#ref-machine">Machine actions</a>
+      <a href="#ref-status">Bottom status bar</a>
+      <a href="#ref-splash">Startup</a>
+      <div class="grp">Handoff</div>
+      <a href="#gaps">Code deltas</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="masthead">
+      <h1>The foundation before the rewrite</h1>
+      <p>Lasero is a Windows desktop application for designing and running laser engraving and cutting jobs on GRBL machines. This page is the visual and component foundation for it: one interaction colour, one geometry language, one icon family, every state drawn before any of it is implemented.</p>
+      <p>Specimens are rendered at the product's real values and real pixel sizes, so they can be measured rather than approximated. The page around them is deliberately a different world — graphite, IBM Plex, monospaced dimensions — so there is never a question about which pixels are the product.</p>
+      <div class="note">
+        <p><b>Nothing here changes machine behaviour.</b> Start, Pause, Stop, Frame, Home, Origin, Jog, Reset and Unlock appear only as visual states. Their semantics, the serial layer, firmware commands and machine coordinates are untouched, and a control rendering correctly is never a reason to enable it.</p>
+      </div>
+    </header>
+
+    <!-- ================= COLOR ================= -->
+    <section id="color">
+      <div class="head"><h2>Color</h2><span class="tag">31 tokens · 1 accent</span></div>
+      <p class="lede">Cobalt carries selection, keyboard focus, the active tool, active navigation and ordinary primary actions. Those are the same idea, so they are the same colour. Everything else earns its colour by meaning. Lasero red is the wordmark dot and nothing else.</p>
+      <div class="stage">
+        <table class="tokens">
+          <thead><tr><th class="sw"></th><th>Token</th><th>Value</th><th>WPF key</th><th>Use</th></tr></thead>
+          <tbody id="color-rows"><tr class="grpname"><td colspan="5"><b>Surfaces</b></td></tr><tr><td class="sw"><i style="background:#F7F7F5"></i></td><td class="nm">color/bg/app</td><td class="hex">#F7F7F5</td><td class="wpf">Brush.Background</td><td class="use">window ground behind panels</td></tr><tr><td class="sw"><i style="background:#EDEEEB"></i></td><td class="nm">color/bg/workspace</td><td class="hex">#EDEEEB</td><td class="wpf">—</td><td class="use">the field the canvas sheet sits on</td></tr><tr><td class="sw"><i style="background:#FFFFFF"></i></td><td class="nm">color/bg/canvas</td><td class="hex">#FFFFFF</td><td class="wpf">—</td><td class="use">the work sheet itself</td></tr><tr><td class="sw"><i style="background:#FFFFFF"></i></td><td class="nm">color/surface</td><td class="hex">#FFFFFF</td><td class="wpf">Brush.Panel</td><td class="use">panels, rail, title bar, status bar</td></tr><tr><td class="sw"><i style="background:#FFFFFF"></i></td><td class="nm">color/surface/elevated</td><td class="hex">#FFFFFF</td><td class="wpf">Brush.Panel</td><td class="use">dialogs and popovers — the shadow does the lifting</td></tr><tr><td class="sw"><i style="background:#F3F4F2"></i></td><td class="nm">color/surface/subtle</td><td class="hex">#F3F4F2</td><td class="wpf">Brush.Field</td><td class="use">fields, raised rows, inactive segment</td></tr><tr class="grpname"><td colspan="5"><b>Lines and text</b></td></tr><tr><td class="sw"><i style="background:#E4E5E2"></i></td><td class="nm">color/border</td><td class="hex">#E4E5E2</td><td class="wpf">Brush.PanelBorder</td><td class="use">the default 1px separation</td></tr><tr><td class="sw"><i style="background:#D2D4D0"></i></td><td class="nm">color/border/strong</td><td class="hex">#D2D4D0</td><td class="wpf">Brush.PanelBorderStrong</td><td class="use">field outline, resize grip</td></tr><tr><td class="sw"><i style="background:#171918"></i></td><td class="nm">color/text/primary</td><td class="hex">#171918</td><td class="wpf">Brush.TextPrimary</td><td class="use">labels, values, headings</td></tr><tr><td class="sw"><i style="background:#666B68"></i></td><td class="nm">color/text/secondary</td><td class="hex">#666B68</td><td class="wpf">Brush.TextSecondary</td><td class="use">supporting copy, inactive nav</td></tr><tr><td class="sw"><i style="background:#929793"></i></td><td class="nm">color/text/muted</td><td class="hex">#929793</td><td class="wpf">Brush.TextMuted</td><td class="use">metadata, units, placeholder</td></tr><tr><td class="sw"><i style="background:#FFFFFF"></i></td><td class="nm">color/text/on-primary</td><td class="hex">#FFFFFF</td><td class="wpf">Brush.OnAccent</td><td class="use">label on a filled accent</td></tr><tr class="grpname"><td colspan="5"><b>Interaction — cobalt, and nothing else</b></td></tr><tr><td class="sw"><i style="background:#2563EB"></i></td><td class="nm">color/primary</td><td class="hex">#2563EB</td><td class="wpf">Brush.Accent</td><td class="use">selection · focus · active tool · primary action</td></tr><tr><td class="sw"><i style="background:#1D4ED8"></i></td><td class="nm">color/primary/hover</td><td class="hex">#1D4ED8</td><td class="wpf">Brush.AccentHover</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#1E40AF"></i></td><td class="nm">color/primary/pressed</td><td class="hex">#1E40AF</td><td class="wpf">—</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#EFF6FF"></i></td><td class="nm">color/selected/bg</td><td class="hex">#EFF6FF</td><td class="wpf">Brush.SelectedSurface</td><td class="use">tinted, not filled — hover never looks like this</td></tr><tr><td class="sw"><i style="background:#BFDBFE"></i></td><td class="nm">color/selected/border</td><td class="hex">#BFDBFE</td><td class="wpf">Brush.SelectedBorder</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#2563EB"></i></td><td class="nm">color/focus</td><td class="hex">#2563EB</td><td class="wpf">Brush.FocusRing</td><td class="use">2px ring, always visible</td></tr><tr class="grpname"><td colspan="5"><b>Semantic — earn their colour</b></td></tr><tr><td class="sw"><i style="background:#15803D"></i></td><td class="nm">color/success</td><td class="hex">#15803D</td><td class="wpf">Brush.Success</td><td class="use">machine idle and homed</td></tr><tr><td class="sw"><i style="background:#F0FDF4"></i></td><td class="nm">color/success/bg</td><td class="hex">#F0FDF4</td><td class="wpf">Brush.SuccessMuted</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#D97706"></i></td><td class="nm">color/warning</td><td class="hex">#D97706</td><td class="wpf">Brush.Warning</td><td class="use">preflight caution</td></tr><tr><td class="sw"><i style="background:#FFFBEB"></i></td><td class="nm">color/warning/bg</td><td class="hex">#FFFBEB</td><td class="wpf">Brush.WarningMuted</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#DC2626"></i></td><td class="nm">color/error</td><td class="hex">#DC2626</td><td class="wpf">Brush.Danger</td><td class="use">GRBL alarm, failed job</td></tr><tr><td class="sw"><i style="background:#FEF2F2"></i></td><td class="nm">color/error/bg</td><td class="hex">#FEF2F2</td><td class="wpf">Brush.DangerMuted</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#FECACA"></i></td><td class="nm">color/error/border</td><td class="hex">#FECACA</td><td class="wpf">Brush.DangerBorder</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#DC2626"></i></td><td class="nm">color/destructive</td><td class="hex">#DC2626</td><td class="wpf">Brush.Danger</td><td class="use">always with an explicit label</td></tr><tr><td class="sw"><i style="background:#B91C1C"></i></td><td class="nm">color/destructive/hover</td><td class="hex">#B91C1C</td><td class="wpf">—</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#991B1B"></i></td><td class="nm">color/destructive/pressed</td><td class="hex">#991B1B</td><td class="wpf">—</td><td class="use">added; hover was doing both jobs</td></tr><tr><td class="sw"><i style="background:#F1F2F0"></i></td><td class="nm">color/disabled/surface</td><td class="hex">#F1F2F0</td><td class="wpf">Brush.DisabledSurface</td><td class="use"></td></tr><tr><td class="sw"><i style="background:#A4A8A5"></i></td><td class="nm">color/disabled/text</td><td class="hex">#A4A8A5</td><td class="wpf">Brush.TextDisabled</td><td class="use">still legible — 3:1 against surface</td></tr><tr><td class="sw"><i style="background:#FF0000"></i></td><td class="nm">color/brand/dot</td><td class="hex">#FF0000</td><td class="wpf">Brush.Brand</td><td class="use">the wordmark dot. Never ambient decoration.</td></tr></tbody>
+        </table>
+      </div>
+      <ul class="rules">
+        <li><b>Hover and selected must never look alike.</b> Hover is a neutral wash with no border change. Selected is a cobalt tint plus a cobalt border. A control that adopts the selected tint on hover is a bug, not a shortcut.</li>
+        <li><b>Green means ready.</b> Not "enabled", not "fine", not decoration. The machine is idle and homed, or it is not green.</li>
+        <li><b>Disabled stays legible.</b> Text at <code>#A4A8A5</code> on <code>#F1F2F0</code> holds 3:1. A control nobody can read is a control nobody can diagnose.</li>
+      </ul>
+    </section>
+
+    <!-- ================= TYPE ================= -->
+    <section id="type">
+      <div class="head"><h2>Type</h2><span class="tag">Inter · bundled · 10 styles</span></div>
+      <p class="lede">Inter ships inside the application as a <code>&lt;Resource&gt;</code>. It is not a Windows font, so a family-name reference alone falls back to Segoe without saying so — always go through <code>Font.Ui</code>, <code>Font.Display</code> or <code>Font.Numeric</code>. Nothing below 12px anywhere. Four steps carry the whole product as <code>Size.Text.Title / Section / Body / Meta</code>, and markup carrying a literal <code>FontSize</code> now fails a test. Engineering values use Inter's tabular figures, never a monospace: fixed pitch made the inspector read like console output.</p>
+      <div class="stage plain">
+        <div class="ramp p" id="type-rows"><div class="ramp-row"><span class="ramp-name">Display/Title</span><span class="ramp-spec">22 / 28 · 600</span><span class="" style="font-size:22px;line-height:28px;font-weight:600">Lasero</span></div><div class="ramp-row"><span class="ramp-name">Heading/Section</span><span class="ramp-spec">15 / 20 · 600</span><span class="" style="font-size:15px;line-height:20px;font-weight:600">Import bitmapy</span></div><div class="ramp-row"><span class="ramp-name">Heading/Panel</span><span class="ramp-spec">13 / 18 · 600</span><span class="" style="font-size:13px;line-height:18px;font-weight:600">Zpracování</span></div><div class="ramp-row"><span class="ramp-name">Body/Default</span><span class="ramp-spec">13 / 18 · 400</span><span class="" style="font-size:13px;line-height:18px;font-weight:400">Vektorová vrstva je připravena k řezu.</span></div><div class="ramp-row"><span class="ramp-name">Body/Strong</span><span class="ramp-spec">13 / 18 · 500</span><span class="" style="font-size:13px;line-height:18px;font-weight:500">Vektor Output</span></div><div class="ramp-row"><span class="ramp-name">Control/Label</span><span class="ramp-spec">13 / 16 · 500</span><span class="" style="font-size:13px;line-height:16px;font-weight:500">Rámovat</span></div><div class="ramp-row"><span class="ramp-name">Label/Field</span><span class="ramp-spec">12 / 16 · 500</span><span class="" style="font-size:12px;line-height:16px;font-weight:500">Rychlost</span></div><div class="ramp-row"><span class="ramp-name">Helper/Metadata</span><span class="ramp-spec">12 / 16 · 400</span><span class="" style="font-size:12px;line-height:16px;font-weight:400">Čára · 350 mm/min · 95 % · 1×</span></div><div class="ramp-row"><span class="ramp-name">Numeric/Value</span><span class="ramp-spec">13 / 18 · 500</span><span class="tnum" style="font-size:13px;line-height:18px;font-weight:500">350 mm/min      95 %      1×</span></div><div class="ramp-row"><span class="ramp-name">Numeric/Display</span><span class="ramp-spec">15 / 20 · 600</span><span class="tnum" style="font-size:15px;line-height:20px;font-weight:600">X 128,40      Y 96,75      W 210,00</span></div></div>
+      </div>
+    </section>
+
+    <!-- ================= GEOMETRY ================= -->
+    <section id="geometry">
+      <div class="head"><h2>Spacing &amp; radius</h2><span class="tag">6 steps · 4 radii</span></div>
+      <p class="lede">Six spacing steps and no seventh. 32px is the largest gap anywhere in the product — compact but breathable, professional desktop density rather than SaaS whitespace. One geometry language: equivalent controls share one radius, and pill geometry is reserved for things that genuinely are chips. The 4px step exists because a 6px radius on an 18px swatch reads as a circle.</p>
+      <div class="stage">
+        <h3 class="sub" style="margin-top:0;color:var(--l-text-muted)">Spacing</h3>
+        <div class="bars p" id="space-rows"><div class="bar-row"><i style="width:4px"></i><span class="tnum" style="font-size:13px;font-weight:500">4 px</span><span style="font-size:12px;color:var(--l-text-muted)">icon ↔ label, inside a field</span></div><div class="bar-row"><i style="width:8px"></i><span class="tnum" style="font-size:13px;font-weight:500">8 px</span><span style="font-size:12px;color:var(--l-text-muted)">between sibling controls</span></div><div class="bar-row"><i style="width:12px"></i><span class="tnum" style="font-size:13px;font-weight:500">12 px</span><span style="font-size:12px;color:var(--l-text-muted)">panel padding, property rows</span></div><div class="bar-row"><i style="width:16px"></i><span class="tnum" style="font-size:13px;font-weight:500">16 px</span><span style="font-size:12px;color:var(--l-text-muted)">panel padding, dialog body</span></div><div class="bar-row"><i style="width:24px"></i><span class="tnum" style="font-size:13px;font-weight:500">24 px</span><span style="font-size:12px;color:var(--l-text-muted)">between inspector sections</span></div><div class="bar-row"><i style="width:32px"></i><span class="tnum" style="font-size:13px;font-weight:500">32 px</span><span style="font-size:12px;color:var(--l-text-muted)">dialog padding, splash</span></div></div>
+        <h3 class="sub" style="color:var(--l-text-muted)">Radius</h3>
+        <div class="radii p" id="radius-cells"><figure><div class="box" style="border-radius:4px"></div><figcaption><span class="tnum" style="font-size:13px;font-weight:500">4px</span><br><span style="font-size:12px;color:var(--l-text-muted)">chips and swatches under 18px, thin tracks</span></figcaption></figure><figure><div class="box" style="border-radius:6px"></div><figcaption><span class="tnum" style="font-size:13px;font-weight:500">6px</span><br><span style="font-size:12px;color:var(--l-text-muted)">compact controls, icon buttons</span></figcaption></figure><figure><div class="box" style="border-radius:8px"></div><figcaption><span class="tnum" style="font-size:13px;font-weight:500">8px</span><br><span style="font-size:12px;color:var(--l-text-muted)">buttons, inputs, selects, segments</span></figcaption></figure><figure><div class="box" style="border-radius:12px"></div><figcaption><span class="tnum" style="font-size:13px;font-weight:500">12px</span><br><span style="font-size:12px;color:var(--l-text-muted)">dialogs, popovers, elevated surfaces</span></figcaption></figure><figure><div class="box" style="border-radius:999px"></div><figcaption><span class="tnum" style="font-size:13px;font-weight:500">999px</span><br><span style="font-size:12px;color:var(--l-text-muted)">status chips and tags only</span></figcaption></figure></div>
+      </div>
+    </section>
+
+    <!-- ================= ELEVATION ================= -->
+    <section id="elevation">
+      <div class="head"><h2>Elevation</h2><span class="tag">3 steps</span></div>
+      <p class="lede">Docked panels get a border, never a shadow — the canvas stays the visual focus. Shadows exist only where something genuinely floats above the workspace.</p>
+      <div class="stage">
+        <div class="elevs p">
+          <div class="card" style="box-shadow:var(--l-elev-tooltip)">Tooltip · toast</div>
+          <div class="card" style="box-shadow:var(--l-elev-dropdown)">Dropdown · menu · popover</div>
+          <div class="card" style="box-shadow:var(--l-elev-modal)">Modal dialog</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ICONS ================= -->
+    <section id="icons">
+      <div class="head"><h2>Icons</h2><span class="tag">64 glyphs · one family</span></div>
+      <p class="lede">LASERO Precision Outline. Base geometries are Lucide on a shared 24×24 grid; the rest are drawn to the same grid, 1.75px stroke, round cap and join, single inherited colour. Sizes come from <code>Size.Icon.Chrome / Sm / Md / Lg / Xl</code> and markup carrying a numeric size fails a test — the product used to render icons at fourteen distinct sizes, with <code>Glyph.Close</code> alone appearing at three of them in the same dismiss role. The base set below is the geometry that actually ships in <code>Lasero.App/Theme/Icons.xaml</code>, extracted verbatim, so the drawing and the code cannot drift.</p>
+      <div class="stage">
+        <h3 class="sub" style="margin-top:0;color:var(--l-text-muted)">One family, five rendered sizes</h3>
+        <div class="sizerow p">
+          <figure><span data-icon="Close" data-size="12"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,6 L6,18 M6,6 L18,18"/></svg></span><figcaption>12 — window buttons, dismiss</figcaption></figure>
+          <figure><span data-icon="Frame" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span><figcaption>16 — compact controls, status bar</figcaption></figure>
+          <figure><span data-icon="Frame" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span><figcaption>18 — toolbar, navigation rail</figcaption></figure>
+          <figure><span data-icon="Frame" data-size="20"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span><figcaption>20 — header identity, machine state</figcaption></figure>
+          <figure><span data-icon="Frame" data-size="24"><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span><figcaption>24 — empty-state art, source grid</figcaption></figure>
+        </div>
+        <h3 class="sub" style="color:var(--l-text-muted)">Base set — ported from the shipping theme</h3>
+        <div class="iconwall" id="icon-base"><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,1 V5 M12,19 V23 M1,12 H5 M19,12 H23 M4.2,4.2 L7.1,7.1 M16.9,16.9 L19.8,19.8 M19.8,4.2 L16.9,7.1 M7.1,16.9 L4.2,19.8 M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8"/></svg><figcaption>LaseroMark</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,21 V13 A1,1 0 0 0 14,12 H10 A1,1 0 0 0 9,13 V21 M3,10 A2,2 0 0 1 3.709,8.472 L10.709,2.472 A2,2 0 0 1 13.291,2.472 L20.291,8.472 A2,2 0 0 1 21,10 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 Z"/></svg><figcaption>Home</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.707,21.293 A1,1 0 0 1 14.293,21.293 L12.707,19.707 A1,1 0 0 1 12.707,18.293 L18.293,12.707 A1,1 0 0 1 19.707,12.707 L21.293,14.293 A1,1 0 0 1 21.293,15.707 Z M18,13 L16.625,6.126 A1,1 0 0 0 15.879,5.35 L3.235,2.028 A1,1 0 0 0 2.028,3.235 L5.35,15.879 A1,1 0 0 0 6.126,16.625 L13,18 M2.3,2.3 L9.586,9.586 M11,9 A2,2 0 1 0 11,13 A2,2 0 1 0 11,9"/></svg><figcaption>Design</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg><figcaption>Materials</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,18 H4 A2,2 0 0 1 2,16 V11 A2,2 0 0 1 4,9 H20 A2,2 0 0 1 22,11 V16 A2,2 0 0 1 20,18 H18 M6,9 V3 A1,1 0 0 1 7,2 H17 A1,1 0 0 1 18,3 V9 M6,14 H18 V22 H6 Z"/></svg><figcaption>Device</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22,17 A2,2 0 0 1 20,19 H6.828 A2,2 0 0 0 5.414,19.586 L3.212,21.788 A0.71,0.71 0 0 1 2,21.286 V5 A2,2 0 0 1 4,3 H20 A2,2 0 0 1 22,5 Z M7,11 H17 M7,15 H13 M7,7 H15"/></svg><figcaption>Chat</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671,4.136 A2.34,2.34 0 0 1 14.33,4.136 A2.34,2.34 0 0 0 17.649,6.051 A2.34,2.34 0 0 1 19.979,10.084 A2.34,2.34 0 0 0 19.979,13.915 A2.34,2.34 0 0 1 17.649,17.948 A2.34,2.34 0 0 0 14.33,19.863 A2.34,2.34 0 0 1 9.671,19.863 A2.34,2.34 0 0 0 6.351,17.948 A2.34,2.34 0 0 1 4.021,13.915 A2.34,2.34 0 0 0 4.021,10.084 A2.34,2.34 0 0 1 6.35,6.051 A2.34,2.34 0 0 0 9.671,4.136 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg><figcaption>Settings</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,12 H19 M12,5 V19"/></svg><figcaption>New</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,14 L7.5,11.1 A2,2 0 0 1 9.24,10 H20 A2,2 0 0 1 21.94,12.5 L20.4,18.5 A2,2 0 0 1 18.45,20 H4 A2,2 0 0 1 2,18 V5 A2,2 0 0 1 4,3 H7.9 A2,2 0 0 1 9.59,3.9 L10.4,5.1 A2,2 0 0 0 12.07,6 H18 A2,2 0 0 1 20,8 V10"/></svg><figcaption>Open</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2,3 A2,2 0 0 1 16.6,3.6 L20.4,7.4 A2,2 0 0 1 21,8.8 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z M17,21 V14 A1,1 0 0 0 16,13 H8 A1,1 0 0 0 7,14 V21 M7,3 V7 A1,1 0 0 0 8,8 H15"/></svg><figcaption>Save</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,15 V3 M21,15 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V15 M7,10 L12,15 L17,10"/></svg><figcaption>Import</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,3 V15 M7,8 L12,3 L17,8 M21,15 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V15"/></svg><figcaption>Export</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,14 L4,9 L9,4 M4,9 H14.5 A5.5,5.5 0 0 1 20,14.5 A5.5,5.5 0 0 1 14.5,20 H11"/></svg><figcaption>Undo</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,14 L20,9 L15,4 M20,9 H9.5 A5.5,5.5 0 0 0 4,14.5 A5.5,5.5 0 0 0 9.5,20 H13"/></svg><figcaption>Redo</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,8 H20 A2,2 0 0 1 22,10 V20 A2,2 0 0 1 20,22 H10 A2,2 0 0 1 8,20 V10 A2,2 0 0 1 10,8 Z M4,16 A2,2 0 0 1 2,14 V4 A2,2 0 0 1 4,2 H14 A2,2 0 0 1 16,4 M15,12 V18 M12,15 H18"/></svg><figcaption>Duplicate</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg><figcaption>Delete</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.037,4.688 A0.495,0.495 0 0 1 4.688,4.037 L20.688,10.537 A0.5,0.5 0 0 1 20.625,11.484 L14.501,13.064 A2,2 0 0 0 13.063,14.499 L11.484,20.625 A0.5,0.5 0 0 1 10.537,20.688 Z"/></svg><figcaption>Select</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,11 V7 A2,2 0 0 0 14,7 V10 M14,10 V5 A2,2 0 0 0 10,5 V10 M10,10 V7 A2,2 0 0 0 6,7 V14 L4.8,12.8 A2,2 0 0 0 2,15.6 L6.8,20.4 A5,5 0 0 0 10.3,22 H16 A6,6 0 0 0 22,16 V11 A2,2 0 0 0 18,11 Z"/></svg><figcaption>Pan</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 H20 V20 H4 Z"/></svg><figcaption>Rectangle</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4"/></svg><figcaption>Ellipse</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,19 L19,5"/></svg><figcaption>Line</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,3 L21,10 L17.5,21 H6.5 L3,10 Z"/></svg><figcaption>Polygon</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 L15.09,8.26 L22,9.27 L17,14.14 L18.18,21.02 L12,17.77 L5.82,21.02 L7,14.14 L2,9.27 L8.91,8.26 Z"/></svg><figcaption>Star</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,4 V20 M4,7 V5 A1,1 0 0 1 5,4 H19 A1,1 0 0 1 20,5 V7 M9,20 H15"/></svg><figcaption>Text</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z M9,7 A2,2 0 1 0 9,11 A2,2 0 1 0 9,7 M21,15 L17.914,11.914 A2,2 0 0 0 15.086,11.914 L6,21"/></svg><figcaption>Image</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,20 L8.5,19 L18.5,9 A2.1,2.1 0 0 0 15.5,6 L5.5,16 Z M14,7.5 L17,10.5 M4,20 H10"/></svg><figcaption>Vector</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3 M21,21 L16.65,16.65 M11,8 V14 M8,11 H14"/></svg><figcaption>ZoomIn</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3 M21,21 L16.65,16.65 M8,11 H14"/></svg><figcaption>ZoomOut</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,7 V5 A2,2 0 0 1 5,3 H7 M17,3 H19 A2,2 0 0 1 21,5 V7 M21,17 V19 A2,2 0 0 1 19,21 H17 M7,21 H5 A2,2 0 0 1 3,19 V17"/></svg><figcaption>Fit</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,17 H7 A5,5 0 0 1 7,7 H9 M15,7 H17 A5,5 0 1 1 17,17 H15 M8,12 H16"/></svg><figcaption>Connect</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,7 H17 A5,5 0 0 1 17,17 H15 M9,17 H7 A5,5 0 0 1 7,7 H9 M4,4 L20,20"/></svg><figcaption>Disconnect</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,12 A9,9 0 0 1 12,3 A9.75,9.75 0 0 1 18.74,5.74 L21,8 M21,3 V8 H16 M21,12 A9,9 0 0 1 12,21 A9.75,9.75 0 0 1 5.26,18.26 L3,16 M8,16 H3 V21"/></svg><figcaption>Refresh</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg><figcaption>Frame</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg><figcaption>Play</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,3 H9 A1,1 0 0 1 10,4 V20 A1,1 0 0 1 9,21 H6 A1,1 0 0 1 5,20 V4 A1,1 0 0 1 6,3 Z M15,3 H18 A1,1 0 0 1 19,4 V20 A1,1 0 0 1 18,21 H15 A1,1 0 0 1 14,20 V4 A1,1 0 0 1 15,3 Z"/></svg><figcaption>Pause</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z"/></svg><figcaption>Stop</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,3 V20 H21 M18,7 L8,17 M8,17 V11 M8,17 H14"/></svg><figcaption>MachineHome</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M22,12 H18 M6,12 H2 M12,6 V2 M12,22 V18"/></svg><figcaption>Origin</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 H19 A2,2 0 0 1 21,13 V20 A2,2 0 0 1 19,22 H5 A2,2 0 0 1 3,20 V13 A2,2 0 0 1 5,11 Z M7,11 V7 A5,5 0 0 1 16.9,6"/></svg><figcaption>Unlock</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 H19 A2,2 0 0 1 21,13 V20 A2,2 0 0 1 19,22 H5 A2,2 0 0 1 3,20 V13 A2,2 0 0 1 5,11 Z M7,11 V7 A5,5 0 0 1 17,7 V11"/></svg><figcaption>Lock</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13,2 L4.09,12.97 A1,1 0 0 0 4.87,14.6 H11 L11,22 L19.91,11.03 A1,1 0 0 0 19.13,9.4 H13 Z"/></svg><figcaption>Zap</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.51,4.86 L13,2 L12,7 M15.66,10 H19.13 A1,1 0 0 1 19.91,11.63 L18.06,13.9 M16.27,16.27 L11,22 L11,14.6 H4.87 A1,1 0 0 1 4.09,12.97 L7.73,8.5 M2,2 L22,22"/></svg><figcaption>ZapOff</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,19 H20 M4,17 L10,11 L4,5"/></svg><figcaption>Terminal</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg><figcaption>Eye</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73,5.08 A10.74,10.74 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 20.49,14.84 M14.08,14.16 A3,3 0 0 1 9.84,9.92 M17.48,17.5 A10.75,10.75 0 0 1 2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 6.51,6.51 M2,2 L22,22"/></svg><figcaption>EyeOff</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg><figcaption>GripVertical</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,18 L15,12 L9,6"/></svg><figcaption>ChevronRight</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg><figcaption>ChevronDown</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 A1,1 0 1 0 5,13 A1,1 0 1 0 5,11 M12,11 A1,1 0 1 0 12,13 A1,1 0 1 0 12,11 M19,11 A1,1 0 1 0 19,13 A1,1 0 1 0 19,11"/></svg><figcaption>More</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20,6 L9,17 L4,12"/></svg><figcaption>Check</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,16 V12 M12,8 L12.01,8"/></svg><figcaption>Info</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.73,18 L13.73,4 A2,2 0 0 0 10.25,4 L2.25,18 A2,2 0 0 0 4,21 H20 A2,2 0 0 0 21.73,18 M12,9 V13 M12,17 L12.01,17"/></svg><figcaption>Warning</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,6 V12 L16,14"/></svg><figcaption>Clock</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,21 L16.66,16.66 M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3"/></svg><figcaption>Search</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,6 L6,18 M6,6 L18,18"/></svg><figcaption>Close</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M9.09,9 A3,3 0 0 1 14.92,10 C14.92,12 11.92,13 11.92,13 M12,17 L12.01,17"/></svg><figcaption>Help</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,4 A5,5 0 1 0 9,14 A5,5 0 1 0 9,4 M15,10 A5,5 0 1 0 15,20 A5,5 0 1 0 15,10"/></svg><figcaption>Union</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,8 H14 A2,2 0 0 1 16,10 V14 A2,2 0 0 1 14,16 H10 A2,2 0 0 1 8,14 V10 A2,2 0 0 1 10,8 Z M4,10 A2,2 0 0 1 2,8 V4 A2,2 0 0 1 4,2 H8 A2,2 0 0 1 10,4 M14,20 A2,2 0 0 0 16,22 H20 A2,2 0 0 0 22,20 V16 A2,2 0 0 0 20,14"/></svg><figcaption>BringFront</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16,14 H20 A2,2 0 0 1 22,16 V20 A2,2 0 0 1 20,22 H16 A2,2 0 0 1 14,20 V16 A2,2 0 0 1 16,14 Z M4,2 H8 A2,2 0 0 1 10,4 V8 A2,2 0 0 1 8,10 H4 A2,2 0 0 1 2,8 V4 A2,2 0 0 1 4,2 Z M7,14 V15 A2,2 0 0 0 9,17 H10 M14,7 H15 A2,2 0 0 1 17,9 V10"/></svg><figcaption>SendBack</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,7 V5 A2,2 0 0 1 5,3 H7 M17,3 H19 A2,2 0 0 1 21,5 V7 M21,17 V19 A2,2 0 0 1 19,21 H17 M7,21 H5 A2,2 0 0 1 3,19 V17 M8,8 H16 V16 H8 Z"/></svg><figcaption>Group</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,7 V5 A2,2 0 0 1 5,3 H7 M17,3 H19 A2,2 0 0 1 21,5 V7 M21,17 V19 A2,2 0 0 1 19,21 H17 M7,21 H5 A2,2 0 0 1 3,19 V17 M5,9 H11 V15 H5 Z M13,9 H19 V15 H13 Z"/></svg><figcaption>Ungroup</figcaption></figure></div>
+        <h3 class="sub" style="color:var(--l-text-muted)">New — drawn for Lasero</h3>
+        <div class="iconwall custom" id="icon-custom"><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 V9 M9.6,6.6 L12,9 L14.4,6.6 M3,12 H21 V20 H3 Z M7,12 V15 M12,12 V15 M17,12 V15"/></svg><figcaption>Engrave</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 V9 M9.6,6.6 L12,9 L14.4,6.6 M3,12 H10.5 V20 H3 Z M13.5,12 H21 V20 H13.5 Z"/></svg><figcaption>Cut</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z"/></svg><figcaption>ModeLine</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z M5.5,15 L15,5.5 M9,18.5 L18.5,9"/></svg><figcaption>ModeFill</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,3 H18 A3,3 0 0 1 21,6 V18 A3,3 0 0 1 18,21 H6 A3,3 0 0 1 3,18 V6 A3,3 0 0 1 6,3 Z M8,7 H16 A1,1 0 0 1 17,8 V16 A1,1 0 0 1 16,17 H8 A1,1 0 0 1 7,16 V8 A1,1 0 0 1 8,7 Z M8,14 L14,8 M10,16.5 L16.5,10"/></svg><figcaption>ModeFillLine</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8,3 H16 L14,8 H10 Z M12,8 V15 M9.5,15 H14.5 M4,19 H20"/></svg><figcaption>LaserFocus</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,12 H22 M12,5 A3.5,7 0 1 0 12,19 A3.5,7 0 1 0 12,5"/></svg><figcaption>Rotary</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,8 L20,12 L12,16 L4,12 Z M4,16 L12,20 L20,16 M12,2 V5 M9.6,3 L12,5.4 L14.4,3"/></svg><figcaption>ProcessingLayer</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,12 A9,9 0 1 1 12,3"/></svg><figcaption>Spinner</figcaption></figure><figure><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 L4.01,4 M12,4 L12.01,4 M20,4 L20.01,4 M4,12 L4.01,12 M20,12 L20.01,12 M4,20 L4.01,20 M12,20 L12.01,20 M20,20 L20.01,20 M12,7.5 V16.5 M7.5,12 H16.5"/></svg><figcaption>Snapping</figcaption></figure></div>
+      </div>
+      <ul class="rules">
+        <li><b>Engrave and Cut are a deliberate pair.</b> Same plate, same beam: nicked in one, severed in the other. The contrast is the whole metaphor, and it survives at 16px.</li>
+        <li><b>The three processing modes are one systematic trio.</b> Outline, outline plus hatch, nested outlines plus hatch — so <em>Čára</em>, <em>Výplň</em> and <em>Výplň + čára</em> read as steps rather than three unrelated pictures.</li>
+        <li><b>No second family, ever.</b> The existing set was already coherent, which is why it was reused rather than replaced. Icons drawn inline as <code>&lt;Path Data=</code> inside a view are how fragmentation starts.</li>
+      </ul>
+    </section>
+
+    <!-- ================= BUTTONS ================= -->
+    <section id="buttons">
+      <div class="head"><h2>Buttons</h2><span class="tag">4 kinds × 6 states</span></div>
+      <p class="lede">One height (36px), one radius (8px), one icon gap (8px), one label style. Kind carries emphasis; state carries feedback. Focus is always a 2px cobalt ring — outside the fill on filled buttons with a surface-coloured gap, and replacing the border on unfilled ones.</p>
+      <p class="lede">Hover and press are <em>one</em> mechanic at two strengths: an ink wash over whatever the control already is, 6% and 14%. A per-kind pressed colour would be a second implementation of the same state, and every new button kind would have to re-derive it. The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.</p>
+      <div class="stage">
+        <div class="mtx p" id="btn-matrix"><span></span><span class="statelab">Default</span><span class="statelab">Hover</span><span class="statelab">Pressed</span><span class="statelab">Focus</span><span class="statelab">Disabled</span><span class="statelab">Loading</span><span class="kind">Primary</span><span><button class="btn primary "><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn primary hover"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn primary press"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn primary focus"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn primary disabled"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn primary loading"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,12 A9,9 0 1 1 12,3"/></svg>Spouštím</button></span><span class="kind">Secondary</span><span><button class="btn secondary "><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn secondary hover"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn secondary press"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn secondary focus"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn secondary disabled"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn secondary loading"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,12 A9,9 0 1 1 12,3"/></svg>Spouštím</button></span><span class="kind">Ghost</span><span><button class="btn ghost "><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn ghost hover"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn ghost press"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn ghost focus"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn ghost disabled"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg>Spustit</button></span><span><button class="btn ghost loading"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,12 A9,9 0 1 1 12,3"/></svg>Spouštím</button></span><span class="kind">Destructive</span><span><button class="btn destructive "><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg>Odstranit</button></span><span><button class="btn destructive hover"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg>Odstranit</button></span><span><button class="btn destructive press"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg>Odstranit</button></span><span><button class="btn destructive focus"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg>Odstranit</button></span><span><button class="btn destructive disabled"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg>Odstranit</button></span><span><button class="btn destructive loading"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,12 A9,9 0 1 1 12,3"/></svg>Odstranit</button></span></div>
+      </div>
+
+      <h3 class="sub">Icon button — the only kind with a selected state</h3>
+      <p class="lede">Selected belongs to controls that hold a mode: a tool, a toggle, a view. An ordinary button never persists, so it never shows selected.</p>
+      <div class="stage">
+        <div class="mtx mtx6 p" id="ibtn-matrix"><span></span><span class="statelab">Default</span><span class="statelab">Hover</span><span class="statelab">Pressed</span><span class="statelab">Selected</span><span class="statelab">Focus</span><span class="statelab">Disabled</span><span class="statelab">Tool</span><span class="kind">Icon button</span><span><span class="ibtn "><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="ibtn hover"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="ibtn press"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="ibtn selected"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="ibtn focus"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="ibtn disabled"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span></span><span><span class="tool selected"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 H20 V20 H4 Z"/></svg></span></span></div>
+      </div>
+
+      <h3 class="sub">Primary machine action at 44px</h3>
+      <p class="lede">The one control per screen that starts work gets the large height. Destructive actions stay visually distinct without dominating: red fill, explicit label, never an icon alone.</p>
+      <div class="stage">
+        <div class="row p">
+          <button class="btn primary large"><span data-icon="Play" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg></span>Spustit</button>
+          <button class="btn secondary large"><span data-icon="Frame" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span>Rámovat</button>
+          <button class="btn destructive"><span data-icon="Delete" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg></span>Odstranit vrstvu</button>
+          <button class="btn ghost">Zrušit</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= INPUTS ================= -->
+    <section id="inputs">
+      <div class="head"><h2>Inputs</h2><span class="tag">5 kinds · 4 units</span></div>
+      <p class="lede">Same height, border, radius and focus treatment as buttons. Units are presented, never typed: the value is tabular and left, the unit is muted and right, and it stays visible while editing so nobody has to remember whether a field wants millimetres or percent.</p>
+      <div class="stage">
+        <h3 class="sub" style="margin-top:0;color:var(--l-text-muted)">Kinds</h3>
+        <div class="col p" style="max-width:520px">
+          <div class="prow"><label>Text</label><div class="field" style="width:100%"><span>Vektor Output</span></div></div>
+          <div class="prow"><label>Number</label><div class="field" style="width:100%"><span class="val">350</span><span class="unit">mm/min</span><span class="stepper"><button data-icon="ChevronDown" data-size="12" style="transform:rotate(180deg)"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button><button data-icon="ChevronDown" data-size="12"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button></span></div></div>
+          <div class="prow"><label>Search</label><div class="field" style="width:100%"><span class="lead" data-icon="Search" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21,21 L16.66,16.66 M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3"/></svg></span><span class="ph">Hledat materiál</span></div></div>
+          <div class="prow"><label>Select</label><div class="field" style="width:100%"><span>Překližka 3 mm</span><span class="lead" style="margin-left:auto" data-icon="ChevronDown" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></span></div></div>
+          <div class="prow"><label>Trigger</label><div class="field subtle" style="width:100%"><span class="lead" data-icon="Materials" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg></span><span>Knihovna materiálů</span><span class="lead" style="margin-left:auto" data-icon="ChevronDown" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></span></div></div>
+        </div>
+
+        <h3 class="sub" style="color:var(--l-text-muted)">States</h3>
+        <div class="row p">
+          <div class="col" style="gap:6px"><span class="statelab">Default</span><div class="field" style="width:150px"><span class="val">350</span><span class="unit">mm/min</span></div></div>
+          <div class="col" style="gap:6px"><span class="statelab">Focus</span><div class="field focus" style="width:150px"><span class="val">350</span><span class="unit">mm/min</span></div></div>
+          <div class="col" style="gap:6px"><span class="statelab">Error</span><div class="field error" style="width:150px"><span class="val">9800</span><span class="unit">mm/min</span></div></div>
+          <div class="col" style="gap:6px"><span class="statelab">Disabled</span><div class="field disabled" style="width:150px"><span class="val">350</span><span class="unit">mm/min</span></div></div>
+        </div>
+        <p class="p" style="font-size:12px;line-height:16px;color:var(--l-text-muted);margin:12px 0 0">Error state carries a message underneath, never a bare red border: <span style="color:var(--l-error)">Nad maximem stroje (6000 mm/min).</span></p>
+
+        <h3 class="sub" style="color:var(--l-text-muted)">Unit presentation</h3>
+        <div class="row p">
+          <div class="field compact" style="width:132px"><span class="val">210,00</span><span class="unit">mm</span></div>
+          <div class="field compact" style="width:132px"><span class="val">350</span><span class="unit">mm/min</span></div>
+          <div class="field compact" style="width:132px"><span class="val">95</span><span class="unit">%</span></div>
+          <div class="field compact" style="width:132px"><span class="val">45,0</span><span class="unit">°</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SELECTION ================= -->
+    <section id="selection">
+      <div class="head"><h2>Selection controls</h2><span class="tag">3 kinds</span></div>
+      <p class="lede">Checkbox for an option, toggle for something that takes effect immediately, segmented control for a small set of exclusive modes. The selected segment is filled cobalt, not merely tinted — in a control where every option is always visible, the answer has to be readable without comparison.</p>
+      <div class="stage">
+        <h3 class="sub" style="margin-top:0;color:var(--l-text-muted)">Segmented control — processing mode</h3>
+        <div class="row p" style="gap:24px">
+          <span class="seg">
+            <button class="on"><span data-icon="ModeLine" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z"/></svg></span>Čára</button>
+            <button><span data-icon="ModeFill" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7,4 H17 A3,3 0 0 1 20,7 V17 A3,3 0 0 1 17,20 H7 A3,3 0 0 1 4,17 V7 A3,3 0 0 1 7,4 Z M5.5,15 L15,5.5 M9,18.5 L18.5,9"/></svg></span>Výplň</button>
+            <button><span data-icon="ModeFillLine" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,3 H18 A3,3 0 0 1 21,6 V18 A3,3 0 0 1 18,21 H6 A3,3 0 0 1 3,18 V6 A3,3 0 0 1 6,3 Z M8,7 H16 A1,1 0 0 1 17,8 V16 A1,1 0 0 1 16,17 H8 A1,1 0 0 1 7,16 V8 A1,1 0 0 1 8,7 Z M8,14 L14,8 M10,16.5 L16.5,10"/></svg></span>Výplň + čára</button>
+          </span>
+          <span class="seg">
+            <button>Čára</button>
+            <button class="hov">Výplň</button>
+            <button class="dis">Výplň + čára</button>
+          </span>
+        </div>
+        <p class="p" style="font-size:12px;line-height:16px;color:var(--l-text-muted);margin:10px 0 0">Left: selected. Right: hover on the middle option and a disabled third — hover is a plain surface lift, so it cannot be mistaken for the answer.</p>
+
+        <h3 class="sub" style="color:var(--l-text-muted)">Checkbox</h3>
+        <div class="row p" style="gap:28px">
+          <span class="cbx"><i></i>Zobrazit mřížku</span>
+          <span class="cbx on"><i><span data-icon="Check" data-size="13"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20,6 L9,17 L4,12"/></svg></span></i>Přichytávat k mřížce</span>
+          <span class="cbx on focus"><i><span data-icon="Check" data-size="13"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20,6 L9,17 L4,12"/></svg></span></i>Zobrazit dráhy</span>
+          <span class="cbx disabled"><i></i>Rotační osa</span>
+        </div>
+
+        <h3 class="sub" style="color:var(--l-text-muted)">Toggle</h3>
+        <div class="row p" style="gap:28px">
+          <span class="cbx"><span class="tgl"></span>Vzduchová asistence</span>
+          <span class="cbx"><span class="tgl on"></span>Chlazení</span>
+          <span class="cbx"><span class="tgl on focus"></span>Osvětlení</span>
+          <span class="cbx disabled"><span class="tgl disabled"></span>Rotační osa</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= EDITOR ================= -->
+    <section id="editor">
+      <div class="head"><h2>Editor components</h2><span class="tag">9 parts</span></div>
+      <p class="lede">The pieces the workspace is actually built from. Each one is dense on purpose: a layer row is 48px because it carries a name and a full process summary, and a property row is 12px of label against a tabular value because that is what gets scanned.</p>
+
+      <h3 class="sub">Tool button · panel header · machine status</h3>
+      <div class="stage">
+        <div class="row p" style="gap:32px">
+          <div class="col" style="gap:8px">
+            <span class="statelab">Tool button</span>
+            <div class="row tight">
+              <span class="tool" data-icon="Select" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.037,4.688 A0.495,0.495 0 0 1 4.688,4.037 L20.688,10.537 A0.5,0.5 0 0 1 20.625,11.484 L14.501,13.064 A2,2 0 0 0 13.063,14.499 L11.484,20.625 A0.5,0.5 0 0 1 10.537,20.688 Z"/></svg></span>
+              <span class="tool hover" data-icon="Rectangle" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 H20 V20 H4 Z"/></svg></span>
+              <span class="tool selected" data-icon="Line" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,19 L19,5"/></svg></span>
+              <span class="tool disabled" data-icon="Vector" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,20 L8.5,19 L18.5,9 A2.1,2.1 0 0 0 15.5,6 L5.5,16 Z M14,7.5 L17,10.5 M4,20 H10"/></svg></span>
+            </div>
+            <span class="p" style="font-size:12px;color:var(--l-text-muted)">default · hover · selected · disabled</span>
+          </div>
+          <div class="col" style="gap:8px">
+            <span class="statelab">Machine status</span>
+            <div class="row tight">
+              <span class="mstat ready"><i></i>Připraveno</span>
+              <span class="mstat run"><i></i>Probíhá · 42 %</span>
+              <span class="mstat pause"><i></i>Pozastaveno</span>
+            </div>
+            <div class="row tight">
+              <span class="mstat alarm"><i></i>Alarm 2 · mimo limit</span>
+              <span class="mstat off"><i></i>Nepřipojeno</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage" style="margin-top:12px">
+        <div class="row p" style="gap:24px; align-items:flex-start">
+          <div style="width:336px;border:1px solid var(--l-border);border-radius:var(--l-r-md);overflow:hidden;background:var(--l-surface)">
+            <div class="panelhead"><span data-icon="Design" data-size="16" style="color:var(--l-text-secondary)"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.707,21.293 A1,1 0 0 1 14.293,21.293 L12.707,19.707 A1,1 0 0 1 12.707,18.293 L18.293,12.707 A1,1 0 0 1 19.707,12.707 L21.293,14.293 A1,1 0 0 1 21.293,15.707 Z M18,13 L16.625,6.126 A1,1 0 0 0 15.879,5.35 L3.235,2.028 A1,1 0 0 0 2.028,3.235 L5.35,15.879 A1,1 0 0 0 6.126,16.625 L13,18 M2.3,2.3 L9.586,9.586 M11,9 A2,2 0 1 0 11,13 A2,2 0 1 0 11,9"/></svg></span><b>Vrstvy</b><span class="sp"></span><span class="ibtn" data-icon="New" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,12 H19 M12,5 V19"/></svg></span><span class="ibtn" data-icon="More" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 A1,1 0 1 0 5,13 A1,1 0 1 0 5,11 M12,11 A1,1 0 1 0 12,13 A1,1 0 1 0 12,11 M19,11 A1,1 0 1 0 19,13 A1,1 0 1 0 19,11"/></svg></span></div>
+            <div style="padding:4px">
+              <div class="layer selected"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#DC2626"></span><span class="body"><span class="nm">Vektor Output</span><span class="meta">Čára · 350 mm/min · 95 % · 1×</span></span><span class="eye" data-icon="Eye" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg></span></div>
+              <div class="layer hover"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#2563EB"></span><span class="body"><span class="nm">Popis štítku</span><span class="meta">Výplň · 1200 mm/min · 45 % · 1×</span></span><span class="eye" data-icon="Eye" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg></span></div>
+              <div class="layer off"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#15803D"></span><span class="body"><span class="nm">Rastr — logo</span><span class="meta">Výplň · 900 mm/min · 62 % · 1×</span></span><span class="eye" data-icon="EyeOff" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73,5.08 A10.74,10.74 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 20.49,14.84 M14.08,14.16 A3,3 0 0 1 9.84,9.92 M17.48,17.5 A10.75,10.75 0 0 1 2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 6.51,6.51 M2,2 L22,22"/></svg></span></div>
+            </div>
+          </div>
+          <div class="col" style="gap:8px;flex:1;min-width:280px">
+            <span class="statelab">Property row · numeric property control</span>
+            <div class="col p" style="gap:10px;background:var(--l-surface);border:1px solid var(--l-border);border-radius:var(--l-r-md);padding:16px 12px">
+              <h4 style="font-family:var(--font-product);font-size:13px;font-weight:600;line-height:18px;margin:0">Nastavení</h4>
+              <div class="prow"><label>Rychlost</label><div class="field"><span class="val">350</span><span class="unit">mm/min</span></div></div>
+              <div class="prow"><label>Výkon</label><div class="field"><span class="val">95</span><span class="unit">%</span></div></div>
+              <div class="prow"><label>Průchody</label><div class="field"><span class="val">1</span><span class="unit">×</span><span class="stepper"><button data-icon="ChevronDown" data-size="12" style="transform:rotate(180deg)"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button><button data-icon="ChevronDown" data-size="12"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button></span></div></div>
+              <div class="prow"><label>Pozice</label><div class="pair"><div class="field compact"><span class="val">128,40</span><span class="unit">X</span></div><div class="field compact"><span class="val">96,75</span><span class="unit">Y</span></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sub">Bottom status item</h3>
+      <div class="stage plain">
+        <div class="row p tight">
+          <span class="sitem"><span data-icon="Zap" data-size="16" style="color:var(--l-success)"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13,2 L4.09,12.97 A1,1 0 0 0 4.87,14.6 H11 L11,22 L19.91,11.03 A1,1 0 0 0 19.13,9.4 H13 Z"/></svg></span>Připraveno</span>
+          <span class="sitem hover"><span data-icon="Connect" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,17 H7 A5,5 0 0 1 7,7 H9 M15,7 H17 A5,5 0 1 1 17,17 H15 M8,12 H16"/></svg></span>GRBL 1.1h <b>COM4</b></span>
+          <span class="sitem"><span class="sq" style="background:#DC2626"></span>Vektor Output</span>
+          <span class="sitem"><span data-icon="Clock" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,6 V12 L16,14"/></svg></span>Odhad <b>4:12</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= OVERLAYS ================= -->
+    <section id="overlays">
+      <div class="head"><h2>Overlays</h2><span class="tag">6 kinds</span></div>
+      <p class="lede">One radius, one border, one elevation ladder, one type scale. A dialog that asks for confirmation names the consequence in its own title, so the answer is readable without the body copy.</p>
+      <div class="stage">
+        <div class="ovgrid">
+          <div class="col" style="gap:8px">
+            <span class="statelab">Modal</span>
+            <div class="ov modal">
+              <div class="mh">
+                <h4>Odstranit vrstvu Vektor Output</h4>
+                <p>Vrstva obsahuje 12 objektů. Odstranění lze vrátit zpět, dokud projekt nezavřete.</p>
+              </div>
+              <div class="mf">
+                <button class="btn ghost">Zrušit</button>
+                <button class="btn destructive">Odstranit</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col" style="gap:8px">
+            <span class="statelab">Context menu</span>
+            <div class="ov menu">
+              <button class="hov"><span data-icon="Duplicate" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,8 H20 A2,2 0 0 1 22,10 V20 A2,2 0 0 1 20,22 H10 A2,2 0 0 1 8,20 V10 A2,2 0 0 1 10,8 Z M4,16 A2,2 0 0 1 2,14 V4 A2,2 0 0 1 4,2 H14 A2,2 0 0 1 16,4 M15,12 V18 M12,15 H18"/></svg></span>Duplikovat<span class="k">Ctrl+D</span></button>
+              <button><span data-icon="BringFront" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,8 H14 A2,2 0 0 1 16,10 V14 A2,2 0 0 1 14,16 H10 A2,2 0 0 1 8,14 V10 A2,2 0 0 1 10,8 Z M4,10 A2,2 0 0 1 2,8 V4 A2,2 0 0 1 4,2 H8 A2,2 0 0 1 10,4 M14,20 A2,2 0 0 0 16,22 H20 A2,2 0 0 0 22,20 V16 A2,2 0 0 0 20,14"/></svg></span>Do popředí<span class="k">Ctrl+]</span></button>
+              <button><span data-icon="Frame" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span>Rámovat výběr</button>
+              <hr>
+              <button class="dis"><span data-icon="Union" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,4 A5,5 0 1 0 9,14 A5,5 0 1 0 9,4 M15,10 A5,5 0 1 0 15,20 A5,5 0 1 0 15,10"/></svg></span>Sjednotit</button>
+              <button class="danger"><span data-icon="Delete" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10,11 V17 M14,11 V17 M19,6 V20 A2,2 0 0 1 17,22 H7 A2,2 0 0 1 5,20 V6 M3,6 H21 M8,6 V4 A2,2 0 0 1 10,2 H14 A2,2 0 0 1 16,4 V6"/></svg></span>Odstranit<span class="k">Del</span></button>
+            </div>
+          </div>
+
+          <div class="col" style="gap:8px">
+            <span class="statelab">Dropdown</span>
+            <div class="ov menu" style="width:200px">
+              <button class="on"><span data-icon="Check" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20,6 L9,17 L4,12"/></svg></span>Překližka 3 mm</button>
+              <button><span data-icon="Materials" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg></span>Akryl 5 mm</button>
+              <button><span data-icon="Materials" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg></span>MDF 4 mm</button>
+              <button><span data-icon="Materials" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg></span>Kůže 2 mm</button>
+            </div>
+          </div>
+
+          <div class="col" style="gap:8px">
+            <span class="statelab">Popover</span>
+            <div class="ov pop">
+              <h5>Rámování</h5>
+              <p>Laser projede obrys úlohy bez zapnutí paprsku, aby bylo vidět umístění na materiálu.</p>
+              <div class="prow"><label>Rychlost</label><div class="field compact"><span class="val">3000</span><span class="unit">mm/min</span></div></div>
+              <button class="btn secondary" style="justify-content:center"><span data-icon="Frame" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span>Rámovat</button>
+            </div>
+          </div>
+
+          <div class="col" style="gap:8px">
+            <span class="statelab">Tooltip</span>
+            <div class="row" style="gap:12px"><span class="tip">Rámovat úlohu<span class="k">F</span></span></div>
+            <span class="statelab" style="margin-top:12px">Toast</span>
+            <div class="col" style="gap:8px">
+              <div class="toast ok"><span data-icon="Check" data-size="18" style="color:var(--l-success)"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20,6 L9,17 L4,12"/></svg></span><span class="tb"><b>Projekt uložen</b><p>rezbaci-stitek.lasero · 14:32</p></span><span class="ibtn" data-icon="Close" data-size="14"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,6 L6,18 M6,6 L18,18"/></svg></span></div>
+              <div class="toast warn"><span data-icon="Warning" data-size="18" style="color:var(--l-warning)"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.73,18 L13.73,4 A2,2 0 0 0 10.25,4 L2.25,18 A2,2 0 0 0 4,21 H20 A2,2 0 0 0 21.73,18 M12,9 V13 M12,17 L12.01,17"/></svg></span><span class="tb"><b>Úloha přesahuje pracovní plochu</b><p>Objekt Popis štítku končí 12 mm za osou X.</p></span><span class="ibtn" data-icon="Close" data-size="14"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,6 L6,18 M6,6 L18,18"/></svg></span></div>
+              <div class="toast err"><span data-icon="ZapOff" data-size="18" style="color:var(--l-error)"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.51,4.86 L13,2 L12,7 M15.66,10 H19.13 A1,1 0 0 1 19.91,11.63 L18.06,13.9 M16.27,16.27 L11,22 L11,14.6 H4.87 A1,1 0 0 1 4.09,12.97 L7.73,8.5 M2,2 L22,22"/></svg></span><span class="tb"><b>Spojení se strojem přerušeno</b><p>COM4 přestal odpovídat. Zkontrolujte kabel a připojte znovu.</p></span><span class="ibtn" data-icon="Close" data-size="14"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,6 L6,18 M6,6 L18,18"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= REF: TOOLBAR ================= -->
+    <section id="ref-toolbar">
+      <div class="head"><h2>Top toolbar</h2><span class="tag">Reference · 60 + 46 px</span></div>
+      <p class="lede">Title bar and one working toolbar rather than stacked menu and command bars. At 1366×768 the chrome above the canvas used to eat 276px; this is 106px. The selected tool is unmistakable — filled tint plus a full-strength cobalt border, which nothing else in the toolbar ever wears.</p>
+      <div class="stage flush dim">
+        <div class="ref" style="border:0;border-radius:0">
+          <div class="titlebar">
+            <span class="wordmark"><b>LASERO</b><i></i></span>
+            <span style="font-family:var(--font-product);font-size:13px;font-weight:500;color:var(--l-text-primary)">rezbaci-stitek.lasero</span>
+            <span style="font-family:var(--font-product);font-size:12px;color:var(--l-text-muted)">Uloženo 14:32</span>
+            <span style="margin-left:auto"></span>
+            <span class="mstat ready"><i></i>Připraveno</span>
+            <span class="ibtn" data-icon="Help" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M9.09,9 A3,3 0 0 1 14.92,10 C14.92,12 11.92,13 11.92,13 M12,17 L12.01,17"/></svg></span>
+            <span class="ibtn" data-icon="Settings" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671,4.136 A2.34,2.34 0 0 1 14.33,4.136 A2.34,2.34 0 0 0 17.649,6.051 A2.34,2.34 0 0 1 19.979,10.084 A2.34,2.34 0 0 0 19.979,13.915 A2.34,2.34 0 0 1 17.649,17.948 A2.34,2.34 0 0 0 14.33,19.863 A2.34,2.34 0 0 1 9.671,19.863 A2.34,2.34 0 0 0 6.351,17.948 A2.34,2.34 0 0 1 4.021,13.915 A2.34,2.34 0 0 0 4.021,10.084 A2.34,2.34 0 0 1 6.35,6.051 A2.34,2.34 0 0 0 9.671,4.136 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg></span>
+          </div>
+          <div class="toolbar">
+            <span class="ibtn" data-icon="New" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,12 H19 M12,5 V19"/></svg></span>
+            <span class="ibtn" data-icon="Open" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,14 L7.5,11.1 A2,2 0 0 1 9.24,10 H20 A2,2 0 0 1 21.94,12.5 L20.4,18.5 A2,2 0 0 1 18.45,20 H4 A2,2 0 0 1 2,18 V5 A2,2 0 0 1 4,3 H7.9 A2,2 0 0 1 9.59,3.9 L10.4,5.1 A2,2 0 0 0 12.07,6 H18 A2,2 0 0 1 20,8 V10"/></svg></span>
+            <span class="ibtn" data-icon="Save" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2,3 A2,2 0 0 1 16.6,3.6 L20.4,7.4 A2,2 0 0 1 21,8.8 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z M17,21 V14 A1,1 0 0 0 16,13 H8 A1,1 0 0 0 7,14 V21 M7,3 V7 A1,1 0 0 0 8,8 H15"/></svg></span>
+            <span class="tsep"></span>
+            <span class="ibtn" data-icon="Undo" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,14 L4,9 L9,4 M4,9 H14.5 A5.5,5.5 0 0 1 20,14.5 A5.5,5.5 0 0 1 14.5,20 H11"/></svg></span>
+            <span class="ibtn disabled" data-icon="Redo" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,14 L20,9 L15,4 M20,9 H9.5 A5.5,5.5 0 0 0 4,14.5 A5.5,5.5 0 0 0 9.5,20 H13"/></svg></span>
+            <span class="tsep"></span>
+            <span class="tool" data-icon="Select" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.037,4.688 A0.495,0.495 0 0 1 4.688,4.037 L20.688,10.537 A0.5,0.5 0 0 1 20.625,11.484 L14.501,13.064 A2,2 0 0 0 13.063,14.499 L11.484,20.625 A0.5,0.5 0 0 1 10.537,20.688 Z"/></svg></span>
+            <span class="tool" data-icon="Pan" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18,11 V7 A2,2 0 0 0 14,7 V10 M14,10 V5 A2,2 0 0 0 10,5 V10 M10,10 V7 A2,2 0 0 0 6,7 V14 L4.8,12.8 A2,2 0 0 0 2,15.6 L6.8,20.4 A5,5 0 0 0 10.3,22 H16 A6,6 0 0 0 22,16 V11 A2,2 0 0 0 18,11 Z"/></svg></span>
+            <span class="tool selected" data-icon="Rectangle" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 H20 V20 H4 Z"/></svg></span>
+            <span class="tool hover" data-icon="Ellipse" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,4 A8,8 0 1 0 12,20 A8,8 0 1 0 12,4"/></svg></span>
+            <span class="tool" data-icon="Line" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,19 L19,5"/></svg></span>
+            <span class="tool" data-icon="Text" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,4 V20 M4,7 V5 A1,1 0 0 1 5,4 H19 A1,1 0 0 1 20,5 V7 M9,20 H15"/></svg></span>
+            <span class="tool disabled" data-icon="Vector" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,20 L8.5,19 L18.5,9 A2.1,2.1 0 0 0 15.5,6 L5.5,16 Z M14,7.5 L17,10.5 M4,20 H10"/></svg></span>
+            <span class="tsep"></span>
+            <span class="ibtn" data-icon="ZoomOut" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3 M21,21 L16.65,16.65 M8,11 H14"/></svg></span>
+            <span class="sitem"><b>100 %</b></span>
+            <span class="ibtn" data-icon="ZoomIn" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11,3 A8,8 0 1 0 11,19 A8,8 0 1 0 11,3 M21,21 L16.65,16.65 M11,8 V14 M8,11 H14"/></svg></span>
+            <span class="ibtn" data-icon="Fit" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,7 V5 A2,2 0 0 1 5,3 H7 M17,3 H19 A2,2 0 0 1 21,5 V7 M21,17 V19 A2,2 0 0 1 19,21 H17 M7,21 H5 A2,2 0 0 1 3,19 V17"/></svg></span>
+            <span class="tsep"></span>
+            <span class="tool selected" data-icon="Snapping" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,4 L4.01,4 M12,4 L12.01,4 M20,4 L20.01,4 M4,12 L4.01,12 M20,12 L20.01,12 M4,20 L4.01,20 M12,20 L12.01,20 M20,20 L20.01,20 M12,7.5 V16.5 M7.5,12 H16.5"/></svg></span>
+            <span style="margin-left:auto"></span>
+            <button class="btn ghost"><span data-icon="Import" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,15 V3 M21,15 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V15 M7,10 L12,15 L17,10"/></svg></span>Import</button>
+          </div>
+        </div>
+      </div>
+      <div class="dimlabel">Title bar 60 · toolbar 46 · icon button 32 · tool button 34 · icon 18</div>
+    </section>
+
+    <!-- ================= REF: INSPECTOR ================= -->
+    <section id="ref-inspector">
+      <div class="head"><h2>Right inspector</h2><span class="tag">Reference · 336 px</span></div>
+      <p class="lede">Layer order is process order, so the layer list sits above the settings that belong to the selected layer. Sections are separated by a hairline and 24px, not by nesting: no cards inside cards, because a panel that is already inside a panel does not need a third frame to be found.</p>
+      <div class="stage flush">
+        <div class="ref" style="border:0;border-radius:0">
+          <div class="editor">
+            <div class="rail">
+              <span class="navitem" data-nav="Home"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,21 V13 A1,1 0 0 0 14,12 H10 A1,1 0 0 0 9,13 V21 M3,10 A2,2 0 0 1 3.709,8.472 L10.709,2.472 A2,2 0 0 1 13.291,2.472 L20.291,8.472 A2,2 0 0 1 21,10 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 Z"/></svg>Přehled</span>
+              <span class="navitem on" data-nav="Design"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.707,21.293 A1,1 0 0 1 14.293,21.293 L12.707,19.707 A1,1 0 0 1 12.707,18.293 L18.293,12.707 A1,1 0 0 1 19.707,12.707 L21.293,14.293 A1,1 0 0 1 21.293,15.707 Z M18,13 L16.625,6.126 A1,1 0 0 0 15.879,5.35 L3.235,2.028 A1,1 0 0 0 2.028,3.235 L5.35,15.879 A1,1 0 0 0 6.126,16.625 L13,18 M2.3,2.3 L9.586,9.586 M11,9 A2,2 0 1 0 11,13 A2,2 0 1 0 11,9"/></svg>Návrh</span>
+              <span class="navitem" data-nav="Materials"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83,2.18 A2,2 0 0 0 11.17,2.18 L2.6,6.08 A1,1 0 0 0 2.6,7.91 L11.18,11.82 A2,2 0 0 0 12.84,11.82 L21.42,7.92 A1,1 0 0 0 21.42,6.09 Z M6.08,9.5 L2.58,11.1 A1,1 0 0 0 2.58,12.91 L11.18,16.82 A2,2 0 0 0 12.83,16.82 L21.41,12.92 A1,1 0 0 0 21.41,11.09 L17.91,9.5 M6.08,14.5 L2.58,16.1 A1,1 0 0 0 2.58,17.91 L11.18,21.82 A2,2 0 0 0 12.83,21.82 L21.41,17.92 A1,1 0 0 0 21.41,16.09 L17.91,14.5"/></svg>Materiály</span>
+              <span class="navitem hov" data-nav="Device"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,18 H4 A2,2 0 0 1 2,16 V11 A2,2 0 0 1 4,9 H20 A2,2 0 0 1 22,11 V16 A2,2 0 0 1 20,18 H18 M6,9 V3 A1,1 0 0 1 7,2 H17 A1,1 0 0 1 18,3 V9 M6,14 H18 V22 H6 Z"/></svg>Stroj</span>
+              <span class="navitem" data-nav="Chat"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22,17 A2,2 0 0 1 20,19 H6.828 A2,2 0 0 0 5.414,19.586 L3.212,21.788 A0.71,0.71 0 0 1 2,21.286 V5 A2,2 0 0 1 4,3 H20 A2,2 0 0 1 22,5 Z M7,11 H17 M7,15 H13 M7,7 H15"/></svg>Kamil</span>
+            </div>
+            <div class="canvas"><div class="sheet"><div class="obj"></div></div></div>
+            <div class="inspector">
+              <div class="panelhead"><b>Vrstvy</b><span class="sp"></span><span class="ibtn" data-icon="New" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,12 H19 M12,5 V19"/></svg></span><span class="ibtn" data-icon="More" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 A1,1 0 1 0 5,13 A1,1 0 1 0 5,11 M12,11 A1,1 0 1 0 12,13 A1,1 0 1 0 12,11 M19,11 A1,1 0 1 0 19,13 A1,1 0 1 0 19,11"/></svg></span></div>
+              <div style="padding:4px;border-bottom:1px solid var(--l-border)">
+                <div class="layer selected"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#DC2626"></span><span class="body"><span class="nm">Vektor Output</span><span class="meta">Čára · 350 mm/min · 95 % · 1×</span></span><span class="eye" data-icon="Eye" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg></span></div>
+                <div class="layer"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#2563EB"></span><span class="body"><span class="nm">Popis štítku</span><span class="meta">Výplň · 1200 mm/min · 45 % · 1×</span></span><span class="eye" data-icon="Eye" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 2.06,12.35 M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9"/></svg></span></div>
+                <div class="layer off"><span class="grip" data-icon="GripVertical" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,5 A1,1 0 1 0 9,7 A1,1 0 1 0 9,5 M9,11 A1,1 0 1 0 9,13 A1,1 0 1 0 9,11 M9,17 A1,1 0 1 0 9,19 A1,1 0 1 0 9,17 M15,5 A1,1 0 1 0 15,7 A1,1 0 1 0 15,5 M15,11 A1,1 0 1 0 15,13 A1,1 0 1 0 15,11 M15,17 A1,1 0 1 0 15,19 A1,1 0 1 0 15,17"/></svg></span><span class="chip" style="background:#15803D"></span><span class="body"><span class="nm">Rastr — logo</span><span class="meta">Výplň · 900 mm/min · 62 % · 1×</span></span><span class="eye" data-icon="EyeOff" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.73,5.08 A10.74,10.74 0 0 1 21.94,11.65 A1,1 0 0 1 21.94,12.35 A10.75,10.75 0 0 1 20.49,14.84 M14.08,14.16 A3,3 0 0 1 9.84,9.92 M17.48,17.5 A10.75,10.75 0 0 1 2.06,12.35 A1,1 0 0 1 2.06,11.65 A10.75,10.75 0 0 1 6.51,6.51 M2,2 L22,22"/></svg></span></div>
+              </div>
+              <div class="isec">
+                <h4>Zpracování</h4>
+                <span class="seg" style="align-self:start">
+                  <button class="on">Čára</button>
+                  <button>Výplň</button>
+                  <button>Výplň + čára</button>
+                </span>
+              </div>
+              <div class="isec">
+                <h4>Nastavení</h4>
+                <div class="prow"><label>Rychlost</label><div class="field"><span class="val">350</span><span class="unit">mm/min</span></div></div>
+                <div class="prow"><label>Výkon</label><div class="field"><span class="val">95</span><span class="unit">%</span></div></div>
+                <div class="prow"><label>Průchody</label><div class="field"><span class="val">1</span><span class="unit">×</span><span class="stepper"><button data-icon="ChevronDown" data-size="12" style="transform:rotate(180deg)"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button><button data-icon="ChevronDown" data-size="12"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,9 L12,15 L18,9"/></svg></button></span></div></div>
+              </div>
+              <div class="isec">
+                <h4>Rozměry</h4>
+                <div class="prow"><label>Pozice</label><div class="pair"><div class="field compact"><span class="val">128,40</span><span class="unit">X</span></div><div class="field compact"><span class="val">96,75</span><span class="unit">Y</span></div></div></div>
+                <div class="prow"><label>Velikost</label><div class="pair"><div class="field compact"><span class="val">210,00</span><span class="unit">W</span></div><div class="field compact"><span class="val">148,00</span><span class="unit">H</span></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dimlabel">Rail 164 · canvas min 420 · inspector 336 (280–560) · layer row 48 · section padding 16/12</div>
+    </section>
+
+    <!-- ================= REF: MACHINE ================= -->
+    <section id="ref-machine">
+      <div class="head"><h2>Machine actions</h2><span class="tag">Reference · 3 phases</span></div>
+      <p class="lede">Emphasis follows consequence. Starting work is the one 44px primary action; framing is secondary because it is rehearsal; stopping is destructive but never dominant, because a control that shouts at rest has nothing left when it matters. The phase decides which controls exist at all — a Start button does not sit disabled beside a running job.</p>
+      <div class="stage">
+        <div class="col p" style="gap:20px">
+          <div class="col" style="gap:8px">
+            <span class="statelab">Idle · ready to run</span>
+            <div class="row" style="padding:12px;background:var(--l-surface);border:1px solid var(--l-border);border-radius:var(--l-r-md)">
+              <span class="mstat ready"><i></i>Připraveno</span>
+              <span style="margin-left:auto"></span>
+              <button class="btn ghost"><span data-icon="MachineHome" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,3 V20 H21 M18,7 L8,17 M8,17 V11 M8,17 H14"/></svg></span>Domů</button>
+              <button class="btn secondary"><span data-icon="Origin" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M22,12 H18 M6,12 H2 M12,6 V2 M12,22 V18"/></svg></span>Nastavit počátek</button>
+              <button class="btn secondary large"><span data-icon="Frame" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span>Rámovat</button>
+              <button class="btn primary large"><span data-icon="Play" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg></span>Spustit</button>
+            </div>
+          </div>
+          <div class="col" style="gap:8px">
+            <span class="statelab">Running</span>
+            <div class="row" style="padding:12px;background:var(--l-surface);border:1px solid var(--l-border);border-radius:var(--l-r-md)">
+              <span class="mstat run"><i></i>Probíhá · 42 %</span>
+              <span class="sitem"><span data-icon="Clock" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,6 V12 L16,14"/></svg></span>Zbývá <b>2:24</b></span>
+              <span style="margin-left:auto"></span>
+              <button class="btn secondary large"><span data-icon="Pause" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6,3 H9 A1,1 0 0 1 10,4 V20 A1,1 0 0 1 9,21 H6 A1,1 0 0 1 5,20 V4 A1,1 0 0 1 6,3 Z M15,3 H18 A1,1 0 0 1 19,4 V20 A1,1 0 0 1 18,21 H15 A1,1 0 0 1 14,20 V4 A1,1 0 0 1 15,3 Z"/></svg></span>Pozastavit</button>
+              <button class="btn destructive large"><span data-icon="Stop" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z"/></svg></span>Zastavit</button>
+            </div>
+          </div>
+          <div class="col" style="gap:8px">
+            <span class="statelab">Alarm · recovery only</span>
+            <div class="row" style="padding:12px;background:var(--l-error-bg);border:1px solid var(--l-error-border);border-radius:var(--l-r-md)">
+              <span class="mstat alarm"><i></i>Alarm 2 · mimo limit</span>
+              <span class="p" style="font-size:12px;line-height:16px;color:var(--l-text-secondary)">Stroj je uzamčen. Odemkněte a najeďte domů.</span>
+              <span style="margin-left:auto"></span>
+              <button class="btn secondary"><span data-icon="Unlock" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,11 H19 A2,2 0 0 1 21,13 V20 A2,2 0 0 1 19,22 H5 A2,2 0 0 1 3,20 V13 A2,2 0 0 1 5,11 Z M7,11 V7 A5,5 0 0 1 16.9,6"/></svg></span>Odemknout</button>
+              <button class="btn secondary"><span data-icon="MachineHome" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4,3 V20 H21 M18,7 L8,17 M8,17 V11 M8,17 H14"/></svg></span>Domů</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="rules">
+        <li><b>Phase, not disabled state.</b> Start exists when a job can start. Pause and Stop exist when one is running. Unlock exists when the controller is locked. Rendering all of them greyed out teaches nobody anything.</li>
+        <li><b>Destructive is distinct, not loud.</b> Red fill and an explicit verb. No red panels, no red glow, no icon-only stop.</li>
+      </ul>
+    </section>
+
+    <!-- ================= REF: STATUS ================= -->
+    <section id="ref-status">
+      <div class="head"><h2>Bottom status bar</h2><span class="tag">Reference · 56 px</span></div>
+      <p class="lede">Persistent and dense. Machine state, connection, active processing layer, then the two actions an operator reaches for most. Every state the product can be in — empty, disconnected, busy, paused, error — has to be readable from this strip alone.</p>
+      <div class="stage flush">
+        <div class="ref" style="border:0;border-radius:0">
+          <div class="statusbar" style="border-top:0">
+            <span class="mstat ready"><i></i>Připraveno</span>
+            <span class="sitem"><span data-icon="Connect" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,17 H7 A5,5 0 0 1 7,7 H9 M15,7 H17 A5,5 0 1 1 17,17 H15 M8,12 H16"/></svg></span>GRBL 1.1h <b>COM4</b></span>
+            <span class="sitem"><span class="sq" style="background:#DC2626"></span>Vektor Output <b>350 mm/min · 95 %</b></span>
+            <span class="sitem"><span data-icon="Clock" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,6 V12 L16,14"/></svg></span>Odhad <b>4:12</b></span>
+            <span style="margin-left:auto"></span>
+            <button class="btn secondary"><span data-icon="Frame" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2,7 H22 M2,17 H22 M7,2 V22 M17,2 V22"/></svg></span>Rámovat</button>
+            <button class="btn primary large"><span data-icon="Play" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg></span>Spustit</button>
+          </div>
+          <div class="statusbar">
+            <span class="mstat off"><i></i>Nepřipojeno</span>
+            <span class="sitem"><span data-icon="Disconnect" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15,7 H17 A5,5 0 0 1 17,17 H15 M9,17 H7 A5,5 0 0 1 7,7 H9 M4,4 L20,20"/></svg></span>Žádný stroj</span>
+            <span style="margin-left:auto"></span>
+            <button class="btn secondary"><span data-icon="Refresh" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3,12 A9,9 0 0 1 12,3 A9.75,9.75 0 0 1 18.74,5.74 L21,8 M21,3 V8 H16 M21,12 A9,9 0 0 1 12,21 A9.75,9.75 0 0 1 5.26,18.26 L3,16 M8,16 H3 V21"/></svg></span>Hledat stroj</button>
+            <button class="btn primary large disabled"><span data-icon="Play" data-size="18"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg></span>Spustit</button>
+          </div>
+          <div class="statusbar">
+            <span class="mstat pause"><i></i>Pozastaveno · 42 %</span>
+            <span class="sitem"><span data-icon="Connect" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9,17 H7 A5,5 0 0 1 7,7 H9 M15,7 H17 A5,5 0 1 1 17,17 H15 M8,12 H16"/></svg></span>GRBL 1.1h <b>COM4</b></span>
+            <span class="sitem"><span data-icon="Clock" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 M12,6 V12 L16,14"/></svg></span>Zbývá <b>2:24</b></span>
+            <span style="margin-left:auto"></span>
+            <button class="btn secondary"><span data-icon="Play" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,5 A2,2 0 0 1 8.008,3.272 L20.005,10.27 A2,2 0 0 1 20.008,13.728 L8.008,20.728 A2,2 0 0 1 5,19 Z"/></svg></span>Pokračovat</button>
+            <button class="btn destructive"><span data-icon="Stop" data-size="16"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5,3 H19 A2,2 0 0 1 21,5 V19 A2,2 0 0 1 19,21 H5 A2,2 0 0 1 3,19 V5 A2,2 0 0 1 5,3 Z"/></svg></span>Zastavit</button>
+          </div>
+        </div>
+      </div>
+      <div class="dimlabel">Strip 56 · status item 28 · pill 26 · gap 6</div>
+    </section>
+
+    <!-- ================= REF: SPLASH ================= -->
+    <section id="ref-splash">
+      <div class="head"><h2>Startup</h2><span class="tag">Reference</span></div>
+      <p class="lede">Neutral ground, the supplied wordmark, one thin indeterminate line. No illustration, no glow, no percentage — and no artificial delay: the window exists for exactly as long as loading takes, and if loading is instant nobody ever sees it.</p>
+      <div class="stage" style="display:grid;place-items:center;padding:48px">
+        <div class="splash">
+          <div class="wm"><b>LASERO</b><i></i></div>
+          <div class="track"><span></span></div>
+          <div class="cap">Načítání pracovní plochy</div>
+        </div>
+      </div>
+      <ul class="rules">
+        <li><b>Indeterminate, not fake.</b> A moving line says work is happening. A progress percentage that is not measured is a lie the operator will remember when a real percentage matters.</li>
+      </ul>
+    </section>
+
+    <!-- ================= GAPS ================= -->
+    <section id="gaps">
+      <div class="head"><h2>Code deltas</h2><span class="tag">Handoff · 7 closed · 1 open · 1 withdrawn</span></div>
+      <p class="lede">Where the shipping application currently disagrees with the system above. Recorded so they get closed during implementation rather than rediscovered, and so nobody mistakes a leftover for a decision. Three closed by correcting the <em>system</em> instead of the code, and one was withdrawn outright — the app was right and this page was wrong.</p>
+      <div class="stage" style="background:var(--c-raised);border-color:var(--c-rule)">
+        <div class="gaps">
+          <table>
+            <thead><tr><th>Where</th><th>Delta</th></tr></thead>
+            <tbody>
+              <tr><td>Literal radii</td><td class="closed">11 / 14 / 17 / 18 turned out to be circles and pills rather than drift, and they had no token. Radius.Pill (999, which WPF clamps to half the smaller side) now covers all of them plus the toggle thumb, which had been a circle expressed as Radius.Md and would have deformed the moment Md changed.</td></tr>
+              <tr><td>Type scale</td><td class="closed">59 literals tokenised, 12 redundant style overrides deleted, and a test now fails on any literal FontSize in markup. DeviceSettingsWindow had been rendering its window title at 18 while its own section headings sat at 22 — the hierarchy was upside down. Page titles came down from 28 to 22, panel headers from 16 to 15, and inspector section headers from 15 to 13.</td></tr>
+              <tr><td>Shadow.Panel</td><td class="closed">Split into Shadow.Sheet / Tooltip / Dropdown / Modal. The canvas sheet, a modal and two popups had been sharing one 0.32-opacity, 34px-blur shadow whose own comment claimed exactly one surface used it.</td></tr>
+              <tr><td>Duplicate brushes</td><td class="closed">Brush.BrandRed, Brush.PrimaryAction, Brush.PrimaryActionHover, Brush.OnPrimaryAction and Brush.AccentMuted removed. Brush.Info stays: it shares the accent value but names a genuinely different role.</td></tr>
+              <tr><td>Dropdown hover</td><td class="closed">ComboBoxItem wore the cobalt selection tint on IsHighlighted, so hovering a dropdown looked like having already picked something. Hover is now the neutral wash and IsSelected carries the tint.</td></tr>
+              <tr><td>Inline icons</td><td class="withdrawn">Not a real finding. IconGlyph <em>is</em> the renderer and its &lt;Path&gt; is bound to a Geometry; BitmapTraceWindow draws the traced bitmap outline, which is content rather than an icon. Neither hardcodes a glyph.</td></tr>
+              <tr><td>Icon sizes</td><td class="closed">262 size attributes tokenised onto Size.Icon.Chrome / Sm / Md / Lg / Xl. The product had been rendering icons at fourteen distinct sizes. The renderer stroke also moved from 1.8 to 1.75 so the shipped icons finally match the exported SVG assets.</td></tr>
+              <tr><td>Pressed tokens</td><td class="closed">Withdrawn. The app already separates press from hover by wash strength, so color/primary/pressed and color/destructive/pressed would have introduced a competing mechanic for one state. The values stay documented; nothing binds to them.</td></tr>
+              <tr><td>Bitmap re-edit</td><td>Raster settings can only be set at import. Reopening them non-destructively is still missing, so the workflow is delete and re-import.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+

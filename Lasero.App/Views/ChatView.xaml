@@ -23,7 +23,7 @@
                 <DataTrigger Binding="{Binding IsUser}" Value="True">
                     <Setter Property="Grid.Column" Value="2" />
                     <Setter Property="HorizontalAlignment" Value="Right" />
-                    <Setter Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                     <Setter Property="CornerRadius" Value="12,12,4,12" />
                     <Setter Property="Margin" Value="56,0,0,12" />
@@ -51,13 +51,13 @@
 
                 <Grid Margin="4,2,4,12">
                     <StackPanel>
-                        <TextBlock Text="Lasero Chat" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Lasero Chat" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Historie konverzací" Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
                     </StackPanel>
                     <Button HorizontalAlignment="Right" VerticalAlignment="Center" Width="32" Height="32"
                             Style="{StaticResource Button.Icon}" Command="{Binding Chat.NewChatCommand}"
                             ToolTip="Nová konverzace" AutomationProperties.Name="Nová konverzace">
-                        <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="15" Height="15" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
                 </Grid>
 
@@ -67,7 +67,7 @@
                     <Grid>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,28"
                                 Visibility="{Binding Chat.HasSessions, Converter={StaticResource InverseBoolToVisibility}}">
-                        <components:IconGlyph IconData="{StaticResource Glyph.History}" Width="22" Height="22"
+                        <components:IconGlyph IconData="{StaticResource Glyph.History}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
                                               HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
                         <TextBlock Text="Zatím bez historie" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,9,0,4" />
                         <TextBlock Text="Nová konverzace se uloží automaticky."
@@ -95,7 +95,7 @@
                                             Command="{Binding DataContext.Chat.DeleteChatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}" ToolTip="Odstranit konverzaci"
                                             AutomationProperties.Name="Odstranit konverzaci">
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="14" Height="14" />
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                     </Button>
                                 </Grid>
                             </DataTemplate>
@@ -144,7 +144,7 @@
                             <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
                         </Ellipse>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="Kamil" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="Kamil" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                             <TextBlock Text="Asistent pro materiály, parametry a řešení problémů" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -160,7 +160,7 @@
                         <Ellipse Width="72" Height="72" HorizontalAlignment="Center">
                             <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
                         </Ellipse>
-                        <TextBlock Text="S čím vám Kamil pomůže?" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,7" />
+                        <TextBlock Text="S čím vám Kamil pomůže?" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,7" />
                         <TextBlock Text="Zeptejte se na bezpečné parametry, materiály nebo výsledek gravírování. Doporučení před ostrou úlohou vždy ověřte na odřezku."
                                    TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" LineHeight="20" />
                         <ItemsControl ItemsSource="{Binding Chat.SuggestedQuestions}" Margin="0,20,0,0">
@@ -192,7 +192,7 @@
                                         <Border Style="{StaticResource ChatBubble}" MaxWidth="720">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                    <TextBlock Text="{Binding Author}" FontWeight="SemiBold" FontSize="12" />
+                                                    <TextBlock Text="{Binding Author}" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
                                                     <TextBlock Text="  ·  " Foreground="{DynamicResource Brush.PanelBorder}" />
                                                     <TextBlock Text="{Binding TimeLabel}" Style="{StaticResource Text.Muted}" />
                                                 </StackPanel>
@@ -243,10 +243,10 @@
                                      AutomationProperties.Name="Zpráva pro Lasero Chat" />
                             <Button Grid.Column="1" Width="46" Height="46" Margin="10,0,0,0" Padding="12"
                                     Style="{StaticResource Button.Primary}"
-                                    Background="{StaticResource Brush.BrandRed}" BorderBrush="{StaticResource Brush.BrandRed}"
+                                    Background="{StaticResource Brush.Brand}" BorderBrush="{StaticResource Brush.Brand}"
                                     Command="{Binding Chat.SendCommand}"
                                     ToolTip="Odeslat zprávu" AutomationProperties.Name="Odeslat zprávu">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Send}" Foreground="White" Width="18" Height="18" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Send}" Foreground="White" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </Button>
                         </Grid>
                         <TextBlock Text="Enter odešle · Shift+Enter nový řádek" Style="{StaticResource Text.Muted}" Margin="2,7,0,0" />

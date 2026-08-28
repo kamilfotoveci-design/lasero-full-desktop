@@ -18,7 +18,7 @@
                 Padding="26,0">
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="Přidat text do návrhu"
-                           FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+                           FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                 <TextBlock Text="Text zůstane jako jeden objekt a můžete ho na plátně dál upravovat."
                            Style="{StaticResource Text.Muted}" Margin="0,5,0,0" />
             </StackPanel>
@@ -49,7 +49,7 @@
                         BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1"
                         CornerRadius="{StaticResource Radius.Md}" Padding="12" VerticalAlignment="Bottom" MinHeight="{StaticResource Size.Control.Base}">
                     <StackPanel Orientation="Horizontal">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="16" Height="16"
+                        <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                               Margin="0,0,8,0" Foreground="{StaticResource Brush.Info}" />
                         <TextBlock Text="Rozměr je v milimetrech." Style="{StaticResource Text.Muted}"
                                    VerticalAlignment="Center" />

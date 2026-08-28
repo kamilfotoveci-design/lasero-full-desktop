@@ -261,21 +261,46 @@ public partial class GCodeViewModel : ObservableObject
     private List<string> BuildSceneGCode(double offsetX, double offsetY)
     {
         var lines = new List<string>();
-        lines.AddRange(ToolpathBuilder.BuildGCode(_scene.Scene.ToImportedDocument(offsetX, offsetY)));
-        var rasterLayer = Layers.FirstOrDefault(layer =>
-            layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor));
+        var document = _scene.Scene.ToImportedDocument(offsetX, offsetY);
 
-        foreach (var obj in _scene.Objects)
+        // The layer list is the manufacturing order for both vectors and bitmaps. Raster jobs used
+        // to be appended after every vector regardless of the order shown in the UI.
+        foreach (var layer in Layers.Where(item => item.IsEnabled))
         {
-            if (!obj.IsVisible || !obj.IncludeInOutput || obj.RasterFilePath is null || rasterLayer is null || !rasterLayer.IsEnabled)
+            if (layer.IsRaster)
+            {
+                foreach (var obj in _scene.Objects.Where(item =>
+                             item.IsVisible && item.IncludeInOutput && item.IsRaster && UsesLayer(item, layer)))
+                {
+                    var outputOptions = obj.BuildRasterOutputOptions(layer, offsetX, offsetY);
+                    if (outputOptions is not null)
+                        lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions));
+                }
                 continue;
-            var outputOptions = obj.BuildRasterOutputOptions(rasterLayer, offsetX, offsetY);
-            if (outputOptions is null) continue;
-            lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions));
+            }
+
+            var shapes = document.Shapes.Where(shape => shape.LayerId != Guid.Empty
+                ? shape.LayerId == layer.Id
+                : shape.LayerColor.IsApproximately(layer.Color)).ToList();
+            if (shapes.Count == 0) continue;
+
+            lines.AddRange(ToolpathBuilder.BuildGCode(new ImportedDocument
+            {
+                Shapes = shapes,
+                Layers = [layer],
+                BoundingBox = document.BoundingBox,
+                SourceFileName = document.SourceFileName,
+            }));
         }
 
         return lines;
     }
+
+    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
+        item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
+            ? shape.LayerId == layer.Id
+            : shape.LayerColor.IsApproximately(layer.Color)) ||
+        layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty);
 
     private void OnSceneChanged()
     {
@@ -403,13 +428,13 @@ public partial class GCodeViewModel : ObservableObject
     private IReadOnlyList<RasterImportOptions>? BuildEffectiveRasterOptionsForPreflight()
     {
         if (ImportKind == ImportKind.GCode) return null;
-        var rasterLayer = Layers.FirstOrDefault(layer =>
-            layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor));
-        if (rasterLayer is not { IsEnabled: true }) return [];
-
         return _scene.Objects
             .Where(item => item.IsVisible && item.IncludeInOutput && item.RasterOptions is not null)
-            .Select(item => item.BuildRasterOutputOptions(rasterLayer))
+            .Select(item =>
+            {
+                var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && UsesLayer(item, candidate));
+                return layer is { IsEnabled: true } ? item.BuildRasterOutputOptions(layer) : null;
+            })
             .Where(item => item is not null)
             .Cast<RasterImportOptions>()
             .ToList();

@@ -67,7 +67,7 @@
                     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
                             Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
-                            <TextBlock Text="Stav stroje" Style="{StaticResource PanelTitle}" FontSize="16" />
+                            <TextBlock Text="Stav stroje" Style="{StaticResource PanelTitle}" />
 
                             <Border Background="{DynamicResource Brush.Field}"
                                     BorderBrush="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
@@ -80,7 +80,7 @@
                                             Style="{StaticResource Button.Icon}" Width="24" Height="24" Padding="0"
                                             Command="{Binding MachineStatus.DismissAlertCommand}"
                                             ToolTip="Zavřít upozornění" AutomationProperties.Name="Zavřít upozornění">
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="13" Height="13" />
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                                     </Button>
                                 </Grid>
                             </Border>
@@ -149,8 +149,8 @@
                     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="18" Height="18" Margin="0,0,8,0" />
-                                <TextBlock Text="Připojení zařízení" Style="{StaticResource PanelTitle}" FontSize="16" Margin="0" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
+                                <TextBlock Text="Připojení zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
                             <TextBlock Text="Vyberte nalezený port. Po připojení Lasero automaticky načte typ zařízení a rozměry pracovní plochy."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
@@ -168,7 +168,7 @@
                                         <Button Width="32" Height="32" HorizontalAlignment="Right" Style="{StaticResource Button.Icon}"
                                                 Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Obnovit porty"
                                                 AutomationProperties.Name="Obnovit porty">
-                                            <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="16" Height="16" />
+                                            <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                         </Button>
                                     </Grid>
                                 </StackPanel>
@@ -182,7 +182,7 @@
                                     Padding="12" Margin="0,12,0,0"
                                     Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17"
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                                           Foreground="{StaticResource Brush.Accent}" Margin="0,1,9,0" />
                                     <StackPanel>
                                         <TextBlock Text="Virtuální laser" FontWeight="SemiBold" />
@@ -199,7 +199,7 @@
                                     Margin="0,12,0,0"
                                     Visibility="{Binding Connection.HasAvailablePorts, Converter={StaticResource InverseBoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="17" Height="17" Margin="0,0,9,0" Foreground="{DynamicResource Brush.TextSecondary}" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{DynamicResource Brush.TextSecondary}" />
                                     <TextBlock Text="Nebyl nalezen žádný sériový port. Připojte gravírku přes USB a zvolte Obnovit porty."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                                 </StackPanel>
@@ -230,11 +230,11 @@
 
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" FontSize="16" />
+                            <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" />
                             <TextBlock Text="Rozměry se po připojení načtou přímo z nastavení GRBL ($130 a $131)."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="{StaticResource Font.Numeric}" FontSize="18" FontWeight="SemiBold">
+                                <TextBlock FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold">
                                     <Run Text="{Binding Connection.WorkAreaWidthMm, StringFormat={}{0:0.#}, Mode=OneWay}" />
                                     <Run Text=" × " />
                                     <Run Text="{Binding Connection.WorkAreaHeightMm, StringFormat={}{0:0.#}, Mode=OneWay}" />
@@ -251,12 +251,12 @@
                 <StackPanel Grid.Column="2">
                     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="Ruční posun stroje" Style="{StaticResource PanelTitle}" FontSize="16" />
+                            <TextBlock Text="Ruční posun stroje" Style="{StaticResource PanelTitle}" />
                             <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
                                     BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="14" Margin="0,0,0,4"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="18" Height="18" Margin="0,1,10,0" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" />
                                     <StackPanel>
                                         <TextBlock Text="Nejprve připojte zařízení" FontWeight="SemiBold" />
                                         <TextBlock Text="Po připojení se zpřístupní bezpečný ruční posun os."
@@ -283,21 +283,21 @@
                                     <Grid.RowDefinitions><RowDefinition Height="60" /><RowDefinition Height="60" /><RowDefinition Height="60" /></Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="60" /><ColumnDefinition Width="60" /><ColumnDefinition Width="60" /></Grid.ColumnDefinitions>
 
-                                    <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Posunout vlevo nahoru" AutomationProperties.Name="Posunout vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Posunout nahoru, osa Y plus" AutomationProperties.Name="Posunout nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Posunout vpravo nahoru" AutomationProperties.Name="Posunout vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="Posunout vlevo, osa X minus" AutomationProperties.Name="Posunout vlevo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Najet do výchozí polohy stroje" AutomationProperties.Name="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="Posunout vpravo, osa X plus" AutomationProperties.Name="Posunout vpravo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Posunout vlevo dolů" AutomationProperties.Name="Posunout vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Posunout dolů, osa Y minus" AutomationProperties.Name="Posunout dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="18" Height="18" /></Button>
-                                    <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYNegCommand}" ToolTip="Posunout vpravo dolů" AutomationProperties.Name="Posunout vpravo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownRight}" Width="18" Height="18" /></Button>
+                                    <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Posunout vlevo nahoru" AutomationProperties.Name="Posunout vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Posunout nahoru, osa Y plus" AutomationProperties.Name="Posunout nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Posunout vpravo nahoru" AutomationProperties.Name="Posunout vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="Posunout vlevo, osa X minus" AutomationProperties.Name="Posunout vlevo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Najet do výchozí polohy stroje" AutomationProperties.Name="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="Posunout vpravo, osa X plus" AutomationProperties.Name="Posunout vpravo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Posunout vlevo dolů" AutomationProperties.Name="Posunout vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Posunout dolů, osa Y minus" AutomationProperties.Name="Posunout dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYNegCommand}" ToolTip="Posunout vpravo dolů" AutomationProperties.Name="Posunout vpravo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownRight}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                 </Grid>
 
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                     <TextBlock Text="OSA Z" Style="{StaticResource Text.Heading}" HorizontalAlignment="Center" Margin="0,0,0,5" />
-                                    <Button Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z" AutomationProperties.Name="Zvednout osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="18" Height="18" /></Button>
-                                    <Button Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z" AutomationProperties.Name="Spustit osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="18" Height="18" /></Button>
+                                    <Button Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z" AutomationProperties.Name="Zvednout osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <Button Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z" AutomationProperties.Name="Spustit osu Z"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                 </StackPanel>
                             </Grid>
 
@@ -344,7 +344,7 @@
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Příprava gravírování" Style="{StaticResource PanelTitle}" FontSize="16" Margin="0" />
+                                    <TextBlock Text="Příprava gravírování" Style="{StaticResource PanelTitle}" Margin="0" />
                                     <TextBlock Text="Vyberte návrh a před spuštěním zkontrolujte jeho umístění." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <Border Grid.Column="1" Style="{StaticResource Badge}" Padding="9,4" VerticalAlignment="Top">
@@ -389,7 +389,7 @@
                                 </StackPanel>
                                 <Border Grid.Column="2" Background="{StaticResource Brush.SuccessMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" VerticalAlignment="Bottom">
                                     <StackPanel Orientation="Horizontal">
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="15" Height="15" Foreground="{StaticResource Brush.Success}" Margin="0,0,7,0" />
+                                        <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Success}" Margin="0,0,7,0" />
                                         <TextBlock Text="Laser zůstane vypnutý" Foreground="{StaticResource Brush.Success}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Border>
@@ -398,9 +398,9 @@
                                 <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Zkontrolovat oblast" />
                             </Button>
 
-                            <Border Background="{StaticResource Brush.AccentMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" Margin="0,0,0,12">
+                            <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" Margin="0,0,0,12">
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Origin}" Width="16" Height="16" Foreground="{StaticResource Brush.Info}" Margin="0,0,8,0" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Origin}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Info}" Margin="0,0,8,0" />
                                     <TextBlock Text="Začátek úlohy je nastaven na pracovní nulu stroje." Foreground="{StaticResource Brush.Info}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
@@ -420,8 +420,8 @@
                         <Expander IsExpanded="False">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Terminal}" Width="18" Height="18" Margin="0,0,8,0" />
-                                    <TextBlock Text="Pokročilé: konzola GRBL" FontWeight="SemiBold" FontSize="14" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Terminal}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
+                                    <TextBlock Text="Pokročilé: konzola GRBL" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Body}" />
                                 </StackPanel>
                             </Expander.Header>
                         <Grid Height="240" Margin="0,14,0,0">
@@ -433,7 +433,7 @@
                                     <ItemsControl ItemsSource="{Binding Console.Lines}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="12" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding}" FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

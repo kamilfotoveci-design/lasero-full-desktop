@@ -11,8 +11,8 @@
         <StackPanel>
             <Grid Margin="0,0,0,14">
                 <StackPanel Orientation="Horizontal">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="18" Height="18" Margin="0,0,8,0" />
-                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" FontSize="16" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
+                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
                 </StackPanel>
                 <components:StatusBadge Grid.Column="1" HorizontalAlignment="Right"
                                         IsConnected="{Binding IsConnected, ElementName=Root}"

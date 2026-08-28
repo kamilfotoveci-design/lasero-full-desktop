@@ -9,7 +9,7 @@ namespace Lasero.Tests;
 public sealed class RasterCanvasPreviewTests
 {
     [Fact]
-    public void ImportedColorBitmapIsRenderedOnCanvasAsProcessedGrayscale()
+    public void ImportedColorBitmapIsRenderedOnCanvasAsBlackAndWhiteStuckiPreview()
     {
         var path = Path.Combine(Path.GetTempPath(), $"lasero-grayscale-preview-{Guid.NewGuid():N}.png");
         try
@@ -29,7 +29,7 @@ public sealed class RasterCanvasPreviewTests
             Assert.Equal(PixelFormats.Gray8, preview.Format);
             var pixels = new byte[2];
             preview.CopyPixels(pixels, 2, 0);
-            Assert.NotEqual(pixels[0], pixels[1]);
+            Assert.All(pixels, pixel => Assert.True(pixel is 0 or 255));
         }
         finally
         {
