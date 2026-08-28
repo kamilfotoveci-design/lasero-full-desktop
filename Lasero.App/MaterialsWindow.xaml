@@ -83,9 +83,21 @@
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Width="228" Margin="0,0,8,8">
-                                <TextBlock Text="Hledat" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
-                                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Hledat podle materiálu, poznámky nebo upozornění" />
+                                <TextBlock Text="Hledat" Style="{StaticResource FieldLabel}" />
+                                <Border Style="{StaticResource UnitField.Shell}">
+                                    <DockPanel>
+                                        <components:IconGlyph DockPanel.Dock="Left"
+                                                              IconData="{StaticResource Glyph.Search}"
+                                                              Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                              Foreground="{StaticResource Brush.TextMuted}"
+                                                              Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                 BorderThickness="0" Background="Transparent" Padding="0"
+                                                 VerticalContentAlignment="Center"
+                                                 ToolTip="Hledat podle materiálu, poznámky nebo upozornění"
+                                                 AutomationProperties.Name="Hledat materiál" />
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
                         </WrapPanel>
                     </Border>
