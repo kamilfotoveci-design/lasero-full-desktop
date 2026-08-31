@@ -44,6 +44,43 @@ public partial class SceneCanvas : UserControl
     private Brush SelectionBrush => (Brush)FindResource("Brush.Accent");
     private Brush SelectionHandleFill => (Brush)FindResource("Brush.OnAccent");
 
+    // ------------------------------------------------------------------
+    // Marching ants. A static dashed outline is easy to miss on a busy canvas, and on a filled
+    // object it reads as part of the artwork; a crawling dash does not. Both the selection box and
+    // the selected object's own contours carry it, so what is selected is unmistakable even when the
+    // box happens to sit over other geometry.
+    // ------------------------------------------------------------------
+
+    /// <summary>Dash pattern of the selection outline, in multiples of its stroke thickness. Frozen
+    /// because one instance is handed to every dashed visual on the overlay.</summary>
+    private static readonly DoubleCollection SelectionDashes = CreateSelectionDashes();
+
+    private static DoubleCollection CreateSelectionDashes()
+    {
+        var dashes = new DoubleCollection { 4, 2 };
+        dashes.Freeze();
+        return dashes;
+    }
+
+    /// <summary>One full cycle of the pattern. Animating the offset over exactly this distance is what
+    /// makes the crawl seamless rather than visibly snapping back.</summary>
+    private const double SelectionDashPeriod = 6;
+
+    private static readonly Duration SelectionDashCycle = new(TimeSpan.FromMilliseconds(700));
+
+    /// <summary>
+    /// Where the dash pattern currently sits. Every dashed selection visual binds its
+    /// StrokeDashOffset to this one property instead of animating itself, because the overlay is
+    /// rebuilt on every mouse-move of a drag: per-shape animations would restart from zero each time
+    /// and the ants would stand still exactly while the object is being moved.
+    /// </summary>
+    private static readonly DependencyProperty MarchingAntsPhaseProperty = DependencyProperty.Register(
+        nameof(MarchingAntsPhase), typeof(double), typeof(SceneCanvas), new PropertyMetadata(0.0));
+
+    private double MarchingAntsPhase => (double)GetValue(MarchingAntsPhaseProperty);
+
+    private bool _antsRunning;
+
     private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw }
 
     private double _scale = DefaultScale;
@@ -321,13 +358,17 @@ public partial class SceneCanvas : UserControl
             }
         }
 
+        // One visual per compound path, not per contour. A letter's counter and a logo's cut-out are
+        // separate contours of the same compound path; filling each contour on its own painted them
+        // solid instead of punching them out, so every "e" and "o" came out as a blob.
         var paths = new List<Path>();
-        foreach (var shape in obj.LocalShapes)
+        foreach (var group in CompoundGroups(obj.LocalShapes))
         {
+            var color = group.First().LayerColor;
             var path = new Path
             {
                 Fill = null,
-                Stroke = new SolidColorBrush(Color.FromRgb(shape.LayerColor.R, shape.LayerColor.G, shape.LayerColor.B)),
+                Stroke = new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)),
                 StrokeThickness = 1.4,
                 Tag = obj,
                 Cursor = obj.IsLocked ? Cursors.Arrow : Cursors.SizeAll,
@@ -345,6 +386,19 @@ public partial class SceneCanvas : UserControl
         obj.PropertyChanged += OnObjectPropertyChanged;
         UpdateObjectGeometry(obj);
     }
+
+    /// <summary>
+    /// The contours of one object split into compound paths: everything that fills as a single region
+    /// with its holes punched out.
+    ///
+    /// GeometrySetId is the grouping key, and Guid.Empty means "all contours in this object are one
+    /// compound path" — the documented legacy value that SVG imports still use. Layer identity splits
+    /// a group further, because two layers are burned separately and cannot share a fill.
+    /// </summary>
+    private static List<IGrouping<(Guid Set, Guid Layer, RgbColor Color), ImportedShape>> CompoundGroups(
+        IReadOnlyList<ImportedShape> shapes) => shapes
+        .GroupBy(shape => (Set: shape.GeometrySetId, Layer: shape.LayerId, Color: shape.LayerColor))
+        .ToList();
 
     /// <summary>Loads the same processed grayscale pixels used by raster G-code. The canvas therefore
     /// previews what will be engraved instead of showing a misleading full-color source image.</summary>
@@ -415,16 +469,29 @@ public partial class SceneCanvas : UserControl
         }
 
         if (!_objectVisuals.TryGetValue(obj, out var paths)) return;
-        var shapes = obj.GetWorldShapes();
-        for (var i = 0; i < paths.Count && i < shapes.Count; i++)
+        var groups = CompoundGroups(obj.GetWorldShapes());
+
+        // Recolouring or reassigning a layer changes the grouping key, so the number of compound paths
+        // can change without the object itself being replaced. Rebuild rather than update in place.
+        if (groups.Count != paths.Count)
         {
-            paths[i].Data = BuildGeometry(shapes[i]);
-            var layerColor = shapes[i].LayerColor;
+            RemoveObjectVisuals(obj);
+            AddObjectVisuals(obj);
+            return;
+        }
+
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var group = groups[i];
+            var layerColor = group.Key.Color;
+            var layerId = group.Key.Layer;
             var color = Color.FromRgb(layerColor.R, layerColor.G, layerColor.B);
+            var fills = ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut;
+
+            paths[i].Data = BuildCompoundGeometry(group);
             paths[i].Stroke = new SolidColorBrush(color);
             paths[i].StrokeThickness = 1.4;
-            var layerId = shapes[i].LayerId;
-            paths[i].Fill = shapes[i].IsClosed && ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut
+            paths[i].Fill = fills && group.Any(shape => shape.IsClosed)
                 ? new SolidColorBrush(color)
                 : null;
             paths[i].Visibility = obj.IsVisible && (ViewModel?.IsLayerVisible(layerId, layerColor) ?? true)
@@ -442,18 +509,35 @@ public partial class SceneCanvas : UserControl
         return obj.LocalShapes.Any(shape => ViewModel?.IsLayerVisible(shape.LayerId, shape.LayerColor) ?? true);
     }
 
-    private PathGeometry BuildGeometry(ImportedShape shape)
+    /// <summary>
+    /// One compound path's contours as a single geometry.
+    ///
+    /// FillRule is Nonzero, the rule type and SVG both use: a contour wound against its parent — a
+    /// letter's counter, a washer's bore — punches a hole, while two same-wound contours that happen
+    /// to overlap simply merge. EvenOdd would instead cut a hole out of any overlap between two
+    /// separate shapes on the same layer.
+    ///
+    /// Open contours are marked IsFilled=false so a stray line inside a filled group contributes its
+    /// stroke without dragging a fill region along with it.
+    /// </summary>
+    private PathGeometry BuildCompoundGeometry(IEnumerable<ImportedShape> shapes)
     {
-        if (shape.Points.Count == 0) return new PathGeometry();
-
-        var figure = new PathFigure
+        var figures = new PathFigureCollection();
+        foreach (var shape in shapes)
         {
-            StartPoint = new Point(ToCanvasX(shape.Points[0].X), ToCanvasY(shape.Points[0].Y)),
-            IsClosed = shape.IsClosed,
-        };
-        figure.Segments.Add(new PolyLineSegment(
-            shape.Points.Skip(1).Select(p => new Point(ToCanvasX(p.X), ToCanvasY(p.Y))), isStroked: true));
-        return new PathGeometry([figure]);
+            if (shape.Points.Count == 0) continue;
+            var figure = new PathFigure
+            {
+                StartPoint = new Point(ToCanvasX(shape.Points[0].X), ToCanvasY(shape.Points[0].Y)),
+                IsClosed = shape.IsClosed,
+                IsFilled = shape.IsClosed,
+            };
+            figure.Segments.Add(new PolyLineSegment(
+                shape.Points.Skip(1).Select(p => new Point(ToCanvasX(p.X), ToCanvasY(p.Y))), isStroked: true));
+            figures.Add(figure);
+        }
+
+        return new PathGeometry(figures) { FillRule = FillRule.Nonzero };
     }
 
     private void RedrawGrid()
@@ -582,7 +666,13 @@ public partial class SceneCanvas : UserControl
         foreach (var el in _selectionVisuals) DrawCanvas.Children.Remove(el);
         _selectionVisuals.Clear();
 
-        if (ViewModel is null || ViewModel.SelectedObjects.Count == 0) return;
+        if (ViewModel is null || ViewModel.SelectedObjects.Count == 0)
+        {
+            StopMarchingAnts();
+            return;
+        }
+
+        StartMarchingAnts();
 
         if (ViewModel.SelectedObjects.Count == 1)
         {
@@ -592,6 +682,100 @@ public partial class SceneCanvas : UserControl
         }
         else
             DrawMultiSelectionBox();
+
+        // Every selected object's own contours crawl, not just the box around them. On a filled
+        // object the box alone is ambiguous about which shape it belongs to.
+        foreach (var obj in ViewModel.SelectedObjects)
+        {
+            if (IsObjectVisibleOnCanvas(obj))
+                DrawObjectAnts(obj);
+        }
+    }
+
+    /// <summary>
+    /// The selected object's contours, traced in one crawling dashed path. One visual for the whole
+    /// object rather than one per contour: a traced SVG can carry hundreds of contours, and the
+    /// overlay is rebuilt on every mouse-move while dragging.
+    /// </summary>
+    private void DrawObjectAnts(SceneObject obj)
+    {
+        var figures = new PathFigureCollection();
+        foreach (var shape in obj.GetWorldShapes())
+        {
+            if (shape.Points.Count < 2) continue;
+            if (!(ViewModel?.IsLayerVisible(shape.LayerId, shape.LayerColor) ?? true)) continue;
+            figures.Add(new PathFigure
+            {
+                StartPoint = new Point(ToCanvasX(shape.Points[0].X), ToCanvasY(shape.Points[0].Y)),
+                IsClosed = shape.IsClosed,
+                IsFilled = false,
+                Segments =
+                {
+                    new PolyLineSegment(
+                        shape.Points.Skip(1).Select(point => new Point(ToCanvasX(point.X), ToCanvasY(point.Y))),
+                        isStroked: true),
+                },
+            });
+        }
+
+        if (figures.Count == 0) return;
+
+        var ants = new Path
+        {
+            Data = new PathGeometry(figures),
+            Stroke = SelectionBrush,
+            StrokeThickness = 1.6,
+            Fill = null,
+            IsHitTestVisible = false,
+        };
+        ApplyMarchingAnts(ants);
+        DrawCanvas.Children.Add(ants);
+        _selectionVisuals.Add(ants);
+    }
+
+    /// <summary>Dashes the shape and ties its dash offset to the shared crawl.</summary>
+    private void ApplyMarchingAnts(Shape shape)
+    {
+        shape.StrokeDashArray = SelectionDashes;
+        shape.SetBinding(Shape.StrokeDashOffsetProperty, new System.Windows.Data.Binding(nameof(MarchingAntsPhase))
+        {
+            Source = this,
+            Mode = System.Windows.Data.BindingMode.OneWay,
+        });
+    }
+
+    private void StartMarchingAnts()
+    {
+        if (_antsRunning) return;
+        _antsRunning = true;
+
+        // Windows' own "animate controls and elements inside windows" setting. With animation turned
+        // off the dashes stay put: the outline still reads as a selection, it just does not move.
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            SetValue(MarchingAntsPhaseProperty, 0.0);
+            return;
+        }
+
+        BeginAnimation(MarchingAntsPhaseProperty, new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = SelectionDashPeriod,
+            To = 0,
+            Duration = SelectionDashCycle,
+            RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+        });
+    }
+
+    /// <summary>
+    /// Stops the crawl when nothing is selected. The animation ticks the property at frame rate, and
+    /// leaving it running would keep re-rendering an overlay that has nothing to outline.
+    /// </summary>
+    private void StopMarchingAnts()
+    {
+        if (!_antsRunning) return;
+        _antsRunning = false;
+        BeginAnimation(MarchingAntsPhaseProperty, null);
+        SetValue(MarchingAntsPhaseProperty, 0.0);
     }
 
     private void DrawSingleObjectHandles(SceneObject obj)
@@ -607,10 +791,10 @@ public partial class SceneCanvas : UserControl
             Points = new PointCollection(corners),
             Stroke = SelectionBrush,
             StrokeThickness = 1.2,
-            StrokeDashArray = [4, 2],
             Fill = Brushes.Transparent,
             IsHitTestVisible = false,
         };
+        ApplyMarchingAnts(outline);
         DrawCanvas.Children.Add(outline);
         _selectionVisuals.Add(outline);
 
@@ -734,10 +918,10 @@ public partial class SceneCanvas : UserControl
             Height = Math.Max(0, (box.MaxY - box.MinY) * _scale),
             Stroke = SelectionBrush,
             StrokeThickness = 1.2,
-            StrokeDashArray = [4, 2],
             Fill = Brushes.Transparent,
             IsHitTestVisible = false,
         };
+        ApplyMarchingAnts(rect);
         Canvas.SetLeft(rect, ToCanvasX(box.MinX));
         Canvas.SetTop(rect, ToCanvasY(box.MaxY));
         DrawCanvas.Children.Add(rect);
@@ -1043,7 +1227,7 @@ public partial class SceneCanvas : UserControl
         // position in Transform. Rendering LocalShapes directly therefore placed the dashed
         // preview around the scene origin instead of under the pointer. Use the same world-space
         // geometry path as the finished object so preview and result are pixel-identical.
-        _toolPreviewVisual.Data = BuildGeometry(preview.GetWorldShapes()[0]);
+        _toolPreviewVisual.Data = BuildCompoundGeometry(preview.GetWorldShapes());
         _toolPreviewVisual.Visibility = Visibility.Visible;
     }
 
