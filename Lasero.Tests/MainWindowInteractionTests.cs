@@ -5,7 +5,7 @@ namespace Lasero.Tests;
 public sealed class MainWindowInteractionTests
 {
     [Fact]
-    public void TransformFieldsCommitKeyboardValuesOnEnter()
+    public void InspectorValueFieldsCommitKeyboardValuesOnEnter()
     {
         // The transform fields live in the right inspector, not the toolbar above the canvas: the
         // toolbar could not hold them on one row at any window size.
@@ -13,12 +13,18 @@ public sealed class MainWindowInteractionTests
         var xaml = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml.cs"));
 
-        Assert.Equal(5, CountOccurrences(xaml, "KeyDown=\"OnTransformFieldKeyDown\""));
+        string[] deferredFields =
+        [
+            "SelectedX", "SelectedY", "SelectedWidth", "SelectedHeight", "SelectedRotation",
+            "SelectedTextValue", "SelectedTextHeight",
+        ];
+
+        Assert.Equal(deferredFields.Length, CountOccurrences(xaml, "KeyDown=\"OnTransformFieldKeyDown\""));
         Assert.Contains("GetBindingExpression(TextBox.TextProperty)?.UpdateSource()", codeBehind, StringComparison.Ordinal);
 
-        // Every transform field defers its binding to LostFocus, which is what makes the Enter
+        // Every one of these fields defers its binding to LostFocus, which is what makes the Enter
         // handler necessary: without it a typed value would sit uncommitted until focus moved.
-        foreach (var property in new[] { "SelectedX", "SelectedY", "SelectedWidth", "SelectedHeight", "SelectedRotation" })
+        foreach (var property in deferredFields)
         {
             var binding = xaml[xaml.IndexOf($"Scene.{property},", StringComparison.Ordinal)..];
             Assert.Contains("UpdateSourceTrigger=LostFocus", binding[..binding.IndexOf('}')], StringComparison.Ordinal);

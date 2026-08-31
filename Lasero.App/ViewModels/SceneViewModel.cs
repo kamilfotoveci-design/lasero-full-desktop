@@ -263,10 +263,27 @@ public partial class SceneViewModel : ObservableObject
 
     public void AddText(string text, Position origin, double heightMm, VectorTextStyle style)
     {
-        // Keep text visually near-black while assigning it to a distinct processing layer.
-        // This prevents filled text from being merged with the default black cut layer.
-        var color = new Lasero.Core.Layers.RgbColor(52, 52, 52);
-        var obj = VectorTextFactory.Create(text, origin, heightMm, color, style);
+        ArgumentNullException.ThrowIfNull(style);
+        AddText(
+            new TextSource
+            {
+                Text = text,
+                HeightMm = heightMm,
+                FontFamily = style.FontFamily,
+                Bold = style.Bold,
+                Italic = style.Italic,
+                Uppercase = style.Uppercase,
+                Weld = style.Weld,
+            },
+            origin);
+    }
+
+    public void AddText(TextSource source, Position origin)
+    {
+        // Text stays visually near-black while going onto its own processing layer, so filled text is
+        // not merged with the default black cut layer.
+        var color = VectorTextFactory.DefaultColor;
+        var obj = VectorTextFactory.Create(source, origin, color);
         AddDrawingObject(
             obj,
             [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Fill, "Text")]);
@@ -1056,6 +1073,7 @@ public partial class SceneViewModel : ObservableObject
                 IncludeInOutput = obj.IncludeInOutput,
                 RasterFilePath = obj.RasterFilePath,
                 RasterOptions = obj.RasterOptions,
+                Text = obj.Text,
             }).ToList(),
             Layers = Layers.Select(layer => new ProjectLayer
             {
@@ -1136,6 +1154,7 @@ public partial class SceneViewModel : ObservableObject
                     LocalBounds = item.LocalBounds,
                     RasterFilePath = item.RasterFilePath,
                     RasterOptions = item.RasterOptions,
+                    Text = item.Text,
                     Name = item.Name,
                     Transform = item.Transform,
                     IsVisible = item.IsVisible,
@@ -1252,6 +1271,125 @@ public partial class SceneViewModel : ObservableObject
         Execute(new TransformObjectCommand(item, before, after));
     }
 
+    // ===================== Editable text =====================
+    //
+    // Text keeps the wording and the type settings it was built from, so changing any of them
+    // re-renders the contours instead of leaving the operator with curves. Each setter goes through
+    // ApplyTextSource, which is one undoable replacement of the object - the same mechanism group,
+    // ungroup and unite use, so text edits sit in the same undo history as everything else.
+
+    public bool IsTextSelected => Selected is { IsText: true };
+    public bool CanEditSelectedText => Selected is { IsText: true, IsLocked: false };
+
+    /// <summary>The families that can actually produce outlines, for the font picker. Built once:
+    /// enumerating system fonts on every selection change is slow enough to be felt.</summary>
+    public static IReadOnlyList<string> FontFamilies { get; } = System.Windows.Media.Fonts.SystemFontFamilies
+        .Select(family => family.Source)
+        .Where(name => !string.IsNullOrWhiteSpace(name))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+        .ToList();
+
+    public string SelectedTextValue
+    {
+        get => Selected?.Text?.Text ?? string.Empty;
+        set => ApplyTextSource(source => source with { Text = value });
+    }
+
+    public string SelectedTextFontFamily
+    {
+        get => Selected?.Text?.FontFamily ?? TextSource.DefaultFontFamily;
+        set => ApplyTextSource(source => source with { FontFamily = value });
+    }
+
+    public double SelectedTextHeight
+    {
+        get => Selected?.Text?.HeightMm ?? TextSource.DefaultHeightMm;
+        set => ApplyTextSource(source => source with { HeightMm = value });
+    }
+
+    public bool SelectedTextBold
+    {
+        get => Selected?.Text?.Bold == true;
+        set => ApplyTextSource(source => source with { Bold = value });
+    }
+
+    public bool SelectedTextItalic
+    {
+        get => Selected?.Text?.Italic == true;
+        set => ApplyTextSource(source => source with { Italic = value });
+    }
+
+    public bool SelectedTextUppercase
+    {
+        get => Selected?.Text?.Uppercase == true;
+        set => ApplyTextSource(source => source with { Uppercase = value });
+    }
+
+    public bool SelectedTextWeld
+    {
+        get => Selected?.Text?.Weld == true;
+        set => ApplyTextSource(source => source with { Weld = value });
+    }
+
+    /// <summary>Whether the text is currently warped. Drives the reset control, which is the only way
+    /// back to square once the corners have been dragged.</summary>
+    public bool IsSelectedTextDistorted => Selected?.Text?.Distortion.IsIdentity == false;
+
+    [RelayCommand]
+    private void ResetSelectedTextDistortion() =>
+        ApplyTextSource(source => source with { Distortion = TextDistortion.None });
+
+    /// <summary>Moves one corner of the distortion quad, in the text's own unit-box coordinates.
+    /// Called by the canvas while a corner handle is being dragged.</summary>
+    public void SetSelectedTextDistortionCorner(TextDistortionCorner corner, double u, double v) =>
+        ApplyTextSource(source => source with { Distortion = source.Distortion.WithCorner(corner, u, v) });
+
+    /// <summary>
+    /// Re-renders the selected text from a changed source as one undoable edit. A source that cannot
+    /// be set - an empty string, an out-of-range height, a font with no usable outlines - is reported
+    /// and rejected without touching the scene, so a bad keystroke never destroys existing text.
+    /// </summary>
+    public void ApplyTextSource(Func<TextSource, TextSource> update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        if (Selected is not { IsText: true, IsLocked: false } item || item.Text is null) return;
+
+        var source = update(item.Text);
+        if (source.Equals(item.Text)) return;
+
+        SceneObject replacement;
+        try
+        {
+            replacement = VectorTextFactory.Rebuild(item, source);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException)
+        {
+            VectorOperationRejected?.Invoke(ex.Message);
+            NotifyTextStateChanged();
+            return;
+        }
+
+        Execute(new ReplaceObjectsCommand(Scene, [item], [replacement]));
+        SelectedObjects.Clear();
+        SelectedObjects.Add(replacement);
+        NotifyTextStateChanged();
+    }
+
+    private void NotifyTextStateChanged()
+    {
+        OnPropertyChanged(nameof(IsTextSelected));
+        OnPropertyChanged(nameof(CanEditSelectedText));
+        OnPropertyChanged(nameof(SelectedTextValue));
+        OnPropertyChanged(nameof(SelectedTextFontFamily));
+        OnPropertyChanged(nameof(SelectedTextHeight));
+        OnPropertyChanged(nameof(SelectedTextBold));
+        OnPropertyChanged(nameof(SelectedTextItalic));
+        OnPropertyChanged(nameof(SelectedTextUppercase));
+        OnPropertyChanged(nameof(SelectedTextWeld));
+        OnPropertyChanged(nameof(IsSelectedTextDistorted));
+    }
+
     private void SetSelectedTransform(Func<ObjectTransform, ObjectTransform> update, bool allowRaster)
     {
         if (Selected is not { IsLocked: false } item || (!allowRaster && item.IsRaster)) return;
@@ -1310,5 +1448,6 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedRotation));
         OnPropertyChanged(nameof(SelectedWidth));
         OnPropertyChanged(nameof(SelectedHeight));
+        NotifyTextStateChanged();
     }
 }

@@ -31,6 +31,14 @@ public sealed partial class SceneObject : ObservableObject
     public RasterImportOptions? RasterOptions { get; init; }
     public bool IsRaster => RasterFilePath is not null;
 
+    /// <summary>Set only for text created with the text tool. LocalShapes is then a cached render of
+    /// this record: changing the wording, font or style re-renders the contours instead of leaving
+    /// the operator with curves they can no longer edit. Objects loaded from projects saved before
+    /// text became editable have no TextSource and stay plain curves, which is correct — there is no
+    /// wording to recover from a flattened outline.</summary>
+    public TextSource? Text { get; init; }
+    public bool IsText => Text is not null;
+
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private ObjectTransform _transform = ObjectTransform.Identity;
     [ObservableProperty] private bool _isVisible = true;
@@ -197,6 +205,7 @@ public sealed partial class SceneObject : ObservableObject
         LocalBounds = LocalBounds,
         RasterFilePath = RasterFilePath,
         RasterOptions = RasterOptions,
+        Text = Text,
         Name = Name,
         Transform = Transform,
         IsVisible = IsVisible,

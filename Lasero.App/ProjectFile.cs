@@ -45,6 +45,11 @@ public sealed class ProjectObject
     public string? RasterFilePath { get; set; }
     public string? RasterAssetEntry { get; set; }
     public RasterImportOptions? RasterOptions { get; set; }
+
+    /// <summary>Present only for text created with the text tool. Absent in projects saved before
+    /// text became editable, and absent for every other kind of object, so the field is a plain
+    /// addition: an older reader ignores it and an older project simply has no text to restore.</summary>
+    public TextSource? Text { get; set; }
 }
 
 public sealed class ProjectShape

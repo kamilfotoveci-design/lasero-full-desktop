@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:components="clr-namespace:Lasero.App.Components"
-        Title="Přidat text" Width="560" Height="500"
-        MinWidth="560" MinHeight="500" ResizeMode="NoResize"
+        Title="Přidat text" Width="560" Height="566"
+        MinWidth="560" MinHeight="566" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource Brush.Background}">
     <Grid>
@@ -74,15 +74,34 @@
 
                 <StackPanel Grid.Column="4">
                     <TextBlock Text="Výška" FontWeight="SemiBold" Margin="0,0,0,6" />
-                    <Grid>
-                        <TextBox x:Name="HeightInput" Text="12" Height="{StaticResource Size.Control.Base}" Padding="10,6,42,6"
-                                 AutomationProperties.Name="Výška textu v milimetrech" />
-                        <TextBlock Text="mm" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                   Margin="0,0,12,0" Foreground="{StaticResource Brush.TextSecondary}"
-                                   IsHitTestVisible="False" />
-                    </Grid>
+                    <!-- UnitField, not a TextBox with room padded out on the right for an overlaid
+                         label. That hand-rolled version set Padding="10,6,42,6" inside a 36px control,
+                         which left 24px for a line that needs more, so the field cut its own value in
+                         half and the height could not be read. -->
+                    <Border Style="{StaticResource UnitField.Shell}"
+                            ToolTip="Výška písma v milimetrech">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox x:Name="HeightInput" Text="12" Style="{StaticResource UnitField.Input}"
+                                     AutomationProperties.Name="Výška textu v milimetrech" />
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
             </Grid>
+
+            <!-- Set as capitals and weld. Both change the outlines rather than the wording, so they
+                 belong with the type settings and not with the text field. Weld matters most on script
+                 and display faces, where the letters overlap by design and the laser would otherwise
+                 trace every buried edge inside the overlap. -->
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                <CheckBox x:Name="UppercaseToggle" Content="Velká písmena"
+                          Click="OnPreviewInputChanged"
+                          ToolTip="Vysadí text kapitálkami, napsané znění zůstane zachované"
+                          AutomationProperties.Name="Velká písmena" />
+                <CheckBox x:Name="WeldToggle" Content="Svařeno" Margin="22,0,0,0"
+                          ToolTip="Spojí přesahující obrysy písmen do jednoho obrysu, aby laser nevypálil šev uvnitř přesahu"
+                          AutomationProperties.Name="Svařit obrysy písmen" />
+            </StackPanel>
 
             <TextBlock Text="Náhled" FontWeight="SemiBold" Margin="0,16,0,6" />
             <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"

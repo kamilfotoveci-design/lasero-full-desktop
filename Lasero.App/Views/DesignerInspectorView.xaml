@@ -15,6 +15,7 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
         <conv:IndexToLayerNumberConverter x:Key="IndexToLayerNumber" />
+        <conv:FractionOfLengthConverter x:Key="FractionOfLength" />
         <Style x:Key="InspectorField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Height" Value="38" />
             <Setter Property="MinWidth" Value="56" />
@@ -37,7 +38,7 @@
             BorderBrush="{StaticResource Brush.PanelBorder}"
             BorderThickness="0"
             CornerRadius="0">
-        <Grid>
+        <Grid x:Name="InspectorLayout">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -56,6 +57,17 @@
             -->
             <Border Grid.Row="0" Padding="18,14" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
                     Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
+                <!--
+                    Capped and scrollable. The row is Auto so the section is only as tall as it needs
+                    to be, but a text selection adds a font picker and four more controls, and at the
+                    window's 640px minimum an uncapped section would take the whole panel and leave the
+                    Vrstvy / Stroj content with nothing. The cap is a share of the panel rather than a
+                    fixed number, so a tall window shows the whole text section instead of scrolling it
+                    for no reason.
+                -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              MaxHeight="{Binding ActualHeight, ElementName=InspectorLayout, Converter={StaticResource FractionOfLength}, ConverterParameter=0.62}">
                 <StackPanel>
                     <TextBlock Text="Objekt" Style="{StaticResource InspectorSectionTitle}" />
                     <TextBlock Text="{Binding Scene.SelectionSummary}" Style="{StaticResource Text.Muted}"
@@ -262,7 +274,104 @@
                             </MenuItem>
                         </Menu>
                     </WrapPanel>
+                    <!--
+                        Type settings for a text object. Text used to be flattened to curves the moment
+                        it was placed, so a wrong font meant deleting the text and starting again. The
+                        object now keeps what it says and how it is set, and every control here
+                        re-renders the contours as one undoable edit.
+
+                        Height is the type size. The height the job burns is the V field above, because
+                        the object's own scale still applies on top - re-deriving the scale from this
+                        field instead would make text jump the first time a typo was corrected after a
+                        manual resize.
+                    -->
+                    <StackPanel Margin="0,14,0,0"
+                                Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}"
+                                IsEnabled="{Binding Scene.CanEditSelectedText}">
+                        <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,0,0,14" />
+                        <TextBlock Text="Text" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8" />
+
+                        <TextBox Style="{StaticResource InspectorField}" MaxLength="200"
+                                 KeyDown="OnTransformFieldKeyDown"
+                                 automation:AutomationProperties.Name="Znění textu"
+                                 ToolTip="Znění textu"
+                                 Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Text="Písmo" Style="{StaticResource TransformRowLabel}" Margin="0,12,0,6" />
+                        <!-- Each family renders in itself, so the list is browsable by eye rather than
+                             by recognising names. -->
+                        <ComboBox ItemsSource="{Binding Scene.FontFamilies}"
+                                  SelectedItem="{Binding Scene.SelectedTextFontFamily}"
+                                  MaxDropDownHeight="280"
+                                  automation:AutomationProperties.Name="Písmo"
+                                  ToolTip="Písmo, kterým je text vysázený">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Výška písma" Style="{StaticResource TransformRowLabel}" />
+                            <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}" Width="132"
+                                    Height="{StaticResource Size.Control.Compact}"
+                                    ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                    <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                             automation:AutomationProperties.Name="Výška písma v milimetrech"
+                                             Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Řez and the two outline options. Bold and italic pick a different face;
+                             capitals and weld change what is sent to the laser without changing the
+                             wording, which is why the typed text survives switching them off. -->
+                        <TextBlock Text="Řez" Style="{StaticResource TransformRowLabel}" Margin="0,12,0,6" />
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                          IsChecked="{Binding Scene.SelectedTextBold}"
+                                          ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
+                                <TextBlock Text="B" FontWeight="Bold" FontSize="{StaticResource Size.Text.Section}" />
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="6,0,0,0"
+                                          IsChecked="{Binding Scene.SelectedTextItalic}"
+                                          ToolTip="Kurzíva" AutomationProperties.Name="Kurzíva">
+                                <TextBlock Text="I" FontStyle="Italic" FontSize="{StaticResource Size.Text.Section}" FontFamily="Georgia, Times New Roman" />
+                            </ToggleButton>
+                        </StackPanel>
+
+                        <CheckBox Content="Velká písmena" Margin="0,12,0,0"
+                                  IsChecked="{Binding Scene.SelectedTextUppercase}"
+                                  ToolTip="Vysadí text kapitálkami, napsané znění zůstane zachované"
+                                  AutomationProperties.Name="Velká písmena" />
+                        <CheckBox Content="Svařeno" Margin="0,8,0,0"
+                                  IsChecked="{Binding Scene.SelectedTextWeld}"
+                                  ToolTip="Spojí přesahující obrysy písmen do jednoho obrysu, aby laser nevypálil šev uvnitř přesahu"
+                                  AutomationProperties.Name="Svařit obrysy písmen" />
+
+                        <!-- Distortion is dragged on the canvas, not typed. The button is the only way
+                             back to an unwarped box, so it appears exactly when there is a warp to
+                             undo. -->
+                        <Button Style="{StaticResource Button.Ghost}" Margin="0,12,0,0" Padding="10,0"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Scene.ResetSelectedTextDistortionCommand}"
+                                Visibility="{Binding Scene.IsSelectedTextDistorted, Converter={StaticResource BoolToVisibility}}"
+                                ToolTip="Vrátí zkreslení textu na nezkreslený obdélník"
+                                AutomationProperties.Name="Zrušit zkreslení textu">
+                            <components:IconLabel IconData="{StaticResource Glyph.Undo}" Text="Zrušit zkreslení" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
+                        </Button>
+                    </StackPanel>
+
                 </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <Border Grid.Row="1" Padding="16,14" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
