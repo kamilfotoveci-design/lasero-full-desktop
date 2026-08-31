@@ -146,6 +146,8 @@
         body text, then 15/17/21/22/24/26/27 scattered across headings. Four steps cover the whole
         product, and nothing renders below Meta.
     -->
+    <!-- Specimen size. The font preview is there to be judged as a shape, not read as body copy. -->
+    <system:Double x:Key="Size.Text.Preview">30</system:Double>
     <system:Double x:Key="Size.Text.Title">22</system:Double>
     <system:Double x:Key="Size.Text.Section">15</system:Double>
     <system:Double x:Key="Size.Text.Body">13</system:Double>
@@ -254,7 +256,7 @@
         ThumbnailCard) converge on this same flat philosophy rather than carrying their own shadow.
     -->
     <Style x:Key="Badge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
         <Setter Property="BorderThickness" Value="1" />

@@ -19,6 +19,9 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private MaterialsWindow? _materialsWindow;
     private PreviewWindow? _previewWindow;
+    // The font chosen last time. Re-picking the same family for every label on one sheet is the
+    // normal case, so the dialog opens on the previous choice rather than back on the default.
+    private VectorTextStyle _lastTextStyle = VectorTextStyle.Default;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -31,6 +34,9 @@ public partial class MainWindow : Window
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
         Loaded += OnLoaded;
         Closing += OnClosing;
+        // Without this the maximized window is inflated by the resize border, which pushed the
+        // bottom job strip — Frame and Start — off the bottom of the screen.
+        MaximizeWorkAreaHook.Attach(this);
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();
         PreviewKeyDown += OnPreviewKeyDown;
@@ -220,12 +226,16 @@ public partial class MainWindow : Window
 
     private void OnTextPlacementRequested(Position position)
     {
-        var dialog = new TextToolWindow { Owner = this };
+        var dialog = new TextToolWindow(_lastTextStyle) { Owner = this };
         if (dialog.ShowDialog() != true) return;
+
+        // Remember the choice for the next piece of text: setting the same font again for every
+        // label on a sheet is the common case.
+        _lastTextStyle = dialog.Style;
 
         try
         {
-            _viewModel.Scene.AddText(dialog.TextValue, position, dialog.HeightMm);
+            _viewModel.Scene.AddText(dialog.TextValue, position, dialog.HeightMm, dialog.Style);
             _viewModel.Scene.ActiveTool = DesignerTool.Select;
         }
         catch (Exception ex)

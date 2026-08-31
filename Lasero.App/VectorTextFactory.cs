@@ -10,23 +10,53 @@ using Lasero.Core.Scene;
 
 namespace Lasero.App;
 
+/// <summary>
+/// The typeface a piece of vector text is built from. Once the text is placed it becomes contours,
+/// so this describes the moment of creation rather than a property that stays editable afterwards.
+/// </summary>
+public sealed record VectorTextStyle
+{
+    public string FontFamily { get; init; } = "Segoe UI";
+    public bool Bold { get; init; }
+    public bool Italic { get; init; }
+
+    public static VectorTextStyle Default { get; } = new();
+}
+
 /// <summary>Converts installed Windows fonts to flattened millimetre vector contours.</summary>
 [SupportedOSPlatform("windows")]
 public static class VectorTextFactory
 {
     private const double DipsPerMillimetre = 96.0 / 25.4;
 
-    public static SceneObject Create(string text, Position origin, double heightMm, RgbColor color)
+    public static SceneObject Create(string text, Position origin, double heightMm, RgbColor color) =>
+        Create(text, origin, heightMm, color, VectorTextStyle.Default);
+
+    public static SceneObject Create(
+        string text, Position origin, double heightMm, RgbColor color, VectorTextStyle style)
     {
+        ArgumentNullException.ThrowIfNull(style);
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("Text nesmí být prázdný.", nameof(text));
         if (!double.IsFinite(heightMm) || heightMm is < 1 or > 200)
             throw new ArgumentOutOfRangeException(nameof(heightMm), "Výška textu musí být mezi 1 a 200 mm.");
+
+        // A family the machine does not have would silently fall back to the WPF default, so resolve
+        // it here and keep the fallback explicit.
+        var family = string.IsNullOrWhiteSpace(style.FontFamily)
+            ? new FontFamily("Segoe UI")
+            : new FontFamily(style.FontFamily);
+
+        var typeface = new Typeface(
+            family,
+            style.Italic ? FontStyles.Italic : FontStyles.Normal,
+            style.Bold ? FontWeights.Bold : FontWeights.Normal,
+            FontStretches.Normal);
 
         var formatted = new FormattedText(
             text.Trim(),
             CultureInfo.CurrentUICulture,
             FlowDirection.LeftToRight,
-            new Typeface("Segoe UI"),
+            typeface,
             heightMm * DipsPerMillimetre,
             Brushes.Black,
             1);

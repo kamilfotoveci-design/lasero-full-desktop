@@ -1,3 +1,4 @@
+using Serilog;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -352,12 +353,16 @@ public partial class SceneCanvas : UserControl
         try
         {
             if (obj.RasterFilePath is null || obj.RasterOptions is null) return null;
-            var preview = ProcessedImagePreviewRenderer.RenderFile(obj.RasterFilePath, obj.RasterOptions);
+            var preview = ProcessedImagePreviewRenderer.RenderFileForCanvas(obj.RasterFilePath, obj.RasterOptions);
             return new Image { Source = preview, Stretch = Stretch.Fill, IsHitTestVisible = false };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return null; // missing/corrupt file — fall back to the outline-only rendering
+            // Missing or corrupt source file — fall back to the outline-only rendering rather than
+            // taking the canvas down. Logged because a silently blank raster looks identical to a
+            // raster that simply has not been drawn yet.
+            Log.Warning(ex, "Could not build the canvas preview for raster {Path}", obj.RasterFilePath);
+            return null;
         }
     }
 

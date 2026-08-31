@@ -51,7 +51,11 @@ public partial class GCodeViewModel : ObservableObject
     [ObservableProperty] private GCodeDocument? _document;
     [ObservableProperty] private string _fileLabel = "Žádný soubor";
 
-    partial void OnFileLabelChanged(string value) => OnPropertyChanged(nameof(JobSourceLabel));
+    partial void OnFileLabelChanged(string value)
+    {
+        OnPropertyChanged(nameof(JobSourceLabel));
+        OnPropertyChanged(nameof(HasNamedJobFile));
+    }
     [ObservableProperty] private JobRunState _jobState = JobRunState.Idle;
     [ObservableProperty] private int _currentLine;
     [ObservableProperty] private int _totalLines;
@@ -123,11 +127,19 @@ public partial class GCodeViewModel : ObservableObject
     /// What the job is, named for what the operator can see. FileLabel describes the generated
     /// G-code, so before regeneration it read "Žádný soubor" next to a canvas full of artwork.
     /// </summary>
+    public const string SceneJobLabel = "Návrh na plátně";
+
     public string JobSourceLabel => Document is not null
         ? FileLabel
         : _scene.Objects.Count > 0
-            ? "Návrh na plátně"
+            ? SceneJobLabel
             : "Žádný návrh";
+
+    /// <summary>
+    /// The job came from the canvas rather than an imported file, so naming it adds nothing the
+    /// operator cannot already see. The status strip hides its file chip in that case.
+    /// </summary>
+    public bool HasNamedJobFile => Document is not null && FileLabel != SceneJobLabel;
 
     public IReadOnlyList<JobOriginAnchor> OriginAnchors { get; } = Enum.GetValues<JobOriginAnchor>();
     public double[] SimulationSpeedPresets { get; } = [1, 2, 5, 10, 20, 50];
@@ -253,7 +265,10 @@ public partial class GCodeViewModel : ObservableObject
         var offset = _placement?.CalculateOffset(baseDocument.BoundingBox) ?? (0d, 0d);
         var lines = offset == (0d, 0d) ? baseLines : BuildSceneGCode(offset.Item1, offset.Item2);
 
-        SetDocument(GCodeParser.Parse(lines, "Scéna"), "Scéna");
+        // "Scéna" is what this code calls the document internally; it is not a name the operator has
+        // ever seen or chosen, and showing it in the status strip and the job panel just put an
+        // implementation word where a project name belongs.
+        SetDocument(GCodeParser.Parse(lines, SceneJobLabel), SceneJobLabel);
         _sceneDocumentDirty = false;
         UpdatePlacementLabel();
     }

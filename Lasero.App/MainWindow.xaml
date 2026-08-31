@@ -944,7 +944,7 @@
                         </components:StatusBadge>
 
                         <Border Style="{StaticResource StatusItem}" Margin="4,0,0,0"
-                                Visibility="{Binding GCode.Document, Converter={StaticResource NotNullToVisibility}}">
+                                Visibility="{Binding GCode.HasNamedJobFile, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Project}"
                                                       Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"

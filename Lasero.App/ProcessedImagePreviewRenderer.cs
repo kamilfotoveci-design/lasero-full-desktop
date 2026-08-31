@@ -14,6 +14,23 @@ public static class ProcessedImagePreviewRenderer
     public static BitmapSource RenderFile(string filePath, RasterImportOptions options) =>
         Render(RasterImporter.LoadProcessedPreview(filePath, options));
 
+    /// <summary>
+    /// Continuous-tone version for the scene canvas.
+    ///
+    /// Dithering is on by default because a diode laser is effectively one-bit, but a dithered image
+    /// shown at canvas scale averages out into a featureless grey block — the operator loses any way
+    /// to recognise their own artwork or judge its placement. The import dialog still previews the
+    /// real dithered result at a useful magnification; here the job is "is that my picture, and is it
+    /// in the right place", which continuous tone answers and a dither pattern does not.
+    /// Only the on-screen preview changes; the G-code path keeps the operator's actual options.
+    /// </summary>
+    public static BitmapSource RenderFileForCanvas(string filePath, RasterImportOptions options) =>
+        Render(RasterImporter.LoadProcessedPreview(filePath, options with
+        {
+            UseDithering = false,
+            UseThreshold = false,
+        }));
+
     public static BitmapSource Render(ProcessedImage image)
     {
         var pixels = new byte[image.Width * image.Height];

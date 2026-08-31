@@ -258,12 +258,15 @@ public partial class SceneViewModel : ObservableObject
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    public void AddText(string text, Position origin, double heightMm)
+    public void AddText(string text, Position origin, double heightMm) =>
+        AddText(text, origin, heightMm, VectorTextStyle.Default);
+
+    public void AddText(string text, Position origin, double heightMm, VectorTextStyle style)
     {
         // Keep text visually near-black while assigning it to a distinct processing layer.
         // This prevents filled text from being merged with the default black cut layer.
         var color = new Lasero.Core.Layers.RgbColor(52, 52, 52);
-        var obj = VectorTextFactory.Create(text, origin, heightMm, color);
+        var obj = VectorTextFactory.Create(text, origin, heightMm, color, style);
         AddDrawingObject(
             obj,
             [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Fill, "Text")]);

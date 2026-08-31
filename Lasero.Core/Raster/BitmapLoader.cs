@@ -16,7 +16,15 @@ public static class BitmapLoader
         using var original = new Bitmap(filePath);
         using var bitmap = new Bitmap(original.Width, original.Height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bitmap))
+        {
+            // Composite onto white before reading luminance. The surface starts fully transparent,
+            // so without this every transparent pixel of a PNG logo came back as (0,0,0) — luminance
+            // 0, which downstream means "full power". A logo with a transparent background was
+            // therefore scheduled to be burnt as a solid filled rectangle. White is the correct
+            // backdrop: it is the value the rest of the pipeline already treats as "leave alone".
+            g.Clear(Color.White);
             g.DrawImage(original, 0, 0, original.Width, original.Height);
+        }
 
         var width = bitmap.Width;
         var height = bitmap.Height;

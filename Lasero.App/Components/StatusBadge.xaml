@@ -20,7 +20,7 @@
         triangle — it replaces the dot, so state is told by shape, word and colour together.
     -->
     <Border x:Name="Surface"
-            CornerRadius="{StaticResource Radius.Pill}"
+            CornerRadius="{StaticResource Radius.Sm}"
             Padding="8,0,10,0"
             Height="26"
             VerticalAlignment="Center">
