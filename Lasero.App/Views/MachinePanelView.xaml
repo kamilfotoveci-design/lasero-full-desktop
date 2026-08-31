@@ -234,11 +234,14 @@
                     </Expander>
                     <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,10,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
+                        <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
+                             infinite width, so TextWrapping never engages and the sentence is cut off at
+                             the panel edge. -->
+<DockPanel>
+                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                        </StackPanel>
+                        </DockPanel>
                     </Border>
                     <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" />
                 </StackPanel>
@@ -276,19 +279,13 @@
                               HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding GCode.HasJobContent, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="0,10,0,8">
-                        <TextBlock Text="Připravený návrh" Style="{StaticResource MachineFieldLabel}" />
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding GCode.JobSourceLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.JobSourceLabel}" />
-                                <TextBlock Style="{StaticResource Text.Muted}" Margin="0,2,0,0">
-                                    <Run Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" /><Run Text="  ·  " /><Run Text="{Binding GCode.CurrentLine}" /><Run Text=" / " /><Run Text="{Binding GCode.TotalLines}" />
-                                </TextBlock>
-                            </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding GCode.LoadFileCommand}" Margin="8,0,0,0" Padding="10,0" ToolTip="Vybrat jiný návrh">
-                                <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Jiný návrh" />
-                            </Button>
-                        </Grid>
+                        <!-- The job name, its run state and the "load a different design" button
+                             used to sit here. All three already live in the persistent status strip at
+                             the bottom of the window, which is the app's one authoritative place for job
+                             state; repeating them inside the machine panel gave the operator two things
+                             to reconcile. The progress bar stays because it is the only element of the
+                             group that is worth watching while standing at the machine.
+                        -->
                         <ProgressBar Value="{Binding GCode.ProgressPercent}" Height="4" Margin="0,0,0,10" />
 
                         <!-- The "Použitý materiál" text box is gone. MaterialName is already filled in

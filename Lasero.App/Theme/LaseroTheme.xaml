@@ -661,11 +661,23 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
-                        <!-- Declared after hover so a hovered selected segment still reads as selected. -->
+                        <!--
+                            Declared after hover so a hovered selected segment still reads as selected.
+
+                            Selected is the tinted surface with blue text, not a solid cobalt block.
+                            A segment strip is a choice among peers, not a call to action: filling it
+                            solid put several large saturated rectangles on screen at once — the
+                            inspector tab, the machine sub-tab, a mode switch — each competing with
+                            Start, which is the one control that has earned that weight. It also made
+                            the labels sitting next to those blocks hard to read against them.
+
+                            This is also now the same "selected" language as the active tool and the
+                            selected layer row, so one visual idea means selected everywhere.
+                        -->
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Accent}" />
-                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
                             <Setter Property="FontWeight" Value="Medium" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">

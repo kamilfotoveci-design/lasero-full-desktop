@@ -676,7 +676,12 @@ public partial class SceneCanvas : UserControl
         // cannot be rotated yet because that would make the canvas diverge from generated G-code.
         if (obj.IsRaster) return;
 
-        var topLocal = ObjectTransform.HandleLocalPoint(obj.LocalBounds, obj.LocalPivot, ResizeHandle.Top);
+        // ResizeHandle.Bottom, not Top, because the enum names the minimum-Y corner "Top" while the
+        // canvas draws minimum Y at the bottom of the screen. Anchoring on Top therefore hung the
+        // rotate grip underneath the selection; every other design tool puts it above.
+        // Rotation itself is unaffected: the angle is a delta between where the pointer grabbed and
+        // where it is now, both measured against the pivot, so the grip's position is presentation.
+        var topLocal = ObjectTransform.HandleLocalPoint(obj.LocalBounds, obj.LocalPivot, ResizeHandle.Bottom);
         var topWorld = obj.Transform.Apply(topLocal, obj.LocalPivot);
         var topScreen = new Point(ToCanvasX(topWorld.X), ToCanvasY(topWorld.Y));
 
@@ -739,10 +744,20 @@ public partial class SceneCanvas : UserControl
         _selectionVisuals.Add(rect);
     }
 
+    /// <summary>
+    /// Cursors are chosen for where the handle appears on screen, which is not where its name says.
+    /// ResizeHandle is expressed in document space, where Y grows upwards; the canvas draws with Y
+    /// growing downwards (see ToCanvasY). So ResizeHandle.TopLeft is rendered at the bottom-left of
+    /// the selection, and giving it the north-west/south-east cursor pointed the arrows across the
+    /// wrong diagonal — the pointer said "drag this way" and the box grew the other.
+    ///
+    /// Only the diagonals are affected: Left/Right are unchanged by a vertical flip, and Top/Bottom
+    /// both map to the same vertical cursor.
+    /// </summary>
     private static Cursor CursorForHandle(ResizeHandle handle) => handle switch
     {
-        ResizeHandle.TopLeft or ResizeHandle.BottomRight => Cursors.SizeNWSE,
-        ResizeHandle.TopRight or ResizeHandle.BottomLeft => Cursors.SizeNESW,
+        ResizeHandle.TopLeft or ResizeHandle.BottomRight => Cursors.SizeNESW,
+        ResizeHandle.TopRight or ResizeHandle.BottomLeft => Cursors.SizeNWSE,
         ResizeHandle.Left or ResizeHandle.Right => Cursors.SizeWE,
         _ => Cursors.SizeNS,
     };

@@ -87,11 +87,14 @@
                         </Border>
 
                         <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
-                            <StackPanel Orientation="Horizontal">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Accent}" Margin="0,1,9,0" />
+                            <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
+                             infinite width, so TextWrapping never engages and the sentence is cut off at
+                             the panel edge. -->
+<DockPanel>
+                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Accent}" Margin="0,1,9,0" />
                                 <TextBlock Text="Bitmapa bude nahrazena jedním seskupeným vektorovým objektem. Původní stav lze obnovit pomocí Ctrl+Z."
-                                           TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" Width="270" />
-                            </StackPanel>
+                                           TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
+                            </DockPanel>
                         </Border>
 
                         <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="2,12,2,0" />

@@ -440,7 +440,7 @@
                                  ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="22" Height="22" Margin="0,0,9,0">
-                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" /></Ellipse.Fill>
+                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
                                 </Ellipse>
                                 <TextBlock Text="Lasero Chat" VerticalAlignment="Center" />
                             </StackPanel>
@@ -501,12 +501,12 @@
                 </Grid.RowDefinitions>
                 <!-- Primary design tools stay directly above the canvas. When the column gets narrow
                      the labels collapse to icons before anything wraps or clips. -->
-                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" Height="46"
+                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" MinHeight="46"
                         Background="{StaticResource Brush.Panel}"
                         BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
                         Padding="8,0">
                     <DockPanel LastChildFill="False">
-                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                        <WrapPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                             <!--
                                 One command row: file, history, tools, view. Tools are icon-only. The
                                 labels that used to sit beside them read well on a wide window, but they
@@ -603,43 +603,108 @@
                                     ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                             </Button>
-                        </StackPanel>
-
-                        <!-- Import keeps its label. It opens a file dialog rather than switching a
-                             mode, and it is the one thing in this row a first-time owner has to find. -->
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Height="32" Padding="10,0"
-                                VerticalAlignment="Center" Command="{Binding GCode.LoadFileCommand}"
-                                ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
-                            <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                        </Button>
-                    </DockPanel>
-                </Border>
-
-                <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="0" ClipToBounds="True">
-                    <Grid>
-                        <controls:SceneCanvas x:Name="DesignerCanvas" ViewModel="{Binding Scene}" WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}" WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
-                    </Grid>
-                </Border>
-
-                <!--
-                    One contextual bar, not three. Position/size/rotation, the selection readout and
-                    the object actions used to occupy separate stacked rows; together with the header
-                    and the tool bar that was four horizontal layers stacked above the artwork. They
-                    are all properties of "the thing you have selected", so they belong on one line.
-
-                    Values carry their unit inside the field (UnitField) instead of trailing a
-                    detached grey "mm", which is what made the old bar read as a spreadsheet.
-                -->
-                <Border Grid.Row="1"
-                        Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                        BorderThickness="0,0,0,1" Padding="14,7"
-                        Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
-                    <DockPanel LastChildFill="False">
+                            <!--
+                                Selection properties live in the command row itself, not on a bar of
+                                their own. They appear only with a selection, so the row is a plain tool
+                                strip the rest of the time; the tools stay left-anchored and never move
+                                when something is selected. The row wraps rather than clips when the
+                                canvas column is too narrow to hold everything on one line.
+                            -->
+                            <Border Width="1" Height="20" Background="{StaticResource Brush.PanelBorder}" Margin="6,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Text="{Binding Scene.SelectionSummary}"
+                                       Foreground="{StaticResource Brush.TextSecondary}" FontWeight="Medium"
+                                       FontSize="{StaticResource Size.Text.Meta}"
+                                       MaxWidth="120" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Scene.SelectionSummary}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"
+                                       Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <WrapPanel VerticalAlignment="Center"
+                                   Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                            <StackPanel Style="{StaticResource TransformGroup}">
+                                <TextBlock Text="X" Style="{StaticResource TransformLabel}" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="96" Height="{StaticResource Size.Control.Compact}" Margin="5,0,0,0"
+                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
+                                        ToolTip="Poloha středu objektu na ose X">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource TransformGroup}">
+                                <TextBlock Text="Y" Style="{StaticResource TransformLabel}" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="96" Height="{StaticResource Size.Control.Compact}" Margin="5,0,0,0"
+                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
+                                        ToolTip="Poloha středu objektu na ose Y">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                            <!-- Size travels as one unit: width, height and the aspect lock that ties
+                                 them together. They used to be three independent items in the
+                                 WrapPanel, so a narrow window could put the lock — or the rotation
+                                 field — on its own line, away from the values it belongs to. -->
+                            <StackPanel Style="{StaticResource TransformGroup}">
+                                <TextBlock Text="Š" Style="{StaticResource TransformLabel}" ToolTip="Šířka" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="96" Height="{StaticResource Size.Control.Compact}" Margin="5,0,0,0"
+                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                        ToolTip="Výsledná šířka objektu">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
+                                <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                              IsChecked="{Binding Scene.LockAspectRatio}"
+                                              IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                              Margin="4,0"
+                                              ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
+                                              AutomationProperties.Name="Zachovat poměr stran">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                </ToggleButton>
+                                <TextBlock Text="V" Style="{StaticResource TransformLabel}" ToolTip="Výška" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="96" Height="{StaticResource Size.Control.Compact}" Margin="5,0,0,0"
+                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                                        ToolTip="Výsledná výška objektu">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource TransformGroup}">
+                                <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                      Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"
+                                                      ToolTip="Otočení" />
+                                <Border Style="{StaticResource UnitField.Shell}" Width="74" Height="{StaticResource Size.Control.Compact}" Margin="5,0,0,0"
+                                        IsEnabled="{Binding Scene.CanRotateSelectedObject}"
+                                        ToolTip="Otočení objektu ve stupních">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
+                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
+                                                 Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </WrapPanel>
 
                         <!-- Object actions. Icon-only with tooltips and accessible names: spelled-out
                              labels for Lock/Duplicate/Delete cost roughly 200px that the property
-                             fields need in order to stay on one row. -->
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                             fields need in order to stay on one row.
+
+                             The whole group is bound to HasSelection: sharing the command row means
+                             they would otherwise sit there greyed out with nothing to act on, which
+                             is exactly the "mysteriously disabled" look the row is meant to avoid. -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.GroupSelectionCommand}"
                                     Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}"
                                     ToolTip="Seskupit výběr · Ctrl+G" AutomationProperties.Name="Seskupit výběr">
@@ -733,91 +798,33 @@
                             </Menu>
                         </StackPanel>
 
-                        <!-- Selection readout. Plain text: it is information, not an action, and the
-                             blue pill it used to sit in made it look like the row's primary button. -->
-                        <TextBlock DockPanel.Dock="Left" Text="{Binding Scene.SelectionSummary}"
-                                   Foreground="{StaticResource Brush.TextSecondary}" FontWeight="Medium"
-                                   MaxWidth="120" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Scene.SelectionSummary}"
-                                   VerticalAlignment="Center" Margin="2,0,14,0" />
-
-                        <WrapPanel DockPanel.Dock="Left" VerticalAlignment="Center"
-                                   Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="X" Style="{StaticResource TransformLabel}" />
-                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
-                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
-                                        ToolTip="Poloha středu objektu na ose X">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
-                                                 Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                                    </DockPanel>
-                                </Border>
-                            </StackPanel>
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="Y" Style="{StaticResource TransformLabel}" />
-                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
-                                        IsEnabled="{Binding Scene.CanEditSelectedPosition}"
-                                        ToolTip="Poloha středu objektu na ose Y">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
-                                                 Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                                    </DockPanel>
-                                </Border>
-                            </StackPanel>
-                            <!-- Size travels as one unit: width, height and the aspect lock that ties
-                                 them together. They used to be three independent items in the
-                                 WrapPanel, so a narrow window could put the lock — or the rotation
-                                 field — on its own line, away from the values it belongs to. -->
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <TextBlock Text="Š" Style="{StaticResource TransformLabel}" ToolTip="Šířka" />
-                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
-                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                                        ToolTip="Výsledná šířka objektu">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
-                                                 Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                                    </DockPanel>
-                                </Border>
-                                <ToggleButton Style="{StaticResource Toggle.Icon}"
-                                              IsChecked="{Binding Scene.LockAspectRatio}"
-                                              IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                                              Margin="4,0"
-                                              ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
-                                              AutomationProperties.Name="Zachovat poměr stran">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                                </ToggleButton>
-                                <TextBlock Text="V" Style="{StaticResource TransformLabel}" ToolTip="Výška" />
-                                <Border Style="{StaticResource UnitField.Shell}" Width="98" Margin="6,0,0,0"
-                                        IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                                        ToolTip="Výsledná výška objektu">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
-                                                 Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                                    </DockPanel>
-                                </Border>
-                            </StackPanel>
-                            <StackPanel Style="{StaticResource TransformGroup}">
-                                <components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                      Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"
-                                                      ToolTip="Otočení" />
-                                <Border Style="{StaticResource UnitField.Shell}" Width="72" Margin="6,0,0,0"
-                                        IsEnabled="{Binding Scene.CanRotateSelectedObject}"
-                                        ToolTip="Otočení objektu ve stupních">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
-                                        <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnTransformFieldKeyDown"
-                                                 Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
-                                    </DockPanel>
-                                </Border>
-                            </StackPanel>
                         </WrapPanel>
+
+                        <!-- Import keeps its label. It opens a file dialog rather than switching a
+                             mode, and it is the one thing in this row a first-time owner has to find. -->
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Height="32" Padding="10,0"
+                                VerticalAlignment="Center" Command="{Binding GCode.LoadFileCommand}"
+                                ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
+                            <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
+                        </Button>
                     </DockPanel>
                 </Border>
+
+                <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="0" ClipToBounds="True">
+                    <Grid>
+                        <controls:SceneCanvas x:Name="DesignerCanvas" ViewModel="{Binding Scene}" WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}" WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
+                    </Grid>
+                </Border>
+
+                <!--
+                    One contextual bar, not three. Position/size/rotation, the selection readout and
+                    the object actions used to occupy separate stacked rows; together with the header
+                    and the tool bar that was four horizontal layers stacked above the artwork. They
+                    are all properties of "the thing you have selected", so they belong on one line.
+
+                    Values carry their unit inside the field (UnitField) instead of trailing a
+                    detached grey "mm", which is what made the old bar read as a spreadsheet.
+                -->
 
 
             </Grid>

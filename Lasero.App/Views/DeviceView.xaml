@@ -198,11 +198,14 @@
                                     Padding="12"
                                     Margin="0,12,0,0"
                                     Visibility="{Binding Connection.HasAvailablePorts, Converter={StaticResource InverseBoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{DynamicResource Brush.TextSecondary}" />
+                                <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
+                             infinite width, so TextWrapping never engages and the sentence is cut off at
+                             the panel edge. -->
+<DockPanel>
+                                    <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{DynamicResource Brush.TextSecondary}" />
                                     <TextBlock Text="Nebyl nalezen žádný sériový port. Připojte gravírku přes USB a zvolte Obnovit porty."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                                </StackPanel>
+                                </DockPanel>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                                 <Button Style="{StaticResource Button.Primary}"
@@ -399,10 +402,13 @@
                             </Button>
 
                             <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" Margin="0,0,0,12">
-                                <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Origin}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Info}" Margin="0,0,8,0" />
+                                <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
+                             infinite width, so TextWrapping never engages and the sentence is cut off at
+                             the panel edge. -->
+<DockPanel>
+                                    <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Origin}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Info}" Margin="0,0,8,0" />
                                     <TextBlock Text="Začátek úlohy je nastaven na pracovní nulu stroje." Foreground="{StaticResource Brush.Info}" TextWrapping="Wrap" />
-                                </StackPanel>
+                                </DockPanel>
                             </Border>
 
                             <TextBlock Text="{Binding GCode.PreflightMessage}" Foreground="{StaticResource Brush.Danger}" TextWrapping="Wrap" Margin="0,0,0,10"

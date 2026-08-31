@@ -256,17 +256,21 @@
 
                             <Border Style="{StaticResource InspectorRule}" />
 
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Border Width="26" Height="26" CornerRadius="{StaticResource Radius.Sm}" VerticalAlignment="Center" Margin="0,0,10,0"
-                                        Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
-                                        BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
-                                        ToolTip="Barva vrstvy" />
-                                <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                         FontWeight="Medium" VerticalAlignment="Center"
-                                         ToolTip="Upravit název vrstvy"
-                                         automation:AutomationProperties.Name="Název vrstvy" />
-                            </Grid>
+                            <!--
+                                The name is the heading of this section, not a second copy of the row
+                                above it. It used to be a swatch plus a bordered field directly under
+                                a list row showing the same swatch and the same name — with one layer
+                                in the project that read as the row simply being drawn twice.
+
+                                It stays editable: a chromeless TextBox that takes a field's border
+                                only on hover or focus, so it looks like a title until you go to
+                                change it.
+                            -->
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource InlineTitleInput}"
+                                     Margin="0,0,0,16"
+                                     ToolTip="Přejmenovat vrstvu"
+                                     automation:AutomationProperties.Name="Název vrstvy" />
 
                             <Border Padding="12,10"
                                     Margin="0,0,0,16"

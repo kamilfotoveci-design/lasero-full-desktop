@@ -224,10 +224,13 @@
 
                                         <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,10"
                                                 Visibility="{Binding HasSelectedNote, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
+                                            <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
+                             infinite width, so TextWrapping never engages and the sentence is cut off at
+                             the panel edge. -->
+<DockPanel>
+                                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
                                                 <StackPanel><TextBlock Text="Poznámka k receptu" FontWeight="SemiBold" /><TextBlock Text="{Binding SelectedRecipe.Note}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel>
-                                            </StackPanel>
+                                            </DockPanel>
                                         </Border>
                                         <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.Warning}" Margin="0,0,0,10"
                                                 Visibility="{Binding HasSelectedWarning, Converter={StaticResource BoolToVisibility}}">
