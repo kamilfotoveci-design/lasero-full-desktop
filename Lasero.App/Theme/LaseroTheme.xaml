@@ -60,14 +60,15 @@
          ResourceReferenceKeyNotFoundException and took the whole app down via the global handler. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
     <!--
-        Accent text. #2563EB is right as a fill on a dark surface but only reaches about 2.5:1 as
-        text on one, so anything that used to *write* in the accent colour writes in this lighter
-        blue instead. Fills, borders, focus rings and canvas selection all still use Brush.Accent.
+        Accent text. Same cobalt as the fill on this light theme, but it is its own token because the
+        two roles diverge the moment the chrome goes dark: #2563EB stays right as a fill on a dark
+        surface and drops to about 2.5:1 as text on one. Anything that *writes* in the accent colour
+        binds here; fills, borders, focus rings and canvas selection bind to Brush.Accent.
     -->
-    <SolidColorBrush x:Key="Brush.AccentText" Color="#8AB4FF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#1B2942" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#2F4C7A" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.FocusRing" Color="#3B82F6" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#EFF6FF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#BFDBFE" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#2563EB" po:Freeze="False" />
 
     <!-- Primary action is the interaction colour, so it uses Brush.Accent directly. It used to be
          near-black, which meant a black "Náhled" in the header and a blue Start at the bottom were
@@ -79,47 +80,46 @@
     <SolidColorBrush x:Key="Brush.Brand" Color="#FF3B30" po:Freeze="False" />
 
     <!-- Surfaces -->
-    <SolidColorBrush x:Key="Brush.Background" Color="#0F1115" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TitleBar" Color="#12161D" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Sidebar" Color="#101318" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Panel" Color="#15181F" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#181D26" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Field" Color="#1C2330" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#283240" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#344054" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Background" Color="#F7F7F5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TitleBar" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Sidebar" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F3F4F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Field" Color="#F3F4F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E4E5E2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D2D4D0" po:Freeze="False" />
 
     <!--
-        Canvas. Deliberately NOT the panel tokens: the bed stays white whatever the chrome does,
-        because the operator is judging burn contrast against real material and a dark bed would
-        misrepresent it. The surround is darker than the app background so the sheet reads as lying
-        on a table rather than floating in a panel.
+        Canvas. Its own tokens rather than the panel ones, because the bed does not follow the chrome:
+        it stays white whatever the theme does, since the operator judges burn contrast against real
+        material. The surround is the neutral field colour, so the bed reads as a sheet on a table.
     -->
-    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#0C0F14" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#F3F4F2" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Canvas.WorkArea" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#2F4C7A" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#140F172A" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#2E2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#E4E5E2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#28657082" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#682F6FC9" po:Freeze="False" />
 
     <!-- Text -->
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#F8FAFC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#A1A1AA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#71717A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#171918" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#666B68" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#929793" po:Freeze="False" />
 
     <!-- Disabled -->
-    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#171B22" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#52525B" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#F1F2F0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#A4A8A5" po:Freeze="False" />
 
     <!-- Semantic. Used for state, never for decoration. -->
-    <SolidColorBrush x:Key="Brush.Success" Color="#22C55E" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#1F22C55E" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Warning" Color="#F59E0B" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.WarningMuted" Color="#1FF59E0B" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Danger" Color="#EF4444" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#1FEF4444" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#66EF4444" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Info" Color="#3B82F6" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#1F2563EB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#662563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#15803D" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#F0FDF4" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#D97706" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarningMuted" Color="#FFFBEB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#FEF2F2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#EFF6FF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#BFDBFE" po:Freeze="False" />
 
     <!-- Component-level neutrals -->
     <!--
@@ -129,11 +129,11 @@
         mechanic for the same state, and it would have to be re-derived for every new button kind.
         The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.
     -->
-    <SolidColorBrush x:Key="Brush.HoverWash" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#283240" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#344054" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#344054" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#475569" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.HoverWash" Color="#171918" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E4E5E2" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D2D4D0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D2D4D0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A4A8A5" po:Freeze="False" />
 
     <!--
         Elevation ladder. Docked panels get a border, never a shadow — the canvas stays the focus.
@@ -221,10 +221,9 @@
     <!-- Genuinely fixed-pitch content only: the GRBL console and raw G-code, where column position
          carries meaning. Not for ordinary numeric fields. -->
     <FontFamily x:Key="Font.Mono">Cascadia Mono,Consolas,Courier New</FontFamily>
-    <!-- The dark-ink wordmark is unreadable on a #101318 sidebar, so the light cut of the same
-         mark is what ships. LaseroWordmark.png stays in the project: it is the one to point this key
-         at if the chrome ever goes light again. -->
-    <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmarkLight.png" CacheOption="OnLoad" />
+    <!-- The dark-ink wordmark, for the light sidebar. LaseroWordmarkLight.png is the same mark cut
+         for a dark chrome and stays in the project; this key is the single place to switch. -->
+    <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmark.png" CacheOption="OnLoad" />
     <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/KamilAvatar.png" CacheOption="OnLoad" />
 
     <!-- ===================== Base ===================== -->
