@@ -34,10 +34,11 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("x:Key=\"DesignerToolbarTool\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Compact editor rail", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Select", xaml, StringComparison.Ordinal);
-        // Pan is deliberately not a toolbar tool: it is always available on the middle mouse button
-        // and on space+drag, so a mode you had to enter and leave to do the same thing was only a
-        // state to get stuck in. DesignerTool.Pan itself still exists and still works.
-        Assert.DoesNotContain("ConverterParameter=Pan", xaml, StringComparison.Ordinal);
+        // Pan used to be kept out of the toolbar on the grounds that it duplicates the middle mouse
+        // button and space+drag, and so was only a mode to get stuck in. The target design puts
+        // "Posunout" in the strip, and it is the discoverable route to panning for someone who does
+        // not yet know the shortcuts — the shortcuts still work either way.
+        Assert.Contains("ConverterParameter=Pan", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Rectangle", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Ellipse", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Line", xaml, StringComparison.Ordinal);

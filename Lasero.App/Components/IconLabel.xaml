@@ -3,30 +3,66 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:components="clr-namespace:Lasero.App.Components"
              x:Name="Root" Focusable="False" IsHitTestVisible="False">
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
-                              Width="{Binding IconSize, ElementName=Root}"
-                              Height="{Binding IconSize, ElementName=Root}"
-                              Foreground="{Binding Foreground, ElementName=Root}" />
+    <UserControl.Resources>
         <!-- CompactMode drops the label so a toolbar can degrade to icons instead of wrapping or
              clipping when the window gets narrow. Collapsed rather than hidden, so the icon closes
              up and the margin disappears with it. -->
-        <TextBlock Text="{Binding Text, ElementName=Root}"
-                   Margin="{Binding TextMargin, ElementName=Root}"
-                   VerticalAlignment="Center"
-                   Foreground="{Binding Foreground, ElementName=Root}">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CompactMode, ElementName=Root}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding Text, ElementName=Root}" Value="">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
-    </StackPanel>
+        <Style x:Key="LabelText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{Binding Foreground, ElementName=Root}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CompactMode, ElementName=Root}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Text, ElementName=Root}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InlineLayout" TargetType="StackPanel">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Stacked, ElementName=Root}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StackedLayout" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Stacked, ElementName=Root}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Style="{StaticResource InlineLayout}">
+            <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
+                                  Width="{Binding IconSize, ElementName=Root}"
+                                  Height="{Binding IconSize, ElementName=Root}"
+                                  Foreground="{Binding Foreground, ElementName=Root}" />
+            <TextBlock Text="{Binding Text, ElementName=Root}"
+                       Margin="{Binding TextMargin, ElementName=Root}"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource LabelText}" />
+        </StackPanel>
+
+        <!-- Stacked: icon over a small caption, the way a production toolbar labels its tools. The
+             caption sits at Size.Text.Meta because it names the glyph above it rather than being body
+             copy — and 12px is the design system's floor, which is exactly that token. -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Style="{StaticResource StackedLayout}">
+            <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
+                                  Width="{Binding IconSize, ElementName=Root}"
+                                  Height="{Binding IconSize, ElementName=Root}"
+                                  Foreground="{Binding Foreground, ElementName=Root}"
+                                  HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding Text, ElementName=Root}"
+                       FontSize="{StaticResource Size.Text.Meta}"
+                       HorizontalAlignment="Center" TextAlignment="Center"
+                       Margin="0,4,0,0"
+                       Style="{StaticResource LabelText}" />
+        </StackPanel>
+    </Grid>
 </UserControl>

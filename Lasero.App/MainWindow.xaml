@@ -109,6 +109,99 @@
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
+        <!--
+            Named toolbar buttons: icon over a caption, one geometry shared by the commands and the
+            tools so the row reads as one strip rather than two kinds of control that happen to sit
+            together. Both keep the ToolPaletteButton/Button.Icon state model underneath — hover,
+            pressed, active tint, keyboard focus ring — so nothing about the interaction changes.
+        -->
+        <Style x:Key="Toolbar.Command" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
+            <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Margin" Value="1,0" />
+        </Style>
+
+        <Style x:Key="Toolbar.Tool" TargetType="RadioButton" BasedOn="{StaticResource ToolPaletteButton}">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
+            <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- A toolbar entry that opens a menu instead of doing something. Same box as the buttons
+             beside it; the default MenuItem chrome would otherwise draw a different shape and a
+             different hover colour in the middle of the strip. -->
+        <Style x:Key="Toolbar.MenuTool" TargetType="MenuItem">
+            <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
+            <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid>
+                            <Border x:Name="Surface" Background="Transparent"
+                                    BorderBrush="Transparent" BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Sm}">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Border Background="{StaticResource Brush.Panel}"
+                                        BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                                        CornerRadius="{StaticResource Radius.Md}" Padding="4">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The strip's scroller has no visible track: a scrollbar under a 54px toolbar would eat the
+             captions. The bar appears only while it is needed, and the wheel scrolls the strip. -->
+        <Style x:Key="Toolbar.Scroller" TargetType="ScrollViewer">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- Group separator. PanelBorder is the right weight for a card edge but disappears as a
+             1px line inside a white strip, so the stronger border token is what actually reads. -->
+        <Style x:Key="Toolbar.Divider" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{StaticResource Brush.PanelBorderStrong}" />
+        </Style>
+
         <Style x:Key="DesignerRailTool" TargetType="RadioButton" BasedOn="{StaticResource ToolPaletteButton}">
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
@@ -473,15 +566,15 @@
                         circular — this column is sized "*", so its width does not depend on what the
                         toolbar decides to render.
 
-                        740 is where this specific toolbar stops fitting on one row, measured, not a
-                        generic breakpoint. The tools are icon-only at every width now, so Import is
-                        the only label left to drop — below 740 it collapses to its icon, keeping its
-                        tooltip and accessible name. Nothing is removed.
+                        1060 is where this specific toolbar stops fitting on one row, measured, not a
+                        generic breakpoint. Every button is captioned now, so below that width all the
+                        captions collapse together and the buttons shrink to their icon squares. Every
+                        one keeps its tooltip and its accessible name; nothing is removed.
                     -->
                     <Style x:Key="AdaptiveToolLabel" TargetType="components:IconLabel">
                         <Style.Triggers>
                             <DataTrigger Value="True"
-                                         Binding="{Binding ActualWidth, ElementName=WorkspaceArea, Converter={StaticResource IsBelowWidth}, ConverterParameter=740}">
+                                         Binding="{Binding ActualWidth, ElementName=WorkspaceArea, Converter={StaticResource IsBelowWidth}, ConverterParameter=1060}">
                                 <Setter Property="CompactMode" Value="True" />
                             </DataTrigger>
                         </Style.Triggers>
@@ -498,77 +591,169 @@
                      1600px window and 1402px at 1920px, so the row wrapped onto a second line even on
                      a 4K display. They now live at the top of the right inspector, the way Illustrator,
                      Figma and LightBurn place them. -->
-                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top" Height="46"
+                <Border Grid.Row="0" Panel.ZIndex="6" VerticalAlignment="Top"
+                        Height="{StaticResource Size.Toolbar.Height}"
                         Background="{StaticResource Brush.Panel}"
                         BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
-                        Padding="8,0">
-                    <DockPanel LastChildFill="False">
-                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                            <!--
-                                One command row: file, history, tools, view. Tools are icon-only. The
-                                labels that used to sit beside them read well on a wide window, but they
-                                are also what pushed file, history and view commands onto other
-                                surfaces, which is how one workspace ended up spread across the title
-                                bar, this row and a floating overlay. Every button keeps its tooltip,
-                                its shortcut and its accessible name.
-                            -->
-                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding NewProjectCommand}"
+                        Padding="10,0">
+                    <!-- Grid, not DockPanel: a DockPanel does not clip, so once the strip was wider
+                         than the space left beside the zoom group it simply ran underneath it and the
+                         last tool disappeared behind the readout. The strip scrolls sideways instead —
+                         the operator can drag the inspector to 560px, and a tool that cannot fit has
+                         to still be reachable. -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Zoom sits on the right, away from the tools, because it changes what you
+                             see and never what the job is. The readout is the canvas's own scale:
+                             SceneCanvas.ZoomPercent is read-only so the chrome cannot claim a zoom the
+                             view is not at, and the presets ask the canvas to move instead. -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                            <Button x:Name="ZoomPicker" Style="{StaticResource Button.Ghost}"
+                                    Height="{StaticResource Size.Control.Compact}" Padding="10,0" Margin="0,0,4,0"
+                                    BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                                    Click="OnZoomPickerClick"
+                                    ToolTip="Měřítko plátna" AutomationProperties.Name="Měřítko plátna">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="50 %" Tag="50" Click="OnZoomPresetClick" />
+                                        <MenuItem Header="75 %" Tag="75" Click="OnZoomPresetClick" />
+                                        <MenuItem Header="100 %" Tag="100" Click="OnZoomPresetClick" />
+                                        <MenuItem Header="150 %" Tag="150" Click="OnZoomPresetClick" />
+                                        <MenuItem Header="200 %" Tag="200" Click="OnZoomPresetClick" />
+                                        <MenuItem Header="400 %" Tag="400" Click="OnZoomPresetClick" />
+                                        <Separator />
+                                        <MenuItem Header="Přizpůsobit oknu" Click="OnFitToViewClick" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding ZoomPercent, ElementName=DesignerCanvas, StringFormat={}{0} %}"
+                                               MinWidth="46" TextAlignment="Right" VerticalAlignment="Center"
+                                               FontFamily="{StaticResource Font.Numeric}" FontWeight="Medium"
+                                               Typography.NumeralAlignment="Tabular" />
+                                    <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}"
+                                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                          Margin="7,0,0,0" VerticalAlignment="Center"
+                                                          Foreground="{StaticResource Brush.TextMuted}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnFitToViewClick" Margin="0"
+                                    ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </Button>
+                        </StackPanel>
+
+                        <!--
+                            One command strip, grouped the way the work is: project, history, what the
+                            pointer does, what it draws, what it rearranges. Every button carries its
+                            icon, a caption, a tooltip and an accessible name; below the measured width
+                            the captions collapse and the icons stay, so nothing is ever removed.
+                        -->
+                        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled" Padding="0"
+                                      Style="{StaticResource Toolbar.Scroller}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding NewProjectCommand}"
                                     ToolTip="Nový projekt" AutomationProperties.Name="Nový projekt">
-                                <components:IconGlyph IconData="{StaticResource Glyph.New}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.New}" Text="Nový"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
-                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding OpenProjectCommand}"
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding OpenProjectCommand}"
                                     ToolTip="Otevřít projekt" AutomationProperties.Name="Otevřít projekt">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Open}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Open}" Text="Otevřít"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
-                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding SaveProjectCommand}"
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding SaveProjectCommand}"
                                     ToolTip="Uložit projekt · Ctrl+S" AutomationProperties.Name="Uložit projekt">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Save}" Text="Uložit"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
-                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
-                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.UndoCommand}"
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding GCode.LoadFileCommand}"
+                                    ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Import}" Text="Import"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
+                            </Button>
+
+                            <Border Style="{StaticResource Toolbar.Divider}" />
+
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding Scene.UndoCommand}"
                                     ToolTip="Zpět · Ctrl+Z" AutomationProperties.Name="Zpět">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Undo}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Undo}" Text="Zpět"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
-                            <Button Style="{StaticResource ToolbarIconButton}" Command="{Binding Scene.RedoCommand}"
+                            <Button Style="{StaticResource Toolbar.Command}" Command="{Binding Scene.RedoCommand}"
                                     ToolTip="Znovu · Ctrl+Y" AutomationProperties.Name="Znovu">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Redo}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Redo}" Text="Znovu"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
-                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
+
+                            <Border Style="{StaticResource Toolbar.Divider}" />
+
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
-                                         ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Výběr">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Select}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                         ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Vybrat">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Select}" Text="Vybrat"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <!-- No Pan tool button. Panning is already always available on the middle
-                                 mouse button and on space+drag, so a mode you had to switch into (and
-                                 back out of) to do the same thing only added a state to get stuck in.
-                                 DesignerTool.Pan itself still exists and still works. This is the one
-                                 point where the design system's reference toolbar, which does draw a
-                                 Pan tool, is deliberately not followed. -->
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
+                            <!-- Panning also stays on the middle mouse button and on space+drag; this
+                                 is the discoverable way to the same thing, which is why the tool is
+                                 back in the row after previously being dropped as redundant. -->
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pan, Mode=TwoWay}"
+                                         ToolTip="Posunout plátno — jde i prostředním tlačítkem myši nebo mezerníkem"
+                                         AutomationProperties.Name="Posunout">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Drag}" Text="Posun"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
+                            </RadioButton>
+
+                            <Border Style="{StaticResource Toolbar.Divider}" />
+
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
-                                         ToolTip="Nakreslit obdélník (R)" AutomationProperties.Name="Obdélník">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Rectangle}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                         ToolTip="Nakreslit obdélník (R) — se Shiftem čtverec" AutomationProperties.Name="Tvar">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Rectangle}" Text="Obdélník"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
-                                         ToolTip="Nakreslit elipsu (E)" AutomationProperties.Name="Elipsa">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Ellipse}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                         ToolTip="Nakreslit elipsu (E) — se Shiftem kruh" AutomationProperties.Name="Kruh nebo elipsa">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Ellipse}" Text="Elipsa"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
-                                         IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
-                                         ToolTip="Nakreslit čáru (L)" AutomationProperties.Name="Čára">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Line}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
-                            </RadioButton>
-                            <RadioButton Style="{StaticResource DesignerToolbarTool}" GroupName="DesignerToolbarTools"
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
                                          ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Text}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Text}" Text="Text"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,6,0">
-                                <MenuItem Padding="11,9" ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy">
+                            <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
+                                         ToolTip="Nakreslit čáru (L) — se Shiftem po 45°" AutomationProperties.Name="Čára">
+                                <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                      IconData="{StaticResource Glyph.Line}" Text="Čára"
+                                                      IconSize="{StaticResource Size.Icon.Md}" />
+                            </RadioButton>
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                                <MenuItem Style="{StaticResource Toolbar.MenuTool}"
+                                          ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy"
+                                          AutomationProperties.Name="Mnohoúhelník">
                                     <MenuItem.Header>
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Polygon}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                              IconData="{StaticResource Glyph.Polygon}" Text="Tvary"
+                                                              IconSize="{StaticResource Size.Icon.Md}" />
                                     </MenuItem.Header>
                                     <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
                                     <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
@@ -579,37 +764,49 @@
                                     <MenuItem Header="Dvojitá hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.DoubleStar}" />
                                 </MenuItem>
                             </Menu>
-                            <Border Width="1" Height="22" Background="{StaticResource Brush.PanelBorder}" Margin="6,0" VerticalAlignment="Center" />
-                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnZoomOutClick"
-                                    ToolTip="Oddálit" AutomationProperties.Name="Oddálit">
-                                <components:IconGlyph IconData="{StaticResource Glyph.ZoomOut}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
-                            </Button>
-                            <!-- The readout is the canvas's own scale, not a number the chrome keeps.
-                                 SceneCanvas.ZoomPercent is read-only for exactly that reason. -->
-                            <TextBlock Text="{Binding ZoomPercent, ElementName=DesignerCanvas, StringFormat={}{0} %}"
-                                       MinWidth="54" TextAlignment="Center" VerticalAlignment="Center"
-                                       FontFamily="{StaticResource Font.Numeric}" FontWeight="Medium"
-                                       Typography.NumeralAlignment="Tabular"
-                                       Foreground="{StaticResource Brush.TextSecondary}"
-                                       ToolTip="Měřítko plátna" />
-                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnZoomInClick"
-                                    ToolTip="Přiblížit" AutomationProperties.Name="Přiblížit">
-                                <components:IconGlyph IconData="{StaticResource Glyph.ZoomIn}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
-                            </Button>
-                            <Button Style="{StaticResource ToolbarIconButton}" Click="OnFitToViewClick"
-                                    ToolTip="Přizpůsobit oknu (F)" AutomationProperties.Name="Přizpůsobit oknu">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Fit}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
-                            </Button>
-                        </StackPanel>
 
-                        <!-- Import keeps its label. It opens a file dialog rather than switching a
-                             mode, and it is the one thing in this row a first-time owner has to find. -->
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Height="32" Padding="10,0"
-                                VerticalAlignment="Center" Command="{Binding GCode.LoadFileCommand}"
-                                ToolTip="Načíst SVG, bitmapu nebo G-code" AutomationProperties.Name="Importovat grafiku">
-                            <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" IconData="{StaticResource Glyph.Import}" Text="Importovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                        </Button>
-                    </DockPanel>
+                            <Border Style="{StaticResource Toolbar.Divider}" />
+
+                            <!-- Align needs more than one object and mirror needs at least one, so both
+                                 are menus rather than buttons: the choice of edge or axis belongs to the
+                                 operator, and the commands underneath keep their own CanExecute. -->
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                                <MenuItem Style="{StaticResource Toolbar.MenuTool}"
+                                          ToolTip="Zarovnat vybrané objekty k sobě"
+                                          AutomationProperties.Name="Zarovnat">
+                                    <MenuItem.Header>
+                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                              IconData="{StaticResource Glyph.AlignLeft}" Text="Zarovnat"
+                                                              IconSize="{StaticResource Size.Icon.Md}" />
+                                    </MenuItem.Header>
+                                    <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
+                                    <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
+                                    <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
+                                    <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
+                                    <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
+                                </MenuItem>
+                            </Menu>
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                                <MenuItem Style="{StaticResource Toolbar.MenuTool}"
+                                          ToolTip="Zrcadlit nebo otočit vybrané objekty"
+                                          AutomationProperties.Name="Zrcadlit">
+                                    <MenuItem.Header>
+                                        <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
+                                                              IconData="{StaticResource Glyph.FlipHorizontal}" Text="Zrcadlit"
+                                                              IconSize="{StaticResource Size.Icon.Md}" />
+                                    </MenuItem.Header>
+                                    <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
+                                    <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
+                                    <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
+                                </MenuItem>
+                            </Menu>
+                        </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
                 </Border>
 
                 <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="0" ClipToBounds="True">

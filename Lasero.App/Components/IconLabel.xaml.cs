@@ -24,6 +24,12 @@ public partial class IconLabel : UserControl
     public static readonly DependencyProperty CompactModeProperty = DependencyProperty.Register(
         nameof(CompactMode), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
 
+    /// <summary>Puts the label under the icon instead of beside it — the toolbar arrangement, where a
+    /// row of named tools has to stay narrow. Composes with CompactMode: a stacked button that runs
+    /// out of width still drops to its icon alone.</summary>
+    public static readonly DependencyProperty StackedProperty = DependencyProperty.Register(
+        nameof(Stacked), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
+
     public Geometry? IconData
     {
         get => (Geometry?)GetValue(IconDataProperty);
@@ -52,6 +58,12 @@ public partial class IconLabel : UserControl
     {
         get => (bool)GetValue(CompactModeProperty);
         set => SetValue(CompactModeProperty, value);
+    }
+
+    public bool Stacked
+    {
+        get => (bool)GetValue(StackedProperty);
+        set => SetValue(StackedProperty, value);
     }
 
     public IconLabel() => InitializeComponent();

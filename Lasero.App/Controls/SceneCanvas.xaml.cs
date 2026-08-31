@@ -255,6 +255,15 @@ public partial class SceneCanvas : UserControl
     public void ZoomIn() => ZoomAroundCenter(1.25);
     public void ZoomOut() => ZoomAroundCenter(0.8);
 
+    /// <summary>Zooms to an exact percentage, keeping the current centre. The toolbar's zoom picker
+    /// calls this; ZoomPercent itself stays read-only, so the readout still reports the scale the
+    /// canvas actually reached — including when the request was clamped.</summary>
+    public void SetZoomPercent(int percent)
+    {
+        if (ActualWidth <= 0 || ActualHeight <= 0 || percent <= 0 || _scale <= 0) return;
+        ZoomAroundCenter(DefaultScale * percent / 100d / _scale);
+    }
+
     private void ZoomAroundCenter(double factor)
     {
         if (ActualWidth <= 0 || ActualHeight <= 0) return;

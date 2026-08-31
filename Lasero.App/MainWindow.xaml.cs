@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
         _viewModel.DeviceWizardRequested += OpenDeviceWizard;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
         Loaded += OnLoaded;
         Closing += OnClosing;
@@ -360,6 +361,38 @@ public partial class MainWindow : Window
     private void OnZoomOutClick(object sender, RoutedEventArgs e) => DesignerCanvas.ZoomOut();
     private void OnFitToViewClick(object sender, RoutedEventArgs e) => DesignerCanvas.FitToView();
 
+    /// <summary>The canvas is collapsed while another screen is showing, so it has no size to fit
+    /// against and lands on whatever scale it last had. Fitting once it is actually visible is why
+    /// the bed fills the view when the operator arrives in the editor, at Background priority so the
+    /// layout pass that gave it a size has finished first.</summary>
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.CurrentScreen)) return;
+        if (_viewModel.CurrentScreen != AppScreen.Designer) return;
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (_viewModel.CurrentScreen == AppScreen.Designer) DesignerCanvas.FitToView();
+        }));
+    }
+
+    private void OnZoomPickerClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = button;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>The preset asks for a scale; the canvas decides what it can actually reach and reports
+    /// back through ZoomPercent. That is why the readout is bound to the canvas and not to the chosen
+    /// preset — a clamped request would otherwise show a zoom the view never got to.</summary>
+    private void OnZoomPresetClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string tag } && int.TryParse(tag, out var percent))
+            DesignerCanvas.SetZoomPercent(percent);
+    }
+
     private void OnAboutClick(object sender, RoutedEventArgs e) =>
         LaseroDialogWindow.Show(this, new LaseroDialogOptions(
             "LASERO Desktop 1.2.0",
@@ -379,9 +412,19 @@ public partial class MainWindow : Window
     /// Restores the operator's inspector width. Clamped by the store, so a stale or hand-edited
     /// settings file cannot open the app with the workspace crushed or the panel off-screen.
     /// </summary>
+    /// <summary>
+    /// A width remembered on a wide screen is wrong on a narrow one: 560px of inspector leaves the
+    /// canvas 640px at 1366, which is where the toolbar starts having to scroll and the drawing area
+    /// stops being the thing that dominates the window. The saved value is honoured up to a third of
+    /// the window and never below the panel's own minimum, so the preference survives without the
+    /// canvas paying for it. Nothing is written back — the operator's number stays on disk.
+    /// </summary>
     private void RestoreWorkspaceLayout()
     {
-        InspectorColumn.Width = new GridLength(_viewModel.SettingsStore.Current.Workspace.ClampedInspectorWidth);
+        var saved = _viewModel.SettingsStore.Current.Workspace.ClampedInspectorWidth;
+        var window = ActualWidth > 0 ? ActualWidth : Width;
+        var ceiling = Math.Max(InspectorColumn.MinWidth, window / 3);
+        InspectorColumn.Width = new GridLength(Math.Min(saved, ceiling));
     }
 
     private void OnInspectorSplitterDragCompleted(object sender, DragCompletedEventArgs e)
