@@ -1,0 +1,121 @@
+<UserControl x:Class="Lasero.App.Components.DeviceStatusCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:conv="clr-namespace:Lasero.App.Converters"
+             x:Name="Root">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+
+        <Style x:Key="DataRowLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="DataRowValue" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+    </UserControl.Resources>
+
+    <Border Style="{StaticResource Card}">
+        <StackPanel>
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
+                                          Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                          Margin="0,0,8,0" />
+                    <TextBlock Text="Stav zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
+                </StackPanel>
+                <components:StatusBadge Grid.Column="1" HorizontalAlignment="Right"
+                                        StatusText="{Binding StatusLabel, ElementName=Root}">
+                    <components:StatusBadge.Style>
+                        <Style TargetType="components:StatusBadge">
+                            <Setter Property="Kind" Value="Neutral" />
+                            <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsConnected, ElementName=Root}" Value="True">
+                                    <Setter Property="Kind" Value="Ready" />
+                                    <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </components:StatusBadge.Style>
+                </components:StatusBadge>
+            </Grid>
+
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding MachineName, ElementName=Root}" FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ConnectionLabel, ElementName=Root}" Style="{StaticResource Text.Muted}"
+                               Margin="0,3,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <!-- Stands in for a product photo until there is one. Deliberately a drawn machine
+                     silhouette, not a stock image of somebody else's engraver. -->
+                <Border Grid.Column="1" Width="64" Height="48" CornerRadius="{StaticResource Radius.Md}"
+                        Background="{StaticResource Brush.Field}" Margin="12,0,0,0" VerticalAlignment="Top">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
+                                          Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
+                                          Foreground="{StaticResource Brush.TextMuted}" />
+                </Border>
+            </Grid>
+
+            <Button Command="{Binding OpenMachineControlCommand, ElementName=Root}" HorizontalAlignment="Stretch"
+                    Visibility="{Binding IsConnected, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
+                <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Otevřít ovládání stroje"
+                                      IconSize="{StaticResource Size.Icon.Sm}" />
+            </Button>
+            <Button Style="{StaticResource PrimaryBlue}" HorizontalAlignment="Stretch"
+                    Command="{Binding ConnectDeviceCommand, ElementName=Root}"
+                    Visibility="{Binding IsConnected, ElementName=Root, Converter={StaticResource InverseBoolToVisibility}}">
+                <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit gravírku" Foreground="White" />
+            </Button>
+
+            <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,14,0,12" />
+
+            <Grid Margin="0,0,0,9">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Frame}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,8,0" />
+                    <TextBlock Text="Pracovní plocha" Style="{StaticResource DataRowLabel}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Style="{StaticResource DataRowValue}">
+                    <Run Text="{Binding WorkAreaWidthMm, ElementName=Root, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                    <Run Text=" × " />
+                    <Run Text="{Binding WorkAreaHeightMm, ElementName=Root, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                    <Run Text=" mm" />
+                </TextBlock>
+            </Grid>
+
+            <Grid Margin="0,0,0,9">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Terminal}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,8,0" />
+                    <TextBlock Text="Firmware" Style="{StaticResource DataRowLabel}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareLabel, ElementName=Root}"
+                           Style="{StaticResource DataRowValue}" TextTrimming="CharacterEllipsis" MaxWidth="150" />
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="8" Height="8" Margin="4,0,12,0" VerticalAlignment="Center"
+                             Fill="{Binding StateBrush, ElementName=Root}" />
+                    <TextBlock Text="Stav" Style="{StaticResource DataRowLabel}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding StateLabel, ElementName=Root}"
+                           Style="{StaticResource DataRowValue}"
+                           Foreground="{Binding StateBrush, ElementName=Root}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

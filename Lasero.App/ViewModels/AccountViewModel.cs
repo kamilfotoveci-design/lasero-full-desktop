@@ -25,6 +25,15 @@ public partial class AccountViewModel : ObservableObject
     [ObservableProperty] private string? _passwordError;
     [ObservableProperty] private bool _isPremium;
     [ObservableProperty] private int _trialDaysLeft;
+
+    /// <summary>The licence line under the account's e-mail. Says what the entitlement actually is —
+    /// a trial that has run out reads as expired rather than quietly as free.</summary>
+    public string LicenceLabel => IsPremium
+        ? "Plná licence"
+        : TrialDaysLeft > 0 ? $"Zkušební verze · {TrialDaysLeft} dní" : "Bez licence";
+
+    partial void OnIsPremiumChanged(bool value) => OnPropertyChanged(nameof(LicenceLabel));
+    partial void OnTrialDaysLeftChanged(int value) => OnPropertyChanged(nameof(LicenceLabel));
     [ObservableProperty] private string _licenseCode = string.Empty;
     [ObservableProperty] private string? _userId;
 

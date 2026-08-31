@@ -111,10 +111,36 @@
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
     </Style>
 
+    <!--
+        A card's secondary "Otevřít vše" affordance. Chromeless and accent-coloured so it reads as
+        the quiet way out of a section rather than competing with the card's own primary button —
+        still a real Button, so it keeps keyboard focus and the accessible name a link would lose.
+    -->
+
+    <Style x:Key="Button.Link" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
     <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
         <Setter Property="Height" Value="{StaticResource Size.Control.Large}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Large}" />
         <Setter Property="Padding" Value="18,0" />
+    </Style>
+    <!--
+        The quieter half of a hero's button row: same height as Button.Large so the row lines up, but
+        a panel surface and normal text. Button.Large descends from Button.Primary, which sets a white
+        Foreground — overriding only Background there gives white text on a white button.
+    -->
+    <Style x:Key="Button.LargeSecondary" TargetType="Button" BasedOn="{StaticResource Button.Large}">
+        <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontWeight" Value="Medium" />
     </Style>
 
     <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">

@@ -3,208 +3,317 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Lasero.App.Converters"
              xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="800">
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="860">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:UtcToLocalConverter x:Key="UtcToLocal" />
+        <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
+        <conv:MachineDisplayStateToLabelConverter x:Key="MachineStateLabel" />
+        <conv:MachineDisplayStateToBrushConverter x:Key="MachineStateBrush" />
+
+        <Style x:Key="SectionHeading" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+
+        <!-- The mockup's step strip needs the three cards to share width exactly; a UniformGrid
+             would also stretch the arrows between them, so the arrows sit in their own columns. -->
+        <Style x:Key="StepArrow" TargetType="components:IconGlyph">
+            <Setter Property="Width" Value="{StaticResource Size.Icon.Sm}" />
+            <Setter Property="Height" Value="{StaticResource Size.Icon.Sm}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="6,0" />
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="20,16,20,28" MaxWidth="1280" HorizontalAlignment="Stretch">
-            <Grid Margin="0,0,0,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="Domů" Style="{StaticResource PageTitle}" />
-                    <TextBlock Text="Začněte nový projekt nebo pokračujte tam, kde jste skončili."
-                               Style="{StaticResource PageSubtitle}" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
-                    <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,10,0">
-                        <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt" Foreground="White" />
-                    </Button>
-                    <Button Style="{StaticResource Button.Regular}" Command="{Binding OpenProjectCommand}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt" />
-                    </Button>
-                </StackPanel>
-            </Grid>
+        <Grid Margin="20,16,20,20" MaxWidth="1320" HorizontalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2.1*" />
-                    <ColumnDefinition Width="18" />
-                    <ColumnDefinition Width="1*" MinWidth="300" />
-                </Grid.ColumnDefinitions>
+            <!-- HERO -->
+            <Border Grid.Row="0" CornerRadius="{StaticResource Radius.Lg}" Margin="0,0,0,22"
+                    Background="{StaticResource Brush.SelectedSurface}"
+                    BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="380" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
-                    <!-- First-run users see one clear route instead of empty dashboards and zero metrics. -->
-                    <Border Style="{StaticResource Card}" Padding="28"
-                            Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}">
-                        <StackPanel MaxWidth="720" HorizontalAlignment="Left">
-                            <Border Width="48" Height="48" CornerRadius="{StaticResource Radius.Lg}"
-                                    Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
-                                                      Foreground="{StaticResource Brush.Accent}" />
-                            </Border>
-                            <TextBlock Text="Vytvořte první projekt" FontFamily="{StaticResource Font.Display}"
-                                       FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,18,0,8" />
-                            <TextBlock Text="Nemusíte nastavovat všechno najednou. Připravte návrh, vyberte materiál a před spuštěním zkontrolujte jeho umístění."
-                                       Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Body}"
-                                       TextWrapping="Wrap" MaxWidth="650" />
+                    <StackPanel Margin="28,26,20,26" VerticalAlignment="Center">
+                        <TextBlock Text="Vytvořte první projekt" Style="{StaticResource PageTitle}" />
+                        <!-- Stretch plus MaxWidth centres a TextBlock in WPF, which put this paragraph
+                             in the middle of the hero instead of under the heading. -->
+                        <TextBlock Text="Začněte naplno. Navrhněte, nastavte materiál a pošlete svůj první návrh do laseru."
+                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="440"
+                                   HorizontalAlignment="Left" Margin="0,7,0,0" />
 
-                            <StackPanel Orientation="Horizontal" Margin="0,20,0,24">
-                                <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,10,0">
-                                    <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Začít nový projekt" Foreground="White" />
-                                </Button>
-                                <Button Style="{StaticResource Button.Regular}" Command="{Binding OpenProjectCommand}">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít existující" />
-                                </Button>
-                            </StackPanel>
-
-                            <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,0,0,18" />
-                            <TextBlock Text="Jak probíhá první gravírování" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,12" />
-
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}">
-                                    <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,16,0">
-                                    <TextBlock Text="Vytvořte nebo importujte návrh" FontWeight="SemiBold" />
-                                    <TextBlock Text="Text, tvar, SVG nebo obrázek." Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Command="{Binding ShowDesignerCommand}" Padding="12,0">
-                                    <TextBlock Text="Otevřít návrh" />
-                                </Button>
-                            </Grid>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.Field}">
-                                    <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,16,0">
-                                    <TextBlock Text="Vyberte materiál a parametry" FontWeight="SemiBold" />
-                                    <TextBlock Text="Použijte bezpečné doporučené hodnoty." Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Click="OnMaterialsClick" Padding="12,0">
-                                    <TextBlock Text="Vybrat materiál" />
-                                </Button>
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.Field}">
-                                    <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,16,0">
-                                    <TextBlock Text="Připojte stroj a zkontrolujte umístění" FontWeight="SemiBold" />
-                                    <TextBlock Text="Rámování ověří, kam se úloha vypálí." Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Command="{Binding ShowDeviceCommand}" Padding="12,0">
-                                    <TextBlock Text="Připojit stroj" />
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}"
-                            Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Project}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" />
-                                    <TextBlock Text="Nedávné projekty" Style="{StaticResource PanelTitle}" Margin="0" />
-                                </StackPanel>
-                                <Button Grid.Column="1" Command="{Binding ShowDesignerCommand}" Content="Otevřít návrh" />
-                            </Grid>
-                            <ItemsControl ItemsSource="{Binding Home.RecentProjects}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <components:ProjectCard Width="176" Margin="0,0,12,12"
-                                            OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0"
-                            Visibility="{Binding Home.HasTodayJobs, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" />
-                                <TextBlock Text="Dnešní dokončené úlohy" Style="{StaticResource PanelTitle}" Margin="0" />
-                            </StackPanel>
-                            <ItemsControl ItemsSource="{Binding Home.TodayJobs}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Success}" />
-                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding MaterialName}" Style="{StaticResource Text.Muted}" Visibility="{Binding MaterialName, Converter={StaticResource NotNullToVisibility}}" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding CompletedUtc, Converter={StaticResource UtcToLocal}, StringFormat='HH:mm'}" Style="{StaticResource Text.Muted}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2">
-                    <components:DeviceCard Margin="0,0,0,16"
-                        IsConnected="{Binding Home.Connection.IsConnected}"
-                        StatusText="{Binding Home.Connection.StatusText}"
-                        FirmwareBanner="{Binding Home.Connection.FirmwareBanner}"
-                        WorkAreaWidthMm="{Binding Settings.Machine.WorkAreaWidthMm}"
-                        WorkAreaHeightMm="{Binding Settings.Machine.WorkAreaHeightMm}"
-                        OpenDesignerCommand="{Binding ShowDeviceCommand}"
-                        ConnectDeviceCommand="{Binding OpenDeviceWizardCommand}" />
-
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{StaticResource Brush.Accent}" />
-                                <TextBlock Text="Materiál" Style="{StaticResource PanelTitle}" Margin="0" />
-                            </StackPanel>
-                            <TextBlock Text="Doporučené parametry vám pomohou začít bezpečně. Před ostrou úlohou je vždy ověřte na odřezku."
-                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />
-                            <Button Click="OnMaterialsClick">
-                                <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Otevřít vzorník materiálů" />
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Left">
+                            <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,10,0">
+                                <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Začít nový projekt" Foreground="White" />
                             </Button>
-
-                            <ItemsControl ItemsSource="{Binding Home.RecentMaterials}" Margin="0,14,0,0"
-                                          Visibility="{Binding Home.HasMaterials, Converter={StaticResource BoolToVisibility}}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,0,10">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                            <TextBlock Style="{StaticResource Text.Muted}">
-                                                <Run Text="{Binding UsageCount}" /><Run Text="× použito" />
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding OpenProjectCommand}" Margin="0,0,10,0">
+                                <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt" />
+                            </Button>
+                            <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding GCode.LoadFileCommand}"
+                                    Padding="14,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Import}"
+                                                          Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Importovat" FontWeight="Medium" />
+                                        <TextBlock Text="SVG / PNG / DXF" Style="{StaticResource Text.Muted}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
+                    </StackPanel>
+
+                    <!-- Stands in for the mockup's engraving photo. Drawn from the app's own icon set
+                         so nothing here is a borrowed product shot; swap in an image when one exists. -->
+                    <Border Grid.Column="1" Width="300" Margin="0,14,14,14"
+                            CornerRadius="{StaticResource Radius.Md}"
+                            Background="{StaticResource Brush.Panel}"
+                            BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
+                        <Grid>
+                            <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
+                                                 Foreground="{StaticResource Brush.SelectedBorder}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="Náhled gravírování" Style="{StaticResource Text.Muted}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,14" />
+                        </Grid>
                     </Border>
+                </Grid>
+            </Border>
+
+            <!-- JAK ZAČÍT + STAV ZAŘÍZENÍ -->
+            <Grid Grid.Row="1" Margin="0,0,0,22">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="440" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="308" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Jak začít" Style="{StaticResource SectionHeading}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <components:StepCard StepNumber="1" Title="Navrhněte svůj design"
+                                             Description="Vytvořte nebo importujte návrh v editoru."
+                                             IconData="{StaticResource Glyph.Design}" />
+                        <components:IconGlyph Grid.Column="1" Style="{StaticResource StepArrow}"
+                                              IconData="{StaticResource Glyph.ArrowRight}" />
+                        <components:StepCard Grid.Column="2" StepNumber="2" Title="Zvolte materiál"
+                                             Description="Vyberte materiál a upravte parametry laseru."
+                                             IconData="{StaticResource Glyph.Materials}" />
+                        <components:IconGlyph Grid.Column="3" Style="{StaticResource StepArrow}"
+                                              IconData="{StaticResource Glyph.ArrowRight}" />
+                        <components:StepCard Grid.Column="4" StepNumber="3" Title="Rámování a kontrola"
+                                             Description="Zkontrolujte rámování a náhled práce."
+                                             IconData="{StaticResource Glyph.Frame}" />
+                    </Grid>
                 </StackPanel>
+
+                <components:DeviceStatusCard Grid.Column="2" VerticalAlignment="Top"
+                    IsConnected="{Binding Home.Connection.IsConnected}"
+                    MachineName="{Binding Home.DeviceName}"
+                    ConnectionLabel="{Binding Home.DeviceConnectionLabel}"
+                    StatusLabel="{Binding Home.ConnectionBadgeLabel}"
+                    FirmwareLabel="{Binding Home.FirmwareLabel}"
+                    StateLabel="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateLabel}}"
+                    StateBrush="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateBrush}}"
+                    WorkAreaWidthMm="{Binding Settings.Machine.WorkAreaWidthMm}"
+                    WorkAreaHeightMm="{Binding Settings.Machine.WorkAreaHeightMm}"
+                    ConnectDeviceCommand="{Binding OpenDeviceWizardCommand}"
+                    OpenMachineControlCommand="{Binding ShowDeviceCommand}" />
             </Grid>
-        </StackPanel>
+
+            <!-- BEZPEČNOSTNÍ KONTROLA + NEDÁVNÉ PROJEKTY -->
+            <Grid Grid.Row="2" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*" MinWidth="300" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="1.35*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource Card}" VerticalAlignment="Top">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Warning}"
+                                                      Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Bezpečnostní kontrola" Style="{StaticResource PanelTitle}" Margin="0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Home.Safety.Summary}" Style="{StaticResource Text.Muted}"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding Home.Safety.Items}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+
+                                        <!-- The machine row is reported, the rest are ticked by hand. Two
+                                             different controls, because a checkbox the operator cannot
+                                             change would be a lie about who decided. -->
+                                        <components:IconGlyph VerticalAlignment="Top" Margin="0,2,0,0"
+                                                              Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                              Visibility="{Binding IsManual, Converter={StaticResource InverseBoolToVisibility}}">
+                                            <components:IconGlyph.Style>
+                                                <Style TargetType="components:IconGlyph">
+                                                    <Setter Property="IconData" Value="{StaticResource Glyph.Clock}" />
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSatisfied}" Value="True">
+                                                            <Setter Property="IconData" Value="{StaticResource Glyph.Check}" />
+                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </components:IconGlyph.Style>
+                                        </components:IconGlyph>
+                                        <CheckBox IsChecked="{Binding IsSatisfied}" VerticalAlignment="Top" Margin="0,1,0,0"
+                                                  automation:AutomationProperties.Name="{Binding Title}"
+                                                  Visibility="{Binding IsManual, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Medium" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Muted}"
+                                                       TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Command="{Binding ShowDeviceCommand}" HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                                Content="Zobrazit všechny kontroly" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Project}"
+                                                      Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Nedávné projekty" Style="{StaticResource PanelTitle}" Margin="0" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource Button.Link}"
+                                    Command="{Binding OpenProjectCommand}" Content="Otevřít vše" />
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}"
+                                    Margin="0,10,0,14">
+                            <TextBlock Text="Zatím tu nic není" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Projekty, které uložíte, se objeví tady."
+                                       Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding Home.RecentProjectRows}"
+                                      Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Brush.PanelRaised}" CornerRadius="{StaticResource Radius.Md}"
+                                            Padding="10" Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Width="42" Height="42" CornerRadius="{StaticResource Radius.Sm}"
+                                                    Background="{StaticResource Brush.Panel}"
+                                                    BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1">
+                                                <Grid>
+                                                    <components:IconGlyph IconData="{StaticResource Glyph.Project}"
+                                                                          Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                                                          Foreground="{StaticResource Brush.TextMuted}" />
+                                                    <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImage}}"
+                                                           Stretch="UniformToFill"
+                                                           Visibility="{Binding HasThumbnail, Converter={StaticResource BoolToVisibility}}" />
+                                                </Grid>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding ModifiedText}" Style="{StaticResource Text.Muted}"
+                                                           Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="2" Text="{Binding SizeText}" Style="{StaticResource Text.Muted}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                                            <Button Grid.Column="3" Style="{StaticResource Button.Icon}" VerticalAlignment="Center"
+                                                    Click="OnRecentProjectMenuClick"
+                                                    Tag="{Binding DataContext.Home, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    automation:AutomationProperties.Name="Možnosti projektu">
+                                                <Button.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Otevřít projekt"
+                                                                  Command="{Binding PlacementTarget.Tag.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                  CommandParameter="{Binding Entry}" />
+                                                        <MenuItem Header="Odebrat ze seznamu"
+                                                                  Command="{Binding PlacementTarget.Tag.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                  CommandParameter="{Binding Entry}" />
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
+                                                <components:IconGlyph IconData="{StaticResource Glyph.More}"
+                                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- TIP -->
+            <Border Grid.Row="3" Background="{StaticResource Brush.Panel}"
+                    BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                    CornerRadius="{StaticResource Radius.Md}" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Info}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <Run Text="Tip:" FontWeight="SemiBold" />
+                        <Run Text=" Použijte rámování pro přesné umístění návrhu na materiál." />
+                    </TextBlock>
+                    <Button Grid.Column="2" Style="{StaticResource Button.Link}" Click="OnHelpClick"
+                            Content="Zobrazit nápovědu" />
+                </Grid>
+            </Border>
+        </Grid>
     </ScrollViewer>
 </UserControl>

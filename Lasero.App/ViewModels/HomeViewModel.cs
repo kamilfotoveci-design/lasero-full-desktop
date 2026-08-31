@@ -23,8 +23,34 @@ public partial class HomeViewModel : ObservableObject
     public GCodeViewModel GCode { get; }
 
     public ObservableCollection<RecentProjectEntry> RecentProjects { get; } = new();
+    public ObservableCollection<RecentProjectItemViewModel> RecentProjectRows { get; } = new();
+    public HomeSafetyViewModel Safety { get; }
     public ObservableCollection<JobHistoryEntry> TodayJobs { get; } = new();
     public ObservableCollection<MaterialUsage> RecentMaterials { get; } = new();
+
+    /// <summary>What the device card shows. Every one of these reads through to live connection state,
+    /// so a disconnected app names no machine, no port and no firmware instead of inventing them.</summary>
+    public string DeviceName => Connection.IsConnected ? Connection.ActiveMachineName : "Žádné zařízení";
+
+    /// <summary>The badge is about the link — is there a machine on the other end of the cable. The
+    /// "Stav" row below it is about what that machine is doing, which is a different question.</summary>
+    public string ConnectionBadgeLabel => Connection.IsConnected ? "Připojeno" : "Nepřipojeno";
+
+    public string DeviceConnectionLabel => Connection.IsConnected
+        ? $"USB  ·  {Connection.SelectedPort}  ·  {Connection.BaudRate} Bd"
+        : "Připojte gravírku kabelem USB";
+
+    /// <summary>GRBL's banner is "Grbl 1.1h ['$' for help]" — the version is the useful half.</summary>
+    public string FirmwareLabel
+    {
+        get
+        {
+            var banner = Connection.FirmwareBanner;
+            if (string.IsNullOrWhiteSpace(banner)) return "—";
+            var bracket = banner.IndexOf('[');
+            return (bracket > 0 ? banner[..bracket] : banner).Trim();
+        }
+    }
 
     public bool HasRecentProjects => RecentProjects.Count > 0;
     public bool HasTodayJobs => TodayJobs.Count > 0;
@@ -52,6 +78,22 @@ public partial class HomeViewModel : ObservableObject
         Connection = connection;
         MachineStatus = machineStatus;
         GCode = gcode;
+        Safety = new HomeSafetyViewModel(connection, machineStatus);
+
+        Connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(ConnectionViewModel.IsConnected)
+                or nameof(ConnectionViewModel.ActiveMachineName)
+                or nameof(ConnectionViewModel.SelectedPort)
+                or nameof(ConnectionViewModel.BaudRate)
+                or nameof(ConnectionViewModel.FirmwareBanner))
+            {
+                OnPropertyChanged(nameof(DeviceName));
+                OnPropertyChanged(nameof(ConnectionBadgeLabel));
+                OnPropertyChanged(nameof(DeviceConnectionLabel));
+                OnPropertyChanged(nameof(FirmwareLabel));
+            }
+        };
 
         _recentProjectsStore.Changed += RefreshRecentProjects;
         _jobHistoryStore.Changed += RefreshJobHistory;
@@ -70,7 +112,13 @@ public partial class HomeViewModel : ObservableObject
     private void RefreshRecentProjects()
     {
         RecentProjects.Clear();
-        foreach (var entry in _recentProjectsStore.Recent) RecentProjects.Add(entry);
+        RecentProjectRows.Clear();
+        var now = DateTime.Now;
+        foreach (var entry in _recentProjectsStore.Recent)
+        {
+            RecentProjects.Add(entry);
+            RecentProjectRows.Add(new RecentProjectItemViewModel(entry, now));
+        }
         OnPropertyChanged(nameof(HasRecentProjects));
     }
 

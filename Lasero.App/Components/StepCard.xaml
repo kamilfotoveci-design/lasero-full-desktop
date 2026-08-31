@@ -1,0 +1,29 @@
+<UserControl x:Class="Lasero.App.Components.StepCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             x:Name="Root">
+    <Border Background="{StaticResource Brush.Panel}"
+            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Lg}" Padding="14,15">
+        <StackPanel>
+            <Border Width="42" Height="42" CornerRadius="{StaticResource Radius.Md}"
+                    Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding StepNumber, ElementName=Root}"
+                           FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
+                           Foreground="{StaticResource Brush.Accent}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold"
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,14,0,0" />
+            <TextBlock Text="{Binding Description, ElementName=Root}" Style="{StaticResource Text.Muted}"
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0" />
+            <Border Width="36" Height="36" CornerRadius="{StaticResource Radius.Md}"
+                    Background="{StaticResource Brush.Field}" HorizontalAlignment="Center" Margin="0,14,0,0">
+                <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
+                                      Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
+                                      Foreground="{StaticResource Brush.TextSecondary}" />
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>
