@@ -47,85 +47,23 @@
             <Border Grid.Row="0" CornerRadius="{StaticResource Radius.Lg}" Margin="0,0,0,22"
                     Background="{StaticResource Brush.SelectedSurface}"
                     BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="380" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <StackPanel Margin="28,26,28,26">
+                    <TextBlock Text="Vytvořte první projekt" Style="{StaticResource PageTitle}" />
+                    <!-- Stretch plus MaxWidth centres a TextBlock in WPF, which put this paragraph
+                         in the middle of the hero instead of under the heading. -->
+                    <TextBlock Text="Začněte naplno. Navrhněte, nastavte materiál a pošlete svůj první návrh do laseru."
+                               Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="560"
+                               HorizontalAlignment="Left" Margin="0,7,0,0" />
 
-                    <StackPanel Margin="28,26,20,26" VerticalAlignment="Center">
-                        <TextBlock Text="Vytvořte první projekt" Style="{StaticResource PageTitle}" />
-                        <!-- Stretch plus MaxWidth centres a TextBlock in WPF, which put this paragraph
-                             in the middle of the hero instead of under the heading. -->
-                        <TextBlock Text="Začněte naplno. Navrhněte, nastavte materiál a pošlete svůj první návrh do laseru."
-                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="440"
-                                   HorizontalAlignment="Left" Margin="0,7,0,0" />
-
-                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Left">
-                            <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,10,0">
-                                <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Začít nový projekt" Foreground="White" />
-                            </Button>
-                            <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding OpenProjectCommand}" Margin="0,0,10,0">
-                                <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt" />
-                            </Button>
-                            <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding GCode.LoadFileCommand}"
-                                    Padding="14,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Import}"
-                                                          Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Importovat" FontWeight="Medium" />
-                                        <TextBlock Text="SVG / PNG / DXF" Style="{StaticResource Text.Muted}" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Left">
+                        <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,10,0">
+                            <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Začít nový projekt" Foreground="White" />
+                        </Button>
+                        <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding OpenProjectCommand}">
+                            <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt" />
+                        </Button>
                     </StackPanel>
-
-                    <!--
-                        The operator's own machine. Nothing the app can read identifies a product —
-                        a GRBL banner names a firmware — so a stock render here would be a picture of
-                        somebody else's engraver. Until a photo is chosen this says so and offers to
-                        take one.
-                    -->
-                    <Border Grid.Column="1" Width="300" Margin="0,14,14,14"
-                            CornerRadius="{StaticResource Radius.Md}"
-                            Background="{StaticResource Brush.Panel}"
-                            BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1"
-                            ClipToBounds="True">
-                        <Grid>
-                            <Image Source="{Binding MachinePhoto.PhotoPath, Converter={StaticResource ThumbnailToImage}}"
-                                   Stretch="UniformToFill" StretchDirection="Both"
-                                   Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource BoolToVisibility}}" />
-
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                                        Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource InverseBoolToVisibility}}">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Device}"
-                                                      Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
-                                                      Foreground="{StaticResource Brush.SelectedBorder}"
-                                                      HorizontalAlignment="Center" />
-                                <TextBlock Text="Vaše gravírka" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" Margin="0,12,0,0" />
-                                <TextBlock Text="Přidejte její fotku, ať poznáte na první pohled, který stroj je nastavený."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center"
-                                           MaxWidth="230" Margin="0,4,0,0" />
-                                <Button Command="{Binding MachinePhoto.ChoosePhotoCommand}" HorizontalAlignment="Center" Margin="0,12,0,0">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Image}" Text="Přidat fotku"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                                </Button>
-                            </StackPanel>
-
-                            <Button Style="{StaticResource Button.GhostIcon}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                    Margin="6" Command="{Binding MachinePhoto.ChoosePhotoCommand}"
-                                    ToolTip="Změnit fotku gravírky" automation:AutomationProperties.Name="Změnit fotku gravírky"
-                                    Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource BoolToVisibility}}">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Image}"
-                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                            </Button>
-                        </Grid>
-                    </Border>
-                </Grid>
+                </StackPanel>
             </Border>
 
             <!-- JAK ZAČÍT + STAV ZAŘÍZENÍ -->
@@ -172,7 +110,6 @@
                     StateBrush="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateBrush}}"
                     WorkAreaWidthMm="{Binding Settings.Machine.WorkAreaWidthMm}"
                     WorkAreaHeightMm="{Binding Settings.Machine.WorkAreaHeightMm}"
-                    PhotoPath="{Binding MachinePhoto.PhotoPath}"
                     ConnectDeviceCommand="{Binding OpenDeviceWizardCommand}"
                     OpenMachineControlCommand="{Binding ShowDeviceCommand}" />
             </Grid>

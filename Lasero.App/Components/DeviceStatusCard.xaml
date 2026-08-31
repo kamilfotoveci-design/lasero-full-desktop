@@ -8,7 +8,6 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
-        <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
 
         <Style x:Key="DataRowLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -55,18 +54,12 @@
                     <TextBlock Text="{Binding ConnectionLabel, ElementName=Root}" Style="{StaticResource Text.Muted}"
                                Margin="0,3,0,0" TextWrapping="Wrap" />
                 </StackPanel>
-                <!-- The operator's own photo when they have set one, and a drawn silhouette when
-                     they have not. Never a stock render of somebody else's engraver. -->
+                <!-- A drawn machine silhouette, not a stock render of somebody else's engraver. -->
                 <Border Grid.Column="1" Width="64" Height="48" CornerRadius="{StaticResource Radius.Md}"
-                        Background="{StaticResource Brush.Field}" Margin="12,0,0,0" VerticalAlignment="Top"
-                        ClipToBounds="True">
-                    <Grid>
-                        <components:IconGlyph IconData="{StaticResource Glyph.Device}"
-                                              Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
-                                              Foreground="{StaticResource Brush.TextMuted}" />
-                        <Image Source="{Binding PhotoPath, ElementName=Root, Converter={StaticResource ThumbnailToImage}}"
-                               Stretch="UniformToFill" />
-                    </Grid>
+                        Background="{StaticResource Brush.Field}" Margin="12,0,0,0" VerticalAlignment="Top">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
+                                          Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
+                                          Foreground="{StaticResource Brush.TextMuted}" />
                 </Border>
             </Grid>
 

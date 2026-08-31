@@ -5,9 +5,8 @@ using System.Windows.Media.Imaging;
 
 namespace Lasero.App.Converters;
 
-/// <summary>Loads an image from a path on disk — a cached project thumbnail, or the operator's photo
-/// of their own machine — and returns null when there isn't one yet or the file went missing or will
-/// not decode, so the fallback icon underneath shows through instead of a broken image box.</summary>
+/// <summary>Loads a cached project thumbnail PNG for display, or null (letting the fallback icon
+/// underneath show through) when there isn't one yet or the file went missing/corrupt.</summary>
 public sealed class ThumbnailPathToImageSourceConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture)

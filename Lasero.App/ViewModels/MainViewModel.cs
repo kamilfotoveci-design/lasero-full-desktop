@@ -25,7 +25,6 @@ public partial class MainViewModel : ObservableObject
 
     public ConnectionViewModel Connection { get; }
     public DeviceSetupViewModel DeviceSetup { get; }
-    public MachinePhotoViewModel MachinePhoto { get; }
     public MachineStatusViewModel MachineStatus { get; }
     public JogViewModel Jog { get; }
     public ConsoleViewModel Console { get; }
@@ -81,7 +80,6 @@ public partial class MainViewModel : ObservableObject
     {
         Connection = connection;
         DeviceSetup = new DeviceSetupViewModel(connection, () => DeviceWizardRequested?.Invoke());
-        MachinePhoto = new MachinePhotoViewModel(settingsStore);
         MachineStatus = machineStatus;
         Jog = jog;
         Console = console;

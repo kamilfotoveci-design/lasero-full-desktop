@@ -54,12 +54,6 @@ public sealed class SafetyPreferences
 public sealed class MachinePreferences
 {
     public string? ActiveProfileId { get; set; }
-
-    /// <summary>A photo of the operator's own machine, copied into the app's data folder when they
-    /// pick one. The app has no way to know which engraver someone owns — the GRBL banner names a
-    /// firmware, not a product — so this is supplied rather than guessed, and stays empty until it is.
-    /// </summary>
-    public string? MachinePhotoPath { get; set; }
     public double WorkAreaWidthMm { get; set; } = 500;
     public double WorkAreaHeightMm { get; set; } = 400;
     public Lasero.Core.Materials.LaserTechnology LaserTechnology { get; set; } = Lasero.Core.Materials.LaserTechnology.Diode;

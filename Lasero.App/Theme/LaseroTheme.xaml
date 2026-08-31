@@ -198,11 +198,15 @@
     <system:Double x:Key="Size.Control.Base">36</system:Double>
     <system:Double x:Key="Size.Control.Large">44</system:Double>
 
-    <!-- Editor chrome geometry. The toolbar button is wide enough for the longest caption it carries
-         ("Kruh/Elipsa") at Size.Text.Meta, and tall enough for an 18px glyph over that caption. -->
+    <!--
+        Editor chrome geometry. The button is exactly tall enough for an 18px glyph over a caption at
+        Size.Text.Meta — 4 + 18 + 5 + 16 + 4 — and no taller. It used to run to 54, which the active
+        tool's tint then had to fill: with the captions collapsed that left a tall blue box around a
+        small icon. At this height the collapsed button is a square instead.
+    -->
     <system:Double x:Key="Size.Toolbar.ButtonMinWidth">48</system:Double>
-    <system:Double x:Key="Size.Toolbar.ButtonHeight">54</system:Double>
-    <system:Double x:Key="Size.Toolbar.Height">70</system:Double>
+    <system:Double x:Key="Size.Toolbar.ButtonHeight">48</system:Double>
+    <system:Double x:Key="Size.Toolbar.Height">64</system:Double>
 
     <!--
         Inter, bundled as an application resource (see the .csproj). The pack URI points at the
