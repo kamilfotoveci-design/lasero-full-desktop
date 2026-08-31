@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Lasero.App.ViewModels;
 using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
@@ -111,6 +112,10 @@ public partial class SceneCanvas : UserControl
     private Point _dragStartScreen;
     private Position _dragStartWorld;
     private readonly Dictionary<SceneObject, ObjectTransform> _dragStartTransforms = new();
+    private double _pendingMoveDx;
+    private double _pendingMoveDy;
+    private Point _pendingExpensiveDragScreen;
+    private bool _expensiveDragUpdateScheduled;
 
     private SceneObject? _activeSingleObject;
     private ResizeHandle _activeResizeHandle;
@@ -486,7 +491,10 @@ public partial class SceneCanvas : UserControl
             var layerColor = group.Key.Color;
             var layerId = group.Key.Layer;
             var color = Color.FromRgb(layerColor.R, layerColor.G, layerColor.B);
-            var fills = ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut;
+            // A raster's LocalShapes contain only its placement rectangle. Filling that rectangle
+            // paints an opaque layer-colour slab over the actual bitmap preview below it.
+            var fills = !obj.IsRaster &&
+                (ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut);
 
             paths[i].Data = BuildCompoundGeometry(group);
             paths[i].Stroke = new SolidColorBrush(color);
@@ -1021,6 +1029,8 @@ public partial class SceneCanvas : UserControl
         _dragMode = DragMode.Move;
         var screen = e.GetPosition(DrawCanvas);
         _dragStartWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        _pendingMoveDx = 0;
+        _pendingMoveDy = 0;
         _dragStartTransforms.Clear();
         foreach (var obj in ViewModel.SelectedObjects)
             _dragStartTransforms[obj] = obj.Transform;
@@ -1240,6 +1250,7 @@ public partial class SceneCanvas : UserControl
 
     private void EndPan()
     {
+        FlushExpensiveDragUpdate();
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
         UpdateToolCursor();
@@ -1262,52 +1273,19 @@ public partial class SceneCanvas : UserControl
             case DragMode.Move:
             {
                 var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
-                var dx = world.X - _dragStartWorld.X;
-                var dy = world.Y - _dragStartWorld.Y;
-                foreach (var (obj, start) in _dragStartTransforms)
-                {
-                    if (obj.IsLocked) continue;
-                    obj.Transform = start with { X = start.X + dx, Y = start.Y + dy };
-                }
+                _pendingMoveDx = world.X - _dragStartWorld.X;
+                _pendingMoveDy = world.Y - _dragStartWorld.Y;
+                ApplyMovePreview(_pendingMoveDx, _pendingMoveDy);
                 break;
             }
             case DragMode.Resize:
-            {
-                if (_activeSingleObject is null) break;
-                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
-                _activeSingleObject.Transform = _resizeStartTransform.ComputeResize(
-                    _activeSingleObject.LocalPivot,
-                    _activeSingleObject.LocalBounds,
-                    _activeResizeHandle,
-                    world,
-                    lockAspectRatio: ViewModel?.LockAspectRatio == true,
-                    allowFlip: !_activeSingleObject.IsRaster);
-                break;
-            }
             case DragMode.Rotate:
-            {
-                if (_activeSingleObject is null) break;
-                var pivotWorld = _rotateStartTransform.Apply(_activeSingleObject.LocalPivot, _activeSingleObject.LocalPivot);
-                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
-                var currentAngle = Math.Atan2(world.Y - pivotWorld.Y, world.X - pivotWorld.X) * 180.0 / Math.PI;
-                var newRotation = _rotateStartTransform.RotationDeg + (currentAngle - _rotateStartAngleDeg);
-                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-                    newRotation = Math.Round(newRotation / 15.0) * 15.0;
-                _activeSingleObject.Transform = _rotateStartTransform with { RotationDeg = newRotation };
+            case DragMode.Pan:
+                ScheduleExpensiveDragUpdate(screen);
                 break;
-            }
             case DragMode.Select:
                 UpdateRubberBand(screen);
                 break;
-            case DragMode.Pan:
-            {
-                var dxPx = screen.X - _dragStartScreen.X;
-                var dyPx = screen.Y - _dragStartScreen.Y;
-                _offsetXMm = _panStartOffsetX - dxPx / _scale;
-                _offsetYMm = _panStartOffsetY + dyPx / _scale;
-                RepositionAll();
-                break;
-            }
             case DragMode.Draw:
                 UpdateToolPreview(screen);
                 break;
@@ -1316,6 +1294,7 @@ public partial class SceneCanvas : UserControl
 
     private void OnDrawCanvasMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        FlushExpensiveDragUpdate();
         switch (_dragMode)
         {
             case DragMode.Move: FinishMove(); break;
@@ -1343,17 +1322,104 @@ public partial class SceneCanvas : UserControl
 
     private void FinishMove()
     {
+        ClearMovePreview();
         if (ViewModel is null) { _dragStartTransforms.Clear(); return; }
         var commands = new List<ISceneCommand>();
         foreach (var (obj, before) in _dragStartTransforms)
         {
-            if (before.X != obj.Transform.X || before.Y != obj.Transform.Y)
-                commands.Add(new TransformObjectCommand(obj, before, obj.Transform));
+            if (obj.IsLocked || (_pendingMoveDx == 0 && _pendingMoveDy == 0)) continue;
+            var after = before with { X = before.X + _pendingMoveDx, Y = before.Y + _pendingMoveDy };
+            commands.Add(new TransformObjectCommand(obj, before, after));
         }
         _dragStartTransforms.Clear();
+        _pendingMoveDx = 0;
+        _pendingMoveDy = 0;
 
         if (commands.Count == 1) ViewModel.Execute(commands[0]);
         else if (commands.Count > 1) ViewModel.Execute(new CompositeSceneCommand(commands));
+    }
+
+    private void ApplyMovePreview(double dx, double dy)
+    {
+        var translation = new TranslateTransform(dx * _scale, -dy * _scale);
+        foreach (var obj in _dragStartTransforms.Keys.Where(item => !item.IsLocked))
+        {
+            if (_objectVisuals.TryGetValue(obj, out var paths))
+                foreach (var path in paths) path.RenderTransform = translation;
+            if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = translation;
+        }
+        foreach (var visual in _selectionVisuals) visual.RenderTransform = translation;
+    }
+
+    private void ClearMovePreview()
+    {
+        foreach (var obj in _dragStartTransforms.Keys)
+        {
+            if (_objectVisuals.TryGetValue(obj, out var paths))
+                foreach (var path in paths) path.RenderTransform = Transform.Identity;
+            if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = Transform.Identity;
+        }
+        foreach (var visual in _selectionVisuals) visual.RenderTransform = Transform.Identity;
+    }
+
+    private void ScheduleExpensiveDragUpdate(Point screen)
+    {
+        _pendingExpensiveDragScreen = screen;
+        if (_expensiveDragUpdateScheduled) return;
+
+        _expensiveDragUpdateScheduled = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            if (!_expensiveDragUpdateScheduled) return;
+            _expensiveDragUpdateScheduled = false;
+            ApplyExpensiveDragUpdate(_pendingExpensiveDragScreen);
+        });
+    }
+
+    private void FlushExpensiveDragUpdate()
+    {
+        if (!_expensiveDragUpdateScheduled) return;
+        _expensiveDragUpdateScheduled = false;
+        ApplyExpensiveDragUpdate(_pendingExpensiveDragScreen);
+    }
+
+    private void ApplyExpensiveDragUpdate(Point screen)
+    {
+        switch (_dragMode)
+        {
+            case DragMode.Resize when _activeSingleObject is not null:
+            {
+                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+                _activeSingleObject.Transform = _resizeStartTransform.ComputeResize(
+                    _activeSingleObject.LocalPivot,
+                    _activeSingleObject.LocalBounds,
+                    _activeResizeHandle,
+                    world,
+                    lockAspectRatio: ViewModel?.LockAspectRatio == true,
+                    allowFlip: !_activeSingleObject.IsRaster);
+                break;
+            }
+            case DragMode.Rotate when _activeSingleObject is not null:
+            {
+                var pivotWorld = _rotateStartTransform.Apply(_activeSingleObject.LocalPivot, _activeSingleObject.LocalPivot);
+                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+                var currentAngle = Math.Atan2(world.Y - pivotWorld.Y, world.X - pivotWorld.X) * 180.0 / Math.PI;
+                var newRotation = _rotateStartTransform.RotationDeg + (currentAngle - _rotateStartAngleDeg);
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    newRotation = Math.Round(newRotation / 15.0) * 15.0;
+                _activeSingleObject.Transform = _rotateStartTransform with { RotationDeg = newRotation };
+                break;
+            }
+            case DragMode.Pan:
+            {
+                var dxPx = screen.X - _dragStartScreen.X;
+                var dyPx = screen.Y - _dragStartScreen.Y;
+                _offsetXMm = _panStartOffsetX - dxPx / _scale;
+                _offsetYMm = _panStartOffsetY + dyPx / _scale;
+                RepositionAll();
+                break;
+            }
+        }
     }
 
     private void FinishResize()
@@ -1532,9 +1598,10 @@ public partial class SceneCanvas : UserControl
         switch (_dragMode)
         {
             case DragMode.Move:
-                foreach (var (obj, transform) in _dragStartTransforms)
-                    obj.Transform = transform;
+                ClearMovePreview();
                 _dragStartTransforms.Clear();
+                _pendingMoveDx = 0;
+                _pendingMoveDy = 0;
                 break;
             case DragMode.Resize when _activeSingleObject is not null:
                 _activeSingleObject.Transform = _resizeStartTransform;
@@ -1556,6 +1623,7 @@ public partial class SceneCanvas : UserControl
                 break;
         }
 
+        _expensiveDragUpdateScheduled = false;
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
         UpdateToolCursor();

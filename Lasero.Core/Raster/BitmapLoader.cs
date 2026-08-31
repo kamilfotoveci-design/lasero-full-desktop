@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -12,9 +13,21 @@ namespace Lasero.Core.Raster;
 public static class BitmapLoader
 {
     public static GrayscaleImage LoadGrayscale(string filePath)
+        => LoadGrayscaleCore(filePath, targetWidth: null, targetHeight: null);
+
+    /// <summary>Decodes directly into the resolution the laser can reproduce. Downsampling before
+    /// filters and dithering avoids doing photographic work on millions of pixels that would later
+    /// collapse into the same physical dot.</summary>
+    public static GrayscaleImage LoadGrayscale(string filePath, int targetWidth, int? targetHeight = null)
+        => LoadGrayscaleCore(filePath, Math.Max(1, targetWidth), targetHeight is null ? null : Math.Max(1, targetHeight.Value));
+
+    private static GrayscaleImage LoadGrayscaleCore(string filePath, int? targetWidth, int? targetHeight)
     {
         using var original = new Bitmap(filePath);
-        using var bitmap = new Bitmap(original.Width, original.Height, PixelFormat.Format32bppArgb);
+        var width = Math.Min(original.Width, targetWidth ?? original.Width);
+        var proportionalHeight = (int)Math.Round(original.Height * (width / (double)original.Width));
+        var height = Math.Min(original.Height, targetHeight ?? proportionalHeight);
+        using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bitmap))
         {
             // Composite onto white before reading luminance. The surface starts fully transparent,
@@ -23,11 +36,12 @@ public static class BitmapLoader
             // therefore scheduled to be burnt as a solid filled rectangle. White is the correct
             // backdrop: it is the value the rest of the pipeline already treats as "leave alone".
             g.Clear(Color.White);
-            g.DrawImage(original, 0, 0, original.Width, original.Height);
+            g.CompositingQuality = CompositingQuality.HighQuality;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.DrawImage(original, 0, 0, width, height);
         }
 
-        var width = bitmap.Width;
-        var height = bitmap.Height;
         var luminance = new byte[width * height];
 
         var data = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);

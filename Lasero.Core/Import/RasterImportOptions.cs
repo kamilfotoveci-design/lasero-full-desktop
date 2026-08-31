@@ -21,11 +21,20 @@ public sealed record RasterImportOptions
     /// <summary>Power floor for pixels already marked for burning (0 = old behavior, full 0..MaxPower range).</summary>
     public double MinPower { get; init; }
 
-    /// <summary>Additive brightness / photographic-contrast adjustment applied before tone mapping. 0 = no change.</summary>
+    /// <summary>Photographic adjustments applied before tone mapping. Neutral defaults preserve existing imports.</summary>
+    public double Gamma { get; init; } = 1;
+    public double Exposure { get; init; }
     public double Brightness { get; init; }
     public double Contrast { get; init; }
+    public double Highlights { get; init; }
+    public double Shadows { get; init; }
+    public double BlackPoint { get; init; }
+    public double WhitePoint { get; init; } = 255;
 
     public bool Invert { get; init; }
+    public double NoiseReduction { get; init; }
+    public double Sharpen { get; init; }
+    public double EdgeEnhance { get; init; }
 
     /// <summary>Deterministic error-diffusion dithering instead of continuous grayscale power. Takes
     /// precedence over UseThreshold when both are set.</summary>

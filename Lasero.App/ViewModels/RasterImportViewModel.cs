@@ -11,6 +11,11 @@ using Lasero.Core.Raster;
 
 namespace Lasero.App.ViewModels;
 
+public sealed record RasterDitherChoice(string Label, string Hint, DitheringAlgorithm? Algorithm)
+{
+    public override string ToString() => Label;
+}
+
 /// <summary>
 /// Configures a single raster import before it's placed on the scene: physical size, engraving
 /// parameters, a live processed-image preview, and a live job-bounds readout with an independent
@@ -19,11 +24,30 @@ namespace Lasero.App.ViewModels;
 /// </summary>
 public partial class RasterImportViewModel : ObservableObject, IDisposable
 {
-    private const int DebounceMs = 150;
+    private const int DebounceMs = 40;
+
+    public static IReadOnlyList<RasterDitherChoice> DitheringChoices { get; } =
+    [
+        new("Stucki", "Stucki — nejlepší pro fotky, hladké přechody, doporučeno pro dřevo", DitheringAlgorithm.Stucki),
+        new("Floyd-Steinberg", "Floyd-Steinberg — klasický, dobrý kontrast, rychlý výpočet", DitheringAlgorithm.FloydSteinberg),
+        new("Jarvis", "Jarvis — detail podobný Stucki, o něco ostřejší šum", DitheringAlgorithm.Jarvis),
+        new("Atkinson", "Atkinson — světlé tóny, vhodný pro loga a jednodušší grafiku", DitheringAlgorithm.Atkinson),
+        new("Sierra", "Sierra — vyvážené šedotóny, kompromis Stucki a Floyd", DitheringAlgorithm.Sierra),
+        new("Ordered (Bayer)", "Ordered (Bayer) — vzorový dither, rytmická textura na plochách", DitheringAlgorithm.Ordered),
+        new("Žádný", "Bez ditheringu — prahové binarizování, jen čistá černá a bílá", null),
+    ];
 
     private readonly ILaserMachine _machine;
     private readonly AppSettingsStore _settingsStore;
+    private readonly object _sourceLock = new();
+    private GrayscaleImage _sourceImage;
+    private double _sourceTargetWidthMm;
+    private double? _sourceTargetHeightMm;
+    private double _sourceDpi;
+    private ProcessedImage? _lastProcessedImage;
+    private bool _hasImmediatePreview;
     private CancellationTokenSource? _recomputeCancellation;
+    private bool _suppressRecompute;
 
     public string FilePath { get; }
     public string FileName { get; }
@@ -37,16 +61,27 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _dpi;
     [ObservableProperty] private int _passes = 1;
     [ObservableProperty] private bool _invert;
+    [ObservableProperty] private double _gamma = 1;
+    [ObservableProperty] private double _exposure;
     [ObservableProperty] private double _brightness;
     [ObservableProperty] private double _contrast;
+    [ObservableProperty] private double _highlights;
+    [ObservableProperty] private double _shadows;
+    [ObservableProperty] private double _blackPoint;
+    [ObservableProperty] private double _whitePoint = 255;
+    [ObservableProperty] private double _noiseReduction;
+    [ObservableProperty] private double _sharpen;
+    [ObservableProperty] private double _edgeEnhance;
+    [ObservableProperty] private RasterDitherChoice _selectedDithering = DitheringChoices[0];
 
     [ObservableProperty] private BitmapSource? _previewImageSource;
     [ObservableProperty] private LaserJob? _plannedJob;
     [ObservableProperty] private bool _isComputing;
+    [ObservableProperty] private bool _isPreviewComputing;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private bool _isFraming;
 
-    public bool HasJob => PlannedJob is { Moves.Count: > 0 };
+    public bool HasJob => !IsComputing && PlannedJob is { Moves.Count: > 0 };
     public double LineIntervalMm
     {
         get => Dpi <= 0 ? 0 : 25.4 / Dpi;
@@ -72,32 +107,50 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         _feedRatePerMinute = feedRatePerMinute;
         _maxPower = maxPower;
         _dpi = dpi;
+        var initialOptions = new RasterImportOptions { TargetWidthMm = targetWidthMm, Dpi = dpi };
+        _sourceImage = RasterImporter.LoadProcessingSource(filePath, initialOptions);
+        _sourceTargetWidthMm = targetWidthMm;
+        _sourceTargetHeightMm = null;
+        _sourceDpi = dpi;
+        _suppressRecompute = true;
+        ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
 
-        var (_, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, targetWidthMm);
-        _targetHeightMm = heightMm;
+        _targetHeightMm = _sourceImage.Height * (targetWidthMm / _sourceImage.Width);
 
+        _suppressRecompute = false;
         ScheduleRecompute();
     }
 
-    public RasterImportOptions BuildOptions() => new()
+    public RasterImportOptions BuildOptions()
     {
-        TargetWidthMm = TargetWidthMm,
-        TargetHeightMm = KeepAspectRatio ? null : TargetHeightMm,
-        Dpi = Dpi,
-        FeedRatePerMinute = FeedRatePerMinute,
-        MinPower = MinPower,
-        MaxPower = MaxPower,
-        Passes = Passes,
-        // Always Stucki. A diode laser is a one-bit device, so a photograph has to become dots either
-        // way; grayscale and threshold were two worse ways of doing it offered as a question the owner
-        // has no way to answer. The core pipeline keeps both, for a caller that has a reason.
-        UseThreshold = false,
-        UseDithering = true,
-        DitheringAlgorithm = DitheringAlgorithm.Stucki,
-        Brightness = Brightness,
-        Contrast = Contrast,
-        Invert = Invert,
-    };
+        var ditherAlgorithm = SelectedDithering.Algorithm;
+        return new RasterImportOptions
+        {
+            TargetWidthMm = TargetWidthMm,
+            TargetHeightMm = KeepAspectRatio ? null : TargetHeightMm,
+            Dpi = Dpi,
+            FeedRatePerMinute = FeedRatePerMinute,
+            MinPower = MinPower,
+            MaxPower = MaxPower,
+            Passes = Passes,
+            UseThreshold = ditherAlgorithm is null,
+            ThresholdValue = 128,
+            UseDithering = ditherAlgorithm is not null,
+            DitheringAlgorithm = ditherAlgorithm ?? DitheringAlgorithm.Stucki,
+            Gamma = Gamma,
+            Exposure = Exposure,
+            Brightness = Brightness,
+            Contrast = Contrast,
+            Highlights = Highlights,
+            Shadows = Shadows,
+            BlackPoint = BlackPoint,
+            WhitePoint = WhitePoint,
+            Invert = Invert,
+            NoiseReduction = NoiseReduction,
+            Sharpen = Sharpen,
+            EdgeEnhance = EdgeEnhance,
+        };
+    }
 
     public bool TryValidate(out string? message)
     {
@@ -138,9 +191,52 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         ScheduleRecompute();
     }
     partial void OnPassesChanged(int value) => ScheduleRecompute();
-    partial void OnInvertChanged(bool value) => ScheduleRecompute();
+    partial void OnInvertChanged(bool value)
+    {
+        _hasImmediatePreview = TryShowImmediateInversionPreview();
+        ScheduleRecompute();
+    }
+    partial void OnGammaChanged(double value) => ScheduleRecompute();
+    partial void OnExposureChanged(double value) => ScheduleRecompute();
     partial void OnBrightnessChanged(double value) => ScheduleRecompute();
     partial void OnContrastChanged(double value) => ScheduleRecompute();
+    partial void OnHighlightsChanged(double value) => ScheduleRecompute();
+    partial void OnShadowsChanged(double value) => ScheduleRecompute();
+    partial void OnBlackPointChanged(double value) => ScheduleRecompute();
+    partial void OnWhitePointChanged(double value) => ScheduleRecompute();
+    partial void OnNoiseReductionChanged(double value) => ScheduleRecompute();
+    partial void OnSharpenChanged(double value) => ScheduleRecompute();
+    partial void OnEdgeEnhanceChanged(double value) => ScheduleRecompute();
+    partial void OnSelectedDitheringChanged(RasterDitherChoice value) => ScheduleRecompute();
+
+    private void ApplyRecommendation(ImageAutoAdjustment recommendation)
+    {
+        Gamma = recommendation.Gamma;
+        Exposure = 0;
+        Brightness = recommendation.Brightness;
+        Contrast = recommendation.Contrast;
+        Highlights = recommendation.Highlights;
+        Shadows = recommendation.Shadows;
+        BlackPoint = recommendation.BlackPoint;
+        WhitePoint = recommendation.WhitePoint;
+        NoiseReduction = recommendation.NoiseReduction;
+        Sharpen = recommendation.Sharpen;
+        EdgeEnhance = 0;
+        SelectedDithering = DitheringChoices[0];
+    }
+
+    private bool TryShowImmediateInversionPreview()
+    {
+        if (_lastProcessedImage is not { } current) return false;
+
+        var invertedPower = new double[current.PowerFraction.Count];
+        for (var index = 0; index < invertedPower.Length; index++)
+            invertedPower[index] = 1 - current.PowerFraction[index];
+
+        _lastProcessedImage = current with { PowerFraction = invertedPower };
+        PreviewImageSource = ProcessedImagePreviewRenderer.Render(_lastProcessedImage);
+        return true;
+    }
 
     partial void OnPlannedJobChanged(LaserJob? value)
     {
@@ -149,9 +245,11 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsFramingChanged(bool value) => FrameThisCommand.NotifyCanExecuteChanged();
+    partial void OnIsComputingChanged(bool value) => OnPropertyChanged(nameof(HasJob));
 
     private void ScheduleRecompute()
     {
+        if (_suppressRecompute) return;
         _recomputeCancellation?.Cancel();
         var cts = new CancellationTokenSource();
         _recomputeCancellation = cts;
@@ -170,6 +268,8 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         }
 
         IsComputing = true;
+        IsPreviewComputing = !_hasImmediatePreview;
+        _hasImmediatePreview = false;
         StatusMessage = null;
         if (!TryValidate(out var validationMessage))
         {
@@ -177,25 +277,31 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
             PlannedJob = null;
             StatusMessage = validationMessage;
             IsComputing = false;
+            IsPreviewComputing = false;
             return;
         }
 
         var options = BuildOptions();
-        var path = FilePath;
 
         try
         {
-            var (preview, job) = await Task.Run(() =>
+            var (processed, preview) = await Task.Run(() =>
             {
-                var processed = RasterImporter.LoadProcessedPreview(path, options);
-                var planned = RasterImporter.BuildLaserJob(path, options);
+                var source = GetProcessingSource(options);
+                var processed = RasterImporter.Process(source, options);
                 var bitmap = ProcessedImagePreviewRenderer.Render(processed); // frozen — safe to hand across threads
-                return (bitmap, planned);
+                return (processed, bitmap);
             }, cancellationToken);
 
             if (cancellationToken.IsCancellationRequested) return;
 
             PreviewImageSource = preview;
+            _lastProcessedImage = processed;
+            IsPreviewComputing = false;
+
+            var job = await Task.Run(() => RasterImporter.BuildLaserJob(processed, options), cancellationToken);
+            if (cancellationToken.IsCancellationRequested) return;
+
             PlannedJob = job;
             IsComputing = false;
         }
@@ -207,8 +313,30 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
             StatusMessage = $"Náhled se nepodařilo vypočítat: {ex.Message}";
             PlannedJob = null;
             IsComputing = false;
+            IsPreviewComputing = false;
         }
     }
+
+    private GrayscaleImage GetProcessingSource(RasterImportOptions options)
+    {
+        lock (_sourceLock)
+        {
+            if (NearlyEquals(_sourceTargetWidthMm, options.TargetWidthMm)
+                && NullableNearlyEquals(_sourceTargetHeightMm, options.TargetHeightMm)
+                && NearlyEquals(_sourceDpi, options.Dpi))
+                return _sourceImage;
+
+            _sourceImage = RasterImporter.LoadProcessingSource(FilePath, options);
+            _sourceTargetWidthMm = options.TargetWidthMm;
+            _sourceTargetHeightMm = options.TargetHeightMm;
+            _sourceDpi = options.Dpi;
+            return _sourceImage;
+        }
+    }
+
+    private static bool NearlyEquals(double left, double right) => Math.Abs(left - right) < 1e-6;
+    private static bool NullableNearlyEquals(double? left, double? right) =>
+        left is null ? right is null : right is not null && NearlyEquals(left.Value, right.Value);
 
     private bool CanFrame() => !IsFraming
         && PlannedJob is { Moves.Count: > 0 }

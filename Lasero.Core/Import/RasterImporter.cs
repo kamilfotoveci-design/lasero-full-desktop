@@ -27,17 +27,32 @@ public static class RasterImporter
     /// machine moves — used for the import window's live preview.</summary>
     public static ProcessedImage LoadProcessedPreview(string filePath, RasterImportOptions options)
     {
-        var source = BitmapLoader.LoadGrayscale(filePath);
-        return ImageProcessor.Process(source, ToProcessingOptions(options));
+        var source = LoadProcessingSource(filePath, options);
+        return Process(source, options);
     }
+
+    public static GrayscaleImage LoadProcessingSource(string filePath, RasterImportOptions options)
+    {
+        var width = Math.Max(1, (int)Math.Ceiling(options.TargetWidthMm / options.LineIntervalMm));
+        int? height = options.TargetHeightMm is { } targetHeight
+            ? Math.Max(1, (int)Math.Ceiling(targetHeight / options.LineIntervalMm))
+            : null;
+        return BitmapLoader.LoadGrayscale(filePath, width, height);
+    }
+
+    public static ProcessedImage Process(GrayscaleImage source, RasterImportOptions options) =>
+        ImageProcessor.Process(source, ToProcessingOptions(options));
 
     /// <summary>Loads, processes, and plans a bitmap into machine-agnostic moves + bounds — the single
     /// LaserJob that framing, the canvas bounds overlay, and BuildGCode below all derive from.</summary>
     public static LaserJob BuildLaserJob(string filePath, RasterImportOptions options)
     {
         var processed = LoadProcessedPreview(filePath, options);
-        return RasterPlanner.Plan(processed, ToPlanOptions(options));
+        return BuildLaserJob(processed, options);
     }
+
+    public static LaserJob BuildLaserJob(ProcessedImage processed, RasterImportOptions options) =>
+        RasterPlanner.Plan(processed, ToPlanOptions(options));
 
     public static List<string> BuildGCode(string filePath, RasterImportOptions options)
     {
@@ -50,9 +65,18 @@ public static class RasterImporter
 
     private static ImageProcessingOptions ToProcessingOptions(RasterImportOptions options) => new()
     {
+        Gamma = options.Gamma,
+        Exposure = options.Exposure,
         Brightness = options.Brightness,
         Contrast = options.Contrast,
+        Highlights = options.Highlights,
+        Shadows = options.Shadows,
+        BlackPoint = options.BlackPoint,
+        WhitePoint = options.WhitePoint,
         Invert = options.Invert,
+        NoiseReduction = options.NoiseReduction,
+        Sharpen = options.Sharpen,
+        EdgeEnhance = options.EdgeEnhance,
         UseDithering = options.UseDithering,
         DitheringAlgorithm = options.DitheringAlgorithm,
         UseThreshold = options.UseThreshold,
