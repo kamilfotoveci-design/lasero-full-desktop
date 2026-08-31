@@ -6,6 +6,35 @@ namespace Lasero.App.ViewModels;
 
 internal static class DesignerPrimitiveFactory
 {
+    public static Position ConstrainEnd(DesignerTool tool, Position start, Position end)
+    {
+        var dx = end.X - start.X;
+        var dy = end.Y - start.Y;
+
+        if (tool == DesignerTool.Line)
+        {
+            var length = Math.Sqrt(dx * dx + dy * dy);
+            if (length <= double.Epsilon) return end;
+
+            const double angleStep = Math.PI / 4;
+            var angle = Math.Round(Math.Atan2(dy, dx) / angleStep) * angleStep;
+            return new Position(
+                start.X + Math.Cos(angle) * length,
+                start.Y + Math.Sin(angle) * length,
+                end.Z);
+        }
+
+        if (!IsPrimitive(tool)) return end;
+
+        var size = Math.Max(Math.Abs(dx), Math.Abs(dy));
+        if (size <= double.Epsilon) return end;
+
+        return new Position(
+            start.X + Math.CopySign(size, dx == 0 ? 1 : dx),
+            start.Y + Math.CopySign(size, dy == 0 ? 1 : dy),
+            end.Z);
+    }
+
     public static SceneObject Create(DesignerTool tool, Position start, Position end, RgbColor color) => tool switch
     {
         DesignerTool.Rectangle => ScenePrimitiveFactory.CreateRectangle(start, end, color, "Obdélník"),

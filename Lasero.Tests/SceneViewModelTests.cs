@@ -276,6 +276,49 @@ public class SceneViewModelTests
     }
 
     [Theory]
+    [InlineData(DesignerTool.Rectangle)]
+    [InlineData(DesignerTool.Ellipse)]
+    [InlineData(DesignerTool.Triangle)]
+    [InlineData(DesignerTool.Pentagon)]
+    [InlineData(DesignerTool.Hexagon)]
+    [InlineData(DesignerTool.Octagon)]
+    [InlineData(DesignerTool.Star)]
+    [InlineData(DesignerTool.DoubleStar)]
+    public void ShiftConstraintGivesShapesEqualWidthAndHeight(DesignerTool tool)
+    {
+        var start = new Position(20, 30, 0);
+        var end = DesignerPrimitiveFactory.ConstrainEnd(tool, start, new Position(50, 40, 0));
+
+        Assert.Equal(30, Math.Abs(end.X - start.X), precision: 6);
+        Assert.Equal(30, Math.Abs(end.Y - start.Y), precision: 6);
+    }
+
+    [Fact]
+    public void ShiftConstraintPreservesTheDragDirection()
+    {
+        var start = new Position(20, 30, 0);
+        var end = DesignerPrimitiveFactory.ConstrainEnd(
+            DesignerTool.Rectangle,
+            start,
+            new Position(5, 20, 0));
+
+        Assert.Equal(new Position(5, 15, 0), end);
+    }
+
+    [Fact]
+    public void ShiftConstraintSnapsLinesToFortyFiveDegreeAngles()
+    {
+        var start = new Position(10, 10, 0);
+        var end = DesignerPrimitiveFactory.ConstrainEnd(
+            DesignerTool.Line,
+            start,
+            new Position(30, 18, 0));
+
+        Assert.Equal(start.Y, end.Y, precision: 6);
+        Assert.True(end.X > start.X);
+    }
+
+    [Theory]
     [InlineData(DesignerTool.Line, "Čára", false)]
     [InlineData(DesignerTool.Triangle, "Trojúhelník", true)]
     [InlineData(DesignerTool.Pentagon, "Pětiúhelník", true)]

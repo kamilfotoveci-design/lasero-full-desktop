@@ -1227,7 +1227,7 @@ public partial class SceneCanvas : UserControl
     private void UpdateToolPreview(Point screen)
     {
         if (_toolPreviewVisual is null) return;
-        var end = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        var end = GetDrawEnd(screen);
         var preview = DesignerPrimitiveFactory.Create(
             _drawingTool,
             _drawStartWorld,
@@ -1316,8 +1316,16 @@ public partial class SceneCanvas : UserControl
         var distance = endScreen - _dragStartScreen;
         if (Math.Abs(distance.X) < 3 && Math.Abs(distance.Y) < 3) return;
 
-        var endWorld = new Position(ToWorldX(endScreen.X), ToWorldY(endScreen.Y), 0);
+        var endWorld = GetDrawEnd(endScreen);
         ViewModel.DrawPrimitive(_drawingTool, _drawStartWorld, endWorld);
+    }
+
+    private Position GetDrawEnd(Point screen)
+    {
+        var end = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        return Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+            ? DesignerPrimitiveFactory.ConstrainEnd(_drawingTool, _drawStartWorld, end)
+            : end;
     }
 
     private void FinishMove()
@@ -1538,6 +1546,13 @@ public partial class SceneCanvas : UserControl
 
     private void OnCanvasKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key is Key.LeftShift or Key.RightShift && _dragMode == DragMode.Draw)
+        {
+            UpdateToolPreview(Mouse.GetPosition(DrawCanvas));
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Space)
         {
             _isSpacePressed = true;
@@ -1575,6 +1590,13 @@ public partial class SceneCanvas : UserControl
 
     private void OnCanvasKeyUp(object sender, KeyEventArgs e)
     {
+        if (e.Key is Key.LeftShift or Key.RightShift && _dragMode == DragMode.Draw)
+        {
+            UpdateToolPreview(Mouse.GetPosition(DrawCanvas));
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.Space) return;
         _isSpacePressed = false;
         if (_dragMode == DragMode.Pan && Mouse.MiddleButton != MouseButtonState.Pressed)
