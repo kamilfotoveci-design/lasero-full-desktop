@@ -69,34 +69,48 @@ public sealed class MainWindowNavigationTests
     }
 
     [Fact]
-    public void ObjectEditingLivesAboveTheInspectorTabsInsteadOfInTheCanvasToolbar()
+    public void SelectionPropertiesLiveInOneFullWidthBarAboveTheWorkspace()
     {
         var root = FindRepositoryRoot();
+        var bar = File.ReadAllText(Path.Combine(
+            root, "Lasero.App", "Views", "SelectionPropertiesBar.xaml"));
         var inspector = File.ReadAllText(Path.Combine(
             root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
         var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
 
-        // Not a third tab competing with Vrstvy and Stroj, and not a second copy of the layer list's
-        // own naming: one section, sitting above the switch so it survives either tab.
+        // Position, size, rotation and the type settings all live on the bar, the way LightBurn,
+        // Illustrator and CorelDRAW place them.
+        foreach (var property in new[]
+                 {
+                     "Scene.SelectedX", "Scene.SelectedY", "Scene.SelectedWidth", "Scene.SelectedHeight",
+                     "Scene.SelectedRotation", "Scene.LockAspectRatio",
+                     "Scene.SelectedTextValue", "Scene.SelectedTextFontFamily", "Scene.SelectedTextHeight",
+                     "Scene.SelectedTextBold", "Scene.SelectedTextItalic",
+                     "Scene.SelectedTextUppercase", "Scene.SelectedTextWeld",
+                 })
+        {
+            Assert.Contains(property, bar, StringComparison.Ordinal);
+        }
+
+        // Exactly once, and nowhere else. Two places to change the same number is how the toolbar and
+        // the inspector ended up disagreeing about which one owned the selection.
+        Assert.DoesNotContain("Scene.SelectedWidth", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.SelectedTextValue", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.SelectedWidth", mainWindow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.LockAspectRatio", mainWindow, StringComparison.Ordinal);
+
+        // Full window width, in its own row above the workspace: the canvas column alone is 1082px at
+        // a 1600px window, against roughly 1500px of controls.
+        Assert.Contains("<views:SelectionPropertiesBar Grid.Row=\"1\"", mainWindow, StringComparison.Ordinal);
+
+        // Sideways scroll rather than a clipped field, for the window's 1080px minimum with text
+        // selected. A half-cut millimetre value is the one thing a precision tool must not show.
+        Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", bar, StringComparison.Ordinal);
+
+        // The inspector is the two tabs and nothing else - no third tab competing with them.
         Assert.DoesNotContain("PropertiesTabRadio", inspector, StringComparison.Ordinal);
-        Assert.DoesNotContain("Content=\"Objekt\"", inspector, StringComparison.Ordinal);
-        Assert.DoesNotContain("Text=\"Vybraný objekt\"", inspector, StringComparison.Ordinal);
         Assert.Contains("Text=\"Vrstvy\"", inspector, StringComparison.Ordinal);
         Assert.Contains("Text=\"Stroj\"", inspector, StringComparison.Ordinal);
-
-        var section = inspector.IndexOf("Text=\"Objekt\"", StringComparison.Ordinal);
-        var tabStrip = inspector.IndexOf("x:Name=\"LayersTabRadio\"", StringComparison.Ordinal);
-        Assert.True(section >= 0, "The inspector has no Objekt section.");
-        Assert.True(section < tabStrip, "The Objekt section must sit above the Vrstvy / Stroj switch.");
-
-        Assert.Contains("Header=\"Zobrazit na plátně\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IsVisible}\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Zahrnout do úlohy\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IncludeInOutput}\"", inspector, StringComparison.Ordinal);
-
-        // The canvas toolbar is a tool strip only. Selection properties there needed roughly 1500px
-        // of a column that offers 1082px at a 1600px window, so the row wrapped at every size.
-        Assert.DoesNotContain("Scene.SelectedWidth", mainWindow, StringComparison.Ordinal);
-        Assert.DoesNotContain("Scene.SelectedRotation", mainWindow, StringComparison.Ordinal);
-        Assert.DoesNotContain("Scene.LockAspectRatio", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]

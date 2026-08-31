@@ -194,6 +194,85 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- ===================== Checkbox ===================== -->
+    <!--
+        A real checkbox: a small square that takes a tick.
+
+        The default CheckBox in this theme is a sliding switch, which is right for a setting that turns
+        a behaviour on and off for the whole app - the kind of thing that lives in a settings window.
+        It is wrong for a property of the selected object sitting in a dense properties bar: a 40x22
+        pill next to a 32px numeric field reads as a piece of hardware bolted onto the row, and half a
+        dozen of them turn the bar into a switchboard. LightBurn, Illustrator and CorelDRAW all use a
+        square in the same place.
+
+        One accent colour, and state is never carried by colour alone: checked is a filled square with
+        a tick in it, so the shape says as much as the fill does.
+    -->
+    <Style x:Key="Check.Box" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <!-- Transparent root with MinHeight so the label and the space around it are part
+                         of the click target, not just the 18px box. -->
+                    <StackPanel Orientation="Horizontal" Background="Transparent"
+                                MinHeight="{StaticResource Size.Control.Compact}" VerticalAlignment="Center">
+                        <Border x:Name="Box" Width="18" Height="18"
+                                CornerRadius="{StaticResource Radius.Xs}"
+                                Background="{DynamicResource Brush.Panel}"
+                                BorderBrush="{DynamicResource Brush.PanelBorderStrong}"
+                                BorderThickness="1"
+                                VerticalAlignment="Center">
+                            <Path x:Name="Tick"
+                                  Data="{StaticResource Glyph.Check}"
+                                  Stroke="{DynamicResource Brush.OnAccent}"
+                                  StrokeThickness="2.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Stretch="Uniform" Margin="3.5"
+                                  Opacity="0" />
+                        </Border>
+                        <ContentPresenter x:Name="Label" Margin="8,0,0,0"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Left" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <!-- Plain Setters, not an animation. The switch style above documents why: a
+                             control that was already checked when its template was applied rendered in
+                             the off colours forever when the checked look existed only in
+                             Trigger.EnterActions. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Tick" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.AccentHover}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.AccentHover}" />
+                        </MultiTrigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                            <Setter TargetName="Box" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===================== Inspector section rhythm ===================== -->
     <!--
         Sections are separated by space and a single hairline, not by nesting another bordered card

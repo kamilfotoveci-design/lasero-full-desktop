@@ -909,11 +909,33 @@
 
     <!-- ===================== Progress ===================== -->
 
+    <!--
+        A light tooltip, not a dark one.
+
+        It used to be near-white text on a near-black surface, and it rendered as a solid black block
+        with no readable text in almost every case. The reason is a WPF rule rather than a typo: this
+        theme sets Foreground on an implicit TextBlock style, and WPF resolves implicit styles for
+        elements built inside a template against Application.Resources only - a style declared in the
+        template's own resources is never consulted. So the TextBlock a ContentPresenter builds for a
+        plain string tooltip always took the app-wide near-black foreground, and TextElement.Foreground
+        on the template lost, because inheritance loses to a style Setter.
+
+        Fighting that needs either a content template per content type or a colour the app-wide style
+        already agrees with. The second is simpler and it is also the right answer for this palette,
+        which is 90% neutral and light throughout: a dark tooltip was the only dark surface in the
+        product. Text stays TextPrimary, exactly what the implicit style sets, so there is nothing left
+        to lose an inheritance race.
+
+        Tooltips whose content is an explicit TextBlock were readable before and stay readable: an
+        explicit Style suppresses the implicit one, so those inherited the intended colour. That is why
+        the failure looked intermittent rather than total.
+    -->
     <Style TargetType="ToolTip">
-        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
-        <Setter Property="Background" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="Padding" Value="9,6" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="HasDropShadow" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
@@ -923,6 +945,19 @@
                             CornerRadius="{StaticResource Radius.Sm}"
                             Padding="{TemplateBinding Padding}"
                             TextElement.Foreground="{TemplateBinding Foreground}">
+                        <Border.Resources>
+                            <!--
+                                A DataTemplate for string content, so a long tooltip wraps instead of
+                                running off the screen. Unlike an implicit Style, an implicit
+                                DataTemplate IS resolved through the normal resource lookup from the
+                                ContentPresenter's own position in the tree, so declaring it here works.
+                                Tooltips whose content is a UIElement are untouched by it.
+                            -->
+                            <DataTemplate DataType="{x:Type system:String}">
+                                <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="340"
+                                           Foreground="{DynamicResource Brush.TextPrimary}" />
+                            </DataTemplate>
+                        </Border.Resources>
                         <ContentPresenter />
                     </Border>
                 </ControlTemplate>

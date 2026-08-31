@@ -282,6 +282,9 @@
              controls a full click target. -->
         <Grid.RowDefinitions>
             <RowDefinition Height="60" />
+            <!-- The selection's properties. Auto, and the bar collapses itself when nothing is
+                 selected, so it costs no chrome until it has something to say. -->
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="56" />
         </Grid.RowDefinitions>
@@ -348,8 +351,12 @@
             </Grid>
         </Border>
 
+        <!-- Selection properties, across the full window width. See SelectionPropertiesBar. -->
+        <views:SelectionPropertiesBar Grid.Row="1"
+                                     Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
+
         <!-- Main editor -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <!--
                 The inspector is a fixed pixel column so the canvas ("*") absorbs every other pixel
                 the window has, and MinWidth on the canvas stops the inspector from being dragged
@@ -649,7 +656,7 @@
             job execution on the right. This is the app's one authoritative connection indicator —
             the header pill and the duplicate badges that used to repeat it are gone.
         -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Background="{StaticResource Brush.TitleBar}"
                 BorderBrush="{StaticResource Brush.PanelBorder}"
                 BorderThickness="0,1,0,0"
