@@ -173,7 +173,8 @@
                         FirmwareBanner="{Binding Home.Connection.FirmwareBanner}"
                         WorkAreaWidthMm="{Binding Settings.Machine.WorkAreaWidthMm}"
                         WorkAreaHeightMm="{Binding Settings.Machine.WorkAreaHeightMm}"
-                        OpenDesignerCommand="{Binding ShowDeviceCommand}" />
+                        OpenDesignerCommand="{Binding ShowDeviceCommand}"
+                        ConnectDeviceCommand="{Binding OpenDeviceWizardCommand}" />
 
                     <Border Style="{StaticResource Card}">
                         <StackPanel>

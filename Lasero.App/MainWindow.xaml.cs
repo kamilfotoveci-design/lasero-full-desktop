@@ -31,6 +31,7 @@ public partial class MainWindow : Window
         _viewModel.GCode.SimulationStarted += OnSimulationStarted;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
+        _viewModel.DeviceWizardRequested += OpenDeviceWizard;
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
         Loaded += OnLoaded;
         Closing += OnClosing;
@@ -293,6 +294,26 @@ public partial class MainWindow : Window
 
     private void OnMaterialsClick(object sender, RoutedEventArgs e)
         => OpenMaterials();
+
+    /// <summary>Modal on purpose: the wizard opens and closes the serial ports the rest of the app
+    /// would otherwise be using at the same moment.</summary>
+    public void OpenDeviceWizard()
+    {
+        try
+        {
+            new DeviceWizardWindow(_viewModel.CreateDeviceWizard()) { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to open the device wizard");
+            LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+                "Průvodce nelze otevřít",
+                "Průvodce zařízením se nepodařilo načíst. Zařízení lze připojit ručně v sekci Zařízení.",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Danger));
+        }
+    }
 
     public void OpenMaterials()
     {

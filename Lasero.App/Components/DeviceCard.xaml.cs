@@ -27,6 +27,9 @@ public partial class DeviceCard : UserControl
     public static readonly DependencyProperty OpenDesignerCommandProperty = DependencyProperty.Register(
         nameof(OpenDesignerCommand), typeof(ICommand), typeof(DeviceCard), new PropertyMetadata(null));
 
+    public static readonly DependencyProperty ConnectDeviceCommandProperty = DependencyProperty.Register(
+        nameof(ConnectDeviceCommand), typeof(ICommand), typeof(DeviceCard), new PropertyMetadata(null));
+
     public DeviceCard()
     {
         InitializeComponent();
@@ -60,6 +63,12 @@ public partial class DeviceCard : UserControl
     {
         get => (double)GetValue(WorkAreaHeightMmProperty);
         set => SetValue(WorkAreaHeightMmProperty, value);
+    }
+
+    public ICommand? ConnectDeviceCommand
+    {
+        get => (ICommand?)GetValue(ConnectDeviceCommandProperty);
+        set => SetValue(ConnectDeviceCommandProperty, value);
     }
 
     public ICommand? OpenDesignerCommand

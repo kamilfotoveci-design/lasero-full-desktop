@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject
     public AppSettingsStore SettingsStore => _settingsStore;
     private readonly RecentProjectsStore _recentProjectsStore;
     private readonly JobHistoryStore _jobHistoryStore;
+    private readonly Func<DeviceWizardViewModel> _deviceWizardFactory;
 
     public ConnectionViewModel Connection { get; }
     public MachineStatusViewModel MachineStatus { get; }
@@ -52,6 +53,10 @@ public partial class MainViewModel : ObservableObject
     /// still personalizes the hero even before its first save.</summary>
     public bool HasOpenProject => IsDirty || !string.IsNullOrWhiteSpace(ProjectPath);
 
+    /// <summary>A fresh wizard per run — it holds scan results and a step position, and reopening it
+    /// should start over rather than resume wherever the operator abandoned it last time.</summary>
+    public DeviceWizardViewModel CreateDeviceWizard() => _deviceWizardFactory();
+
     partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(HasOpenProject));
     partial void OnProjectPathChanged(string? value) => OnPropertyChanged(nameof(HasOpenProject));
 
@@ -69,7 +74,8 @@ public partial class MainViewModel : ObservableObject
         ProjectRecoveryStore recoveryStore,
         AppSettingsStore settingsStore,
         RecentProjectsStore recentProjectsStore,
-        JobHistoryStore jobHistoryStore)
+        JobHistoryStore jobHistoryStore,
+        Func<DeviceWizardViewModel> deviceWizardFactory)
     {
         Connection = connection;
         MachineStatus = machineStatus;
@@ -85,6 +91,7 @@ public partial class MainViewModel : ObservableObject
         _settingsStore = settingsStore;
         _recentProjectsStore = recentProjectsStore;
         _jobHistoryStore = jobHistoryStore;
+        _deviceWizardFactory = deviceWizardFactory;
         Connection.BaudRate = Settings.Device.BaudRate;
         if (!string.IsNullOrWhiteSpace(Settings.Device.Port) && Connection.AvailablePorts.Contains(Settings.Device.Port))
             Connection.SelectedPort = Settings.Device.Port;
@@ -123,6 +130,13 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowDevice() => CurrentScreen = AppScreen.Device;
+
+    /// <summary>Raised instead of opening a window here — the ViewModel has no business knowing about
+    /// Window types, and MainWindow already owns every other dialog the app shows.</summary>
+    public event Action? DeviceWizardRequested;
+
+    [RelayCommand]
+    private void OpenDeviceWizard() => DeviceWizardRequested?.Invoke();
 
     [RelayCommand]
     private void ShowChat() => CurrentScreen = AppScreen.Chat;

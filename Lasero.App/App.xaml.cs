@@ -60,6 +60,12 @@ public partial class App : Application
                 services.AddSingleton<IGrblProtocolParser, GrblProtocolParser>();
                 services.AddSingleton(sp => new GrblConnection(sp.GetRequiredService<IGrblTransport>(), sp.GetRequiredService<IGrblProtocolParser>()));
                 services.AddSingleton<ILaserMachine>(sp => sp.GetRequiredService<GrblConnection>());
+                services.AddSingleton<ILaserMachineFactory>(_ => new GrblMachineFactory());
+                services.AddSingleton(sp => new DeviceScanner(
+                    sp.GetRequiredService<ILaserMachineFactory>(),
+                    () => GrblConnection.GetAvailablePortNames()));
+                services.AddTransient<DeviceWizardViewModel>();
+                services.AddSingleton<Func<DeviceWizardViewModel>>(sp => sp.GetRequiredService<DeviceWizardViewModel>);
                 services.AddSingleton<ConnectionViewModel>();
                 services.AddSingleton<MachineStatusViewModel>();
                 services.AddSingleton<JogViewModel>();

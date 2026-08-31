@@ -6,6 +6,8 @@
              x:Name="Root">
     <UserControl.Resources>
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     </UserControl.Resources>
     <Border Style="{StaticResource Card}">
         <StackPanel>
@@ -42,7 +44,18 @@
                     <Run Text=" mm" />
                 </TextBlock>
             </Grid>
-            <Button Style="{StaticResource Button.Primary}" Command="{Binding OpenDesignerCommand, ElementName=Root}" Margin="0,16,0,0" HorizontalAlignment="Stretch"><components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Otevřít návrh" Foreground="White" /></Button>
+            <!-- Before a machine is set up, connecting it is the only thing worth doing from here.
+                 Once it is connected, the design is. -->
+            <Button Style="{StaticResource Button.Primary}" Margin="0,16,0,0" HorizontalAlignment="Stretch"
+                    Command="{Binding ConnectDeviceCommand, ElementName=Root}"
+                    Visibility="{Binding IsConnected, ElementName=Root, Converter={StaticResource InverseBoolToVisibility}}">
+                <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit gravírku" Foreground="White" />
+            </Button>
+            <Button Style="{StaticResource Button.Primary}" Margin="0,16,0,0" HorizontalAlignment="Stretch"
+                    Command="{Binding OpenDesignerCommand, ElementName=Root}"
+                    Visibility="{Binding IsConnected, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
+                <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Otevřít návrh" Foreground="White" />
+            </Button>
         </StackPanel>
     </Border>
 </UserControl>
