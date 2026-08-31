@@ -23,6 +23,7 @@ public partial class MaterialsWindow : Window
             MaxHeight = workArea.Height;
             Width = Math.Min(Width, workArea.Width - 16);
             Height = Math.Min(Height, workArea.Height - 16);
+            SwatchScrollViewer.ScrollToTop();
         };
 
         var selectedColors = viewModel.Scene.Selected?.LocalShapes

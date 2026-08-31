@@ -15,6 +15,44 @@
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
+        <Style x:Key="MaterialSwatchCell" TargetType="Button">
+            <Setter Property="MinHeight" Value="58" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="CellBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Md}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CellBorder" Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CellBorder" Property="Opacity" Value="0.86" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -64,7 +102,7 @@
                     <Border Style="{StaticResource Card}" Padding="14,10,6,2">
                         <WrapPanel>
                             <StackPanel Width="174" Margin="0,0,8,8">
-                                <TextBlock Text="Typ laseru" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                <TextBlock Text="Typ laseru" Style="{StaticResource FieldLabel}" />
                                 <ComboBox SelectedValue="{Binding SelectedTechnology}" SelectedValuePath="Tag">
                                     <ComboBoxItem Content="Diodový laser" Tag="{x:Static materials:LaserTechnology.Diode}" />
                                     <ComboBoxItem Content="Infračervený laser" Tag="{x:Static materials:LaserTechnology.Infrared}" />
@@ -72,207 +110,210 @@
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Width="126" Margin="0,0,8,8">
-                                <TextBlock Text="Výkon laseru (W)" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                <TextBlock Text="Výkon laseru" Style="{StaticResource FieldLabel}" />
                                 <ComboBox ItemsSource="{Binding PowerClasses}" SelectedItem="{Binding SelectedPowerWatts}" />
                             </StackPanel>
                             <StackPanel Width="174" Margin="0,0,8,8">
-                                <TextBlock Text="Co chcete udělat" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                <TextBlock Text="Operace" Style="{StaticResource FieldLabel}" />
                                 <ComboBox SelectedValue="{Binding SelectedOperation}" SelectedValuePath="Tag">
                                     <ComboBoxItem Content="Gravírování" Tag="{x:Static layers:LayerMode.Fill}" />
                                     <ComboBoxItem Content="Řezání" Tag="{x:Static layers:LayerMode.Cut}" />
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel Width="228" Margin="0,0,8,8">
-                                <TextBlock Text="Hledat" Style="{StaticResource FieldLabel}" />
+                            <StackPanel Width="220" Margin="0,0,8,8">
+                                <TextBlock Text="Hledat materiál" Style="{StaticResource FieldLabel}" />
                                 <Border Style="{StaticResource UnitField.Shell}">
                                     <DockPanel>
-                                        <components:IconGlyph DockPanel.Dock="Left"
-                                                              IconData="{StaticResource Glyph.Search}"
+                                        <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Search}"
                                                               Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                              Foreground="{StaticResource Brush.TextMuted}"
-                                                              Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                              Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,8,0" />
                                         <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                                  BorderThickness="0" Background="Transparent" Padding="0"
-                                                 VerticalContentAlignment="Center"
-                                                 ToolTip="Hledat podle materiálu, poznámky nebo upozornění"
                                                  AutomationProperties.Name="Hledat materiál" />
                                     </DockPanel>
                                 </Border>
+                            </StackPanel>
+                            <StackPanel Width="220" Margin="0,0,8,8">
+                                <TextBlock Text="Text náhledu" Style="{StaticResource FieldLabel}" />
+                                <TextBox Text="{Binding PreviewText, UpdateSourceTrigger=PropertyChanged}"
+                                         MaxLength="12" AutomationProperties.Name="Text gravírovaného náhledu" />
                             </StackPanel>
                         </WrapPanel>
                     </Border>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="200" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="290" />
-                            <ColumnDefinition Width="12" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="310" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Style="{StaticResource Card}" Padding="10">
-                            <DockPanel LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Top" Text="Materiály" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold" Margin="6,4,6,10" />
-                                <Button DockPanel.Dock="Top" Command="{Binding ShowAllMaterialsCommand}" Margin="0,0,0,6" HorizontalContentAlignment="Left">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Všechny materiály" IconSize="{StaticResource Size.Icon.Sm}" />
-                                </Button>
-                                <ListBox ItemsSource="{Binding MaterialDefinitions}" SelectedItem="{Binding SelectedMaterial}"
-                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                    <ListBox.ItemTemplate>
+                        <Grid>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding HasSwatchCards, Converter={StaticResource InverseBoolToVisibility}}">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Search}"
+                                                      Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
+                                                      HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
+                                <TextBlock Text="Žádný materiál neodpovídá filtrům" FontWeight="SemiBold" Margin="0,10,0,0" />
+                                <TextBlock Text="Změňte typ laseru, výkon nebo hledaný výraz." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <ScrollViewer x:Name="SwatchScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          Visibility="{Binding HasSwatchCards, Converter={StaticResource BoolToVisibility}}">
+                                <ItemsControl ItemsSource="{Binding SwatchCards}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel IsItemsHost="True" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Margin="4,7">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </DockPanel>
-                        </Border>
-
-                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-                                <Grid Margin="6,4,6,8">
-                                    <TextBlock Text="Doporučení" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding RecommendedRecipes.Count, StringFormat={}{0} receptů}" Style="{StaticResource Text.Muted}" HorizontalAlignment="Right" />
-                                </Grid>
-                                <Grid Grid.Row="1">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                Visibility="{Binding HasRecommendedRecipes, Converter={StaticResource InverseBoolToVisibility}}">
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Search}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
-                                        <TextBlock Text="Žádné odpovídající recepty" FontWeight="SemiBold" Margin="0,10,0,0" />
-                                        <TextBlock Text="Změňte materiál nebo filtry." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
-                                    </StackPanel>
-                                    <ListBox ItemsSource="{Binding RecommendedRecipes}" SelectedItem="{Binding SelectedRecipe}"
-                                             Visibility="{Binding HasRecommendedRecipes, Converter={StaticResource BoolToVisibility}}"
-                                             BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="5,8">
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding MaterialName}" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Body}" />
-                                                        <TextBlock Style="{StaticResource Text.Muted}" Margin="0,3,0,0">
-                                                            <Run Text="{Binding SpeedMmPerMinute, Mode=OneWay, StringFormat={}{0:0}}" /><Run Text=" mm/min  ·  " />
-                                                            <Run Text="{Binding PowerPercent, Mode=OneWay, StringFormat={}{0:0}}" /><Run Text=" %  ·  " />
-                                                            <Run Text="{Binding Passes, Mode=OneWay}" /><Run Text="×" />
-                                                        </TextBlock>
-                                                    </StackPanel>
-                                                    <components:IconGlyph Grid.Column="1" IconData="{StaticResource Glyph.ChevronRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
+                                            <Border Width="360" Style="{StaticResource Card}" Padding="0" Margin="0,0,12,12">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Border Padding="14,12" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Material.Name}" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding Material.Description}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Grid Grid.Row="1" Margin="10,12,12,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="46" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ItemsControl ItemsSource="{Binding Speeds}" Margin="0,2,4,28">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate><UniformGrid Rows="4" Columns="1" /></ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding StringFormat={}{0:0}}" Style="{StaticResource Text.Muted}"
+                                                                               HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <Grid Grid.Column="1">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+                                                            <ItemsControl ItemsSource="{Binding Cells}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><UniformGrid Rows="4" Columns="4" /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Button Style="{StaticResource MaterialSwatchCell}"
+                                                                                Background="{Binding SurfaceColor}" Foreground="{Binding MarkColor}"
+                                                                                Command="{Binding DataContext.SelectSwatchCellCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}"
+                                                                                ToolTip="{Binding AccessibleName}"
+                                                                                AutomationProperties.Name="{Binding AccessibleName}">
+                                                                            <TextBlock Text="{Binding DataContext.PreviewText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                       FontFamily="{StaticResource Font.Display}"
+                                                                                       FontSize="{StaticResource Size.Text.Title}"
+                                                                                       FontWeight="Bold"
+                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                                       TextTrimming="CharacterEllipsis" />
+                                                                        </Button>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <ItemsControl Grid.Row="1" ItemsSource="{Binding Powers}" Margin="2,2,2,0">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><UniformGrid Rows="1" Columns="4" /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <TextBlock Text="{Binding StringFormat={}{0}%}" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" />
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <TextBlock Grid.Row="2" Text="Výkon" Style="{StaticResource Text.Muted}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                                        </Grid>
+                                                    </Grid>
+                                                    <Border Grid.Row="2" Padding="14,10" Background="{StaticResource Brush.PanelRaised}"
+                                                            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0">
+                                                        <Grid>
+                                                            <TextBlock Text="Klikněte na požadovaný odstín" Style="{StaticResource Text.Muted}"
+                                                                       Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVisibility}}" />
+                                                            <StackPanel Orientation="Horizontal" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="{Binding SelectedCell.Speed, StringFormat={}{0:0} mm/min}" FontWeight="SemiBold" />
+                                                                <TextBlock Text="  ·  " Style="{StaticResource Text.Muted}" />
+                                                                <TextBlock Text="{Binding SelectedCell.Power, StringFormat={}{0} %}" FontWeight="SemiBold" />
+                                                                <TextBlock Text="  ·  " Style="{StaticResource Text.Muted}" />
+                                                                <TextBlock Text="{Binding SelectedCell.Passes, StringFormat={}{0}×}" FontWeight="SemiBold" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
                                                 </Grid>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Grid>
-                            </Grid>
-                        </Border>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
 
-                        <Border Grid.Column="4" Style="{StaticResource Card}" Padding="20"
-                                Visibility="{Binding HasSelectedRecipe, Converter={StaticResource BoolToVisibility}}">
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="18">
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Visibility="{Binding HasSelectedRecipe, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
+                                                          Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
+                                                          HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
+                                    <TextBlock Text="Vyberte odstín" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                    <TextBlock Text="Klikněte na políčko ve vzorníku. Rychlost a výkon se nastaví automaticky."
+                                               Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center"
+                                               MaxWidth="230" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              Visibility="{Binding HasSelectedRecipe, Converter={StaticResource BoolToVisibility}}">
                                     <StackPanel>
-                                        <TextBlock Text="Vybraný recept" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding SelectedRecipe.MaterialName}" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                        <TextBlock Style="{StaticResource Text.Muted}" Margin="0,4,0,16">
+                                        <TextBlock Text="Vybrané nastavení" Style="{StaticResource Text.Muted}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SelectedRecipe.MaterialName}" FontFamily="{StaticResource Font.Display}"
+                                                   FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,7,0,0" />
+                                        <TextBlock Margin="0,3,0,16" Style="{StaticResource Text.Muted}">
                                             <Run Text="{Binding SelectedRecipe.TechnologyName, Mode=OneWay}" /><Run Text="  ·  " />
                                             <Run Text="{Binding SelectedRecipe.PowerWatts, Mode=OneWay}" /><Run Text=" W  ·  " />
                                             <Run Text="{Binding SelectedRecipe.OperationName, Mode=OneWay}" />
                                         </TextBlock>
-
                                         <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,10">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="1" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="1" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Margin="0,0,14,12">
-                                                    <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" />
-                                                    <TextBlock FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,5,0,0"><Run Text="{Binding SelectedRecipe.SpeedMmPerMinute, Mode=OneWay, StringFormat={}{0:0}}" /><Run Text=" mm/min" /></TextBlock>
-                                                </StackPanel>
-                                                <Border Grid.Column="1" Grid.RowSpan="3" Background="{StaticResource Brush.PanelBorder}" />
-                                                <StackPanel Grid.Column="2" Margin="14,0,0,12">
-                                                    <TextBlock Text="Výkon" Style="{StaticResource Text.Muted}" />
-                                                    <TextBlock FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,5,0,0"><Run Text="{Binding SelectedRecipe.PowerPercent, Mode=OneWay, StringFormat={}{0:0}}" /><Run Text=" %" /></TextBlock>
-                                                </StackPanel>
-                                                <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource Brush.PanelBorder}" />
-                                                <StackPanel Grid.Row="2" Margin="0,12,14,0">
-                                                    <TextBlock Text="Průchody" Style="{StaticResource Text.Muted}" />
-                                                    <TextBlock Text="{Binding SelectedRecipe.Passes}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,5,0,0" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Row="2" Grid.Column="2" Margin="14,12,0,0">
-                                                    <TextBlock Text="Rozlišení" Style="{StaticResource Text.Muted}" />
-                                                    <TextBlock Text="{Binding SelectedRecipe.Dpi, StringFormat={}{0} DPI, TargetNullValue=—}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,5,0,0" />
-                                                </StackPanel>
-                                            </Grid>
+                                            <StackPanel>
+                                                <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" />
+                                                <TextBlock Text="{Binding SelectedRecipe.SpeedMmPerMinute, StringFormat={}{0:0} mm/min}"
+                                                           FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,3,0,10" />
+                                                <TextBlock Text="Výkon" Style="{StaticResource Text.Muted}" />
+                                                <TextBlock Text="{Binding SelectedRecipe.PowerPercent, StringFormat={}{0:0} %}"
+                                                           FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,3,0,10" />
+                                                <TextBlock Text="Průchody" Style="{StaticResource Text.Muted}" />
+                                                <TextBlock Text="{Binding SelectedRecipe.Passes, StringFormat={}{0}×}"
+                                                           FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,3,0,0" />
+                                            </StackPanel>
                                         </Border>
-
-                                        <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,10"
-                                                Visibility="{Binding HasSelectedNote, Converter={StaticResource BoolToVisibility}}">
-                                            <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
-                             infinite width, so TextWrapping never engages and the sentence is cut off at
-                             the panel edge. -->
-<DockPanel>
-                                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
-                                                <StackPanel><TextBlock Text="Poznámka k receptu" FontWeight="SemiBold" /><TextBlock Text="{Binding SelectedRecipe.Note}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel>
-                                            </DockPanel>
-                                        </Border>
-                                        <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.Warning}" Margin="0,0,0,10"
+                                        <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.Warning}"
                                                 Visibility="{Binding HasSelectedWarning, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <components:IconGlyph IconData="{StaticResource Glyph.Warning}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Warning}" />
-                                                <StackPanel><TextBlock Text="Bezpečnostní upozornění" FontWeight="SemiBold" /><TextBlock Text="{Binding SelectedRecipe.Warning}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                        <Border Style="{StaticResource InspectorSection}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Success}" />
-                                                <StackPanel><TextBlock Text="Před použitím proveďte test" FontWeight="SemiBold" /><TextBlock Text="Doporučené hodnoty ověřte na odřezku stejného materiálu. Výsledek ovlivňuje fokus, optika i konkrétní šarže." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" /></StackPanel>
-                                            </StackPanel>
+                                            <TextBlock Text="{Binding SelectedRecipe.Warning}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                                         </Border>
                                     </StackPanel>
                                 </ScrollViewer>
-                                <StackPanel Grid.Row="1" Margin="0,16,0,0">
-                                    <TextBlock Text="Kam použít nastavení" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                    <ComboBox x:Name="TargetLayerComboBox"
-                                              ItemsSource="{Binding ProjectLayers, ElementName=MaterialsDialog}"
-                                              ToolTip="Vyberte vrstvu projektu, na kterou se parametry použijí">
+                                <StackPanel Grid.Row="1" Margin="0,14,0,0"
+                                            Visibility="{Binding HasSelectedRecipe, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Použít na vrstvu" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox x:Name="TargetLayerComboBox" ItemsSource="{Binding ProjectLayers, ElementName=MaterialsDialog}">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Border Width="10" Height="10" CornerRadius="{StaticResource Radius.Sm}" Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}" Margin="0,0,7,0" />
-                                                    <TextBlock Text="{Binding Name}" />
-                                                </StackPanel>
-                                            </DataTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
-                                    <TextBlock Text="V projektu zatím není vrstva. Nejprve vytvořte nebo importujte objekt."
-                                               Style="{StaticResource Text.Muted}" Margin="0,6,0,0"
-                                               Visibility="{Binding HasItems, ElementName=TargetLayerComboBox, Converter={StaticResource InverseBoolToVisibility}}" />
-                                    <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right">
-                                        <Button Command="{Binding SaveAsPersonalCommand}" CommandParameter="{Binding SelectedRecipe}" Padding="12,0" Margin="0,0,8,8" ToolTip="Uložit jako vlastní upravitelný recept">
-                                            <components:IconLabel IconData="{StaticResource Glyph.Save}" Text="Uložit recept" IconSize="{StaticResource Size.Icon.Sm}" />
-                                        </Button>
-                                        <Button Style="{StaticResource PrimaryBlue}" Click="OnApplySelectedRecipeClick" Padding="18,0" Margin="0,0,0,8"
-                                                IsEnabled="{Binding HasItems, ElementName=TargetLayerComboBox}" ToolTip="Použít parametry na zvolenou vrstvu projektu">
-                                            <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít na vybranou vrstvu" IconSize="{StaticResource Size.Icon.Sm}" Foreground="White" />
-                                        </Button>
-                                    </WrapPanel>
+                                    <Button Style="{StaticResource PrimaryBlue}" Click="OnApplySelectedRecipeClick" Margin="0,10,0,0"
+                                            IsEnabled="{Binding HasItems, ElementName=TargetLayerComboBox}">
+                                        <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít parametry" Foreground="White" />
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>

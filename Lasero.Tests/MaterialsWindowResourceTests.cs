@@ -42,6 +42,18 @@ public sealed class MaterialsWindowResourceTests
             $"Run.Text bindings must be OneWay because WPF otherwise writes to computed recipe properties: {string.Join(" | ", unsafeBindings)}");
     }
 
+    [Fact]
+    public void RecommendedMaterialsUseTheVisualSwatchMatrix()
+    {
+        var materialsXaml = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Lasero.App", "MaterialsWindow.xaml"));
+
+        Assert.Contains("ItemsSource=\"{Binding SwatchCards}\"", materialsXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Cells}\"", materialsXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectSwatchCellCommand", materialsXaml, StringComparison.Ordinal);
+        Assert.Contains("Text gravírovaného náhledu", materialsXaml, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

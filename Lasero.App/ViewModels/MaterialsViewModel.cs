@@ -23,12 +23,14 @@ public partial class MaterialsViewModel : ObservableObject
 
     public ObservableCollection<MaterialPreset> Presets { get; } = new();
     public ObservableCollection<MaterialRecipe> RecommendedRecipes { get; } = new();
+    public ObservableCollection<MaterialSwatchCardViewModel> SwatchCards { get; } = new();
     public IReadOnlyList<MaterialDefinition> MaterialDefinitions { get; } = MaterialCatalog.Materials;
     public IReadOnlyList<LaserTechnology> Technologies { get; } = Enum.GetValues<LaserTechnology>();
     public IReadOnlyList<int> PowerClasses { get; } = MaterialCatalog.PowerClasses;
     public IReadOnlyList<LayerMode> Operations { get; } = [LayerMode.Fill, LayerMode.Cut];
     public bool HasPresets => Presets.Count > 0;
     public bool HasRecommendedRecipes => RecommendedRecipes.Count > 0;
+    public bool HasSwatchCards => SwatchCards.Count > 0;
     public string ActiveProfileLabel => $"{TechnologyLabel(SelectedTechnology)} · {SelectedPowerWatts} W";
 
     [ObservableProperty] private LaserTechnology _selectedTechnology;
@@ -37,6 +39,7 @@ public partial class MaterialsViewModel : ObservableObject
     [ObservableProperty] private MaterialDefinition? _selectedMaterial;
     [ObservableProperty] private MaterialRecipe? _selectedRecipe;
     [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private string _previewText = "A";
     [ObservableProperty] private bool _isSyncing;
     [ObservableProperty] private string? _syncStatus;
 
@@ -97,7 +100,6 @@ public partial class MaterialsViewModel : ObservableObject
     private void RefreshRecommendedRecipes()
     {
         var search = SearchText.Trim();
-        var previousId = SelectedRecipe?.Id;
         var matches = MaterialCatalog.Find(SelectedTechnology, SelectedPowerWatts, SelectedOperation)
             .Where(recipe => (SelectedMaterial is null || recipe.MaterialId == SelectedMaterial.Id) &&
                 (search.Length == 0 ||
@@ -108,9 +110,39 @@ public partial class MaterialsViewModel : ObservableObject
             .ToArray();
         RecommendedRecipes.Clear();
         foreach (var recipe in matches) RecommendedRecipes.Add(recipe);
-        SelectedRecipe = RecommendedRecipes.FirstOrDefault(recipe => recipe.Id == previousId)
-            ?? RecommendedRecipes.FirstOrDefault();
+        SwatchCards.Clear();
+        foreach (var recipe in matches)
+        {
+            var material = MaterialDefinitions.First(item => item.Id == recipe.MaterialId);
+            SwatchCards.Add(new MaterialSwatchCardViewModel(material, recipe));
+        }
+        SelectedRecipe = null;
         OnPropertyChanged(nameof(HasRecommendedRecipes));
+        OnPropertyChanged(nameof(HasSwatchCards));
+    }
+
+    [RelayCommand]
+    private void SelectSwatchCell(MaterialSwatchCellViewModel? cell)
+    {
+        if (cell is null) return;
+
+        foreach (var card in SwatchCards)
+        {
+            card.SelectedCell = card.Cells.Contains(cell) ? cell : null;
+        }
+
+        var recipe = MaterialCatalog.Find(SelectedTechnology, SelectedPowerWatts, SelectedOperation, cell.MaterialId)
+            .FirstOrDefault();
+        if (recipe is null) return;
+
+        // Never touch SelectedMaterial or SearchText here: both re-run RefreshRecommendedRecipes,
+        // which rebuilds the cards and clears the recipe this command has just set.
+        SelectedRecipe = recipe with
+        {
+            Id = $"swatch:{recipe.Id}:{cell.Speed:0}:{cell.Power}",
+            SpeedMmPerMinute = cell.Speed,
+            PowerPercent = cell.Power,
+        };
     }
 
     [RelayCommand]

@@ -52,10 +52,26 @@ public static class MaterialCatalog
         return recipes;
     }
 
+    /// <summary>
+    /// Diode rows still mirror lasero.net except the plywood and MDF cut recipes, which were wrong
+    /// by roughly 3x in dose and have been re-based on measurement plus published reference tables:
+    /// <list type="bullet">
+    /// <item>20 W plywood: measured on the shop's own machine — 350 mm/min, 100 %, one pass.</item>
+    /// <item>10 / 40 W plywood and 10 / 20 / 40 W MDF: lasertinkerer.com 2026 diode settings tables,
+    /// normalised to the power level this catalog already used for that row.</item>
+    /// <item>60 W plywood: no published table exists that high; scaled from the 40 W row by optical
+    /// watts. Flagged here because it is the one derived number, not a measured or cited one.</item>
+    /// <item>5 W plywood: numbers left alone, but the reference tables agree a 5 W diode needs
+    /// 10–15 passes on 3 mm plywood, so the row now carries a warning instead of pretending it is a
+    /// normal job.</item>
+    /// </list>
+    /// Everything below cutting — engraving speeds, and every other material — is still the
+    /// unverified web data and should be measured before it is trusted.
+    /// </summary>
     private static void AddDiode(List<MaterialRecipe> r)
     {
         Add(r, LaserTechnology.Diode, 5, "wood", E(3000,60,1,300), C(150,100,4));
-        Add(r, LaserTechnology.Diode, 5, "plywood", E(2500,65,1,300), C(100,100,6));
+        Add(r, LaserTechnology.Diode, 5, "plywood", E(2500,65,1,300), C(100,100,6, warning:"Na 5 W je řezání překližky hraniční: počítejte s mnoha průchody, dlouhým časem a stálým dohledem."));
         Add(r, LaserTechnology.Diode, 5, "acrylic", E(2000,55,1,300, note:"Pouze barevný akryl", compatibility:MaterialCompatibility.Suitable), C(80,100,5, compatibility:MaterialCompatibility.NotRecommended, warning:"Čirý akryl je pro diodový laser téměř průhledný."));
         Add(r, LaserTechnology.Diode, 5, "leather", E(3000,40,1,300), C(200,100,3));
         Add(r, LaserTechnology.Diode, 5, "anodized", E(1500,100,1,300, note:"Výsledek závisí na barvě anodizace", compatibility:MaterialCompatibility.Suitable));
@@ -68,7 +84,7 @@ public static class MaterialCatalog
         Add(r, LaserTechnology.Diode, 5, "mdf", E(2500,65,1,300), C(120,100,5));
 
         Add(r, LaserTechnology.Diode, 10, "wood", E(4000,55,1,300), C(250,100,3));
-        Add(r, LaserTechnology.Diode, 10, "plywood", E(3500,55,1,300), C(180,100,4));
+        Add(r, LaserTechnology.Diode, 10, "plywood", E(3500,55,1,300), C(280,100,4));
         Add(r, LaserTechnology.Diode, 10, "acrylic", E(2500,50,1,300, note:"Pouze barevný akryl", compatibility:MaterialCompatibility.Suitable), C(120,100,4, compatibility:MaterialCompatibility.Suitable));
         Add(r, LaserTechnology.Diode, 10, "leather", E(4000,35,1,300), C(300,90,2));
         Add(r, LaserTechnology.Diode, 10, "anodized", E(2000,100,1,300, compatibility:MaterialCompatibility.Suitable));
@@ -78,10 +94,13 @@ public static class MaterialCatalog
         Add(r, LaserTechnology.Diode, 10, "slate", E(2500,90,1,300));
         Add(r, LaserTechnology.Diode, 10, "glass", E(3500,55,1,300, compatibility:MaterialCompatibility.Suitable));
         Add(r, LaserTechnology.Diode, 10, "rubber", E(2500,65,1,300), C(300,100,2));
-        Add(r, LaserTechnology.Diode, 10, "mdf", E(3000,60,1,300), C(200,100,4));
+        Add(r, LaserTechnology.Diode, 10, "mdf", E(3000,60,1,300), C(180,100,3));
 
         Add(r, LaserTechnology.Diode, 20, "wood", E(5000,50,1,300), C(400,100,2));
-        Add(r, LaserTechnology.Diode, 20, "plywood", E(4500,50,1,300), C(280,100,3));
+        // Measured on the shop's own 20 W diode, 3-6 mm plywood: one pass at 350 mm/min, full power.
+        // The mirrored web value (280 mm/min, 3 passes) asked for roughly 3.75x the dose and made a
+        // cut that finishes in one pass take three.
+        Add(r, LaserTechnology.Diode, 20, "plywood", E(4500,50,1,300), C(350,100,1));
         Add(r, LaserTechnology.Diode, 20, "acrylic", E(3000,45,1,300, note:"Barevný a černý akryl; čirý je nevhodný", compatibility:MaterialCompatibility.Suitable), C(200,100,3, compatibility:MaterialCompatibility.Suitable));
         Add(r, LaserTechnology.Diode, 20, "leather", E(5000,30,1,300), C(500,80,1));
         Add(r, LaserTechnology.Diode, 20, "anodized", E(2500,95,1,300, note:"Velmi dobré výsledky na černém anodizovaném hliníku"));
@@ -91,10 +110,11 @@ public static class MaterialCatalog
         Add(r, LaserTechnology.Diode, 20, "slate", E(3000,80,1,300));
         Add(r, LaserTechnology.Diode, 20, "glass", E(4000,50,1,300, note:"Vhodné mléčné sklo; přímé sklo vyžaduje přesný fokus", compatibility:MaterialCompatibility.Suitable));
         Add(r, LaserTechnology.Diode, 20, "rubber", E(3000,60,1,300), C(400,100,2));
-        Add(r, LaserTechnology.Diode, 20, "mdf", E(4000,55,1,300), C(300,100,3));
+        Add(r, LaserTechnology.Diode, 20, "mdf", E(4000,55,1,300), C(480,100,2));
 
-        AddDiodeScaled(r, 40, new[] { 7000d,6000,4000,7000,3500,1500,8000,10000,4000,5000,4000,5000 }, new[] { 45d,45,40,25,85,100,20,15,70,45,55,50 }, new[] { 700d,500,350,800,0,0,1000,1200,0,0,600,500 }, new[] { 90d,95,95,70,0,0,55,45,0,0,90,95 }, new[] { 1,2,2,1,0,0,1,1,0,0,1,2 });
-        AddDiodeScaled(r, 60, new[] { 9000d,8000,5000,9000,4500,2000,10000,12000,5000,6000,5000,7000 }, new[] { 40d,40,35,22,75,100,18,12,60,40,48,45 }, new[] { 1000d,700,500,1200,0,0,1500,1500,0,0,900,700 }, new[] { 85d,88,90,60,0,0,50,40,0,0,80,90 }, new[] { 1,1,1,1,0,0,1,1,0,0,1,1 });
+        //                                 wood plywood acryl leather anod metal fabric paper slate glass rubber mdf
+        AddDiodeScaled(r, 40, new[] { 7000d,6000,4000,7000,3500,1500,8000,10000,4000,5000,4000,5000 }, new[] { 45d,45,40,25,85,100,20,15,70,45,55,50 }, new[] { 700d,700,350,800,0,0,1000,1200,0,0,600,800 }, new[] { 90d,100,95,70,0,0,55,45,0,0,90,90 }, new[] { 1,1,2,1,0,0,1,1,0,0,1,2 });
+        AddDiodeScaled(r, 60, new[] { 9000d,8000,5000,9000,4500,2000,10000,12000,5000,6000,5000,7000 }, new[] { 40d,40,35,22,75,100,18,12,60,40,48,45 }, new[] { 1000d,1000,500,1200,0,0,1500,1500,0,0,900,700 }, new[] { 85d,100,90,60,0,0,50,40,0,0,80,90 }, new[] { 1,1,1,1,0,0,1,1,0,0,1,1 });
     }
 
     private static void AddDiodeScaled(List<MaterialRecipe> r, int watts, double[] engraveSpeed, double[] engravePower, double[] cutSpeed, double[] cutPower, int[] cutPasses)
