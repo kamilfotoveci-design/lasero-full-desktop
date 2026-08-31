@@ -14,7 +14,7 @@ Projekt bol 27. 8. 2026 presunutý z `C:\Users\Ruzovka\Videos\lasero-desktop`, p
 0,5 GB voľných. **Disk `D:` na tomto stroji neexistuje** (sú len `C:`, `E:`, `F:` = CD-ROM).
 `E:` má ~329 GB voľných.
 
-Vetva: `design-system-tokens`. Posledný implementačný commit: `a91c38b`.
+Vetva: `design-system-tokens`. Posledný implementačný commit: `7a89975`.
 
 ```bash
 cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug
@@ -26,7 +26,7 @@ cd /e/lasero-desktop && dotnet test LaseroDesktop.sln
 
 Spustiteľný build: `E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows\Lasero.App.exe`
 
-**313 testov, všetky prechádzajú.**
+**323 testov, všetky prechádzajú.**
 
 ### Vizuálne overovanie
 
@@ -231,6 +231,15 @@ prah je v oboch vypnutý.
   renderovací snímok, takže husté vektory ani bitmapy nezaplnia UI frontu.
 - Overenie: Debug build prešiel; `dotnet test LaseroDesktop.sln` = **313/313**. Vizuálne overené
   cez `.uiqa`: automatické ladenie, viditeľná spracovaná fotografia na plátne a stav výberu.
+
+### `7a89975` — Shift uzamyká proporcie kreslených tvarov
+
+- Počas kreslenia obdĺžnika, elipsy, pravidelného polygónu alebo hviezdy drží `Shift` rovnakú
+  šírku a výšku: vznikne štvorec, kruh alebo proporčne pravidelný tvar.
+- Čiara sa so Shiftom prichytáva k uhlom po 45°. Obmedzenie sa používa v živom náhľade aj pri
+  vytvorení výsledku a reaguje aj na stlačenie/pustenie Shiftu počas ťahania.
+- Debug build a **323/323 testov** prešli. Vizuálne overené cez `.uiqa`: elipsa ťahaná v pomere
+  približne 2:1 vznikla ako kruh s rozmermi `146,43 × 146,43 mm`.
 
 ---
 
