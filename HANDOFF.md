@@ -14,7 +14,7 @@ Projekt bol 27. 8. 2026 presunutý z `C:\Users\Ruzovka\Videos\lasero-desktop`, p
 0,5 GB voľných. **Disk `D:` na tomto stroji neexistuje** (sú len `C:`, `E:`, `F:` = CD-ROM).
 `E:` má ~329 GB voľných.
 
-Vetva: `design-system-tokens`. Posledný commit: `7ce52b5`.
+Vetva: `design-system-tokens`. Posledný implementačný commit: `a91c38b`.
 
 ```bash
 cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug
@@ -26,7 +26,7 @@ cd /e/lasero-desktop && dotnet test LaseroDesktop.sln
 
 Spustiteľný build: `E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows\Lasero.App.exe`
 
-**308 testov, všetky prechádzajú.**
+**313 testov, všetky prechádzajú.**
 
 ### Vizuálne overovanie
 
@@ -52,8 +52,8 @@ $g.Dispose(); $b.Save("out.png", [System.Drawing.Imaging.ImageFormat]::Png); $b.
 **Druhá pasca:** tooltip nevyvoláš cez `Cursor.Position` jedným priradením — WPF potrebuje skutočné
 `WM_MOUSEMOVE`. Treba kurzorom „zatriasť" (opakované `SetCursorPos` s malými zmenami) a počkať ~1,5 s.
 
-Po nečistom ukončení appky nabehne dialóg **„Nalezena záloha projektu"** — treba ho odkliknúť
-(`ui.ps1 -Action click -Name "Zahodit zálohu"`), inak screenshot zachytí dialóg.
+Po nečistom ukončení appky nabehne dialóg **„Nalezena záloha projektu"**. Pri QA použiť
+**„Obnovit projekt"**; zálohu nezahadzovať, môže obsahovať rozpracovaný projekt používateľa.
 
 Na testovanie pripojenia netreba hardvér: v *Zařízení* je port **`SIMULÁTOR — Virtuální laser`**.
 
@@ -213,37 +213,34 @@ prah je v oboch vypnutý.
 **Každá nová úprava má predvolene „bez zmeny"**, takže sa nič na existujúcom výstupe nepohlo.
 15 nových testov v `ImageProcessorTests.cs`.
 
+### `a91c38b` — dokončená a zrýchlená bitmapová pipeline
+
+- Všetkých 9 parametrov pipeline je prenesených cez `RasterImportOptions`, `RasterImporter` a
+  `RasterImportViewModel`. Importovaný obrázok sa automaticky analyzuje lokálnym histogramom a
+  dostane odporúčané vyváženie bez technického formulára pre zákazníka.
+- Technické posuvníky a dither zostávajú zapojené v modeli, ale zákaznícke UI ich zámerne
+  nezobrazuje. Dialóg komunikuje iba stav **„Automaticky vyladěno"**; nefunkčné tlačidlo na
+  opakované ladenie bolo odstránené.
+- Zdrojová bitmapa sa dekóduje iba raz a pred filtrami sa zmenší na skutočné výstupné rozlíšenie
+  podľa fyzickej veľkosti a DPI. Spracovaný obraz sa zdieľa medzi náhľadom a plánom gravírovania.
+  Náhľad sa zobrazí ešte pred dokončením plánu; inverzia dostane okamžitý vizuálny výsledok.
+- Opravený sivý obdĺžnik na plátne: rasterová umiestňovacia geometria už neprekrýva bitmapu
+  výplňou farby vrstvy.
+- Presun bitmapy aj vektora používa počas ťahania iba lacný `RenderTransform` a dátový model sa
+  zapíše raz pri pustení myši. Resize, rotácia a pan zlúčia udalosti na najnovšiu polohu raz za
+  renderovací snímok, takže husté vektory ani bitmapy nezaplnia UI frontu.
+- Overenie: Debug build prešiel; `dotnet test LaseroDesktop.sln` = **313/313**. Vizuálne overené
+  cez `.uiqa`: automatické ladenie, viditeľná spracovaná fotografia na plátne a stav výberu.
+
 ---
 
 ## 4. Rozrobené — pokračovať tu
 
-### 4.1 Port pipeline obrázku — dokončiť UI (rozrobené, jadro hotové)
+### 4.1 Port pipeline obrázku — hotové
 
-Jadro (`Lasero.Core.Raster`) je hotové a otestované. **Chýba zapojenie hore:**
-
-1. `Lasero.Core/Import/RasterImportOptions.cs` — pridať `Gamma`, `Exposure`, `Highlights`,
-   `Shadows`, `BlackPoint`, `WhitePoint`, `NoiseReduction`, `Sharpen`, `EdgeEnhance`
-   (rovnaké predvolby ako v `ImageProcessingOptions`: Gamma 1, WhitePoint 255, ostatné 0).
-2. `Lasero.Core/Import/RasterImporter.cs:51` — `ToProcessingOptions(RasterImportOptions)` je
-   **jediné** miesto, kde sa jedno prekladá na druhé. Preniesť tam nové polia.
-   (Náhľad na plátne ide cez `ProcessedImagePreviewRenderer`, ktorý používa tú istú cestu, takže
-   náhľad a G-kód zostanú zhodné automaticky.)
-3. `Lasero.App/ViewModels/RasterImportViewModel.cs` — `[ObservableProperty]` pre každú novú hodnotu,
-   `partial void On…Changed` → `ScheduleRecompute()`, a v `BuildOptions()` ich poslať ďalej.
-4. **Predvolby po nahraní obrázka** (web `loadFile`): `Contrast = 20`, `Brightness = 5`,
-   `Sharpen = 30`, dither Stucki, grayscale zap. Web ich nastavuje pri každom nahraní, nie ako
-   default property — treba to spraviť rovnako, v momente načítania súboru.
-5. `Lasero.App/RasterImportWindow.xaml` — sekcia „Doladění obrazu" už existuje (Jas, Kontrast).
-   Pridať tam ostatné posuvníky. **Neverzuj to späť do „Parametry gravírování"** — používateľ
-   výslovne chcel, aby parametre gravírovania boli len vo vrstvách.
-6. Dither dropdown patrí sem (7 možností vrátane „Žádný"), s popiskom podľa `DITHER_HINTS_CS`
-   v `index.html` okolo riadku 16362.
-
-Referencie vo webe (`C:\Users\Ruzovka\Videos\lasero-app\index.html`):
-- `loadFile` ~16305, `rstSliders` ~16337, `applyFilters` ~16387
-- `applySharpen` ~16472, `applyNoiseReduction` ~16493, `applyEdgeEnhance` ~16509
-- `dither` ~16528 (všetkých 6 algoritmov na jednom riadku)
-- `DITHER_HINTS_CS` ~16362
+Dokončené v `a91c38b`; podrobnosti sú v §3. Najnovšie rozhodnutie používateľa ruší pôvodnú
+požiadavku ukázať všetkých 9 posuvníkov a dither dropdown zákazníkovi. Pipeline ich podporuje,
+ale UI fotografiu automaticky analyzuje a nastaví odporúčané hodnoty.
 
 ### 4.2 Chat — vizuálne a funkčne podľa `lasero-app`
 
