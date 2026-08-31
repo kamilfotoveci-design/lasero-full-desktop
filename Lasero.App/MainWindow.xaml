@@ -115,20 +115,23 @@
             together. Both keep the ToolPaletteButton/Button.Icon state model underneath — hover,
             pressed, active tint, keyboard focus ring — so nothing about the interaction changes.
         -->
-        <Style x:Key="Toolbar.Command" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <!-- Ghost, not Button.Icon: a filled surface per command turned the strip into a wall of
+             touching grey boxes. Idle is bare, hover and press are the wash the button template
+             already applies, and only the active tool carries a tint. -->
+        <Style x:Key="Toolbar.Command" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
             <Setter Property="Width" Value="Auto" />
             <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
             <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
-            <Setter Property="Padding" Value="8,2" />
-            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="3,0" />
         </Style>
 
         <Style x:Key="Toolbar.Tool" TargetType="RadioButton" BasedOn="{StaticResource ToolPaletteButton}">
             <Setter Property="Width" Value="Auto" />
             <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
             <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
-            <Setter Property="Padding" Value="8,2" />
-            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="3,0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
@@ -138,7 +141,7 @@
         <Style x:Key="Toolbar.MenuTool" TargetType="MenuItem">
             <Setter Property="MinWidth" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
             <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
-            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Padding" Value="10,4" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -197,7 +200,7 @@
         <Style x:Key="Toolbar.Divider" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Height" Value="30" />
-            <Setter Property="Margin" Value="8,0" />
+            <Setter Property="Margin" Value="11,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Background" Value="{StaticResource Brush.PanelBorderStrong}" />
         </Style>
@@ -746,7 +749,7 @@
                                                       IconData="{StaticResource Glyph.Line}" Text="Čára"
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="3,0">
                                 <MenuItem Style="{StaticResource Toolbar.MenuTool}"
                                           ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy"
                                           AutomationProperties.Name="Mnohoúhelník">
@@ -770,7 +773,7 @@
                             <!-- Align needs more than one object and mirror needs at least one, so both
                                  are menus rather than buttons: the choice of edge or axis belongs to the
                                  operator, and the commands underneath keep their own CanExecute. -->
-                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="3,0">
                                 <MenuItem Style="{StaticResource Toolbar.MenuTool}"
                                           ToolTip="Zarovnat vybrané objekty k sobě"
                                           AutomationProperties.Name="Zarovnat">
@@ -788,7 +791,7 @@
                                     <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
                                 </MenuItem>
                             </Menu>
-                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="1,0">
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="3,0">
                                 <MenuItem Style="{StaticResource Toolbar.MenuTool}"
                                           ToolTip="Zrcadlit nebo otočit vybrané objekty"
                                           AutomationProperties.Name="Zrcadlit">

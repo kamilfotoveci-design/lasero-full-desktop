@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"
                     xmlns:system="clr-namespace:System;assembly=System.Runtime"
-                    xmlns:conv="clr-namespace:Lasero.App.Converters">
+                    xmlns:conv="clr-namespace:Lasero.App.Converters"
+                    xmlns:components="clr-namespace:Lasero.App.Components">
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Icons.xaml" />
@@ -199,7 +200,7 @@
 
     <!-- Editor chrome geometry. The toolbar button is wide enough for the longest caption it carries
          ("Kruh/Elipsa") at Size.Text.Meta, and tall enough for an 18px glyph over that caption. -->
-    <system:Double x:Key="Size.Toolbar.ButtonMinWidth">44</system:Double>
+    <system:Double x:Key="Size.Toolbar.ButtonMinWidth">48</system:Double>
     <system:Double x:Key="Size.Toolbar.ButtonHeight">54</system:Double>
     <system:Double x:Key="Size.Toolbar.Height">70</system:Double>
 
@@ -406,6 +407,17 @@
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
+                        <!-- Declared after the trigger above so it wins: a ghost button has no
+                             surface to keep legible, and drawing one only when the command is
+                             unavailable makes the dead controls the loudest in the row. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsEnabled" Value="False" />
+                                <Condition Property="components:ButtonChrome.SuppressDisabledSurface" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bg" Property="Background" Value="Transparent" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="Transparent" />
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -435,6 +447,7 @@
     <!-- Ghost: no fill, no border until hover. For dense clusters where a full bordered button per
          action would turn the row into a grid of boxes. -->
     <Style x:Key="Button.Ghost" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="components:ButtonChrome.SuppressDisabledSurface" Value="True" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
