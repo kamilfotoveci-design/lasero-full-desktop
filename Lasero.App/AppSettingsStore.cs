@@ -25,7 +25,12 @@ public sealed class WorkspacePreferences
     public double InspectorWidth { get; set; } = DefaultInspectorWidth;
 
     public const double DefaultInspectorWidth = 336;
-    public const double MinInspectorWidth = 280;
+
+    /// <summary>The lower bound has to match DesignerInspectorView's own MinWidth. When it was
+    /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than
+    /// the column holding it, and a Grid does not shrink a child below its MinWidth — so the extra
+    /// 40px hung off the right edge of the window and the value fields were cut in half.</summary>
+    public const double MinInspectorWidth = 320;
     public const double MaxInspectorWidth = 560;
 
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)

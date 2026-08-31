@@ -110,18 +110,6 @@ public partial class MainWindow : Window
             SystemCommands.MaximizeWindow(this);
     }
 
-    private void OnTransformFieldKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || sender is not TextBox field) return;
-
-        // TextBox bindings normally commit only after focus leaves the field. Dimension editing in
-        // a desktop design tool is keyboard-driven, so Enter must commit immediately and keep the
-        // field ready for another precise value.
-        field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-        field.SelectAll();
-        e.Handled = true;
-    }
-
     // Native Windows title bars swap the maximize glyph for a restore (overlapping-rectangles) glyph
     // once the window is maximized — Settings, Terminal, and Explorer all do this — so a single static
     // square is a visible tell that the chrome is hand-rolled rather than following the platform convention.

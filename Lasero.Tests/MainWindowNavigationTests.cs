@@ -69,21 +69,34 @@ public sealed class MainWindowNavigationTests
     }
 
     [Fact]
-    public void ObjectEditingLivesInTheCanvasToolbarInsteadOfADuplicateInspectorTab()
+    public void ObjectEditingLivesAboveTheInspectorTabsInsteadOfInTheCanvasToolbar()
     {
         var root = FindRepositoryRoot();
         var inspector = File.ReadAllText(Path.Combine(
             root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
         var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
 
+        // Not a third tab competing with Vrstvy and Stroj, and not a second copy of the layer list's
+        // own naming: one section, sitting above the switch so it survives either tab.
         Assert.DoesNotContain("PropertiesTabRadio", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("Content=\"Objekt\"", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"Vybraný objekt\"", inspector, StringComparison.Ordinal);
         Assert.Contains("Text=\"Vrstvy\"", inspector, StringComparison.Ordinal);
         Assert.Contains("Text=\"Stroj\"", inspector, StringComparison.Ordinal);
 
-        Assert.Contains("Header=\"Zobrazit na plátně\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IsVisible}\"", mainWindow, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Zahrnout do úlohy\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IncludeInOutput}\"", mainWindow, StringComparison.Ordinal);
+        var section = inspector.IndexOf("Text=\"Objekt\"", StringComparison.Ordinal);
+        var tabStrip = inspector.IndexOf("x:Name=\"LayersTabRadio\"", StringComparison.Ordinal);
+        Assert.True(section >= 0, "The inspector has no Objekt section.");
+        Assert.True(section < tabStrip, "The Objekt section must sit above the Vrstvy / Stroj switch.");
+
+        Assert.Contains("Header=\"Zobrazit na plátně\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IsVisible}\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Zahrnout do úlohy\" IsCheckable=\"True\" IsChecked=\"{Binding Scene.Selected.IncludeInOutput}\"", inspector, StringComparison.Ordinal);
+
+        // The canvas toolbar is a tool strip only. Selection properties there needed roughly 1500px
+        // of a column that offers 1082px at a 1600px window, so the row wrapped at every size.
+        Assert.DoesNotContain("Scene.SelectedWidth", mainWindow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.SelectedRotation", mainWindow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.LockAspectRatio", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,6 +126,34 @@ public sealed class MainWindowNavigationTests
         Assert.True(derivedStyle >= 0, "JobActiveStopButton must derive from JobDangerButton.");
         Assert.True(baseStyle < derivedStyle,
             "WPF StaticResource lookup cannot resolve JobDangerButton when the base style is declared after its first use.");
+    }
+
+    [Fact]
+    public void InspectorColumnCannotBeNarrowerThanThePanelItHolds()
+    {
+        var root = FindRepositoryRoot();
+        var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
+        var inspector = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
+        var settings = File.ReadAllText(Path.Combine(root, "Lasero.App", "AppSettingsStore.cs"));
+
+        // A Grid never shrinks a child below its MinWidth. When the column allowed 280 and the panel
+        // asked for 320, the panel kept its 320 and the surplus hung off the right edge of the
+        // window: X, Y, width and height were all cut through the middle of their value.
+        var panelMin = ReadNumber(inspector, "MinWidth=\"", "\"");
+        var columnMin = ReadNumber(mainWindow, "x:Name=\"InspectorColumn\" Width=\"336\" MinWidth=\"", "\"");
+        var persistedMin = ReadNumber(settings, "MinInspectorWidth = ", ";");
+
+        Assert.Equal(panelMin, columnMin);
+        Assert.Equal(panelMin, persistedMin);
+    }
+
+    private static double ReadNumber(string text, string prefix, string terminator)
+    {
+        var start = text.IndexOf(prefix, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"'{prefix}' was not found.");
+        start += prefix.Length;
+        var end = text.IndexOf(terminator, start, StringComparison.Ordinal);
+        return double.Parse(text[start..end], System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static string FindRepositoryRoot()

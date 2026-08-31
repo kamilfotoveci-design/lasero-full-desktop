@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Lasero.App.ViewModels;
 using Lasero.Core.Layers;
 using Lasero.Core.Materials;
@@ -14,6 +15,18 @@ public partial class DesignerInspectorView : UserControl
     }
 
     public void ShowMachineTab() => MachineTabRadio.IsChecked = true;
+
+    private void OnTransformFieldKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not TextBox field) return;
+
+        // TextBox bindings normally commit only after focus leaves the field. Dimension editing in
+        // a desktop design tool is keyboard-driven, so Enter must commit immediately and keep the
+        // field ready for another precise value.
+        field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        field.SelectAll();
+        e.Handled = true;
+    }
 
     private void OnApplyMaterialClick(object sender, RoutedEventArgs e)
     {

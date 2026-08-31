@@ -7,12 +7,25 @@ public sealed class MainWindowInteractionTests
     [Fact]
     public void TransformFieldsCommitKeyboardValuesOnEnter()
     {
-        var xaml = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Lasero.App", "MainWindow.xaml"));
-        var codeBehind = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Lasero.App", "MainWindow.xaml.cs"));
+        // The transform fields live in the right inspector, not the toolbar above the canvas: the
+        // toolbar could not hold them on one row at any window size.
+        var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml.cs"));
 
         Assert.Equal(5, CountOccurrences(xaml, "KeyDown=\"OnTransformFieldKeyDown\""));
-        Assert.Equal(5, CountOccurrences(xaml, "UpdateSourceTrigger=LostFocus"));
         Assert.Contains("GetBindingExpression(TextBox.TextProperty)?.UpdateSource()", codeBehind, StringComparison.Ordinal);
+
+        // Every transform field defers its binding to LostFocus, which is what makes the Enter
+        // handler necessary: without it a typed value would sit uncommitted until focus moved.
+        foreach (var property in new[] { "SelectedX", "SelectedY", "SelectedWidth", "SelectedHeight", "SelectedRotation" })
+        {
+            var binding = xaml[xaml.IndexOf($"Scene.{property},", StringComparison.Ordinal)..];
+            Assert.Contains("UpdateSourceTrigger=LostFocus", binding[..binding.IndexOf('}')], StringComparison.Ordinal);
+        }
+
+        var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
+        Assert.DoesNotContain("OnTransformFieldKeyDown", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]
