@@ -44,9 +44,12 @@
             </Grid.RowDefinitions>
 
             <!-- HERO -->
+            <!-- A panel surface, not a tinted one. On the dark theme the selected-surface token is a
+                 deep blue, and a hero-sized block of it is exactly the large flat bright surface the
+                 palette is meant to avoid; the accent belongs on the CTA inside it. -->
             <Border Grid.Row="0" CornerRadius="{StaticResource Radius.Lg}" Margin="0,0,0,22"
-                    Background="{StaticResource Brush.SelectedSurface}"
-                    BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
+                    Background="{StaticResource Brush.Panel}"
+                    BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MinWidth="380" />
@@ -87,8 +90,8 @@
                          so nothing here is a borrowed product shot; swap in an image when one exists. -->
                     <Border Grid.Column="1" Width="300" Margin="0,14,14,14"
                             CornerRadius="{StaticResource Radius.Md}"
-                            Background="{StaticResource Brush.Panel}"
-                            BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
+                            Background="{StaticResource Brush.Canvas.Surround}"
+                            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1">
                         <Grid>
                             <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
                                                  Foreground="{StaticResource Brush.SelectedBorder}"

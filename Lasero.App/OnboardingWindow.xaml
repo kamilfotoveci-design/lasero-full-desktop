@@ -4,7 +4,7 @@
         xmlns:components="clr-namespace:Lasero.App.Components"
         Title="Začínáme s Lasero" Width="820" Height="590" MinWidth="820" MinHeight="590"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource Brush.Background}">
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -50,7 +50,7 @@
             <Border Grid.Column="0" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
+                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.AccentText}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připojte gravírku" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
@@ -62,7 +62,7 @@
             <Border Grid.Column="2" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
+                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.AccentText}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Vyberte materiál" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
@@ -74,7 +74,7 @@
             <Border Grid.Column="4" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.Accent}" />
+                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="{StaticResource Brush.AccentText}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připravte návrh" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />

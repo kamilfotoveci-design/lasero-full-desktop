@@ -4,7 +4,7 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
         Title="Připravit obrázek" Width="1080" Height="720" MinWidth="920" MinHeight="620"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
@@ -100,7 +100,7 @@
                                 BorderBrush="{StaticResource Brush.SelectedBorder}"
                                 BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
                             <StackPanel>
-                                <TextBlock Text="Automaticky vyladěno" Foreground="{StaticResource Brush.Accent}" FontWeight="SemiBold" />
+                                <TextBlock Text="Automaticky vyladěno" Foreground="{StaticResource Brush.AccentText}" FontWeight="SemiBold" />
                                 <TextBlock Text="Fotografie byla lokálně analyzována a připravena pro čisté gravírování. Jas, kontrast, detaily i dithering nastavuje Lasero automaticky."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>

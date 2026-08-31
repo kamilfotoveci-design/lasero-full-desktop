@@ -7,7 +7,7 @@
              KeyUp="OnCanvasKeyUp"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
     <Border Effect="{StaticResource Shadow.Sheet}">
-        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
+        <Border Background="{StaticResource Brush.Canvas.Surround}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="20" />

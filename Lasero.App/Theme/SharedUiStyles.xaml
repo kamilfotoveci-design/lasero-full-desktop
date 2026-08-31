@@ -118,7 +118,7 @@
     -->
 
     <Style x:Key="Button.Link" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />

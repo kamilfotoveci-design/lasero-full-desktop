@@ -6,7 +6,7 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Náhled úlohy" Width="1120" Height="760" MinWidth="760" MinHeight="520"
-        WindowStartupLocation="CenterOwner" WindowStyle="None" Background="{StaticResource Brush.Background}">
+        WindowStartupLocation="CenterOwner" WindowStyle="None" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
     </shell:WindowChrome.WindowChrome>

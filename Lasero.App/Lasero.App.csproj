@@ -8,6 +8,7 @@
     <Resource Include="Assets\Lasero.ico" />
     <Resource Include="Assets\Lasero.png" />
     <Resource Include="Assets\LaseroWordmark.png" />
+    <Resource Include="Assets\LaseroWordmarkLight.png" />
     <Resource Include="Assets\KamilAvatar.png" />
     <!-- Inter ships with the app rather than being assumed present on the machine: it is not a
          Windows font, so referencing it by family name alone would silently fall back to Segoe on

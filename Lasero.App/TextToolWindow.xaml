@@ -5,7 +5,7 @@
         Title="Přidat text" Width="560" Height="566"
         MinWidth="560" MinHeight="566" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource Brush.Background}">
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="76" />

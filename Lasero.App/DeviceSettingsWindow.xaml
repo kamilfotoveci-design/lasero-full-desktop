@@ -9,7 +9,7 @@
         MinWidth="780" MinHeight="560"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
-        Background="{StaticResource Brush.Background}">
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
@@ -35,7 +35,7 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">

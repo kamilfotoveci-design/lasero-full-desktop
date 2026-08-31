@@ -4,7 +4,7 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
         Title="Přihlášení do Lasero" Width="780" Height="570" MinWidth="780" MinHeight="570"
-        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="{StaticResource Brush.Background}">
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />

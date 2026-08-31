@@ -565,16 +565,26 @@ public partial class SceneCanvas : UserControl
 
         var step = RulerMath.PickStep(_scale);
 
-        var gridBrush = new SolidColorBrush(Color.FromArgb(0x28, 0x65, 0x70, 0x82));
-        var axisBrush = new SolidColorBrush(Color.FromArgb(0x68, 0x2F, 0x6F, 0xC9));
+        var gridBrush = (Brush)FindResource("Brush.Canvas.GridMinor");
+        var axisBrush = (Brush)FindResource("Brush.Canvas.GridMajor");
+
+        // The grid belongs to the bed, not to the viewport. Drawn across the whole canvas it used to
+        // run out over the surround, which is nearly black in this theme — a dark grid line on it is
+        // invisible, and a light one would draw a rectangle of graph paper where there is no machine.
+        var hasBed = WorkAreaWidthMm > 0 && WorkAreaHeightMm > 0;
+        var bedLeft = hasBed ? ToCanvasX(0) : 0;
+        var bedRight = hasBed ? ToCanvasX(WorkAreaWidthMm) : ActualWidth;
+        var bedTop = hasBed ? ToCanvasY(WorkAreaHeightMm) : 0;
+        var bedBottom = hasBed ? ToCanvasY(0) : ActualHeight;
 
         var firstX = RulerMath.FirstTick(_offsetXMm, step);
         for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
         {
             var px = ToCanvasX(x);
+            if (hasBed && (px < bedLeft - 0.5 || px > bedRight + 0.5)) continue;
             var line = new Line
             {
-                X1 = px, X2 = px, Y1 = 0, Y2 = ActualHeight,
+                X1 = px, X2 = px, Y1 = bedTop, Y2 = bedBottom,
                 Stroke = Math.Abs(x) < 1e-6 ? axisBrush : gridBrush,
                 StrokeThickness = Math.Abs(x) < 1e-6 ? 1.2 : 1,
                 IsHitTestVisible = false,
@@ -587,9 +597,10 @@ public partial class SceneCanvas : UserControl
         for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
         {
             var py = ToCanvasY(y);
+            if (hasBed && (py < bedTop - 0.5 || py > bedBottom + 0.5)) continue;
             var line = new Line
             {
-                X1 = 0, X2 = ActualWidth, Y1 = py, Y2 = py,
+                X1 = bedLeft, X2 = bedRight, Y1 = py, Y2 = py,
                 Stroke = Math.Abs(y) < 1e-6 ? axisBrush : gridBrush,
                 StrokeThickness = Math.Abs(y) < 1e-6 ? 1.2 : 1,
                 IsHitTestVisible = false,
@@ -608,8 +619,8 @@ public partial class SceneCanvas : UserControl
             {
                 Width = Math.Max(0, WorkAreaWidthMm * _scale),
                 Height = Math.Max(0, WorkAreaHeightMm * _scale),
-                Fill = (Brush)FindResource("Brush.Panel"),
-                Stroke = (Brush)FindResource("Brush.PanelBorder"),
+                Fill = (Brush)FindResource("Brush.Canvas.WorkArea"),
+                Stroke = (Brush)FindResource("Brush.Canvas.WorkAreaBorder"),
                 StrokeThickness = 1,
                 IsHitTestVisible = false,
             };

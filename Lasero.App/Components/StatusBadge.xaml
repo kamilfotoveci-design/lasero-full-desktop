@@ -57,7 +57,7 @@
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
@@ -105,7 +105,7 @@
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />

@@ -41,7 +41,7 @@
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
             <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
             <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
         </Style>
     </UserControl.Resources>
 
@@ -150,7 +150,7 @@
                                  sentence was simply cut off at the panel edge. -->
                             <DockPanel>
                                 <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                      Foreground="{StaticResource Brush.Accent}" Margin="0,1,8,0" VerticalAlignment="Top" />
+                                                      Foreground="{StaticResource Brush.AccentText}" Margin="0,1,8,0" VerticalAlignment="Top" />
                                 <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                             </DockPanel>
@@ -238,7 +238,7 @@
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->
 <DockPanel>
-                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Accent}" />
+                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.AccentText}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </DockPanel>

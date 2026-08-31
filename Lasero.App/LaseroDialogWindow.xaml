@@ -5,7 +5,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="LASERO" Width="420" SizeToContent="Height" MaxHeight="620"
         WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="NoResize"
-        ShowInTaskbar="False" Background="{StaticResource Brush.Background}">
+        ShowInTaskbar="False" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <DataTemplate x:Key="DialogButtonLabelTemplate">
             <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Content}"

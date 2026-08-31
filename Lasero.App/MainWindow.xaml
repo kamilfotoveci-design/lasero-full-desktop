@@ -9,7 +9,7 @@
         xmlns:jobs="clr-namespace:Lasero.Core.Jobs;assembly=Lasero.Core"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Lasero Desktop" Height="900" Width="1480" MinWidth="1080" MinHeight="640"
-        WindowStartupLocation="CenterScreen" WindowStyle="None" Background="{StaticResource Brush.Background}">
+        WindowStartupLocation="CenterScreen" WindowStyle="None" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
 
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
@@ -84,7 +84,7 @@
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
@@ -168,7 +168,7 @@
                             <Trigger Property="IsSubmenuOpen" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
@@ -313,7 +313,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -323,7 +323,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -333,7 +333,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -343,7 +343,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -529,7 +529,7 @@
                                         Background="{StaticResource Brush.SelectedSurface}">
                                     <components:IconGlyph IconData="{StaticResource Glyph.User}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                          Foreground="{StaticResource Brush.Accent}" />
+                                                          Foreground="{StaticResource Brush.AccentText}" />
                                 </Border>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Account.Email}" FontWeight="Medium"
@@ -924,7 +924,7 @@
                              problem instead of only in a tooltip. -->
                         <Button Style="{StaticResource Button.Ghost}" Command="{Binding ShowDeviceCommand}"
                                 Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
-                                Foreground="{StaticResource Brush.Accent}"
+                                Foreground="{StaticResource Brush.AccentText}"
                                 Content="Připojit"
                                 ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
                                 Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />

@@ -4,7 +4,7 @@
         Title="Klávesové zkratky"
         Width="760" Height="620" MinWidth="680" MinHeight="520"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource Brush.Background}">
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <Style x:Key="ShortcutKey" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Brush.Field}" />

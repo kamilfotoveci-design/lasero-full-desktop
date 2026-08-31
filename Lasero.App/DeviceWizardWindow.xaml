@@ -8,7 +8,7 @@
         Title="Průvodce zařízením" Width="720" Height="620"
         MinWidth="720" MinHeight="560"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource Brush.Background}">
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
@@ -60,7 +60,7 @@
                 <StackPanel Orientation="Horizontal">
                     <components:IconGlyph IconData="{StaticResource Glyph.Device}"
                                           Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
-                                          Margin="0,1,10,0" Foreground="{StaticResource Brush.Accent}" />
+                                          Margin="0,1,10,0" Foreground="{StaticResource Brush.AccentText}" />
                     <TextBlock Text="Průvodce zařízením" Style="{StaticResource PageTitle}" />
                 </StackPanel>
                 <TextBlock Text="Najdeme vaši gravírku, načteme rozměry pracovní plochy a uložíme je jako výchozí."
@@ -79,7 +79,7 @@
                     <Grid Style="{StaticResource WizardStepRow}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Border Width="26" Height="26" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" VerticalAlignment="Top">
-                            <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" />
+                            <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                             <TextBlock Text="Gravírka je zapnutá a připojená USB kabelem" FontWeight="SemiBold" />
@@ -118,7 +118,7 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <components:IconGlyph IconData="{StaticResource Glyph.Search}"
                                           Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
-                                          HorizontalAlignment="Center" Foreground="{StaticResource Brush.Accent}" />
+                                          HorizontalAlignment="Center" Foreground="{StaticResource Brush.AccentText}" />
                     <TextBlock Text="Hledám zařízení" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
                     <TextBlock Text="{Binding ScanStatus}" Style="{StaticResource Text.Muted}"
                                HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"

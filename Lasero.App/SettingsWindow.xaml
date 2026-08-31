@@ -5,7 +5,7 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:materials="clr-namespace:Lasero.Core.Materials;assembly=Lasero.Core"
         Title="Nastavení Lasero" Width="980" Height="700" MinWidth="880" MinHeight="620"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
@@ -32,7 +32,7 @@
         <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="36,28,36,18">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" Foreground="{StaticResource Brush.Accent}" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" Foreground="{StaticResource Brush.AccentText}" />
                     <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                 </StackPanel>
                 <TextBlock Text="Upravte výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení."
