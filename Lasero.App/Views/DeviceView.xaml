@@ -146,13 +146,45 @@
                         </StackPanel>
                     </Border>
 
+                    <!--
+                        The guided path first, the manual controls under it. The card states what the
+                        connection is doing in one sentence and offers the one action that moves it
+                        along; port and baud stay below for the operator who already knows which port
+                        their machine is on. Nothing was removed to make room for it.
+                    -->
+                    <components:ProcessStatusCard Margin="0,0,0,16"
+                        Status="{Binding DeviceSetup.Status}"
+                        Title="{Binding DeviceSetup.Title}"
+                        Description="{Binding DeviceSetup.Description}"
+                        ShowsProgress="{Binding DeviceSetup.ShowsProgress}"
+                        Progress="{Binding DeviceSetup.Progress}"
+                        PrimaryLabel="{Binding DeviceSetup.PrimaryLabel}"
+                        PrimaryCommand="{Binding DeviceSetup.PrimaryCommand}"
+                        SecondaryLabel="{Binding DeviceSetup.SecondaryLabel}"
+                        SecondaryCommand="{Binding DeviceSetup.SecondaryCommand}">
+                        <components:ProcessStatusCard.Meta>
+                            <ItemsControl ItemsSource="{Binding DeviceSetup.Details}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Muted}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="Medium"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </components:ProcessStatusCard.Meta>
+                    </components:ProcessStatusCard>
+
                     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
-                                <TextBlock Text="Připojení zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
+                                <TextBlock Text="Ruční připojení" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
-                            <TextBlock Text="Vyberte nalezený port. Po připojení Lasero automaticky načte typ zařízení a rozměry pracovní plochy."
+                            <TextBlock Text="Vyberte port a rychlost sami, pokud víte, kam je gravírka připojená."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <Grid>
                                 <Grid.ColumnDefinitions>

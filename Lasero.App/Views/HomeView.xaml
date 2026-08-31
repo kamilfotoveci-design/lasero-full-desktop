@@ -83,18 +83,46 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Stands in for the mockup's engraving photo. Drawn from the app's own icon set
-                         so nothing here is a borrowed product shot; swap in an image when one exists. -->
+                    <!--
+                        The operator's own machine. Nothing the app can read identifies a product —
+                        a GRBL banner names a firmware — so a stock render here would be a picture of
+                        somebody else's engraver. Until a photo is chosen this says so and offers to
+                        take one.
+                    -->
                     <Border Grid.Column="1" Width="300" Margin="0,14,14,14"
                             CornerRadius="{StaticResource Radius.Md}"
                             Background="{StaticResource Brush.Panel}"
-                            BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1">
+                            BorderBrush="{StaticResource Brush.SelectedBorder}" BorderThickness="1"
+                            ClipToBounds="True">
                         <Grid>
-                            <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
-                                                 Foreground="{StaticResource Brush.SelectedBorder}"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <TextBlock Text="Náhled gravírování" Style="{StaticResource Text.Muted}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,14" />
+                            <Image Source="{Binding MachinePhoto.PhotoPath, Converter={StaticResource ThumbnailToImage}}"
+                                   Stretch="UniformToFill" StretchDirection="Both"
+                                   Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource BoolToVisibility}}" />
+
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource InverseBoolToVisibility}}">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Device}"
+                                                      Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
+                                                      Foreground="{StaticResource Brush.SelectedBorder}"
+                                                      HorizontalAlignment="Center" />
+                                <TextBlock Text="Vaše gravírka" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Margin="0,12,0,0" />
+                                <TextBlock Text="Přidejte její fotku, ať poznáte na první pohled, který stroj je nastavený."
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center"
+                                           MaxWidth="230" Margin="0,4,0,0" />
+                                <Button Command="{Binding MachinePhoto.ChoosePhotoCommand}" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                    <components:IconLabel IconData="{StaticResource Glyph.Image}" Text="Přidat fotku"
+                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
+                                </Button>
+                            </StackPanel>
+
+                            <Button Style="{StaticResource Button.GhostIcon}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Margin="6" Command="{Binding MachinePhoto.ChoosePhotoCommand}"
+                                    ToolTip="Změnit fotku gravírky" automation:AutomationProperties.Name="Změnit fotku gravírky"
+                                    Visibility="{Binding MachinePhoto.HasPhoto, Converter={StaticResource BoolToVisibility}}">
+                                <components:IconGlyph IconData="{StaticResource Glyph.Image}"
+                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                            </Button>
                         </Grid>
                     </Border>
                 </Grid>
@@ -144,77 +172,14 @@
                     StateBrush="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateBrush}}"
                     WorkAreaWidthMm="{Binding Settings.Machine.WorkAreaWidthMm}"
                     WorkAreaHeightMm="{Binding Settings.Machine.WorkAreaHeightMm}"
+                    PhotoPath="{Binding MachinePhoto.PhotoPath}"
                     ConnectDeviceCommand="{Binding OpenDeviceWizardCommand}"
                     OpenMachineControlCommand="{Binding ShowDeviceCommand}" />
             </Grid>
 
-            <!-- BEZPEČNOSTNÍ KONTROLA + NEDÁVNÉ PROJEKTY -->
+            <!-- NEDÁVNÉ PROJEKTY -->
             <Grid Grid.Row="2" Margin="0,0,0,18">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*" MinWidth="300" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="1.35*" />
-                </Grid.ColumnDefinitions>
-
                 <Border Style="{StaticResource Card}" VerticalAlignment="Top">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Warning}"
-                                                      Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                                      Margin="0,0,8,0" />
-                                <TextBlock Text="Bezpečnostní kontrola" Style="{StaticResource PanelTitle}" Margin="0" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding Home.Safety.Summary}" Style="{StaticResource Text.Muted}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
-
-                        <ItemsControl ItemsSource="{Binding Home.Safety.Items}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-
-                                        <!-- The machine row is reported, the rest are ticked by hand. Two
-                                             different controls, because a checkbox the operator cannot
-                                             change would be a lie about who decided. -->
-                                        <components:IconGlyph VerticalAlignment="Top" Margin="0,2,0,0"
-                                                              Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                              Visibility="{Binding IsManual, Converter={StaticResource InverseBoolToVisibility}}">
-                                            <components:IconGlyph.Style>
-                                                <Style TargetType="components:IconGlyph">
-                                                    <Setter Property="IconData" Value="{StaticResource Glyph.Clock}" />
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSatisfied}" Value="True">
-                                                            <Setter Property="IconData" Value="{StaticResource Glyph.Check}" />
-                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </components:IconGlyph.Style>
-                                        </components:IconGlyph>
-                                        <CheckBox IsChecked="{Binding IsSatisfied}" VerticalAlignment="Top" Margin="0,1,0,0"
-                                                  automation:AutomationProperties.Name="{Binding Title}"
-                                                  Visibility="{Binding IsManual, Converter={StaticResource BoolToVisibility}}" />
-
-                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                            <TextBlock Text="{Binding Title}" FontWeight="Medium" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Muted}"
-                                                       TextWrapping="Wrap" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <Button Command="{Binding ShowDeviceCommand}" HorizontalAlignment="Stretch" Margin="0,2,0,0"
-                                Content="Zobrazit všechny kontroly" />
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
                     <StackPanel>
                         <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

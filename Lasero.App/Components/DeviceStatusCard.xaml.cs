@@ -40,6 +40,10 @@ public partial class DeviceStatusCard : UserControl
     public static readonly DependencyProperty WorkAreaHeightMmProperty = DependencyProperty.Register(
         nameof(WorkAreaHeightMm), typeof(double), typeof(DeviceStatusCard), new PropertyMetadata(0.0));
 
+    /// <summary>Path to the operator's photo of this machine, or null for the drawn fallback.</summary>
+    public static readonly DependencyProperty PhotoPathProperty = DependencyProperty.Register(
+        nameof(PhotoPath), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata(null));
+
     public static readonly DependencyProperty ConnectDeviceCommandProperty = DependencyProperty.Register(
         nameof(ConnectDeviceCommand), typeof(ICommand), typeof(DeviceStatusCard), new PropertyMetadata(null));
 
@@ -100,6 +104,12 @@ public partial class DeviceStatusCard : UserControl
     {
         get => (double)GetValue(WorkAreaHeightMmProperty);
         set => SetValue(WorkAreaHeightMmProperty, value);
+    }
+
+    public string? PhotoPath
+    {
+        get => (string?)GetValue(PhotoPathProperty);
+        set => SetValue(PhotoPathProperty, value);
     }
 
     public ICommand? ConnectDeviceCommand

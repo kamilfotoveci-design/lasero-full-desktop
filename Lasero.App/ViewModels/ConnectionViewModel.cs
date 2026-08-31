@@ -30,6 +30,11 @@ public partial class ConnectionViewModel : ObservableObject
     [ObservableProperty] private string? _workspaceMessage;
     [ObservableProperty] private bool _isVirtualMachineSelected;
 
+    /// <summary>Why the last connection attempt failed, or null if the last one did not. StatusText
+    /// carries the same sentence, but it is also used for every ordinary state, so it cannot be read
+    /// as "something went wrong" — a status surface needs to know the difference.</summary>
+    [ObservableProperty] private string? _connectionError;
+
     // Mirrors settingsStore.Current.Machine.WorkAreaWidthMm/HeightMm as observable properties — that
     // settings object is a plain JSON-serializable POCO with no change notification, so a canvas bound
     // directly to it would only ever see whatever was on disk at startup and never the real bed size
@@ -77,6 +82,7 @@ public partial class ConnectionViewModel : ObservableObject
         {
             IsConnected = false;
             IsConnecting = false;
+            ConnectionError = error?.Message;
             StatusText = error is null ? "Nepřipojeno" : $"Spojení bylo přerušeno: {error.Message}";
         });
 
@@ -166,6 +172,7 @@ public partial class ConnectionViewModel : ObservableObject
         try
         {
             IsConnecting = true;
+            ConnectionError = null;
             StatusText = $"Připojuji se k {SelectedPort}…";
             _connection.Connect(SelectedPort!, BaudRate);
             _connection.StartStatusPolling(TimeSpan.FromMilliseconds(200));
@@ -174,6 +181,7 @@ public partial class ConnectionViewModel : ObservableObject
         {
             IsConnecting = false;
             Log.Warning(ex, "Failed to open GRBL connection on {Port}", SelectedPort);
+            ConnectionError = ex.Message;
             StatusText = $"Připojení selhalo: {ex.Message}";
         }
     }
@@ -186,6 +194,7 @@ public partial class ConnectionViewModel : ObservableObject
         _connection.Disconnect();
         IsConnected = false;
         IsConnecting = false;
+        ConnectionError = null;
         StatusText = "Nepřipojeno";
     }
 

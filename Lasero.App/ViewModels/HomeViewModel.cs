@@ -24,7 +24,6 @@ public partial class HomeViewModel : ObservableObject
 
     public ObservableCollection<RecentProjectEntry> RecentProjects { get; } = new();
     public ObservableCollection<RecentProjectItemViewModel> RecentProjectRows { get; } = new();
-    public HomeSafetyViewModel Safety { get; }
     public ObservableCollection<JobHistoryEntry> TodayJobs { get; } = new();
     public ObservableCollection<MaterialUsage> RecentMaterials { get; } = new();
 
@@ -78,7 +77,6 @@ public partial class HomeViewModel : ObservableObject
         Connection = connection;
         MachineStatus = machineStatus;
         GCode = gcode;
-        Safety = new HomeSafetyViewModel(connection, machineStatus);
 
         Connection.PropertyChanged += (_, args) =>
         {
