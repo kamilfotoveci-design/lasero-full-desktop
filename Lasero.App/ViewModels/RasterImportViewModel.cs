@@ -11,8 +11,6 @@ using Lasero.Core.Raster;
 
 namespace Lasero.App.ViewModels;
 
-public enum RasterToneMode { Grayscale, Threshold, Dither }
-
 /// <summary>
 /// Configures a single raster import before it's placed on the scene: physical size, engraving
 /// parameters, a live processed-image preview, and a live job-bounds readout with an independent
@@ -38,8 +36,6 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _maxPower;
     [ObservableProperty] private double _dpi;
     [ObservableProperty] private int _passes = 1;
-    [ObservableProperty] private RasterToneMode _toneMode = RasterToneMode.Dither;
-    [ObservableProperty] private double _thresholdValue = 128;
     [ObservableProperty] private bool _invert;
     [ObservableProperty] private double _brightness;
     [ObservableProperty] private double _contrast;
@@ -63,7 +59,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     }
 
     public RasterImportViewModel(ILaserMachine machine, AppSettingsStore settingsStore, string filePath,
-        double targetWidthMm, double feedRatePerMinute, double maxPower, double dpi, bool useThreshold, double thresholdValue)
+        double targetWidthMm, double feedRatePerMinute, double maxPower, double dpi)
     {
         _machine = machine;
         _settingsStore = settingsStore;
@@ -76,8 +72,6 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         _feedRatePerMinute = feedRatePerMinute;
         _maxPower = maxPower;
         _dpi = dpi;
-        _toneMode = useThreshold ? RasterToneMode.Threshold : RasterToneMode.Dither;
-        _thresholdValue = thresholdValue;
 
         var (_, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, targetWidthMm);
         _targetHeightMm = heightMm;
@@ -94,9 +88,11 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         MinPower = MinPower,
         MaxPower = MaxPower,
         Passes = Passes,
-        UseThreshold = ToneMode == RasterToneMode.Threshold,
-        ThresholdValue = (byte)Math.Clamp(ThresholdValue, 0, 255),
-        UseDithering = ToneMode == RasterToneMode.Dither,
+        // Always Stucki. A diode laser is a one-bit device, so a photograph has to become dots either
+        // way; grayscale and threshold were two worse ways of doing it offered as a question the owner
+        // has no way to answer. The core pipeline keeps both, for a caller that has a reason.
+        UseThreshold = false,
+        UseDithering = true,
         DitheringAlgorithm = DitheringAlgorithm.Stucki,
         Brightness = Brightness,
         Contrast = Contrast,
@@ -142,8 +138,6 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         ScheduleRecompute();
     }
     partial void OnPassesChanged(int value) => ScheduleRecompute();
-    partial void OnToneModeChanged(RasterToneMode value) => ScheduleRecompute();
-    partial void OnThresholdValueChanged(double value) => ScheduleRecompute();
     partial void OnInvertChanged(bool value) => ScheduleRecompute();
     partial void OnBrightnessChanged(double value) => ScheduleRecompute();
     partial void OnContrastChanged(double value) => ScheduleRecompute();

@@ -19,7 +19,7 @@
             <Setter Property="Margin" Value="0,0,6,0" />
         </Style>
 
-        <Style x:Key="BarCheck" TargetType="CheckBox" BasedOn="{StaticResource Check.Box}">
+        <Style x:Key="BarCheck" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 

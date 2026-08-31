@@ -94,11 +94,11 @@
                  and display faces, where the letters overlap by design and the laser would otherwise
                  trace every buried edge inside the overlap. -->
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                <CheckBox x:Name="UppercaseToggle" Style="{StaticResource Check.Box}" Content="Velká písmena"
+                <CheckBox x:Name="UppercaseToggle" Content="Velká písmena"
                           Click="OnPreviewInputChanged"
                           ToolTip="Vysadí text kapitálkami, napsané znění zůstane zachované"
                           AutomationProperties.Name="Velká písmena" />
-                <CheckBox x:Name="WeldToggle" Style="{StaticResource Check.Box}" Content="Svařeno" Margin="22,0,0,0"
+                <CheckBox x:Name="WeldToggle" Content="Svařeno" Margin="22,0,0,0"
                           ToolTip="Spojí přesahující obrysy písmen do jednoho obrysu, aby laser nevypálil šev uvnitř přesahu"
                           AutomationProperties.Name="Svařit obrysy písmen" />
             </StackPanel>

@@ -74,8 +74,6 @@ public partial class GCodeViewModel : ObservableObject
     [ObservableProperty] private double _importWidthMm = 100;
     [ObservableProperty] private double _rasterDpi = 254;
     [ObservableProperty] private double _rasterMaxPower = 100;
-    [ObservableProperty] private bool _rasterUseThreshold;
-    [ObservableProperty] private double _rasterThreshold = 128;
 
     [ObservableProperty] private FramingMode _framingMode = FramingMode.FullOutline;
     [ObservableProperty] private double _framingFeedRate = 3000;
@@ -212,7 +210,7 @@ public partial class GCodeViewModel : ObservableObject
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
                     var importViewModel = new RasterImportViewModel(_connection, _settingsStore, dialog.FileName,
-                        ImportWidthMm, feedRatePerMinute: 3000, RasterMaxPower, RasterDpi, RasterUseThreshold, RasterThreshold);
+                        ImportWidthMm, feedRatePerMinute: 3000, RasterMaxPower, RasterDpi);
                     var importWindow = new RasterImportWindow(importViewModel) { Owner = Application.Current.MainWindow };
                     if (importWindow.ShowDialog() != true) break;
 

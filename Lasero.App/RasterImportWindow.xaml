@@ -74,59 +74,22 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource InspectorSection}">
-                    <StackPanel>
-                        <TextBlock Text="Parametry gravírování" Style="{StaticResource PanelTitle}" />
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="82" /></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Rychlost (mm/min)" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding FeedRatePerMinute, StringFormat={}{0:0}, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Max. výkon %" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding MaxPower, StringFormat={}{0:0.#}, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="Průchody" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding Passes, StringFormat={}{0:0}, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Rozestup řádků (mm)" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding LineIntervalMm, StringFormat={}{0:0.###}, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Min. výkon %" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding MinPower, StringFormat={}{0:0.#}, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Grid>
-                        <TextBlock Text="Menší rozestup vytvoří hustší gravírování a prodlouží čas úlohy."
-                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    </StackPanel>
-                </Border>
+                <!--
+                    No engraving parameters here. Speed, power, passes and line spacing belong to the
+                    layer, which is already the single source of truth for what is sent to GRBL - see
+                    SceneObject.BuildRasterOutputOptions, which overrides whatever the import chose with
+                    the layer's own values. Asking for them twice meant the operator set numbers that
+                    the job then ignored.
 
+                    No tone mode either. Grayscale and threshold were choices about how to turn photo
+                    pixels into laser dots, which is not a decision an owner should have to research;
+                    Stucki dithering is the right answer for a diode laser at every size, and it was
+                    already the default.
+                -->
                 <Border Style="{StaticResource InspectorSection}">
                     <StackPanel>
                         <TextBlock Text="Vzhled obrázku" Style="{StaticResource PanelTitle}" />
-                        <Border Style="{StaticResource SegmentedTrack}" Margin="0,0,0,12">
-                            <UniformGrid Columns="3">
-                                <RadioButton Content="Odstíny šedi" Style="{StaticResource Segment}" GroupName="Tone"
-                                             ToolTip="Výkon laseru se mění podle jasu pixelu."
-                                             IsChecked="{Binding ToneMode, Converter={StaticResource EnumToBool}, ConverterParameter=Grayscale}" />
-                                <RadioButton Content="Práh" Style="{StaticResource Segment}" GroupName="Tone"
-                                             ToolTip="Každý pixel bude pouze černý nebo bílý podle nastaveného prahu."
-                                             IsChecked="{Binding ToneMode, Converter={StaticResource EnumToBool}, ConverterParameter=Threshold}" />
-                                <RadioButton Content="Stucki" Style="{StaticResource Segment}" GroupName="Tone"
-                                             ToolTip="Doporučeno pro fotografie. Jemné černobílé body zachovají přechody a detaily."
-                                             IsChecked="{Binding ToneMode, Converter={StaticResource EnumToBool}, ConverterParameter=Dither}" />
-                            </UniformGrid>
-                        </Border>
-                        <TextBlock Text="Prahová hodnota" Style="{StaticResource Text.Muted}" Visibility="{Binding ToneMode, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Threshold}" />
-                        <Slider Minimum="0" Maximum="255" Value="{Binding ThresholdValue}" Visibility="{Binding ToneMode, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Threshold}" Margin="0,4,0,0" />
-                        <CheckBox Content="Obrátit světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,10,0,0" />
+                        <CheckBox Content="Obrátit světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>
 

@@ -218,15 +218,23 @@ public sealed class ThemeTokenTests
     public void RoundControlsUseThePillTokenRatherThanHalfTheirBox()
     {
         var theme = XmlComment.Replace(File.ReadAllText(ThemePath("LaseroTheme.xaml")), string.Empty);
-
         Assert.Contains("<CornerRadius x:Key=\"Radius.Pill\">999</CornerRadius>", theme, StringComparison.Ordinal);
-        foreach (var part in new[] { "Track", "Thumb" })
-        {
-            var index = theme.IndexOf($"x:Name=\"{part}\"", StringComparison.Ordinal);
-            Assert.True(index >= 0, $"toggle {part} not found");
-            var element = theme[index..theme.IndexOf('>', index)];
-            Assert.Contains("{StaticResource Radius.Pill}", element, StringComparison.Ordinal);
-        }
+
+        // The value matters, not just the key: a Pill quietly redefined as 12 turns every circle in the
+        // app into a rounded rectangle, and nothing else would catch it. That the token is the only way
+        // to express a radius at all is enforced by NoMarkupCarriesAScalarLiteralCornerRadius above.
+        //
+        // This used to pin the toggle switch's Track and Thumb by name. The switch is gone - replaced
+        // by a square checkbox - so that version was asserting against one control rather than the rule.
+        var square = new Regex(
+            @"<Border[^>]*?Width=""(?<w>\d+)""\s+Height=""(?<h>\d+)""[^>]*?CornerRadius=""\{StaticResource Radius\.Pill\}""",
+            RegexOptions.Singleline);
+
+        var circles = AppXamlFiles()
+            .SelectMany(file => square.Matches(XmlComment.Replace(File.ReadAllText(file), string.Empty)))
+            .Count(match => match.Groups["w"].Value == match.Groups["h"].Value);
+
+        Assert.True(circles > 0, "No square Border uses Radius.Pill, so nothing is holding the token honest.");
     }
 
     [Theory]
