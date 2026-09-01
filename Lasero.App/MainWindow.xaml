@@ -657,6 +657,19 @@
                         <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Disabled" Padding="0"
                                       Style="{StaticResource Toolbar.Scroller}">
+                            <ScrollViewer.Resources>
+                                <!-- The app's scrollbar is 10px, which is right beside a page of
+                                     content and too much furniture under a 48px strip — it only
+                                     appears when the row does not fit, and the wheel scrolls it
+                                     anyway. Slimmer here and nowhere else. -->
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+                                    <Style.Triggers>
+                                        <Trigger Property="Orientation" Value="Horizontal">
+                                            <Setter Property="Height" Value="7" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ScrollViewer.Resources>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Style="{StaticResource Toolbar.Command}" Command="{Binding NewProjectCommand}"
                                     ToolTip="Nový projekt" AutomationProperties.Name="Nový projekt">
@@ -965,11 +978,14 @@
                                            ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
+                        <!-- 340 rather than 260: the messages that land here are short sentences, and
+                             at 260 the framing-required one was cut off mid-word. Trimming stays as
+                             the last resort for a message nobody anticipated. -->
                         <TextBlock Text="{Binding GCode.LastMessage}"
                                    Margin="10,0,0,0"
                                    FontSize="{StaticResource Size.Text.Meta}"
                                    Foreground="{StaticResource Brush.TextSecondary}"
-                                   MaxWidth="260"
+                                   MaxWidth="340"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding GCode.LastMessage}" VerticalAlignment="Center"
                                    Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />

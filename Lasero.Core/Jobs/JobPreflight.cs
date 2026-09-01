@@ -68,7 +68,9 @@ public static class JobPreflight
         }
 
         if (context.RequireFraming && !context.HasFramedCurrentDocument)
-            issues.Add(Block("job.framing-required", "Před spuštěním zkontrolujte umístění pomocí rámování."));
+            // Short enough to be read where it actually appears: the status strip gives a block
+            // reason about 260px, and the previous wording was cut off mid-sentence there.
+            issues.Add(Block("job.framing-required", "Nejprve ověřte umístění rámováním."));
 
         return new JobPreflightResult(issues);
     }

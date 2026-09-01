@@ -286,18 +286,44 @@
                              to reconcile. The progress bar stays because it is the only element of the
                              group that is worth watching while standing at the machine.
                         -->
-                        <ProgressBar Value="{Binding GCode.ProgressPercent}" Height="4" Margin="0,0,0,10" />
+                        <!--
+                            One card instead of a loose bar, a loose estimate and two loose message
+                            lines. Those four said different parts of the same thing in four places,
+                            and the two message lines only appeared when something had gone wrong, so
+                            the panel changed shape at the worst moment. Compact, because the panel it
+                            sits in already has a border.
 
-                        <!-- The "Použitý materiál" text box is gone. MaterialName is already filled in
-                             automatically when a recipe is applied from the materials library, so the
-                             field was a second, manual way to say the same thing — one that changed
-                             nothing about the job and only ever reached the history log. -->
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBlock Text="Odhad času" Style="{StaticResource MachineFieldLabel}" Margin="0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="{Binding GCode.EstimatedTimeLabel}"
-                                       Style="{StaticResource Text.Numeric}" VerticalAlignment="Center" />
-                        </Grid>
+                            The "Použitý materiál" text box is gone for its own reason: MaterialName is
+                            filled in automatically when a recipe is applied from the materials
+                            library, so the field was a second, manual way to say the same thing.
+                        -->
+                        <components:ProcessStatusCard Compact="True" Margin="0,0,0,12"
+                            Status="{Binding JobStatus.Status}"
+                            Title="{Binding JobStatus.Title}"
+                            Description="{Binding JobStatus.Description}"
+                            ShowsProgress="{Binding JobStatus.ShowsProgress}"
+                            Progress="{Binding JobStatus.Progress}"
+                            PrimaryLabel="{Binding JobStatus.PrimaryLabel}"
+                            PrimaryCommand="{Binding JobStatus.PrimaryCommand}"
+                            PrimaryIsDanger="{Binding JobStatus.PrimaryIsDanger}"
+                            SecondaryLabel="{Binding JobStatus.SecondaryLabel}"
+                            SecondaryCommand="{Binding JobStatus.SecondaryCommand}"
+                            SecondaryIsDanger="{Binding JobStatus.SecondaryIsDanger}">
+                            <components:ProcessStatusCard.Meta>
+                                <ItemsControl ItemsSource="{Binding JobStatus.Details}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,5">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Muted}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Value}"
+                                                           Style="{StaticResource Text.Numeric}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </components:ProcessStatusCard.Meta>
+                        </components:ProcessStatusCard>
 
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,9">
                             <StackPanel>
@@ -349,8 +375,6 @@
                             </Grid>
                         </Expander>
 
-                        <TextBlock Text="{Binding GCode.PreflightMessage}" Foreground="{StaticResource Brush.Danger}" TextWrapping="Wrap" Margin="0,0,0,6" Visibility="{Binding GCode.PreflightMessage, Converter={StaticResource NotNullToVisibility}}" />
-                        <TextBlock Text="{Binding GCode.LastMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,6" Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

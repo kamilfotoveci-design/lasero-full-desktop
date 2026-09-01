@@ -48,10 +48,12 @@
                         <RadioButton x:Name="LayersTabRadio"
                                      IsChecked="True"
                                      Style="{StaticResource InspectorModeSegment}"
-                                     GroupName="InspectorTab">
+                                     GroupName="InspectorTab"
+                                     AutomationProperties.Name="Vrstvy">
                             <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Vrstvy" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
                         </RadioButton>
                         <RadioButton x:Name="MachineTabRadio"
+                                     AutomationProperties.Name="Stroj"
                                      Style="{StaticResource InspectorModeSegment}"
                                      GroupName="InspectorTab">
                             <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Stroj" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />

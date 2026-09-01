@@ -39,6 +39,9 @@ public partial class MainWindow : Window
         // Without this the maximized window is inflated by the resize border, which pushed the
         // bottom job strip — Frame and Start — off the bottom of the screen.
         MaximizeWorkAreaHook.Attach(this);
+        // Windows 11 rounds every framed window and draws a hairline around it. A borderless window
+        // opts out of both, so the app had square corners and no visible edge; DWM gives them back.
+        WindowFrameHook.Attach(this, TryFindResource("Brush.PanelBorderStrong") as System.Windows.Media.Brush);
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();
         PreviewKeyDown += OnPreviewKeyDown;

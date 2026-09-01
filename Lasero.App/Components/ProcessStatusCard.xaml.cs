@@ -65,6 +65,12 @@ public partial class ProcessStatusCard : UserControl
     public static readonly DependencyProperty SecondaryCommandProperty = DependencyProperty.Register(
         nameof(SecondaryCommand), typeof(ICommand), typeof(ProcessStatusCard), new PropertyMetadata(null));
 
+    /// <summary>Outlines the secondary action in red. Stopping a running machine is destructive but it
+    /// is not the dominant action while the job is going well — pausing is — so it needs to read as
+    /// dangerous from the quiet slot.</summary>
+    public static readonly DependencyProperty SecondaryIsDangerProperty = DependencyProperty.Register(
+        nameof(SecondaryIsDanger), typeof(bool), typeof(ProcessStatusCard), new PropertyMetadata(false));
+
     public static readonly DependencyProperty DismissCommandProperty = DependencyProperty.Register(
         nameof(DismissCommand), typeof(ICommand), typeof(ProcessStatusCard), new PropertyMetadata(null));
 
@@ -162,6 +168,12 @@ public partial class ProcessStatusCard : UserControl
     {
         get => (ICommand?)GetValue(SecondaryCommandProperty);
         set => SetValue(SecondaryCommandProperty, value);
+    }
+
+    public bool SecondaryIsDanger
+    {
+        get => (bool)GetValue(SecondaryIsDangerProperty);
+        set => SetValue(SecondaryIsDangerProperty, value);
     }
 
     public ICommand? DismissCommand
