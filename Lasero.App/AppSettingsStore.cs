@@ -38,12 +38,15 @@ public sealed class WorkspacePreferences
     /// it collapsed the next morning too.</summary>
     public bool IsNavCollapsed { get; set; }
 
-    /// <summary>Rail widths. The collapsed value is not a round number by accident: rail padding 14 +
-    /// button padding 10 + a Size.Icon.Md glyph + 10 + 14 is exactly 66, so the icon lands centred
-    /// with no per-button alignment overrides and nothing to keep in sync when either padding
-    /// changes.</summary>
+    /// <summary>
+    /// Rail widths. The collapsed value is derived from the widest item in the strip, not the typical
+    /// one: rail padding 14 + button padding 10 + the 26px account avatar + 10 + 14 = 74. Sizing it to
+    /// the 18px navigation glyphs instead gave 66, which centred the glyphs perfectly and quietly cut
+    /// the right-hand third off the avatar — a Border does clip, and nothing in the layout complains.
+    /// Everything narrower than 26 simply centres in the space.
+    /// </summary>
     public const double ExpandedNavWidth = 164;
-    public const double CollapsedNavWidth = 66;
+    public const double CollapsedNavWidth = 74;
 
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)

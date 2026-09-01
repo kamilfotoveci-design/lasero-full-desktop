@@ -494,37 +494,15 @@
                     <ColumnDefinition Width="138" />
                 </Grid.ColumnDefinitions>
 
-                <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="14,0"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- The rail hangs directly below this button, which is the whole reason it sits
-                             here rather than at the foot of the rail it controls: the thing you press
-                             and the thing that moves are in the same column. IsHitTestVisibleInChrome
-                             is required - WindowChrome claims the top 60px for dragging, so without it
-                             a click here starts a window drag instead of pressing the button. -->
-                        <Button Style="{StaticResource Button.SidebarToggle}"
-                                Command="{Binding ToggleNavCommand}" Margin="0,0,12,0"
-                                AutomationProperties.Name="Sbalit nebo rozbalit panel">
-                            <Button.ToolTip>
-                                <TextBlock>
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Sbalit panel na ikony" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                                    <Setter Property="Text" Value="Rozbalit panel s popisky" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Button.ToolTip>
-                        </Button>
-                        <Image Source="{StaticResource Image.BrandWordmark}"
-                               Width="104" Height="34" Stretch="Uniform"
-                               VerticalAlignment="Center"
-                               AutomationProperties.Name="Lasero" />
-                    </StackPanel>
+                <!-- Identity only: wordmark, project, unsaved state, window buttons. The sidebar
+                     toggle lived here for one round and did not belong - it is a control, and putting
+                     it beside the wordmark turned the identity block into a control cluster. It now
+                     sits at the head of the rail it collapses. -->
+                <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="16,0">
+                    <Image Source="{StaticResource Image.BrandWordmark}"
+                           Width="104" Height="34" Stretch="Uniform"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                           AutomationProperties.Name="Lasero" />
                 </Border>
 
                 <!-- Project identity on one line. "Pracovní návrh" was a constant second line that said
@@ -597,10 +575,26 @@
 
             <!-- Stable application navigation. Design tools live beside the canvas so this rail
                  never changes meaning when the user switches screens. -->
-            <Border x:Name="NavRail" Grid.Column="0" Padding="14,16" Width="164"
+            <Border x:Name="NavRail" Grid.Column="0" Width="164"
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0" CornerRadius="0">
+                <!--
+                    The extra padding when collapsed is what centres the glyphs. The rail is 74 wide to
+                    clear the 26px account avatar, but a nav button's content is left-aligned behind its
+                    own 10px padding, so at 14px rail padding every icon sat 8px left of centre and the
+                    strip read as leaning. 18 + 10 on each side of an 18px glyph fills 74 exactly.
+                -->
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Padding" Value="14,16" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                <Setter Property="Padding" Value="18,16" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -609,6 +603,41 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0">
+                        <!--
+                            The rail's own control, at the rail's own head: it belongs to the thing it
+                            resizes, it is the first thing the eye reaches on the left edge, and it is
+                            where every desktop app that has one puts it. Left-aligned when the labels
+                            are showing so it lines up with them; centred once the rail is a strip.
+                        -->
+                        <Button Command="{Binding ToggleNavCommand}"
+                                Margin="0,0,0,10"
+                                AutomationProperties.Name="Sbalit nebo rozbalit panel">
+                            <Button.ToolTip>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Sbalit panel na ikony" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                                    <Setter Property="Text" Value="Rozbalit panel s popisky" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Button.ToolTip>
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.SidebarToggle}">
+                                    <Setter Property="HorizontalAlignment" Value="Left" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                            <Setter Property="HorizontalAlignment" Value="Center" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
                             <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
