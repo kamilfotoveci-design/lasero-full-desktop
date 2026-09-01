@@ -7,7 +7,6 @@
              xmlns:components="clr-namespace:Lasero.App.Components"
              xmlns:views="clr-namespace:Lasero.App.Views"
              xmlns:layers="clr-namespace:Lasero.Core.Layers;assembly=Lasero.Core"
-             xmlns:jobs="clr-namespace:Lasero.Core.Jobs;assembly=Lasero.Core"
              MinWidth="320">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -88,7 +87,6 @@
                 <Grid Visibility="{Binding IsChecked, ElementName=LayersTabRadio, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                 <!--
                     One vertical column, not a stack of boxes. This tab used to nest
@@ -544,101 +542,6 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
-
-                    <!--
-                        Job controls live outside the ScrollViewer. Stop must remain reachable while a
-                        job is active even when the layer list and settings are taller than the window.
-                        These buttons bind the existing commands directly; their CanExecute and
-                        JobPreflight safety boundary is unchanged.
-                    -->
-                    <Border Grid.Row="1"
-                            Padding="18,12,18,16"
-                            Background="{StaticResource Brush.Panel}"
-                            BorderBrush="{StaticResource Brush.PanelBorder}"
-                            BorderThickness="0,1,0,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Odhadovaný čas" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding GCode.EstimatedTimeLabel}"
-                                           Style="{StaticResource Text.Numeric}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </Grid>
-
-                            <TextBlock Text="Rámování" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8" />
-                            <Button Style="{StaticResource JobIdleActionButton}"
-                                    Command="{Binding GCode.RunFramingCommand}"
-                                    Height="{StaticResource Size.Control.Base}"
-                                    MinHeight="{StaticResource Size.Control.Base}"
-                                    Padding="10,0"
-                                    Margin="0,0,0,8"
-                                    ToolTipService.ShowOnDisabled="True"
-                                    ToolTip="{Binding GCode.FrameActionTooltip}">
-                                <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat"
-                                                      IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                            </Button>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="8" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.ColumnSpan="3"
-                                        Style="{StaticResource JobStartActionButton}"
-                                        Command="{Binding GCode.RunJobCommand}"
-                                        Height="{StaticResource Size.Control.Large}"
-                                        MinHeight="{StaticResource Size.Control.Large}"
-                                        Padding="18,0"
-                                        ToolTipService.ShowOnDisabled="True"
-                                        ToolTip="{Binding GCode.StartActionTooltip}">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Spustit"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource JobRunningActionButton}"
-                                        Command="{Binding GCode.PauseResumeCommand}"
-                                        Height="{StaticResource Size.Control.Large}"
-                                        MinHeight="{StaticResource Size.Control.Large}"
-                                        ToolTip="Pozastavit úlohu">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                                </Button>
-                                <Button Style="{StaticResource JobPausedActionButton}"
-                                        Command="{Binding GCode.PauseResumeCommand}"
-                                        Height="{StaticResource Size.Control.Large}"
-                                        MinHeight="{StaticResource Size.Control.Large}"
-                                        ToolTip="Pokračovat v pozastavené úloze">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                                </Button>
-                                <Button Grid.Column="2"
-                                        Command="{Binding GCode.AbortCommand}"
-                                        Height="{StaticResource Size.Control.Large}"
-                                        MinHeight="{StaticResource Size.Control.Large}"
-                                        ToolTipService.ShowOnDisabled="True"
-                                        ToolTip="Okamžitě zastavit pohyb i laser">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource JobActiveStopButton}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}">
-                                                    <Setter Property="Grid.Column" Value="0" />
-                                                    <Setter Property="Grid.ColumnSpan" Value="3" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}">
-                                                    <Setter Property="Grid.Column" Value="0" />
-                                                    <Setter Property="Grid.ColumnSpan" Value="3" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                    <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
                 </Grid>
 
                 <views:MachinePanelView Margin="12,10,12,8"

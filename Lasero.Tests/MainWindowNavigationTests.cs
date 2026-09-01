@@ -149,24 +149,26 @@ public sealed class MainWindowNavigationTests
     }
 
     [Fact]
-    public void DesignerOwnsPinnedJobActions()
+    public void BottomStripOwnsJobActionsOnEveryScreen()
     {
         var root = FindRepositoryRoot();
         var inspector = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
         var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
         var sharedStyles = File.ReadAllText(Path.Combine(root, "Lasero.App", "Theme", "SharedUiStyles.xaml"));
 
-        var scrollEnd = inspector.IndexOf("</ScrollViewer>", StringComparison.Ordinal);
-        var pinnedFooter = inspector.IndexOf("Job controls live outside the ScrollViewer", StringComparison.Ordinal);
-        Assert.True(scrollEnd >= 0 && pinnedFooter > scrollEnd,
-            "Designer job actions must stay outside the scrolling layer settings.");
-
-        Assert.Contains("Command=\"{Binding GCode.RunFramingCommand}\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Command=\"{Binding GCode.RunJobCommand}\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Command=\"{Binding GCode.PauseResumeCommand}\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Command=\"{Binding GCode.AbortCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Command=\"{Binding GCode.RunFramingCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Command=\"{Binding GCode.RunJobCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Command=\"{Binding GCode.PauseResumeCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Command=\"{Binding GCode.AbortCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("GCode.EstimatedTimeLabel", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("RequireFramingBeforeStart", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("Náhled rámování", inspector, StringComparison.Ordinal);
+
+        Assert.Contains("Command=\"{Binding GCode.RunFramingCommand}\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.RunJobCommand}\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.PauseResumeCommand}\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.AbortCommand}\"", mainWindow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scene.SelectedLayer.MaterialDisplayLabel", mainWindow, StringComparison.Ordinal);
 
         Assert.Contains("x:Key=\"JobStartActionButton\" TargetType=\"Button\" BasedOn=\"{StaticResource JobDangerButton}\"", sharedStyles, StringComparison.Ordinal);
         Assert.DoesNotContain("FramingPreviewDocument", mainWindow, StringComparison.Ordinal);

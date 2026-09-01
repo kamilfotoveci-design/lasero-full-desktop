@@ -1012,8 +1012,7 @@
 
         <!--
             Three deliberate zones: machine/job state on the left, the layer palette in the middle,
-            job execution on the right. This is the app's one authoritative connection indicator —
-            the header pill and the duplicate badges that used to repeat it are gone.
+            job execution on the right. This is the app's one authoritative connection indicator.
         -->
         <Border Grid.Row="3"
                 Background="{StaticResource Brush.TitleBar}"
@@ -1033,85 +1032,77 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal">
-                        <!-- State is told three ways at once: a shape (which glyph), a word, and a
-                             semantic colour. Never colour alone. The shared state pill carries all
-                             three, so the command bar, the Home device card and the machine panel
-                             stopped each drawing their own indicator. -->
-                        <components:StatusBadge StatusText="{Binding Connection.StatusText}"
-                                                ToolTip="{Binding Connection.StatusText}"
-                                                MaxWidth="320">
-                            <components:StatusBadge.Style>
-                                <Style TargetType="components:StatusBadge">
-                                    <Setter Property="Kind" Value="Neutral" />
-                                    <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Connection.IsConnecting}" Value="True">
-                                            <Setter Property="Kind" Value="Warning" />
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Refresh}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Connection.IsConnected}" Value="True">
-                                            <Setter Property="Kind" Value="Ready" />
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </components:StatusBadge.Style>
-                        </components:StatusBadge>
+                            <!-- State is told by glyph, word and semantic colour — never colour alone. -->
+                            <components:StatusBadge StatusText="{Binding Connection.StatusText}"
+                                                    ToolTip="{Binding Connection.StatusText}"
+                                                    MaxWidth="320">
+                                <components:StatusBadge.Style>
+                                    <Style TargetType="components:StatusBadge">
+                                        <Setter Property="Kind" Value="Neutral" />
+                                        <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Connection.IsConnecting}" Value="True">
+                                                <Setter Property="Kind" Value="Warning" />
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Refresh}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Connection.IsConnected}" Value="True">
+                                                <Setter Property="Kind" Value="Ready" />
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </components:StatusBadge.Style>
+                            </components:StatusBadge>
 
-                        <!-- Contextual repair action. A disconnected machine is the single most common
-                             reason Start is unavailable, so the fix sits next to the statement of the
-                             problem instead of only in a tooltip. -->
-                        <Button Style="{StaticResource Button.Ghost}" Command="{Binding ShowDeviceCommand}"
-                                Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
-                                Foreground="{StaticResource Brush.AccentText}"
-                                Content="Připojit"
-                                ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
-                                Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ShowDeviceCommand}"
+                                    Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
+                                    Foreground="{StaticResource Brush.AccentText}"
+                                    Content="Připojit"
+                                    ToolTip="Otevřít obrazovku Zařízení a připojit gravírku"
+                                    Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
-                        <components:StatusBadge Margin="10,0,0,0"
-                                                StatusText="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}"
-                                                Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
-                            <components:StatusBadge.Style>
-                                <Style TargetType="components:StatusBadge">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Error}">
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Faulted}">
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Aborted}">
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </components:StatusBadge.Style>
-                        </components:StatusBadge>
+                            <components:StatusBadge Margin="10,0,0,0"
+                                                    StatusText="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}"
+                                                    Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
+                                <components:StatusBadge.Style>
+                                    <Style TargetType="components:StatusBadge">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Error}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Faulted}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Aborted}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </components:StatusBadge.Style>
+                            </components:StatusBadge>
 
-                        <Border Style="{StaticResource StatusItem}" Margin="4,0,0,0"
-                                Visibility="{Binding GCode.HasNamedJobFile, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <components:IconGlyph IconData="{StaticResource Glyph.Project}"
-                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                      Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding GCode.FileLabel}"
-                                           Foreground="{StaticResource Brush.TextSecondary}"
-                                           FontSize="{StaticResource Size.Text.Meta}"
-                                           MaxWidth="200" TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <!-- 340 rather than 260: the messages that land here are short sentences, and
-                             at 260 the framing-required one was cut off mid-word. Trimming stays as
-                             the last resort for a message nobody anticipated. -->
-                        <TextBlock Text="{Binding GCode.LastMessage}"
-                                   Margin="10,0,0,0"
-                                   FontSize="{StaticResource Size.Text.Meta}"
-                                   Foreground="{StaticResource Brush.TextSecondary}"
-                                   MaxWidth="340"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding GCode.LastMessage}" VerticalAlignment="Center"
-                                   Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
+                            <Border Style="{StaticResource StatusItem}" Margin="4,0,0,0"
+                                    Visibility="{Binding GCode.HasNamedJobFile, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Project}"
+                                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                          Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,6,0" />
+                                    <TextBlock Text="{Binding GCode.FileLabel}"
+                                               Foreground="{StaticResource Brush.TextSecondary}"
+                                               FontSize="{StaticResource Size.Text.Meta}"
+                                               MaxWidth="200" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding GCode.FileLabel}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="{Binding GCode.LastMessage}"
+                                       Margin="10,0,0,0"
+                                       FontSize="{StaticResource Size.Text.Meta}"
+                                       Foreground="{StaticResource Brush.TextSecondary}"
+                                       MaxWidth="340"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding GCode.LastMessage}" VerticalAlignment="Center"
+                                       Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
                     </StackPanel>
                     <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,6,0,0"
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
@@ -1146,21 +1137,11 @@
                 </StackPanel>
 
                 <!--
-                    Job execution for non-Designer screens. Start is danger-red because it begins a
-                    physical operation; Frame stays neutral and secondary. On Designer this whole
-                    group collapses because the inspector owns the same commands in a pinned footer.
+                    One authoritative job-control group for every screen, including Designer. Start
+                    is danger-red because it begins a physical operation; Frame stays secondary.
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="18,0" Margin="0,0,10,0"
