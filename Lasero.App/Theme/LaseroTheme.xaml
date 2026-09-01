@@ -897,6 +897,59 @@
         </Setter>
     </Style>
 
+    <!--
+        A select that opens something richer than a list of strings. The inspector's Materiál row has
+        to offer two groups (the catalogue for the connected machine, and the operator's own saved
+        recipes) with speed and power quoted on every entry, which a ComboBox of items cannot show
+        without becoming a second control. This keeps the field chrome and the chevron so it reads as
+        a select in a column of selects, and leaves what it opens to the caller.
+    -->
+    <Style x:Key="Field.Select" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Radius.Md}">
+                        <Grid Margin="{TemplateBinding Padding}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <Path Grid.Column="1" Data="{DynamicResource Glyph.ChevronDown}"
+                                  Stroke="{DynamicResource Brush.TextSecondary}" StrokeThickness="1.6"
+                                  StrokeLineJoin="Round" Stretch="Uniform" Width="10" Height="10"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="ComboBoxItem">
         <Setter Property="Padding" Value="8,6" />
         <Setter Property="Template">

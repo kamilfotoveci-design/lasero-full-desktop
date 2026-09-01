@@ -56,15 +56,19 @@ public sealed class MainWindowNavigationTests
         var xaml = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(), "Lasero.App", "Views", "DesignerInspectorView.xaml"));
 
-        Assert.Contains("Text=\"Zpracování\"", xaml, StringComparison.Ordinal);
+        // What this test defends is the wording and the directness: all three modes named in the
+        // operator's terms, each bound straight to LayerMode. The control carrying them moved from a
+        // segmented radio track to the Režim row of Nastavení práce, so the assertions follow the
+        // binding rather than the widget.
+        Assert.Contains("Text=\"Režim\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Čára\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Cut", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Výplň\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Fill", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Výplň + čára\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=FillAndCut", xaml, StringComparison.Ordinal);
-        Assert.Contains("IsChecked=\"{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("IsChecked=\"{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsSelected=\"{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsSelected=\"{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("<ComboBoxItem Content=\"Řezání\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("<ComboBoxItem Content=\"Gravírování\"", xaml, StringComparison.Ordinal);
     }

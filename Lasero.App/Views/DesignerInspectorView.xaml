@@ -25,6 +25,27 @@
         <Style x:Key="InspectorLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="Margin" Value="0,0,0,6" />
         </Style>
+        <!--
+            The Interval row, unavailable unless the laser actually fills something. Off by default and
+            switched on by the three cases that use a line spacing: Výplň, Výplň + čára, and a raster
+            layer. Both cells go down together, so the label reads as unavailable alongside its field
+            instead of a live label above a dead input.
+        -->
+        <Style x:Key="WorkSettingRow.FillOnly" TargetType="Grid">
+            <Setter Property="IsEnabled" Value="False" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
+                    <Setter Property="IsEnabled" Value="True" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
+                    <Setter Property="IsEnabled" Value="True" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsRaster}" Value="True">
+                    <Setter Property="IsEnabled" Value="True" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="InspectorModeSegment" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
             <Setter Property="Height" Value="36" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
@@ -295,67 +316,74 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock Text="Zpracování" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8"
-                                       Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}" />
-                            <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding IsEnabled}"
-                                    Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
-                                <UniformGrid Columns="3">
-                                    <RadioButton Content="Čára"
-                                                 GroupName="LayerProcessingMode"
-                                                 Style="{StaticResource Segment}"
-                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}"
-                                                 ToolTip="Laser sleduje obrys vektoru. Vhodné pro řezání a liniové gravírování."
-                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako čáru" />
-                                    <RadioButton Content="Výplň"
-                                                 GroupName="LayerProcessingMode"
-                                                 Style="{StaticResource Segment}"
-                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}"
-                                                 ToolTip="Laser vyplní vnitřní plochu vektoru řádky. Vhodné pro plné gravírování."
-                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň" />
-                                    <RadioButton Content="Výplň + čára"
-                                                 GroupName="LayerProcessingMode"
-                                                 Style="{StaticResource Segment}"
-                                                 IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=FillAndCut, Mode=TwoWay}"
-                                                 ToolTip="Laser nejdřív vyplní plochu a potom projede její obrys."
-                                                 automation:AutomationProperties.Name="Zpracovat vrstvu jako výplň a obrys" />
-                                </UniformGrid>
-                            </Border>
-                            <TextBlock Margin="0,8,0,18" TextWrapping="Wrap"
-                                       Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-                                        <Setter Property="Text" Value="Laser pojede po obrysu vektoru." />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
-                                                <Setter Property="Text" Value="Laser vyplní uzavřenou plochu řádky." />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
-                                                <Setter Property="Text" Value="Laser nejdřív vyplní plochu a potom projede její obrys." />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <!--
+                                Nastavení práce. One column of label-left, control-right rows, in the
+                                order the operator decides them: what the material is, what the laser
+                                does to it, then the four numbers. It used to be three separate
+                                sections — a segmented Zpracování track, a Nastavení grid, and an
+                                Expander hiding the fill interval — plus a "Doporučené parametry"
+                                button sitting below all of them. Interval was the odd one out: it is
+                                one of the numbers that decides the result, and it was the only one
+                                behind a disclosure.
+                            -->
+                            <TextBlock Text="Nastavení práce" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,10" />
 
-                            <TextBlock Text="Nastavení" Style="{StaticResource InspectorSectionTitle}" Margin="0,0,0,8" />
-                            <!-- Label left, value right, one row each: the three numbers that decide the
-                                 result are scannable as a column instead of three stacked label+field
-                                 pairs squeezed side by side. Units live inside the field. -->
                             <Grid IsEnabled="{Binding IsEnabled}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="132" />
+                                    <ColumnDefinition Width="*" MinWidth="72" />
+                                    <ColumnDefinition Width="168" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="9" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="9" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="9" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="9" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="9" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="Rychlost" Style="{StaticResource TransformRowLabel}" />
-                                <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Rychlost posuvu laseru">
+                                <!--
+                                    Materiál. The label is what the numbers below it came from, so it
+                                    reads "Vlastní nastavení" the moment any of them is typed over —
+                                    see LayerSettings.ForgetMaterial. Pressing it opens the same
+                                    grouped recipe menu as before, catalogue plus saved presets.
+                                -->
+                                <TextBlock Text="Materiál" Style="{StaticResource TransformRowLabel}" />
+                                <Button Grid.Column="1" Style="{StaticResource Field.Select}"
+                                        Content="{Binding MaterialDisplayLabel}"
+                                        Tag="{Binding}"
+                                        Click="OnApplyMaterialClick"
+                                        ToolTip="Vybrat ověřené parametry materiálu"
+                                        automation:AutomationProperties.Name="Materiál a doporučené parametry" />
+
+                                <TextBlock Grid.Row="2" Text="Režim" Style="{StaticResource TransformRowLabel}" />
+                                <ComboBox Grid.Row="2" Grid.Column="1"
+                                          ToolTip="Co laser s vektorem udělá"
+                                          automation:AutomationProperties.Name="Režim zpracování vrstvy"
+                                          Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <ComboBoxItem Content="Čára"
+                                                  IsSelected="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}" />
+                                    <ComboBoxItem Content="Výplň"
+                                                  IsSelected="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}" />
+                                    <ComboBoxItem Content="Výplň + čára"
+                                                  IsSelected="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=FillAndCut, Mode=TwoWay}" />
+                                </ComboBox>
+                                <!-- A raster layer has no mode to choose: the image is engraved line by
+                                     line and nothing else is available. Showing the select with a value
+                                     the operator cannot change would invite them to try. -->
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="Obrázek · řádkové gravírování"
+                                           Style="{StaticResource Text.Muted}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="Obrázek se vždy gravíruje po řádcích"
+                                           Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource BoolToVisibility}}" />
+
+                                <TextBlock Grid.Row="4" Text="Rychlost" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Row="4" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Rychlost posuvu laseru">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="mm/min" Style="{StaticResource UnitField.Suffix}" />
                                         <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Speed, StringFormat=0}"
@@ -363,8 +391,8 @@
                                     </DockPanel>
                                 </Border>
 
-                                <TextBlock Grid.Row="2" Text="Výkon" Style="{StaticResource TransformRowLabel}" />
-                                <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Výkon laseru v procentech">
+                                <TextBlock Grid.Row="6" Text="Výkon" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Row="6" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Výkon laseru v procentech">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="%" Style="{StaticResource UnitField.Suffix}" />
                                         <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Power, StringFormat=0}"
@@ -372,86 +400,54 @@
                                     </DockPanel>
                                 </Border>
 
-                                <TextBlock Grid.Row="4" Text="Průchody" Style="{StaticResource TransformRowLabel}" />
-                                <Border Grid.Row="4" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Kolikrát laser projede stejnou dráhu">
+                                <TextBlock Grid.Row="8" Text="Průchody" Style="{StaticResource TransformRowLabel}" />
+                                <Border Grid.Row="8" Grid.Column="1" Style="{StaticResource UnitField.Shell}" ToolTip="Kolikrát laser projede stejnou dráhu">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="×" Style="{StaticResource UnitField.Suffix}" />
                                         <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Passes, StringFormat=0}"
                                                  automation:AutomationProperties.Name="Počet průchodů" />
                                     </DockPanel>
                                 </Border>
+
+                                <!-- Interval means nothing to a layer the laser only traces, so the whole
+                                     row goes down together — an editable field that changes nothing is
+                                     worse than a visibly unavailable one. -->
+                                <Grid Grid.Row="10" Grid.ColumnSpan="2" Style="{StaticResource WorkSettingRow.FillOnly}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MinWidth="72" />
+                                        <ColumnDefinition Width="168" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Interval" Style="{StaticResource TransformRowLabel}" />
+                                    <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}"
+                                            ToolTip="Rozestup gravírovaných řádků. Menší hodnota znamená jemnější výplň a delší čas.">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                            <TextBox Style="{StaticResource UnitField.Input}"
+                                                     Text="{Binding FillLineIntervalMm, UpdateSourceTrigger=LostFocus, StringFormat=0.###}"
+                                                     automation:AutomationProperties.Name="Rozestup řádků v milimetrech" />
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
                             </Grid>
 
-                            <StackPanel Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed" />
+                            <TextBlock Margin="0,10,0,0" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                        <Setter Property="Text" Value="Laser pojede po obrysu vektoru. Interval se použije až u výplně." />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.Fill}">
-                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="Laser vyplní uzavřenou plochu řádky s daným intervalem." />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Mode}" Value="{x:Static layers:LayerMode.FillAndCut}">
-                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="Laser nejdřív vyplní plochu řádky a potom projede její obrys." />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot}" Value="True">
+                                                <Setter Property="Text" Value="Obraz je při importu převeden do černobílého rastru metodou Stucki. Interval určuje vzdálenost gravírovaných řádků." />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </StackPanel.Style>
-                                <Button HorizontalAlignment="Stretch"
-                                        Padding="14,0"
-                                        Tag="{Binding}"
-                                        Click="OnApplyMaterialClick"
-                                        ToolTip="Vybrat ověřené parametry materiálu">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Materials}"
-                                                          Text="Doporučené parametry"
-                                                          IconSize="{StaticResource Size.Icon.Sm}" />
-                                </Button>
-                                <Expander Margin="0,10,0,0">
-                                    <Expander.Header>
-                                        <TextBlock>
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="Pokročilé nastavení výplně" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot}" Value="True">
-                                                            <Setter Property="Text" Value="Nastavení obrázku" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </Expander.Header>
-                                    <StackPanel Margin="0,10,0,0">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="132" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Rozestup řádků" Style="{StaticResource TransformRowLabel}" />
-                                            <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}"
-                                                    ToolTip="Menší rozestup znamená jemnější gravírování a delší čas.">
-                                                <DockPanel>
-                                                    <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                                    <TextBox Style="{StaticResource UnitField.Input}"
-                                                             Text="{Binding FillLineIntervalMm, UpdateSourceTrigger=LostFocus, StringFormat=0.###}"
-                                                             automation:AutomationProperties.Name="Rozestup řádků v milimetrech" />
-                                                </DockPanel>
-                                            </Border>
-                                        </Grid>
-                                        <TextBlock TextWrapping="Wrap" Margin="0,8,0,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-                                                    <Setter Property="Text" Value="Menší hodnota vytvoří jemnější výplň, ale prodlouží dobu gravírování." />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot}" Value="True">
-                                                            <Setter Property="Text" Value="Určuje vzdálenost gravírovaných řádků. Obraz je při importu převeden do černobílého rastru metodou Stucki." />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
+                                </TextBlock.Style>
+                            </TextBlock>
 
                             <Button Style="{StaticResource Button.Ghost}" Margin="0,18,0,0" HorizontalAlignment="Left" Padding="10,0"
                                     Command="{Binding DataContext.Scene.DeleteSelectedLayerCommand, ElementName=InspectorRoot}"
