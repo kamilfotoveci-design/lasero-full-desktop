@@ -23,6 +23,14 @@ public sealed partial class LayerSettings : ObservableObject
     /// <summary>Fill-mode scan line spacing in mm (25.4 / DPI) — irrelevant for Cut layers.</summary>
     [ObservableProperty] private double _fillLineIntervalMm = 25.4 / 254;
 
+    /// <summary>
+    /// Name of the material recipe these numbers came from, or null when the operator typed them in.
+    /// Presentation only — nothing in the toolpath reads it. It exists because Speed/Power/Passes on
+    /// their own cannot say <em>what</em> they were meant for, so a layer set from the catalogue and
+    /// a layer someone guessed at looked identical once the dialog closed.
+    /// </summary>
+    [ObservableProperty] private string? _materialLabel;
+
     [ObservableProperty] private bool _isEnabled = true;
     [ObservableProperty] private bool _isVisible = true;
     [ObservableProperty] private bool _isRaster;
@@ -36,6 +44,9 @@ public sealed partial class LayerSettings : ObservableObject
         _ => "Neznámý režim",
     };
     public string ProcessingSummary => $"{ModeLabel} · {Speed:0} mm/min · {Power:0.#} % · {Passes}×";
+
+    /// <summary>What the material row shows when no recipe has been applied.</summary>
+    public string MaterialDisplayLabel => MaterialLabel is { Length: > 0 } label ? label : "Vlastní nastavení";
 
     partial void OnColorChanged(RgbColor value) => OnPropertyChanged(nameof(ColorHex));
     partial void OnModeChanging(LayerMode oldValue, LayerMode newValue)
@@ -72,9 +83,64 @@ public sealed partial class LayerSettings : ObservableObject
         : (3000d, 30d);
 
     private static bool AreClose(double a, double b) => Math.Abs(a - b) < 0.001;
-    partial void OnSpeedChanged(double value) => OnPropertyChanged(nameof(ProcessingSummary));
-    partial void OnPowerChanged(double value) => OnPropertyChanged(nameof(ProcessingSummary));
-    partial void OnPassesChanged(int value) => OnPropertyChanged(nameof(ProcessingSummary));
+    partial void OnSpeedChanged(double value)
+    {
+        OnPropertyChanged(nameof(ProcessingSummary));
+        ForgetMaterial();
+    }
+
+    partial void OnPowerChanged(double value)
+    {
+        OnPropertyChanged(nameof(ProcessingSummary));
+        ForgetMaterial();
+    }
+
+    partial void OnPassesChanged(int value)
+    {
+        OnPropertyChanged(nameof(ProcessingSummary));
+        ForgetMaterial();
+    }
+
+    partial void OnFillLineIntervalMmChanged(double value) => ForgetMaterial();
+    partial void OnMaterialLabelChanged(string? value) => OnPropertyChanged(nameof(MaterialDisplayLabel));
+
+    /// <summary>
+    /// Applies a catalogue recipe or a saved preset as one unit and records where it came from.
+    /// It has to be one call rather than five assignments: every individual setter drops the
+    /// material name (see <see cref="ForgetMaterial"/>), so assigning the numbers one by one would
+    /// erase the label the recipe is trying to set.
+    /// </summary>
+    public void ApplyRecipe(LayerMode mode, double speed, double power, int passes, double fillLineIntervalMm, string? materialLabel)
+    {
+        _applyingRecipe = true;
+        try
+        {
+            Mode = mode;
+            Speed = speed;
+            Power = power;
+            Passes = passes;
+            FillLineIntervalMm = fillLineIntervalMm;
+        }
+        finally
+        {
+            _applyingRecipe = false;
+        }
+
+        MaterialLabel = materialLabel;
+    }
+
+    /// <summary>
+    /// A hand-typed number means the layer no longer holds the recipe it claims to. Keeping the name
+    /// would be worse than showing none: the operator would read "Překližka 3 mm" off a layer whose
+    /// power they had just halved, and trust a figure nothing stands behind.
+    /// </summary>
+    private void ForgetMaterial()
+    {
+        if (_applyingRecipe) return;
+        MaterialLabel = null;
+    }
+
+    private bool _applyingRecipe;
 
     public override string ToString() => Name;
 

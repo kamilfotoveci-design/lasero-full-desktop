@@ -72,6 +72,11 @@ public sealed class ProjectLayer
     public double Power { get; set; }
     public int Passes { get; set; }
     public double FillLineIntervalMm { get; set; }
+
+    /// <summary>Material recipe the numbers came from. Added after v6 files shipped; absent means
+    /// the layer predates the field or was set by hand, and both read as "Vlastní nastavení".</summary>
+    public string? MaterialLabel { get; set; }
+
     public bool IsEnabled { get; set; } = true;
     public bool IsVisible { get; set; } = true;
     public bool IsRaster { get; set; }

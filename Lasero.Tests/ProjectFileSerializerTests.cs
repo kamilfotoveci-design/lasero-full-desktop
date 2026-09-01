@@ -183,6 +183,28 @@ public sealed class ProjectFileSerializerTests : IDisposable
             layer => Assert.Equal((secondId, "Potom výplň"), (layer.Id, layer.Name)));
     }
 
+    // MaterialLabel was added after v6 project files were already in the wild, so it has to survive
+    // a round trip and a file that predates it has to load with no label rather than fail.
+    [Fact]
+    public void SaveAndLoadPreservesLayerMaterialLabel()
+    {
+        var path = Path.Combine(_directory, "layer-material.lasero");
+        var project = new LaseroProjectFile
+        {
+            Layers =
+            [
+                new ProjectLayer { Name = "Rez", Color = RgbColor.Red, Mode = LayerMode.Cut, MaterialLabel = "Překližka 3 mm" },
+                new ProjectLayer { Name = "Ručně", Color = RgbColor.Red, Mode = LayerMode.Cut },
+            ],
+        };
+
+        ProjectFileSerializer.Save(path, project);
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal("Překližka 3 mm", loaded.Layers[0].MaterialLabel);
+        Assert.Null(loaded.Layers[1].MaterialLabel);
+    }
+
     [Fact]
     public void SaveAndLoadPreservesShapeLayerId()
     {
