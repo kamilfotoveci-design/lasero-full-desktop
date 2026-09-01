@@ -187,12 +187,41 @@
             </Setter>
         </Style>
 
-        <!-- The strip's scroller has no visible track: a scrollbar under a 54px toolbar would eat the
-             captions. The bar appears only while it is needed, and the wheel scrolls the strip. -->
+        <!--
+            The strip's scroller. Its own template, because the scrollbar has to be handed a style by
+            key: WPF resolves implicit styles for elements created inside a ControlTemplate only in
+            Application.Resources, so an implicit override sitting in this ScrollViewer's Resources
+            never reaches the bar. The bar appears only while the row does not fit, and the wheel
+            scrolls the strip either way.
+        -->
         <Style x:Key="Toolbar.Scroller" TargetType="ScrollViewer">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <ScrollContentPresenter Grid.Row="0"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    Margin="{TemplateBinding Padding}" />
+                            <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Style="{StaticResource ScrollBar.Slim}"
+                                       Maximum="{TemplateBinding ScrollableWidth}"
+                                       ViewportSize="{TemplateBinding ViewportWidth}"
+                                       Value="{Binding HorizontalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                       Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Group separator. PanelBorder is the right weight for a card edge but disappears as a
@@ -657,19 +686,6 @@
                         <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Disabled" Padding="0"
                                       Style="{StaticResource Toolbar.Scroller}">
-                            <ScrollViewer.Resources>
-                                <!-- The app's scrollbar is 10px, which is right beside a page of
-                                     content and too much furniture under a 48px strip — it only
-                                     appears when the row does not fit, and the wheel scrolls it
-                                     anyway. Slimmer here and nowhere else. -->
-                                <Style TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
-                                    <Style.Triggers>
-                                        <Trigger Property="Orientation" Value="Horizontal">
-                                            <Setter Property="Height" Value="7" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ScrollViewer.Resources>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Style="{StaticResource Toolbar.Command}" Command="{Binding NewProjectCommand}"
                                     ToolTip="Nový projekt" AutomationProperties.Name="Nový projekt">

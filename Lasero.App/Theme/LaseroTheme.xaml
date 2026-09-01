@@ -1135,6 +1135,50 @@
         </Setter>
     </Style>
 
+    <!--
+        A hairline scrollbar for a strip that overflows, where the app's 10px track is more furniture
+        than the thing it scrolls. Keyed, not implicit, and that is the whole point: a ScrollBar is
+        created inside the ScrollViewer's ControlTemplate, and WPF resolves implicit styles for
+        template-created elements only in Application.Resources — so an implicit override placed in a
+        ScrollViewer's own Resources is silently ignored. It has to be handed over by key.
+    -->
+    <Style x:Key="ScrollBarThumb.Slim" TargetType="Thumb" BasedOn="{StaticResource ScrollBarThumb}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}"
+                            CornerRadius="{StaticResource Radius.Pill}" Margin="1" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.ScrollThumbHover}" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ScrollBar.Slim" TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Height" Value="5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="False">
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollBarThumb.Slim}" />
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Width" Value="10" />
