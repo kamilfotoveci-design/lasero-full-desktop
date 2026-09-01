@@ -187,38 +187,104 @@
             </Setter>
         </Style>
 
-        <!--
-            The strip's scroller. Its own template, because the scrollbar has to be handed a style by
-            key: WPF resolves implicit styles for elements created inside a ControlTemplate only in
-            Application.Resources, so an implicit override sitting in this ScrollViewer's Resources
-            never reaches the bar. The bar appears only while the row does not fit, and the wheel
-            scrolls the strip either way.
-        -->
-        <Style x:Key="Toolbar.Scroller" TargetType="ScrollViewer">
+        <Style x:Key="Toolbar.OverflowToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="{StaticResource Size.Toolbar.ButtonMinWidth}" />
+            <Setter Property="Height" Value="{StaticResource Size.Toolbar.ButtonHeight}" />
+            <Setter Property="Margin" Value="3,0,0,0" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ScrollViewer">
-                        <!-- The bar overlays the content instead of taking a row of its own. Given a
-                             row it shortened the viewport, and the tool buttons — which are nearly as
-                             tall as the strip — got their bottom edge clipped off. Overlaid, it sits
-                             in the few pixels of slack under the buttons and covers nothing. -->
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Sm}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--
+            The command strip. A ToolBar rather than a scrolling panel: below about 1200px the row
+            genuinely cannot hold fifteen tools plus the zoom group, and scrolling answered that by
+            showing half a button and half its tint — the operator saw a control cut down the middle
+            and had to drag a bar to find the rest. ToolBarPanel moves whatever does not fit into the
+            overflow popup behind the chevron instead, so every control on screen is whole and every
+            control that is not on screen is one click away. Nothing is dropped either way.
+
+            The template is ours because the stock one paints a gripper, a raised border and its own
+            button chrome, none of which belong here.
+        -->
+        <Style x:Key="Toolbar.Strip" TargetType="ToolBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolBar">
                         <Grid>
-                            <ScrollContentPresenter CanContentScroll="{TemplateBinding CanContentScroll}"
-                                                    Content="{TemplateBinding Content}"
-                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                    Margin="{TemplateBinding Padding}" />
-                            <ScrollBar x:Name="PART_HorizontalScrollBar"
-                                       Orientation="Horizontal"
-                                       VerticalAlignment="Bottom"
-                                       Style="{StaticResource ScrollBar.Slim}"
-                                       Maximum="{TemplateBinding ScrollableWidth}"
-                                       ViewportSize="{TemplateBinding ViewportWidth}"
-                                       Value="{Binding HorizontalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                                       Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ToolBarPanel x:Name="PART_ToolBarPanel" Grid.Column="0"
+                                          IsItemsHost="True" Orientation="Horizontal"
+                                          VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
+
+                            <ToggleButton x:Name="OverflowButton" Grid.Column="1"
+                                          Style="{StaticResource Toolbar.OverflowToggle}"
+                                          IsChecked="{Binding IsOverflowOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          ClickMode="Press"
+                                          ToolTip="Další nástroje"
+                                          AutomationProperties.Name="Další nástroje">
+                                <components:IconGlyph IconData="{StaticResource Glyph.More}"
+                                                      Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
+                            </ToggleButton>
+
+                            <Popup x:Name="OverflowPopup" AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{Binding IsOverflowOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom" PlacementTarget="{Binding ElementName=OverflowButton}"
+                                   StaysOpen="False">
+                                <Border Background="{StaticResource Brush.Panel}"
+                                        BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                                        CornerRadius="{StaticResource Radius.Md}" Padding="6"
+                                        Effect="{StaticResource Shadow.Dropdown}">
+                                    <ToolBarOverflowPanel x:Name="PART_ToolBarOverflowPanel"
+                                                          WrapWidth="240" Focusable="True"
+                                                          KeyboardNavigation.TabNavigation="Cycle"
+                                                          KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <!-- No overflow, no chevron: a permanently present disabled button would
+                                 read as a tool the operator cannot use. -->
+                            <Trigger Property="HasOverflowItems" Value="False">
+                                <Setter TargetName="OverflowButton" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -683,10 +749,7 @@
                             icon, a caption, a tooltip and an accessible name; below the measured width
                             the captions collapse and the icons stay, so nothing is ever removed.
                         -->
-                        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Disabled" Padding="0"
-                                      Style="{StaticResource Toolbar.Scroller}">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ToolBar Grid.Column="0" Style="{StaticResource Toolbar.Strip}">
                             <Button Style="{StaticResource Toolbar.Command}" Command="{Binding NewProjectCommand}"
                                     ToolTip="Nový projekt" AutomationProperties.Name="Nový projekt">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
@@ -730,6 +793,7 @@
                             <Border Style="{StaticResource Toolbar.Divider}" />
 
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
                                          ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Vybrat">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
@@ -740,6 +804,7 @@
                                  is the discoverable way to the same thing, which is why the tool is
                                  back in the row after previously being dropped as redundant. -->
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pan, Mode=TwoWay}"
                                          ToolTip="Posunout plátno — jde i prostředním tlačítkem myši nebo mezerníkem"
                                          AutomationProperties.Name="Posunout">
@@ -751,6 +816,7 @@
                             <Border Style="{StaticResource Toolbar.Divider}" />
 
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=TwoWay}"
                                          ToolTip="Nakreslit obdélník (R) — se Shiftem čtverec" AutomationProperties.Name="Tvar">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
@@ -758,6 +824,7 @@
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=TwoWay}"
                                          ToolTip="Nakreslit elipsu (E) — se Shiftem kruh" AutomationProperties.Name="Kruh nebo elipsa">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
@@ -765,6 +832,7 @@
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
                                          ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
@@ -772,13 +840,15 @@
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
                             <RadioButton Style="{StaticResource Toolbar.Tool}" GroupName="DesignerToolbarTools"
+                                         ToolBar.OverflowMode="Never"
                                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
                                          ToolTip="Nakreslit čáru (L) — se Shiftem po 45°" AutomationProperties.Name="Čára">
                                 <components:IconLabel Style="{StaticResource AdaptiveToolLabel}" Stacked="True"
                                                       IconData="{StaticResource Glyph.Line}" Text="Čára"
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </RadioButton>
-                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="3,0">
+                            <Menu Background="Transparent" VerticalAlignment="Center" Margin="3,0"
+                                  ToolBar.OverflowMode="Never">
                                 <MenuItem Style="{StaticResource Toolbar.MenuTool}"
                                           ToolTip="Trojúhelníky, mnohoúhelníky a hvězdy"
                                           AutomationProperties.Name="Mnohoúhelník">
@@ -836,8 +906,7 @@
                                     <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
                                 </MenuItem>
                             </Menu>
-                        </StackPanel>
-                        </ScrollViewer>
+                        </ToolBar>
                     </Grid>
                 </Border>
 
