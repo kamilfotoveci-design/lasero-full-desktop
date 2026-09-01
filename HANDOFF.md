@@ -1,20 +1,20 @@
 # Lasero Desktop — handoff
 
-Stav k **31. 8. 2026**, koniec session. Tento súbor existuje preto, aby sa dalo pokračovať v novom
+Stav k **1. 9. 2026**, koniec session. Tento súbor existuje preto, aby sa dalo pokračovať v novom
 chate (alebo iným modelom) bez čítania celej histórie. Popisuje **kde to je, čo sa spravilo, čo je
 rozrobené a čo ďalej**.
+
+Predchádzajúca verzia tohto dokumentu (31. 8.) je v histórii commitu `98fc0d5`.
 
 ---
 
 ## 1. Kde projekt je
 
-**`E:\lasero-desktop`** — nie na `C:`.
+**`E:\lasero-desktop`** — nie na `C:`. Vetva: `design-system-tokens`. HEAD: `5b683e1`.
+Pracovný strom je čistý. **339 testov, všetky prechádzajú.**
 
-Projekt bol 27. 8. 2026 presunutý z `C:\Users\Ruzovka\Videos\lasero-desktop`, pretože `C:` mal
-0,5 GB voľných. **Disk `D:` na tomto stroji neexistuje** (sú len `C:`, `E:`, `F:` = CD-ROM).
-`E:` má ~329 GB voľných.
-
-Vetva: `design-system-tokens`. Posledný implementačný commit: `7a89975`.
+**Pozor: `E:` je druhý disk a počas tejto session sa raz sám odpojil** — `Get-PSDrive` ho prestal
+vidieť. Ak zmizne, projekt je neprístupný; nie je to chyba repozitára.
 
 ```bash
 cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug
@@ -26,49 +26,50 @@ cd /e/lasero-desktop && dotnet test LaseroDesktop.sln
 
 Spustiteľný build: `E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows\Lasero.App.exe`
 
-**323 testov, všetky prechádzajú.**
-
 ### Vizuálne overovanie
 
-Je to WPF, nie web — browser tooling neplatí. V `.uiqa/` sú pomocné skripty:
+Je to WPF, nie web — browser tooling neplatí. V `.uiqa/`:
 
-- `shot.ps1 -Out x.png` — screenshot okna
+- `shot.ps1 -Out x.png -WindowTitle "Lasero Desktop"` — screenshot okna
 - `crop.ps1 -In a.png -Out b.png -X .. -Y .. -W .. -H .. -Scale ..` — výrez a zväčšenie
-- `click.ps1 -X .. -Y ..` / `drag.ps1 -X1 .. -Y1 .. -X2 .. -Y2 ..` — syntetický vstup (súradnice sú relatívne k oknu)
+- `click.ps1 -X .. -Y ..` / `drag.ps1` — syntetický vstup, súradnice relatívne k **hlavnému** oknu
 - `resize.ps1 -W .. -H .. -X .. -Y ..` — veľkosť okna
-- `ui.ps1 -Action click -Name "…"` — klik cez UI Automation podľa prístupného mena (spoľahlivejšie než súradnice)
+- `ui.ps1 -Action click -Name "…"` — klik cez UI Automation podľa prístupného mena
+- `toggle.ps1 -Name "…"` *(nové)* — vypíše všetky prvky daného mena aj s typom a rámčekom a skúsi na
+  nich SelectionItem / Toggle / Invoke. Použi, keď `ui.ps1` vráti `NO_PATTERN` — typicky preto, že
+  meno nesie `TextBlock` vnútri tlačidla a nie tlačidlo samo.
+- `setvalue.ps1 -Name "…" -Value "…"` *(nové)* — zápis do TextBoxu cez ValuePattern
 
-**Pasca:** `shot.ps1` používa `PrintWindow`, takže **nezachytí tooltip, ContextMenu ani dropdown** —
-tie sú samostatné top-level okná. Na ne treba záber obrazovky:
+**Pasce QA, ktoré ma tu opakovane stáli čas:**
 
-```powershell
-Add-Type -AssemblyName System.Drawing
-$b = New-Object System.Drawing.Bitmap 760, 220
-$g = [System.Drawing.Graphics]::FromImage($b)
-$g.CopyFromScreen(0, 170, 0, 0, (New-Object System.Drawing.Size 760, 220))
-$g.Dispose(); $b.Save("out.png", [System.Drawing.Imaging.ImageFormat]::Png); $b.Dispose()
-```
-
-**Druhá pasca:** tooltip nevyvoláš cez `Cursor.Position` jedným priradením — WPF potrebuje skutočné
-`WM_MOUSEMOVE`. Treba kurzorom „zatriasť" (opakované `SetCursorPos` s malými zmenami) a počkať ~1,5 s.
-
-Po nečistom ukončení appky nabehne dialóg **„Nalezena záloha projektu"**. Pri QA použiť
-**„Obnovit projekt"**; zálohu nezahadzovať, môže obsahovať rozpracovaný projekt používateľa.
-
-Na testovanie pripojenia netreba hardvér: v *Zařízení* je port **`SIMULÁTOR — Virtuální laser`**.
-
-**Appka drží zamknutý `Lasero.App.exe` a `Lasero.Core.dll`** — pred každým buildom ju treba zabiť:
-`Get-Process Lasero.App -ErrorAction SilentlyContinue | Stop-Process -Force`.
+- `shot.ps1` používa `PrintWindow`, takže **nezachytí tooltip, ContextMenu ani Popup** — tie sú
+  samostatné top-level okná. Na ne treba `CopyFromScreen`.
+- `shot.ps1` bez `-WindowTitle` vezme prvé okno procesu, čo môže byť práve otvorený popup — potom
+  dostaneš obrázok 160×28 a myslíš si, že je rozbité UI.
+- **Kliky podľa súradníc sú nespoľahlivé**, lebo appka si po pripojení stroja sama prepne obrazovku
+  a okno sa vie premaximalizovať. Vždy si po `resize.ps1` over veľkosť z výstupu `shot.ps1`.
+- Po nečistom ukončení nabehne dialóg **„Nalezena záloha projektu"**. Pri QA použiť **„Obnovit
+  projekt"**; zálohu nezahadzovať.
+- Na testovanie netreba hardvér: v *Zařízení* je port **`SIMULÁTOR — Virtuální laser`**. Pozor, počas
+  QA sa mi cez zle mierený klik naozaj spustila úloha — na simulátore je to bezpečné, na stroji nie.
+- **Appka drží zamknutý `Lasero.App.exe`** — pred buildom:
+  `Get-Process Lasero.App -ErrorAction SilentlyContinue | Stop-Process -Force`.
+- V Bash tooling nefunguje `python`/`python3` (je to Windows Store stub). Používaj plnú cestu
+  `/c/Users/Ruzovka/AppData/Local/Programs/Python/Python312/python.exe`, a pri dlhších skriptoch ich
+  radšej zapíš do súboru než cez heredoc.
 
 ---
 
-## 2. Vizuálny smer (rozhodnuté používateľom, needitovať bez dohody)
+## 2. Vizuálny smer
 
-Neutrálny grafit + soft white + kobaltová modrá. **Jedna interakčná farba.** Oranžová ako
-druhý akcent je zrušená — modrá `#2563EB` znamená vybrané/aktívne/primárne všade.
+**Svetlý režim.** Používateľ v tejto session požiadal o tmavý, nasadil som ho celý (`ef64ab6`) a
+o pár minút ho chcel späť (`918a263`). Tmavá paleta je teda odskúšaná a funkčná — ak sa k nej niekto
+vráti, je to **zmena hodnôt v `LaseroTheme.xaml`, nie prepis markupu**, presne preto, lebo z tej
+odbočky zostal token `Brush.AccentText`.
 
-Rozpočet farieb: ~90 % neutrál, 8 % modrá, 2 % sémantická zelená/oranžová/červená.
-Červená je len pre nebezpečné akcie a bodku v logu.
+Neutrálny grafit + soft white + kobaltová modrá. **Jedna interakčná farba.** Modrá `#2563EB` znamená
+vybrané/aktívne/primárne všade. Rozpočet: ~90 % neutrál, 8 % modrá, 2 % sémantická. Červená len pre
+nebezpečné akcie a bodku v logu.
 
 | rola | hodnota |
 |---|---|
@@ -81,286 +82,274 @@ Rozpočet farieb: ~90 % neutrál, 8 % modrá, 2 % sémantická zelená/oranžov�
 | sekundárny text | `#666B68` |
 | muted text | `#929793` |
 | accent / selection / Start | `#2563EB` |
-| accent hover | `#1D4ED8` |
+| accent text | `#2563EB` (samostatný token, pozri nižšie) |
 | vybraná plocha | `#EFF6FF` |
-| vybraný border | `#BFDBFE` |
-| success | `#15803D` |
-| warning | `#D97706` |
-| danger | `#DC2626` |
+| success | `#15803D` · warning `#D97706` · danger `#DC2626` |
 
-**Typografia: Inter**, zabalený v aplikácii (`Lasero.App/Assets/Fonts`, SIL OFL) ako `<Resource>` —
-odkaz len menom by ticho spadol na Segoe. Váhy: 400 text, 500 ovládacie prvky a hodnoty,
-600 nadpisy. Bežný text 13–14 px, **nič pod 12 px**.
+**`Brush.AccentText`** je nový token. Na svetlom je to tá istá kobaltová ako výplň, ale je oddelený,
+lebo tie dve role sa rozídu vo chvíli, keď chrome stmavne: `#2563EB` je správna **výplň** na tmavom
+povrchu, ale ako **text** na ňom má sotva 2,5:1. Všetko, čo *píše* akcentom, binduje sem; výplne,
+okraje, focus ringy a výber na plátne na `Brush.Accent`.
 
-**Čísla nie sú monospace** — Inter s `Typography.NumeralAlignment="Tabular"`. Skutočný monospace
-zostal len pre GRBL konzolu a G-kód.
+**Plátno má vlastné tokeny** (`Brush.Canvas.*`) a zámerne nesleduje chrome: lože zostáva biele bez
+ohľadu na tému, lebo operátor podľa neho posudzuje kontrast opálení.
 
-Tokeny sú v `Lasero.App/Theme/LaseroTheme.xaml` (`Brush.*`, `Radius.*`, `Size.Control.*`,
-`Size.Text.*`, `Size.Icon.*`) a `Theme/SharedUiStyles.xaml`.
+Typografia: Inter, zabalený v aplikácii. `Size.Text.Title` 24, `Size.Text.Section` 16, telo 13,
+meta 12, **nič pod 12 px**.
 
-**Testy, ktoré držia dizajn systém** (v `Lasero.Tests/ThemeTokenTests.cs`):
-- `NoMarkupCarriesALiteralFontSize` — zakazuje literálne `FontSize` v XAML
-- `NoMarkupCarriesAScalarLiteralCornerRadius` — zakazuje literálne `CornerRadius`
-- `RoundControlsUseThePillTokenRatherThanHalfTheirBox` — kruhy musia ísť cez `Radius.Pill` (999)
+Geometria editora: `Size.Toolbar.ButtonMinWidth` 48, `Size.Toolbar.ButtonHeight` 48,
+`Size.Toolbar.Height` 64.
+
+**Testy, ktoré držia dizajn systém** (`Lasero.Tests/ThemeTokenTests.cs`): zakazujú literálne
+`FontSize` a `CornerRadius` v XAML a vynucujú `Radius.Pill` na kruhových prvkoch.
 
 ---
 
 ## 3. Čo sa v tejto session spravilo
 
-Šesť commitov nad `5f8d9e7`.
+Štrnásť commitov nad `ed449ee`.
 
-### `a1fc143` — rozmery z toolbaru do inšpektora
-Prvý pokus o presun bloku poloha/veľkosť/rotácia. **Neskôr prekonané `7307749`** — používateľ chcel
-LightBurn-style pruh hore. Commit ostáva v histórii, ale inšpektor už tie sekcie nemá.
+### `c5d76c4` — vzorkovník materiálov + oprava diódových receptov na rez
 
-Zároveň opravené: **panel vlastností tiekol mimo okna.** `DesignerInspectorView` má `MinWidth="320"`,
-stĺpec dovoľoval `280` a uložená šírka bola presne 280. **Grid dieťa pod jeho `MinWidth` nezmenší** —
-takže 40 px panelu viselo za pravým okrajom a hodnoty X/Y/Š/V boli prepolené. Zjednotené na 320 na
-troch miestach (`MainWindow.xaml` stĺpec, `DesignerInspectorView` `MinWidth`,
-`WorkspacePreferences.MinInspectorWidth`) + test `InspectorColumnCannotBeNarrowerThanThePanelItHolds`.
+Mriežka vzorkovníka mala šestnásť buniek, ktoré vyzerali rovnako: intenzitu niesla len priehľadnosť
+písmena a najsilnejšia bunka sa od najslabšej líšila o ~13 z 255 úrovní jasu. Farba bunky sa teraz
+mieša z povrchu materiálu k jeho stope podľa relatívnej dávky (výkon/rýchlosť, normalizované,
+percepčná krivka), dlaždica sa mierne zakalí spolu so stopou a dvojice povrch/stopa sú vybrané na
+kontrast v oboch smeroch. Namerané na obrazovke: rozsah 87–114 úrovní.
 
-### `0a2fc14` — výplň zložených ciest + chodiace linky
+**Recepty:** používateľ nahlásil, že 20 W dióda reže 3–6 mm preglejku na 350 mm/min, 100 %, jeden
+priechod — katalóg mal 280 mm/min a tri priechody, teda ~3,75× dávku. Katalóg je **doslovný mirror
+`lasero-app/index.html`**, takže tá istá chyba je aj na webe (tam **neopravená**, používateľ chcel
+zatiaľ len desktop). Prepočítané: 10/40 W preglejka a 10/20/40 W MDF podľa publikovaných tabuliek
+lasertinkerer.com, 60 W preglejka doextrapolovaná z 40 W a **označená ako odvodená**, 5 W preglejka
+si čísla nechala, ale dostala varovanie, že je to hraničné. Nový test drží pravidlo, ktoré sa tu
+porušilo: **silnejší laser nikdy nesmie žiadať väčšiu dávku na ten istý rez.**
 
-- **Výplň sa kreslila po jednotlivých obrysoch**, takže vnútro „e" a „o" bolo vyplnené namiesto
-  toho, aby bolo dierou. Obrysy sa teraz zoskupujú podľa `GeometrySetId` (dokumentovaná
-  `Guid.Empty` = „jedna zložená cesta na objekt", čo stále používa SVG import) a kreslia sa ako
-  jedna geometria s `FillRule.Nonzero`. **Nonzero, nie EvenOdd** — dva rovnako vinuté obrysy, ktoré
-  sa len prekrývajú, sa majú spojiť, nie si vyrezať dieru. Otvorené obrysy majú `IsFilled=false`.
-- **Chodiace linky (marching ants)** na výbere aj na obrysoch objektu. Všetky čiarkované vizuály
-  bindujú `StrokeDashOffset` na jednu animovanú property `MarchingAntsPhaseProperty` na plátne —
-  **nie na vlastnú animáciu**, pretože overlay sa prekresľuje pri každom pohybe myši počas ťahania
-  a per-shape animácie by sa reštartovali na nulu, takže mravce by stáli práve pri ťahaní.
-  Animácia sa zastaví, keď nie je nič vybrané, a rešpektuje `SystemParameters.ClientAreaAnimation`.
+### `3f7b754` — průvodce zařízením
 
-### `3ff71c2` — editovateľný text
+`Lasero.Core/Machines/DeviceScanner.cs` prejde sériové porty a na každom skúsi `$$` na sadu bežných
+baud rates. Posiela **iba ten jeden dotaz** — žiadny pohyb, žiadny zápis nastavení — lebo sken môže
+trafiť 3D tlačiareň. Za GRBL považuje až odpoveď so štyrmi a viac rozparsovanými `$n=v`, inak by
+šum na zlom baud rate prešiel. Okno `DeviceWizardWindow` vedie od „mám gravírku na USB" po
+„appka je pripojená a vie, aká je plocha", vrátane zapnutia `$32` — **to je jediná vec, ktorú
+sprievodca do stroja zapíše, a nikdy automaticky.**
 
-- **`Lasero.Core/Scene/TextSource.cs`** (nový): čo text hovorí a ako je vysadený — `Text`,
-  `HeightMm`, `FontFamily`, `Bold`, `Italic`, `Uppercase`, `Weld`, `Distortion`.
-  Plus `TextDistortion` (štyri rohy jednotkového boxu, bilineárne mapovanie) a `TextDistortionCorner`.
-- `SceneObject.Text` + `IsText` — presne podľa vzoru `RasterFilePath` / `IsRaster`.
-- `VectorTextFactory.Rebuild(existing, source)` — prekreslí obrysy a **zachová Id, Transform,
-  vrstvu, viditeľnosť a príznaky**, takže sa zmenia písmená a nič iné sa nepohne.
-- **Velká písmena** sa aplikujú pri vykreslení, nie na uložený string, aby vypnutie vrátilo to, čo
-  používateľ napísal.
-- **Svařeno** = `Geometry.Combine(geometry, Geometry.Empty, Union)` — beží **pred** flattenovaním,
-  na skutočných krivkách.
-- **Tolerancia flattenovania 0,2 → 0,01 mm.** 0,2 mm je ~22 úsečiek na kružnicu, takže krivky boli
-  viditeľne hranaté. **Toto mení G-kód** — viac a kratších úsečiek na krivkách.
-- Projekt: `ProjectObject.Text` (nepovinné). Starý projekt bez tohto členu sa načíta ako krivky.
-- Dialóg: pole „Výška" si zvisle odrezávalo hodnotu (vlastný `TextBox` s `Padding="10,6,42,6"`
-  v 36px prvku) → použitá komponenta `UnitField.*`.
-- Testy: `Lasero.Tests/EditableTextTests.cs` (10 testov, vrátane spätnej kompatibility projektu).
+### `1d1dc92` — Domů podľa mockupu
 
-**Nedokončené v tomto commite:** výška v textovej sekcii je veľkosť písma *pred* vlastným
-zväčšením objektu; skutočná pálená výška je pole `V`. `Rebuild` zachováva `Transform` vrátane scale
-zámerne — prepočítavanie scale by spôsobilo, že text skočí pri prvej oprave preklepu po manuálnom
-zväčšení. Je to zdokumentované v XML komentári `Rebuild`.
+Hero, „Jak začít", karta zařízení, nedávné projekty.
 
-### `7307749` — pruh vlastností hore + čierne tooltipy
+### `9a3d500` → `9ecdd3a` → `1bb84e6` → `5b683e1` — toolbar editora, štyri kolá
 
-- **`Lasero.App/Views/SelectionPropertiesBar.xaml`** (nový) — poloha, veľkosť, rotácia, textové
-  nastavenia a akcie objektu v **jednom pruhu na celú šírku okna**, nad workspace, dva riadky.
-  Vložený v `MainWindow.xaml` ako `Grid.Row="1"` (riadky sú teraz `60 / Auto / * / 56`).
-  Pruh sa sám zbalí, keď nie je nič vybrané. Pri 1080px okne s vybraným textom **scrolluje do
-  strany**, nekrája hodnoty.
-- Inšpektor je späť len `Vrstvy | Stroj`.
-- **`Check.Box`** → skutočný checkbox namiesto iOS prepínača.
-- **Čierne tooltipy.** Takmer každý tooltip v appke bol plný čierny blok bez čitateľného textu.
-  **Príčina je WPF pravidlo, nie preklep:** téma nastavovala `Foreground` na implicitnom `TextBlock`
-  štýle, a **WPF hľadá implicitné štýly pre prvky vytvorené vnútri šablóny len v
-  `Application.Resources`** — štýl deklarovaný v `<Border.Resources>` šablóny sa nikdy nepoužije.
-  `TextElement.Foreground` na šablóne prehrá, pretože **dedenie prehráva Setter štýlu.**
-  Tooltip je teraz svetlý. Dlhé tooltipy sa zalamujú cez implicitný `DataTemplate` pre `String` —
-  ten sa (na rozdiel od implicitného *štýlu*) rieši normálnym resource lookupom.
+Postupne: popisky pod ikonami a skupiny s oddeľovačmi → vzduch a `Button.Ghost` namiesto
+`Button.Icon` → nižšie tlačidlá (54 → 48) → **`ToolBar` s prepadovým menu namiesto rolovania.**
 
-### `38eb54a` — checkbox všade, biely text na akcente, menej otázok pri importe
+To posledné je to podstatné. Rolovanie bolo zlá odpoveď na skutočný problém: pod ~1200 px sa
+pätnásť nástrojov plus zoom do riadku nezmestí, a scrollbar to riešil tak, že ukázal polovicu
+tlačidla aj jeho podfarbenia. Teraz `ToolBarPanel` presunie, čo sa nezmestí, do popupu za „…".
+**Kreslicí nástroje majú `ToolBar.OverflowMode="Never"`** — nesú aktívny stav, a aktívny nástroj
+schovaný v popupe znamená, že na obrazovke nič nehovorí, čo kurzor urobí. Do prepadu preto idú
+súbory, historie a transformace.
 
-- **Implicitný `Style TargetType="TextBlock"` je zrušený** a s ním celá trieda chýb. Nastavoval
-  `Foreground` na tmavú, takže `Content="Přidat text"` na modrom tlačidle bolo tmavé.
-  Predvolená farba textu ide teraz zo `Style TargetType="Window"` (`Control.Foreground` sa dedí),
-  takže prvok, ktorý si nastaví vlastný `Foreground`, správne vyhrá pre svoj obsah.
-  **Popupy nededia od okna** — `ComboBox`, `ComboBoxItem`, `MenuItem` a `ToolTip` si `Foreground`
-  nastavujú samy, to ich kryje.
-- Prepínač (switch) je zrušený, `CheckBox` je implicitne štvorček so zaškrtnutím.
-- **Import rastra sa menej pýta:** rýchlost, výkon, průchody a rozestup řádků sú z dialógu von —
-  vrstva ich aj tak prepíše pri generovaní (`SceneObject.BuildRasterOutputOptions`), takže
-  operátor nastavoval čísla, ktoré úloha ignorovala. Výber tónu (Odstíny šedi / Práh / Stucki) je
-  tiež von — **vždy Stucki**. `Lasero.Core` si oba režimy ponecháva.
+Šablóna `ToolBar`u je vlastná, lebo stock kreslí úchyt na ťahanie, vystúpený okraj a vlastnú grafiku
+tlačidiel. Šipka „…" sa skryje, keď nič nepretečie.
 
-### `7ce52b5` — port pipeline obrázku z `lasero-app`
+### `ef64ab6` + `918a263` — tmavá paleta tam a späť
 
-`Lasero.Core/Raster/ImageProcessor.cs` prepísaný. Robí **tie isté operácie, v tom istom poradí, s
-tými istými vzorcami** ako `applyFilters` v `C:\Users\Ruzovka\Videos\lasero-app\index.html`:
+Zo zrušenej tmavej fázy **zostali tri veci, lebo to neboli farby ale opravy**:
 
-```
-per-pixel:  gamma → expozícia → jas → kontrast → svetlá → tiene → levels → clamp → inverzia
-kernely:    redukcia šumu (3x3 box blur) → doostrenie (unsharp) → hrany (Laplacian)
-nakoniec:   dither
-```
+1. **Každý root okna si nastavuje `Background` a `Foreground` sám.** Pozri §7.1.
+2. **Mriežka je obmedzená na lože**, nie na celý viewport.
+3. **`Brush.AccentText`** ako samostatný token.
 
-**Poradie je to, na čom záleží** — kontrast po jase, nie pred ním. Jednopixelový okraj sa cez
-kernely kopíruje nezmenený (ako vo webe), inak by mala každá gravírovaná fotka viditeľný rám.
+### `0061e7f` + `3efdfae` — `ProcessStatusCard`
 
-`DitheringAlgorithm`: pridané `Jarvis`, `Atkinson`, `Sierra`, `Ordered` k `Stucki` a
-`FloydSteinberg`. Váhy sú vypísané, nie derivované, aby sa dali čítať proti publikovanej forme.
-Atkinson **zámerne** rozptyľuje len 6/8 chyby.
+Jedna plocha pre všetky dlhé operácie stroja: pripájanie, čítanie radiča, meranie plochy, odhad,
+rámování, odesílání, gravírování a ich výsledky. Odpovedá na päť otázok, ktoré operátor pri
+zaneprázdnenom stroji má, a všade rovnako: čo sa deje, kam sme došli, je to v poriadku, čo dál,
+dá sa to zastaviť. **Nedrží žiadny vlastný stav včetně progressu**, takže nemôže tvrdiť, že stroj
+došel dál, než skutočne došel. Jej šesť stavov sú tie isté významy ako `StatePillKind` plus
+explicitné „nič nezačalo" — pilulka a karta sa nemôžu rozísť v tom, čo znamená zelená.
 
-**Jedna zámerná odchýlka**, zakomentovaná na mieste volania: dither má stále prednosť pred prahom,
-kým vo webe prah binarizuje skôr. Ditherovanie už binárneho obrázka ho reprodukuje presne, takže
-oba postupy sa zhodujú vždy, keď operátor použije jedno alebo druhé — a inak sa ani nepoužívajú,
-prah je v oboch vypnutý.
+Zapojená na dvoch miestach:
 
-**Každá nová úprava má predvolene „bez zmeny"**, takže sa nič na existujúcom výstupe nepohlo.
-15 nových testov v `ImageProcessorTests.cs`.
+- **Zařízení** — `DeviceSetupViewModel` číta `IsConnecting` / `IsConnected` / `ConnectionError` /
+  `DetectedDevice`. Ručné ovládanie portu a rychlosti zostalo pod ňou, takže karta je vedená cesta,
+  nie jediná. `ConnectionViewModel` dostal `ConnectionError`, lebo `StatusText` nesie aj každý bežný
+  stav a nedá sa z neho čítať „něco se pokazilo".
+- **Stroj → Spuštění** — `JobStatusViewModel` mapuje `JobRunState`. Nahradila voľný progress bar,
+  voľný odhad a dva voľné chybové riadky; tie štyri hovorili časti tej istej veci na štyroch
+  miestach a dva z nich sa objavovali len keď sa niečo pokazilo, takže panel menil tvar v najhoršej
+  chvíli.
 
-### `a91c38b` — dokončená a zrýchlená bitmapová pipeline
+**Pruh je neurčitý všade, kde appka nemá čo merať** — GRBL nehlási, jak daleko je ve čtení
+nastavení, a vymyslené percento by bolo horšie než priznať, že to appka nevidí.
 
-- Všetkých 9 parametrov pipeline je prenesených cez `RasterImportOptions`, `RasterImporter` a
-  `RasterImportViewModel`. Importovaný obrázok sa automaticky analyzuje lokálnym histogramom a
-  dostane odporúčané vyváženie bez technického formulára pre zákazníka.
-- Technické posuvníky a dither zostávajú zapojené v modeli, ale zákaznícke UI ich zámerne
-  nezobrazuje. Dialóg komunikuje iba stav **„Automaticky vyladěno"**; nefunkčné tlačidlo na
-  opakované ladenie bolo odstránené.
-- Zdrojová bitmapa sa dekóduje iba raz a pred filtrami sa zmenší na skutočné výstupné rozlíšenie
-  podľa fyzickej veľkosti a DPI. Spracovaný obraz sa zdieľa medzi náhľadom a plánom gravírovania.
-  Náhľad sa zobrazí ešte pred dokončením plánu; inverzia dostane okamžitý vizuálny výsledok.
-- Opravený sivý obdĺžnik na plátne: rasterová umiestňovacia geometria už neprekrýva bitmapu
-  výplňou farby vrstvy.
-- Presun bitmapy aj vektora používa počas ťahania iba lacný `RenderTransform` a dátový model sa
-  zapíše raz pri pustení myši. Resize, rotácia a pan zlúčia udalosti na najnovšiu polohu raz za
-  renderovací snímok, takže husté vektory ani bitmapy nezaplnia UI frontu.
-- Overenie: Debug build prešiel; `dotnet test LaseroDesktop.sln` = **313/313**. Vizuálne overené
-  cez `.uiqa`: automatické ladenie, viditeľná spracovaná fotografia na plátne a stav výberu.
+### `3efdfae` — okno má okraj
 
-### `7a89975` — Shift uzamyká proporcie kreslených tvarov
+Windows 11 zaobľuje každé rámované okno a kreslí okolo neho vlas. Okno s `WindowStyle="None"` sa
+z oboch odhlási, takže appka mala hranaté rohy a na svetlej ploche nebolo vidieť, kde končí.
+`WindowFrameHook` si oboje vypýta cez DWM (`DWMWA_WINDOW_CORNER_PREFERENCE`, `DWMWA_BORDER_COLOR`),
+nie kreslením vnútri okna — takže sa to správne oreže, vrhá systémový tieň a nezasahuje do layoutu
+ani hit-testingu. Na Windows 10 volania tíško zlyhajú.
 
-- Počas kreslenia obdĺžnika, elipsy, pravidelného polygónu alebo hviezdy drží `Shift` rovnakú
-  šírku a výšku: vznikne štvorec, kruh alebo proporčne pravidelný tvar.
-- Čiara sa so Shiftom prichytáva k uhlom po 45°. Obmedzenie sa používa v živom náhľade aj pri
-  vytvorení výsledku a reaguje aj na stlačenie/pustenie Shiftu počas ťahania.
-- Debug build a **323/323 testov** prešli. Vizuálne overené cez `.uiqa`: elipsa ťahaná v pomere
-  približne 2:1 vznikla ako kruh s rozmermi `146,43 × 146,43 mm`.
+### Čo sa na žiadosť používateľa **odstránilo**
+
+- **Bezpečnostní kontrola** z Domů (Nedávné projekty dostali celú šírku)
+- **Pravý blok hero** s náhľadom a **tlačidlo Importovat**
+- **Fotka gravírky** — najprv pridaná (výber súboru, kópia do app data, zobrazenie v hero aj v karte
+  zařízení), o chvíľu zrušená. Odstránil som s ňou aj view model, nastavenie a slot v karte, lebo
+  bez výberu sa nedala nastaviť a nedosiahnuteľná funkcia vyzerá pre toho, kto ju v kóde nájde, ako
+  funkčná. Je to **jeden revert commitu `1bb84e6`**, ak ju bude chcieť inde.
+- **Počítadlo příkazů** („2391 / 5158") z bežiacej úlohy — je to interné účtovníctvo, nie niečo, na
+  čo operátor pri stroji reaguje.
 
 ---
 
 ## 4. Rozrobené — pokračovať tu
 
-### 4.1 Port pipeline obrázku — hotové
+Používateľ si vyžiadal poradie **1, 4, 2, 3**:
 
-Dokončené v `a91c38b`; podrobnosti sú v §3. Najnovšie rozhodnutie používateľa ruší pôvodnú
-požiadavku ukázať všetkých 9 posuvníkov a dither dropdown zákazníkovi. Pipeline ich podporuje,
-ale UI fotografiu automaticky analyzuje a nastaví odporúčané hodnoty.
+- **1 — toolbar editora** ✅ hotové (`5b683e1`)
+- **4 — `ProcessStatusCard`** ✅ hotové (`0061e7f`, `3efdfae`)
+- **2 — pravý inšpektor** ⬅️ **tu pokračovať**
+- **3 — spodný stavový pruh**
 
-### 4.2 Chat — vizuálne a funkčne podľa `lasero-app`
+### 4.1 Pravý inšpektor (ďalší krok)
 
-Používateľ poslal dva screenshoty a povedal *„takto by mal fungovat aj ten chat"*. Chce:
+Podľa mockupu má obsahovať, v tomto poradí:
 
-- hlavička: avatar KAMIL + meno + zelená bodka + stavová veta („Počítám optimální parametry…")
-- riadok `⏱ Historie` (vľavo) a `+ Nový chat` (vpravo, červené primárne)
-- chip s kontextom nad konverzáciou (napr. `Kůže + text`, červený, vpravo)
-- bubliny: asistent vľavo — biela karta s menom `KAMIL` malým červeným nadpisom;
-  používateľ vpravo — plná červená bublina, biely text
-- indikátor písania: kurzíva + tri pulzujúce bodky vnútri bubliny
-- karta **`DOPORUČENÉ PARAMETRY`**: štyri dlaždice (RYCHLOST mm/min, VÝKON %, PRŮCHODY ×, DPI),
-  hodnoty veľké a červené, plus široké červené tlačidlo `Uložit parametry`
-- pod ňou „Fungovalo nastavení?" + 👍 / 👎
-- návrhy ďalších otázok ako chipy („Jak rychlost ovlivní výsledek?" …)
+- segmentovaný prepínač **Vrstvy | Stroj** *(existuje; taby už majú `AutomationProperties.Name`)*
+- zoznam vrstiev s farebným štítkom, názvom, typom operácie a súhrnom „100% / 20 mm/s" *(existuje,
+  formát sedí)* a tlačidlo **+ Nová vrstva** *(existuje)*
+- **Nastavení práce** — Materiál / Režim / Rychlost / Výkon / Průchody / Interval, labely vľavo,
+  ovládacie prvky vpravo, kompaktne. **Toto chýba ako celok.**
+- **Odhadovaný čas** *(hodnota existuje ako `GCode.EstimatedTimeLabel`)*
+- **Rámování** s prepínačom, **Náhled rámování**, **Rámovat** *(príkazy existujú)*
+- **Spustit** — v mockupe **červené**. Dnes je modré. Podľa pravidiel palety je červená vyhradená
+  pre nebezpečnú akciu a spustenie lasera ňou je; `ProcessStatusCard` už má `PrimaryIsDanger`
+  a `SecondaryIsDanger` na presne tento účel.
 
-**Pozor na farbu:** screenshoty sú z webu, ktorý má červený akcent. Desktop má **jednu interakčnú
-farbu — kobaltovú modrú** (§2). Buď sa treba používateľa doptať, alebo použiť modrú a červenú
-nechať len na nebezpečné akcie. **Nezavádzať červenú ako tretiu UI farbu bez dohody.**
+### 4.2 Spodný stavový pruh
 
-Desktop chat je `Lasero.App/Views/ChatView.xaml`.
+Mockup: `● Připojeno · Lasero L2 Pro · COM4 · Ovládání stroje | Pracovní plocha 400 × 400 mm |
+Materiál Překližka (3 mm) | Náhled práce`. Dnešný pruh má stavové pilulky, názov súboru a hlášku;
+chýbajú názov stroja, port, plocha, materiál a „Náhled práce".
 
-### 4.3 Vzorkovník — vizuálne podľa `lasero-app`
+### 4.3 Čo je v mockupe a nie je nasadené (úplný zoznam)
 
-Mriežka: os Y rýchlost (pomalšie = tmavšie), os X výkon (%), klik na buňku nastaví parametre.
-Vo webe: `renderGallery` ~16159, `selGridCell` ~15573, `showCellRevealAnim` ~15587,
-`drawBurn` ~15822 (simulácia vypálenia do dreva).
+Zo **špecifikácie dizajn systému** v pravom paneli mockupu:
 
-### 4.4 Offset / Posunout (nezačaté)
+- typografická škála **s riadkovaním** — H1 24/32, H2 18/24, H3 14/20, Body 14/20, Small 12/16.
+  Stupeň **18 px chýba** a riadkovania nie sú definované vôbec.
+- päť stavových pilulek Připraveno / Probíhá / Varování / Chyba / Čeká — `StatePillKind` má presne
+  zodpovedajúcich päť hodnôt, ale nie sú overené proti mockupu
+- tlačidlo **Danger „Zastavit"**, Input „Zadejte hodnotu", Select „Vyberte možnost" vo výške 32–36 px
 
-Používateľ poslal screenshot LightBurn dialógu „Posunout" a chce ho:
+Z **editora**:
 
-- `Posunout vzdálenost` (mm)
-- `Směr`: Ven / Dovnitř / Oba
-- `Styl rohu`: Oblý / Kosý / Roh
-- `Možnosti`: Pouze vnější tvary / Vybrat výsledné objekty / Odstranit původní objekty /
-  Optimalizovat / zjednodušit výsledky
+- popisky skupin nad toolbarom (Projekt / Úpravy / Nástroje / Transformace / Zobrazení)
+- svislá lišta nástrojů po ľavej strane plátna
+- horní pruh „Návrh – Motýl", stav „Uloženo", tlačítka „Náhled" a „Uložit"
+- rozměrový popisek „400 mm" u výběru na plátně
 
-**Ako na to:** WPF nemá offset krivky. `SceneViewModel.UniteSelection` (~716) už používa
-`Geometry.Combine(..., GeometryCombineMode.Union, ...)` a `ToImportedShapes` — ten istý pattern sa
-dá použiť, ale samotný offset treba spraviť buď cez `Geometry.GetWidenedPathGeometry(new Pen(...))`
-s `PenLineJoin` podľa štýlu rohu (dá vonkajší aj vnútorný obrys naraz, potom union/difference), alebo
-doťahať Clipper. `GetWidenedPathGeometry` je bez novej závislosti a `PenLineJoin.Round/Bevel/Miter`
-mapuje presne na Oblý/Kosý/Roh — **odporúčam to skúsiť prvé.**
+### 4.4 Lasero Chat
 
-### 4.5 Rohové úchopy pre Zkreslit textu (dátový model hotový, ovládanie chýba)
+Používateľ: *„a lasero chat musi fungovat a vizuálne sa podobat rovnako ako lasero app na webe."*
+Zatiaľ nezačaté. Poslal screenshoty webového chatu: hlavička s avatarom KAMIL, `⏱ Historie` /
+`+ Nový chat`, kontextový chip, bubliny (asistent biela karta, používateľ plná bublina), indikátor
+psaní, karta **DOPORUČENÉ PARAMETRY** so štyrmi dlaždicami a tlačidlom `Uložit parametry`,
+„Fungovalo nastavení?" s 👍/👎, návrhové chipy.
 
-`TextDistortion` + `SceneViewModel.SetSelectedTextDistortionCorner(corner, u, v)` +
-`ResetSelectedTextDistortionCommand` **existujú a sú otestované**. Chýba len ovládanie na plátne:
-štyri úchopy v `SceneCanvas.DrawSingleObjectHandles`, ktoré pri ťahaní prepočítajú pozíciu myši na
-jednotkové súradnice objektu a zavolajú `SetSelectedTextDistortionCorner`.
+**Otvorená otázka na používateľa:** web má **červený** akcent, desktop má jednu interakčnú farbu —
+kobaltovú. Používateľ povedal „rovnako ako na webe", čo čítam ako rozhodnutie pre červenú v chate,
+ale predtým než sa červená zavedie ako tretia UI farba, potvrdil by som to.
 
-**Pasca (už nás raz stála čas):** `ResizeHandle` pomenúva roh s **najmenším Y** ako `Top`, ale
-plátno kreslí najmenšie Y **dole** (`ToCanvasY` prevracia os). `TextDistortionCorner` je pomenovaný
-v **dokumentovom** priestore. Pri akejkoľvek práci s úchopmi si over, či meníš dokumentový alebo
-obrazovkový smer.
+### 4.5 Assety
+
+Fotka gravírovania v hero, render gravírky, náhledy projektů — **žiadne reálne assety neexistujú**,
+všetko sú kreslené zástupné z vlastnej ikonovej sady. Zámerne: appka nemá ako vedieť, aký stroj
+zákazník má, a stock render cudzej gravírky je obrázok nesprávneho stroja.
+
+### 4.6 Staršie, stále platné
+
+- **Offset / Posunout** (nezačaté) — dialóg ako v LightBurne. Odporúčaný postup:
+  `Geometry.GetWidenedPathGeometry(new Pen(...))` s `PenLineJoin` podľa štýlu rohu, potom
+  union/difference. `PenLineJoin.Round/Bevel/Miter` mapuje presne na Oblý/Kosý/Roh.
+- **Rohové úchopy pre Zkreslit textu** — dátový model (`TextDistortion`,
+  `SetSelectedTextDistortionCorner`) a testy existujú, chýba ovládanie na plátne v
+  `SceneCanvas.DrawSingleObjectHandles`. **Pasca:** `ResizeHandle` pomenúva roh s najmenším Y ako
+  `Top`, ale plátno kreslí najmenšie Y dole. `TextDistortionCorner` je v dokumentovom priestore.
 
 ---
 
 ## 5. Otvorené / neriešené
 
-- **SVG import má tú istú hranatosť, akú sme opravili pri texte.**
-  `Lasero.Core/Import/Svg/SvgPathParser.cs` má `const int CurveSteps = 16` — pevný počet krokov na
-  krivku, nezávislý od veľkosti, takže veľké oblúky sú hranaté.
-  `SvgShapeFlattener.cs` má `CircleSteps = 64`. Správne riešenie je subdivízia podľa tolerancie
-  tetivy, ale parser pracuje v SVG user units pred transformáciou, takže absolútna mm tolerancia
-  tam nie je priamo dostupná — nie je to trojriadková zmena.
-- **LightBurn má v pruhu veci, ktoré Lasero nemá** a preto tam nie sú (nevymýšľal som prázdne
-  ovládacie prvky): `%` scale polia, 3×3 mriežka ukotvenia pri zmene veľkosti, `H prostor` /
-  `Svislá mezera` (prostrkanie a riadkovanie textu), `Přesunout jako skupinu`,
-  `Uzamknout vnitřní objekty`.
+- **Zvyšok diódového katalógu je stále neoverené webové dáta.** Opravené sú len preglejka a MDF na
+  rez. Gravírovacie rýchlosti a ostatné materiály nikto nezmeral.
+- **Web `lasero-app` má tú istú chybu v receptoch** a zámerne sa neopravoval. Desktop je teda dočasne
+  rozdielny od webu; je to zapísané v komentári v `MaterialCatalog` aj v teste
+  `Catalog_MatchesTheAgreedRecipeValues`.
+- **SVG import je hranatý.** `SvgPathParser.cs` má `const int CurveSteps = 16` — pevný počet krokov
+  na krivku nezávislý od veľkosti. Správne je subdivízia podľa tolerancie tetivy, ale parser pracuje
+  v SVG user units pred transformáciou, takže absolútna mm tolerancia tam nie je dostupná.
+- **Uložená šírka inšpektora je 560 px.** Pri načítaní ju obmedzujem na tretinu okna, aby pri 1366
+  nezostalo plátnu 640 px, ale **hodnota na disku sa neprepisuje** — je to preferencia používateľa.
+  Dôsledok: aj pri 1700 px je workspace pod prahom 1060, takže popisky v toolbare sú zbalené.
 - `LaseroProjectFile.Version` má default `7`, ale `Deserialize` aj `CreateArchiveSnapshot` ho
-  natvrdo nastavia na `6`. Nič `Version` nečíta, takže to nič nelomí — ale je to nekonzistentné.
-- Staré publish výstupy `artifacts/` (3,4 GB) a `dist/` (1,1 GB) ležia v repozitári.
-  Sú regenerovateľné, `artifacts/` je v `.gitignore`. Dajú sa zmazať.
+  natvrdo nastavia na `6`. Nič `Version` nečíta.
+- Staré publish výstupy `artifacts/` (3,4 GB) a `dist/` (1,1 GB) ležia v repozitári. Regenerovateľné.
+- `TextToolWindow.Style` tieni `FrameworkElement.Style` — jediný build warning (CS0108).
 
 ---
 
 ## 6. Bezpečnostná hranica
 
-Prezentácia sa meniť môže, **správanie nie**. Nikdy neupravovať sémantiku Start, Pause, Stop,
-Frame, Home, Origin, Jog, Reset, Unlock, súradníc stroja, firmware príkazov ani bezpečnostných
-kontrol kvôli vzhľadu.
+Prezentácia sa meniť môže, **správanie nie**. Nikdy neupravovať sémantiku Start, Pause, Stop, Frame,
+Home, Origin, Jog, Reset, Unlock, súradníc stroja, firmware príkazov ani bezpečnostných kontrol
+kvôli vzhľadu.
 
-- Dostupnosť Start/Frame rozhoduje výhradne `CanRun`/`CanFrame` + `JobPreflight`. Dôvod
-  nedostupnosti sa **zobrazuje** cez `StartBlockedReason`/`FrameBlockedReason` v tooltipe
-  (`ToolTipService.ShowOnDisabled="True"`) — gating sa tým nemení.
+- Dostupnosť Start/Frame rozhoduje výhradne `CanRun`/`CanFrame` + `JobPreflight`. **`JobStatusViewModel`
+  je čistá prezentácia** — binduje tie isté príkazy a berie ich `CanExecute` tak, ako ho nájde;
+  nemôže sprístupniť akciu stroja. Vlastní len formulácie a to, do ktorého z dvoch akčných slotov
+  ktorý príkaz patrí.
+- `ProcessStatusCard` nedrží vlastný stav vrátane progressu. Ak nie je čo merať, je pruh neurčitý.
 - Nikdy nezobrazovať „Ready", kým to appka naozaj nepotvrdila. `JobRunState.Idle` je zámerne
   „Bez úlohy", nie „Připraveno".
 - Stav sa nikdy nesmie oznamovať iba farbou — vždy tvar (ikona) + slovo + farba.
-- **Zmeny, ktoré v tejto session zmenili generovaný G-kód** (zámerne, obe sú zlepšenia, ale treba
-  o nich vedieť): tolerancia flattenovania textu 0,2 → 0,01 mm (`3ff71c2`), a skladanie
-  priehľadných PNG na bielu namiesto neinicializovaného povrchu (staršie, `ab776fb`).
+- Sprievodca zariadením posiela pri skene **iba `$$`**. Jediný zápis do stroja je `$32=1` a nikdy
+  nie automaticky.
+- **Zmeny, ktoré zmenili generovaný G-kód:** tolerancia flattenovania textu 0,2 → 0,01 mm (`3ff71c2`,
+  minulá session) a **diódové recepty na rez preglejky a MDF (`c5d76c4`, táto session)**.
 
 ---
 
 ## 7. Pasce, ktoré nás v tejto session stáli čas
 
-Zapisujem ich, pretože každá vyzerala ako preklep a bola to systémová vec.
+Všetky sú systémové, aj keď každá vyzerala ako preklep.
 
-1. **WPF ignoruje implicitné štýly deklarované vnútri šablóny.** Pre prvok vytvorený v šablóne sa
-   implicitný štýl hľadá len v `Application.Resources`. Preto sa čierne tooltipy nedali opraviť
-   pridaním `<Style TargetType="TextBlock">` do `<Border.Resources>` šablóny.
-   **A dedenie prehráva Setter štýlu** — `TextElement.Foreground` nikdy neprebije implicitný štýl.
-   Implicitný `DataTemplate` sa ale rieši normálnym lookupom a funguje.
-2. **`Grid` nezmenší dieťa pod jeho `MinWidth`.** Užší stĺpec panel nestlačí — nechá ho pretiecť
-   za okraj okna. Ak niečo „visí mimo obrazovky", hľadaj nesúlad `MinWidth`.
-3. **`StackPanel` meria deti na nekonečnú šírku**, takže `TextWrapping` sa v ňom nikdy nespustí a
-   dieťa si vezme prirodzenú šírku namiesto stĺpca. Používaj `DockPanel`.
-4. **`CornerRadius` 6 na 18px prvku vyzerá ako kruh.** Na malé prvky `Radius.Xs` (4).
-5. **Per-shape animácie na overlayi, ktorý sa prekresľuje**, sa reštartujú na nulu — animuj jednu
-   property na rodičovi a binduj.
-6. **Atkinson dither nie je „vždy svetlejší"** — zahodená chyba je pri svetlých tónoch pozitívna
-   (výsledok svetlejší) a pri tmavých negatívna (výsledok tmavší). Tvrdenie platí pre svetlá.
+1. **Implicitný `Style TargetType="Window"` sa nevzťahuje na žiadne okno v tejto appke.** WPF hľadá
+   implicitný štýl podľa **presného typu**, a každé okno tu je odvodená trieda (`MainWindow`,
+   `MaterialsWindow`, …). Svetlá téma to úplne skryla, lebo predvolený WPF foreground je čierny a
+   ten bol na odtieň od `TextPrimary`. Odhalilo sa to až na tmavej palete, kde bol každý dedený
+   nadpis a ikona neviditeľný. **Každý root okna si teraz nastavuje `Background` aj `Foreground` sám.**
+2. **WPF ignoruje implicitné štýly deklarované vnútri šablóny.** Pre prvok vytvorený v `ControlTemplate`
+   sa implicitný štýl hľadá **len v `Application.Resources`**. Túto pascu má appka zapísanú už
+   z minulej session (čierne tooltipy) a **chytila ma znova**: implicitný `Style TargetType="ScrollBar"`
+   v `ScrollViewer.Resources` je úplne neúčinný, lebo scrollbar vzniká v šablóne ScrollVieweru.
+   Musí sa odovzdať **explicitne kľúčom**.
+3. **`DockPanel` neklipuje.** Keď je dieťa širšie než jeho slot, nepreteče preč — podlezie pod
+   susedné dieťa. Takto zmizlo tlačidlo *Zrcadlit* pod odčítaním zoomu a v markupe nebolo vidieť nič
+   zlé; UIA hlásilo prvok na správnom mieste so správnou šírkou.
+4. **Poradie v `ResourceDictionary` platí pre `StaticResource`.** Štýl, ktorý odkazuje na iný štýl,
+   musí byť **za ním**. Appka spadla pri štarte na `Cannot find resource named 'Toolbar.OverflowToggle'`.
+5. **Obrovský `CornerRadius` na tenkom širokom `Border`i nie je zaoblený pruh.** WPF klampuje rádius
+   po osiach, takže `Radius.Pill` na prvku 3 px vysokom a stovky širokom vykreslí šošovku.
+6. **`ToolBar` rieši pretečenie za teba.** `ToolBarPanel` + `ToolBarOverflowPanel` + `HasOverflowItems`
+   + `ToolBar.OverflowMode` na jednotlivých položkách. Nemá zmysel to písať ručne.
+7. **Plátno si drží měřítko, kým je skryté.** `SceneCanvas` nemá pri `Visibility="Collapsed"` veľkosť,
+   takže `FitToView` treba zavolať až keď je editor naozaj viditeľný, na `DispatcherPriority.Background`.
+8. **`Height` v štýle sa dá prebiť.** Scrollbar vychádzal 15 px namiesto 5 a lokálna hodnota na prvku
+   bola jediné, čo zabralo. (Nakoniec bezpredmetné — scrollbar je preč.)
+9. **Vypnuté tlačidlo si kreslí plochu.** Je to správne pri tlačidle, ktoré plochu má; pri `Button.Ghost`
+   to obracia hierarchiu, lebo jediné boxy v pruhu sú tie nedostupné. Na to je
+   `ButtonChrome.SuppressDisabledSurface`.
