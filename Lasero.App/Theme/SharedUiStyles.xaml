@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:jobs="clr-namespace:Lasero.Core.Jobs;assembly=Lasero.Core">
     <!-- Nav labels use TextPrimary, not TextSecondary — this is primary wayfinding text, not de-emphasised
          caption text. Reserve the muted tone for genuinely secondary content; a nav item that's merely
          "not currently selected" should not read as if it were disabled. -->
@@ -69,6 +70,60 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Effect" Value="{x:Null}" />
+    </Style>
+
+    <!--
+        Job controls are shared by the persistent bottom strip and the Designer inspector. Their
+        visibility is presentation-only: the commands remain the sole source of CanExecute, so
+        moving a button cannot weaken machine readiness or JobPreflight.
+
+        Keep JobDangerButton before JobActiveStopButton. StaticResource lookup is declaration-order
+        sensitive in WPF, and a forward reference crashes the app while loading this dictionary.
+    -->
+    <Style x:Key="JobPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryAction}" />
+
+    <Style x:Key="JobIdleActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="JobRunningActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="JobPausedActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="JobDangerButton" TargetType="Button" BasedOn="{StaticResource Button.DangerSolid}" />
+
+    <Style x:Key="JobStartActionButton" TargetType="Button" BasedOn="{StaticResource JobDangerButton}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="JobActiveStopButton" TargetType="Button" BasedOn="{StaticResource JobDangerButton}">
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Compatibility alias for older views; new UI should use PrimaryAction. -->

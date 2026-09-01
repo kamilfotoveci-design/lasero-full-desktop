@@ -351,60 +351,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="JobPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryAction}">
-            <!-- Disabled is inherited from the base Button template. Each job button used to describe
-                 its own faded variant, which meant three slightly different disabled looks in one
-                 row of controls. -->
-        </Style>
-
-        <Style x:Key="JobIdleActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="JobStartActionButton" TargetType="Button" BasedOn="{StaticResource JobPrimaryButton}">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="JobRunningActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="JobPausedActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="JobDangerButton" TargetType="Button" BasedOn="{StaticResource Button.DangerSolid}">
-            <!-- Disabled is inherited from the base Button template. Each job button used to describe
-                 its own faded variant, which meant three slightly different disabled looks in one
-                 row of controls. -->
-        </Style>
-
-        <Style x:Key="JobActiveStopButton" TargetType="Button" BasedOn="{StaticResource JobDangerButton}">
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Preparing}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Framing}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Running}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                <DataTrigger Binding="{Binding GCode.JobState}" Value="{x:Static jobs:JobRunState.Paused}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-
         <!-- Nav buttons that highlight based on the current screen rather than being hardcoded active. -->
         <Style x:Key="NavButton.Home" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
@@ -1001,7 +947,10 @@
 
                 <Border Grid.Row="2" Margin="12" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="0" ClipToBounds="True">
                     <Grid>
-                        <controls:SceneCanvas x:Name="DesignerCanvas" ViewModel="{Binding Scene}" WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}" WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
+                        <controls:SceneCanvas x:Name="DesignerCanvas"
+                                              ViewModel="{Binding Scene}"
+                                              WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}"
+                                              WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
                     </Grid>
                 </Border>
 
@@ -1197,27 +1146,21 @@
                 </StackPanel>
 
                 <!--
-                    Job execution. Start is the one dominant control in the application: primary blue,
-                    Large height, wider padding. Frame stays neutral and secondary — it is the check
-                    you run before Start, not a competing action. Neither changes machine semantics;
-                    availability is still decided entirely by CanRun/CanFrame and the preflight.
+                    Job execution for non-Designer screens. Start is danger-red because it begins a
+                    physical operation; Frame stays neutral and secondary. On Designer this whole
+                    group collapses because the inspector owns the same commands in a pinned footer.
+                    Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!--
-                        Time is reported on demand, not as a permanent readout. A number sitting in the
-                        corner invites trust it has not earned: it is a model of the toolpath, and the
-                        operator cannot tell what went into it. Behind this button the same estimate
-                        arrives with the preview that produced it, broken into cutting versus
-                        repositioning, so the figure is something you can check rather than just read.
-                    -->
-                    <Button Style="{StaticResource Button.Regular}" Command="{Binding GCode.PreviewSimulationCommand}"
-                            Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
-                            Padding="18,0" Margin="0,0,10,0"
-                            ToolTipService.ShowOnDisabled="True"
-                            ToolTip="Zobrazit náhled dráhy a odhadovaný čas úlohy podle zapnutých vrstev"
-                            Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
-                        <components:IconLabel IconData="{StaticResource Glyph.Clock}" Text="Odhad času" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
-                    </Button>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Large}" MinHeight="{StaticResource Size.Control.Large}"
                             Padding="18,0" Margin="0,0,10,0"

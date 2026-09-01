@@ -344,9 +344,11 @@ public partial class GCodeViewModel : ObservableObject
         OnPropertyChanged(nameof(CutBreakdownLabel));
         OnPropertyChanged(nameof(RapidBreakdownLabel));
         EstimatedDuration = _timeEstimate.Duration;
-        EstimatedTimeLabel = FormatDuration(EstimatedDuration);
+        // Keep the estimate private until the operator opens the simulation that explains what went
+        // into it. A bare number in persistent chrome invites more trust than this model has earned.
+        EstimatedTimeLabel = "—";
         RemainingDuration = EstimatedDuration;
-        RemainingTimeLabel = EstimatedTimeLabel;
+        RemainingTimeLabel = "—";
         OnPropertyChanged(nameof(SimulationDurationSeconds));
         StopSimulation(reset: true);
     }
@@ -572,6 +574,10 @@ public partial class GCodeViewModel : ObservableObject
     {
         EnsureSceneDocumentCurrent(refreshCurrentPosition: true);
         if (Document is null || _timeEstimate is null) return;
+
+        EstimatedTimeLabel = FormatDuration(EstimatedDuration);
+        RemainingDuration = EstimatedDuration;
+        RemainingTimeLabel = EstimatedTimeLabel;
 
         if (SimulationProgressPercent >= 100) SetSimulationTime(TimeSpan.Zero);
         IsSimulationActive = true;

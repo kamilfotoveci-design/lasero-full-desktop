@@ -135,16 +135,41 @@ public sealed class MainWindowNavigationTests
     [Fact]
     public void JobStopButtonBaseStyleIsDeclaredBeforeItIsReferenced()
     {
-        var xaml = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Lasero.App", "MainWindow.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Lasero.App", "Theme", "SharedUiStyles.xaml"));
         var baseStyle = xaml.IndexOf("x:Key=\"JobDangerButton\"", StringComparison.Ordinal);
         var derivedStyle = xaml.IndexOf(
             "x:Key=\"JobActiveStopButton\" TargetType=\"Button\" BasedOn=\"{StaticResource JobDangerButton}\"",
             StringComparison.Ordinal);
 
-        Assert.True(baseStyle >= 0, "JobDangerButton must be declared in MainWindow resources.");
+        Assert.True(baseStyle >= 0, "JobDangerButton must be declared in shared UI resources.");
         Assert.True(derivedStyle >= 0, "JobActiveStopButton must derive from JobDangerButton.");
         Assert.True(baseStyle < derivedStyle,
             "WPF StaticResource lookup cannot resolve JobDangerButton when the base style is declared after its first use.");
+    }
+
+    [Fact]
+    public void DesignerOwnsPinnedJobActions()
+    {
+        var root = FindRepositoryRoot();
+        var inspector = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
+        var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
+        var sharedStyles = File.ReadAllText(Path.Combine(root, "Lasero.App", "Theme", "SharedUiStyles.xaml"));
+
+        var scrollEnd = inspector.IndexOf("</ScrollViewer>", StringComparison.Ordinal);
+        var pinnedFooter = inspector.IndexOf("Job controls live outside the ScrollViewer", StringComparison.Ordinal);
+        Assert.True(scrollEnd >= 0 && pinnedFooter > scrollEnd,
+            "Designer job actions must stay outside the scrolling layer settings.");
+
+        Assert.Contains("Command=\"{Binding GCode.RunFramingCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.RunJobCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.PauseResumeCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding GCode.AbortCommand}\"", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequireFramingBeforeStart", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("Náhled rámování", inspector, StringComparison.Ordinal);
+
+        Assert.Contains("x:Key=\"JobStartActionButton\" TargetType=\"Button\" BasedOn=\"{StaticResource JobDangerButton}\"", sharedStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("FramingPreviewDocument", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]
