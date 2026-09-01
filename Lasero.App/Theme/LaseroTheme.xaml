@@ -1146,8 +1146,11 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
+                    <!-- Xs, not Pill. WPF clamps a Border's corner radius per axis, so a pill radius
+                         on something 3px tall and hundreds wide is drawn as a lens rather than a
+                         rounded bar — it read as a stray bubble under the toolbar. -->
                     <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}"
-                            CornerRadius="{StaticResource Radius.Pill}" Margin="1" />
+                            CornerRadius="{StaticResource Radius.Xs}" Margin="1" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.ScrollThumbHover}" />
