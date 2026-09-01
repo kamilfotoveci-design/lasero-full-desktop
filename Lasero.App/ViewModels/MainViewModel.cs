@@ -42,9 +42,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isDirty;
     [ObservableProperty] private AppScreen _currentScreen = AppScreen.Home;
 
-    /// <summary>Navigation rail showing icons only. The view animates the rail's width from this and
+    /// <summary>
+    /// Navigation rail showing icons only. The view animates the rail's width from this and
     /// IconLabel.CompactMode drops the labels; the tooltips and accessible names each button already
-    /// carries are what keeps a collapsed rail usable and screen-reader-navigable.</summary>
+    /// carries are what keeps a collapsed rail usable and screen-reader-navigable.
+    ///
+    /// Changed by the rail's edge handle and nothing else. A hover-to-expand rail was tried and taken
+    /// out: on a canvas app the left edge is on the way to everywhere, so the panel kept opening at the
+    /// corner of the eye while the operator was reaching for the toolbar.
+    /// </summary>
     [ObservableProperty] private bool _isNavCollapsed;
 
     /// <summary>Optional, free-text material for the piece currently loaded — there's no material

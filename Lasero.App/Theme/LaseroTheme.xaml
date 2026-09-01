@@ -567,164 +567,98 @@
          value that painted a near-black block behind a grey glyph on this white title bar, hiding the
          icon exactly when the pointer was on it. -->
     <!--
-        Sidebar toggle. Three bars that fold into a cross while the rail is open and unfold back to a
-        menu icon once it is collapsed, driven straight off MainViewModel so the icon can never
-        disagree with the rail below it.
+        The rail's edge handle. It straddles the rail's right border at mid-height, which is where a
+        panel that resizes itself is expected to offer the grip - the same place the splitter on the
+        other side of the workspace lives. The hamburger this replaces sat at the head of the rail and
+        had the wrong shape for the job: three stacked lines is the icon for "here is a menu", not for
+        "this edge moves", and at the top of the rail it read as a sixth navigation item.
 
-        Drawn from Rectangles in a Grid rather than Paths on a Canvas. The Canvas version looked right
-        in markup and wrong on screen: a Path is laid out at its bounds, not at the coordinates inside
-        its geometry, so all three bars stacked at the canvas origin and the ±7 offsets pushed the top
-        one clean out of the button. Three centred Rectangles have no such gap between what the markup
-        says and where the pixels land, and the bar length is one number instead of two path endpoints.
+        The chevron points the way the edge will travel and rotates 180° rather than swapping between
+        two glyphs, so the same mark turns round instead of one mark being replaced by another. 220ms
+        CubicEase EaseInOut, matching the rail it belongs to: this is on-screen movement, and the handle
+        and the panel have to look like one gesture.
 
-        The cross is two arms, not three. Rotating all three bars leaves the third lying exactly on top
-        of the first at 135° - a doubled stroke that reads as a thicker, slightly-off arm rather than an
-        X. The middle bar fades and contracts instead, which is also the only part of the gesture that
-        says "the third line went away" rather than "the third line moved somewhere".
-
-        Motion: 220ms, CubicEase EaseInOut, identical on every bar. This is on-screen morphing rather
-        than something entering or leaving, so ease-in-out is the right curve and the three bars have to
-        share it exactly or they stop reading as one object. No overshoot: a bounce on a control the
-        operator hits repeatedly during a session turns from characterful to twitchy fast.
+        Pill, not Radius.Sm: it is a circular grip sitting on a line, and Radius.Pill is the token for
+        anything genuinely round.
     -->
-    <Style x:Key="Button.SidebarToggle" TargetType="Button">
-        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
+    <!--
+        A ring that appears for keyboard focus and not for a mouse click. WPF applies FocusVisualStyle
+        only when focus arrived from the keyboard, which is the behaviour CSS spells :focus-visible and
+        the reason to use it instead of an IsKeyboardFocused trigger: that trigger cannot tell a Tab from
+        a click, so a control clicked with the mouse kept a cobalt ring until focus moved elsewhere.
+
+        Drawn outside the control rather than replacing its border, so nothing about the control's own
+        geometry shifts when it takes focus.
+    -->
+    <Style x:Key="FocusRing.Pill">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border BorderBrush="{DynamicResource Brush.FocusRing}" BorderThickness="2"
+                            CornerRadius="{StaticResource Radius.Pill}" Margin="-3" SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Button.RailHandle" TargetType="Button">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing.Pill}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{StaticResource Radius.Sm}"
-                            SnapsToDevicePixels="True">
-                        <!--
-                            18 wide inside a 36 button: the bars rotate, and a 16-long bar at 45° reaches
-                            about 11px each way, so the icon never comes near the border. The rows are
-                            what space the bars; the transforms only animate, so the resting layout is
-                            correct before a single storyboard has run.
-                        -->
-                        <Grid Width="18" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-
-                            <Rectangle x:Name="BarTop" Grid.Row="0" Height="{StaticResource Size.Icon.Stroke}" RadiusX="0.875" RadiusY="0.875"
-                                       VerticalAlignment="Top" Fill="{TemplateBinding Foreground}"
-                                       RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform>
-                                    <TransformGroup>
-                                        <RotateTransform Angle="0" />
-                                        <TranslateTransform Y="0" />
-                                    </TransformGroup>
-                                </Rectangle.RenderTransform>
-                            </Rectangle>
-
-                            <Rectangle x:Name="BarMid" Grid.Row="1" Height="{StaticResource Size.Icon.Stroke}" RadiusX="0.875" RadiusY="0.875"
-                                       Fill="{TemplateBinding Foreground}" RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform>
-                                    <ScaleTransform ScaleX="1" />
-                                </Rectangle.RenderTransform>
-                            </Rectangle>
-
-                            <Rectangle x:Name="BarBottom" Grid.Row="2" Height="{StaticResource Size.Icon.Stroke}" RadiusX="0.875" RadiusY="0.875"
-                                       VerticalAlignment="Bottom" Fill="{TemplateBinding Foreground}"
-                                       RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform>
-                                    <TransformGroup>
-                                        <RotateTransform Angle="0" />
-                                        <TranslateTransform Y="0" />
-                                    </TransformGroup>
-                                </Rectangle.RenderTransform>
-                            </Rectangle>
-                        </Grid>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Pill}"
+                                SnapsToDevicePixels="True" />
+                        <Path x:Name="Chevron" Data="{DynamicResource Glyph.ChevronLeft}"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="{StaticResource Size.Icon.Stroke}"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Stretch="Uniform" Width="8" Height="8"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              RenderTransformOrigin="0.5,0.5">
+                            <Path.RenderTransform>
+                                <RotateTransform Angle="0" />
+                            </Path.RenderTransform>
+                        </Path>
+                    </Grid>
                     <ControlTemplate.Triggers>
-                        <!-- Neutral wash, no border change. Cobalt on hover is the app's documented
-                             hover-looks-like-selected bug, and this button is never "selected". -->
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                            <Setter TargetName="Chevron" Property="Stroke" Value="{DynamicResource Brush.TextPrimary}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
-                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
-                        </Trigger>
+                        <!-- No IsKeyboardFocused trigger here: FocusVisualStyle above already draws the
+                             ring, and only for keyboard focus. The trigger version stayed lit after an
+                             ordinary mouse click, which read as the handle being switched on. -->
 
-                        <!--
-                            Rail open, so the button offers to close it. The outer bars travel to the
-                            centre (6px each, half the 12px that separates them) and rotate through it;
-                            the middle bar contracts to nothing and takes its opacity with it. Collapsed
-                            is the resting state, so ExitActions just plays the same numbers back.
-                        -->
-                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="False">
+                        <!-- Collapsed: the edge will travel right, so the chevron turns to face right.
+                             Expanded is the resting state, so only one direction is scripted. -->
+                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
                             <DataTrigger.EnterActions>
-                                <BeginStoryboard Name="ToCross">
+                                <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="6">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="45">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-
-                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.ScaleX" To="0">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="Opacity" To="0">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-
-                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="-6">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="-45">
+                                        <DoubleAnimation Storyboard.TargetName="Chevron" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Angle" To="180">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </DataTrigger.EnterActions>
                             <DataTrigger.ExitActions>
-                                <BeginStoryboard Name="ToMenu">
+                                <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="0">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="0">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-
-                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.ScaleX" To="1">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="Opacity" To="1">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-
-                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="0">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
-                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="0">
+                                        <DoubleAnimation Storyboard.TargetName="Chevron" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Angle" To="0">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
                                     </Storyboard>

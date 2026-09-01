@@ -565,9 +565,13 @@
                 persisted width.
             -->
             <Grid.ColumnDefinitions>
-                <!-- Auto, not 164: the rail's own Width is what animates (GridLength has no
-                     built-in animation), so the column has to follow it rather than fix it. -->
-                <ColumnDefinition Width="Auto" />
+                <!--
+                    Set from code, never animated, and it holds the collapsed width for the whole time
+                    the rail is peeking open over the canvas. If the column tracked the rail, brushing
+                    past the left edge would reflow the workspace and re-fit the view - the canvas would
+                    twitch every time the pointer crossed it, which is exactly what an editor cannot do.
+                -->
+                <ColumnDefinition x:Name="NavColumn" Width="164" />
                 <ColumnDefinition Width="*" MinWidth="420" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="InspectorColumn" Width="336" MinWidth="320" MaxWidth="560" />
@@ -575,7 +579,21 @@
 
             <!-- Stable application navigation. Design tools live beside the canvas so this rail
                  never changes meaning when the user switches screens. -->
-            <Border x:Name="NavRail" Grid.Column="0" Width="164"
+            <!--
+                ColumnSpan 2 with HorizontalAlignment Left is what lets the rail peek open at all. A Grid
+                child whose size exceeds the slot it was arranged in gets a layout clip - not a border,
+                not ClipToBounds, WPF's own - so a 164-wide rail sitting in a 74-wide column drew its
+                labels and then cut them off at 74. Spanning the canvas column gives it room to be wider
+                than its own column without the canvas giving up a pixel of layout; ZIndex puts it over
+                the canvas rather than under it.
+
+                The wrapper sizes itself to the rail, which is how the handle stays welded to the rail's
+                right border at every width, animation frames included, with no offset to keep in sync.
+                The handle hangs 11px outside it and is not clipped, because a child overflowing its
+                parent is only clipped when the parent asks for it.
+            -->
+            <Grid Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Left" Panel.ZIndex="10">
+            <Border x:Name="NavRail" Width="164"
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0" CornerRadius="0">
@@ -603,41 +621,6 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0">
-                        <!--
-                            The rail's own control, at the rail's own head: it belongs to the thing it
-                            resizes, it is the first thing the eye reaches on the left edge, and it is
-                            where every desktop app that has one puts it. Left-aligned when the labels
-                            are showing so it lines up with them; centred once the rail is a strip.
-                        -->
-                        <Button Command="{Binding ToggleNavCommand}"
-                                Margin="0,0,0,10"
-                                AutomationProperties.Name="Sbalit nebo rozbalit panel">
-                            <Button.ToolTip>
-                                <TextBlock>
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Sbalit panel na ikony" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                                    <Setter Property="Text" Value="Rozbalit panel s popisky" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Button.ToolTip>
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource Button.SidebarToggle}">
-                                    <Setter Property="HorizontalAlignment" Value="Left" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                            <Setter Property="HorizontalAlignment" Value="Center" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
                             <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
@@ -722,6 +705,32 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+                <!--
+                    Half on the rail, half on the canvas. -11 is half the handle, so it is centred on
+                    the 1px border whatever the rail measures.
+                -->
+                <Button Style="{StaticResource Button.RailHandle}"
+                        Command="{Binding ToggleNavCommand}"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Margin="0,0,-11,0"
+                        AutomationProperties.Name="Sbalit nebo rozbalit panel">
+                    <Button.ToolTip>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Sbalit panel na ikony" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                            <Setter Property="Text" Value="Rozbalit panel s popisky" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button.ToolTip>
+                </Button>
+            </Grid>
 
             <!-- Home dashboard -->
             <views:HomeView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"

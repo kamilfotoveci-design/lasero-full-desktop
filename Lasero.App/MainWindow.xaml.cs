@@ -457,6 +457,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyNavRailWidth(bool collapsed, bool animate)
     {
+        // The column is set rather than animated: it defines the canvas's slot, and animating both
+        // would have the workspace relayout on every frame for no visible gain. The rail's own width is
+        // what the eye follows.
+        NavColumn.Width = new GridLength(collapsed
+            ? WorkspacePreferences.CollapsedNavWidth
+            : WorkspacePreferences.ExpandedNavWidth);
+
         var target = collapsed ? WorkspacePreferences.CollapsedNavWidth : WorkspacePreferences.ExpandedNavWidth;
 
         if (!animate || !SystemParameters.ClientAreaAnimation)

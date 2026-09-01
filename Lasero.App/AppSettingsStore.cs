@@ -44,6 +44,10 @@ public sealed class WorkspacePreferences
     /// the 18px navigation glyphs instead gave 66, which centred the glyphs perfectly and quietly cut
     /// the right-hand third off the avatar — a Border does clip, and nothing in the layout complains.
     /// Everything narrower than 26 simply centres in the space.
+    ///
+    /// While the rail is collapsed its column stays at the collapsed width even as the rail itself
+    /// peeks open over the canvas, so the two are not interchangeable: one is layout, the other is
+    /// what is drawn.
     /// </summary>
     public const double ExpandedNavWidth = 164;
     public const double CollapsedNavWidth = 74;
