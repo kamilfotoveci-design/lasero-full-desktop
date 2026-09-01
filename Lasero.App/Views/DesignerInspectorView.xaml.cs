@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Lasero.App.ViewModels;
 using Lasero.Core.Layers;
 using Lasero.Core.Materials;
@@ -26,6 +27,19 @@ public partial class DesignerInspectorView : UserControl
         field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         field.SelectAll();
         e.Handled = true;
+    }
+
+    // A right-click has to land on the row it was aimed at before the menu opens: Duplikovat and
+    // Odstranit act on Scene.SelectedLayer, and WPF does not select a ListBoxItem on the right button.
+    // Without this, right-clicking row three and choosing Odstranit deletes row one.
+    private void OnLayerRowRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        for (var element = e.OriginalSource as DependencyObject; element is not null; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is not ListBoxItem row) continue;
+            row.IsSelected = true;
+            return;
+        }
     }
 
     private void OnApplyMaterialClick(object sender, RoutedEventArgs e)

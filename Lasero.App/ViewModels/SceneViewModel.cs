@@ -156,11 +156,17 @@ public partial class SceneViewModel : ObservableObject
         Changed?.Invoke();
     }
 
-    private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item =>
+    private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item => UsesLayer(item, layer));
+
+    // Shapes reference a layer by id, but projects saved before layer ids existed only carry a colour,
+    // so both routes have to count. Raster objects belong to the raster layer by kind rather than by
+    // reference. Deleting a layer and selecting its shapes have to agree on this, or "Odstranit lze
+    // pouze vrstvu, kterou nepoužívá žádný objekt" would refuse a layer whose shapes cannot be found.
+    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
         (layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty)) ||
         item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
             ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color)));
+            : shape.LayerColor.IsApproximately(layer.Color));
 
     private void NotifyLayerStateChanged()
     {
@@ -308,18 +314,51 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.Add(obj);
     }
 
-    [RelayCommand]
-    private void AddLayer()
-    {
-        var color = LayerPalette.FirstOrDefault(candidate =>
-            Layers.All(layer => !layer.Color.IsApproximately(candidate)));
-        if (Layers.Any(layer => layer.Color.IsApproximately(color)))
-            color = FindAvailableLayerColor();
+    // Layer row context menu. LightBurn puts these on right-click and nowhere else, and the reason
+    // holds here: they act on one named row, so a toolbar button for them would first have to say
+    // which row it meant. Each one is a plain state write on LayerSettings — nothing here decides
+    // what the machine does, only which layers the job generator will find enabled.
 
-        var layer = LayerSettings.CreateDefault(color, LayerMode.Cut, $"Vrstva {Layers.Count + 1:00}");
-        Layers.Add(layer);
+    [RelayCommand]
+    private void ToggleLayerOutput(LayerSettings? layer)
+    {
+        if (layer is null) return;
+        layer.IsEnabled = !layer.IsEnabled;
+    }
+
+    [RelayCommand]
+    private void ToggleLayerVisibility(LayerSettings? layer)
+    {
+        if (layer is null) return;
+        layer.IsVisible = !layer.IsVisible;
+    }
+
+    /// <summary>Leaves only this layer in the job. The quickest way to make one test cut.</summary>
+    [RelayCommand]
+    private void IsolateLayerOutput(LayerSettings? layer)
+    {
+        if (layer is null) return;
+        foreach (var candidate in Layers)
+            candidate.IsEnabled = ReferenceEquals(candidate, layer);
+    }
+
+    /// <summary>Leaves only this layer on the canvas. Visibility never changes what is produced.</summary>
+    [RelayCommand]
+    private void IsolateLayerVisibility(LayerSettings? layer)
+    {
+        if (layer is null) return;
+        foreach (var candidate in Layers)
+            candidate.IsVisible = ReferenceEquals(candidate, layer);
+    }
+
+    [RelayCommand]
+    private void SelectObjectsInLayer(LayerSettings? layer)
+    {
+        if (layer is null) return;
         SelectedLayer = layer;
-        NotifyLayerStateChanged();
+        SelectedObjects.Clear();
+        foreach (var item in Objects.Where(item => UsesLayer(item, layer)))
+            SelectedObjects.Add(item);
     }
 
     [RelayCommand]

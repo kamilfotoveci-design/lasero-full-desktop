@@ -716,12 +716,10 @@
                                     ToolTip="Měřítko plátna" AutomationProperties.Name="Měřítko plátna">
                                 <Button.ContextMenu>
                                     <ContextMenu>
+                                        <MenuItem Header="25 %" Tag="25" Click="OnZoomPresetClick" />
                                         <MenuItem Header="50 %" Tag="50" Click="OnZoomPresetClick" />
                                         <MenuItem Header="75 %" Tag="75" Click="OnZoomPresetClick" />
                                         <MenuItem Header="100 %" Tag="100" Click="OnZoomPresetClick" />
-                                        <MenuItem Header="150 %" Tag="150" Click="OnZoomPresetClick" />
-                                        <MenuItem Header="200 %" Tag="200" Click="OnZoomPresetClick" />
-                                        <MenuItem Header="400 %" Tag="400" Click="OnZoomPresetClick" />
                                         <Separator />
                                         <MenuItem Header="Přizpůsobit oknu" Click="OnFitToViewClick" />
                                     </ContextMenu>

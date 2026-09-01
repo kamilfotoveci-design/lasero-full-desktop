@@ -97,19 +97,18 @@
                               Visibility="{Binding IsChecked, ElementName=LayersTabRadio, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="18,16,18,20">
 
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,10,0">
-                                <TextBlock Text="Vrstvy" Style="{StaticResource InspectorSectionTitle}" />
-                                <TextBlock Text="Každá vrstva má vlastní nastavení laseru."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Button Grid.Column="1" Style="{StaticResource Button.Ghost}"
-                                    Command="{Binding Scene.AddLayerCommand}" VerticalAlignment="Top" Padding="10,0"
-                                    ToolTip="Přidat novou prázdnou vrstvu">
-                                <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nová vrstva" IconSize="{StaticResource Size.Icon.Sm}" />
-                            </Button>
-                        </Grid>
+                        <!--
+                            No "Nová vrstva" button. A layer is not something the operator sets up in
+                            advance and then finds geometry for - it appears the moment something is
+                            drawn or imported, which is why an empty one had nothing to say for itself
+                            beyond a default name and a colour. Everything that acts on a layer now
+                            lives on the row it acts on, in the right-click menu.
+                        -->
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="Vrstvy" Style="{StaticResource InspectorSectionTitle}" />
+                            <TextBlock Text="Každá vrstva má vlastní nastavení laseru. Pravým tlačítkem otevřete možnosti."
+                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
+                        </StackPanel>
 
                         <!--
                             The column headers (#, Vrstva a nastavení, Výstup, Vidět) are gone: the row
@@ -124,7 +123,8 @@
                                  Margin="0,0,0,4"
                                  BorderThickness="0"
                                  Background="Transparent"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 PreviewMouseRightButtonDown="OnLayerRowRightButtonDown">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="0" />
@@ -160,7 +160,60 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid MinHeight="48" Margin="4,0,8,0">
+                                    <Grid MinHeight="48" Margin="4,0,8,0" Background="Transparent"
+                                          Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                        <!--
+                                            The menu's DataContext is the row's own layer, so every item
+                                            names one layer and no item has to guess which. Headers flip
+                                            with state rather than reading "Vyřadit" on a layer that is
+                                            already out of the job.
+                                        -->
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Command="{Binding PlacementTarget.Tag.Scene.ToggleLayerOutputCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Style>
+                                                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                            <Setter Property="Header" Value="Zařadit vrstvu do úlohy" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="True">
+                                                                    <Setter Property="Header" Value="Vyřadit vrstvu z úlohy" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </MenuItem.Style>
+                                                </MenuItem>
+                                                <MenuItem Header="Vyřadit všechny vrstvy kromě této"
+                                                          Command="{Binding PlacementTarget.Tag.Scene.IsolateLayerOutputCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <Separator />
+                                                <MenuItem Command="{Binding PlacementTarget.Tag.Scene.ToggleLayerVisibilityCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Style>
+                                                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                            <Setter Property="Header" Value="Zobrazit vrstvu" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                                    <Setter Property="Header" Value="Skrýt vrstvu" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </MenuItem.Style>
+                                                </MenuItem>
+                                                <MenuItem Header="Skrýt všechny vrstvy kromě této"
+                                                          Command="{Binding PlacementTarget.Tag.Scene.IsolateLayerVisibilityCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <Separator />
+                                                <MenuItem Header="Vybrat všechny tvary v této vrstvě"
+                                                          Command="{Binding PlacementTarget.Tag.Scene.SelectObjectsInLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="Duplikovat vrstvu"
+                                                          Command="{Binding PlacementTarget.Tag.Scene.DuplicateSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <Separator />
+                                                <MenuItem Header="Odstranit vrstvu"
+                                                          Command="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -290,7 +343,7 @@
                             -->
                             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource InlineTitleInput}"
-                                     Margin="0,0,0,16"
+                                     Margin="-6,0,0,16"
                                      ToolTip="Přejmenovat vrstvu"
                                      automation:AutomationProperties.Name="Název vrstvy" />
 

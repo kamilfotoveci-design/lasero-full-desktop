@@ -992,6 +992,39 @@
         <Setter Property="Margin" Value="4,4" />
     </Style>
 
+    <!--
+        The ContextMenu container itself. MenuItem and its submenus were styled, but the top-level
+        menu was still stock WPF chrome: square corners, a flat grey hairline, no shadow, and the
+        classic left gutter reserved for icons and check marks that nothing in this app puts there.
+        So the zoom presets and the material recipe menu opened as a Windows-95 box hanging off a
+        panel with 12px corners.
+
+        HasDropShadow stays True on purpose: it is what makes the underlying Popup allow
+        transparency, without which a rounded corner has nothing to be rounded against. The system
+        shadow it would otherwise draw lives in the template being replaced here, so only
+        Shadow.Dropdown survives — the same shadow the ComboBox popup and the submenu popup use.
+    -->
+    <Style TargetType="ContextMenu">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="HasDropShadow" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{DynamicResource Brush.Panel}"
+                            BorderBrush="{DynamicResource Brush.PanelBorder}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource Radius.Lg}"
+                            Padding="4"
+                            MinWidth="180"
+                            Effect="{StaticResource Shadow.Dropdown}">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
         <Setter Property="Padding" Value="8,0" />
