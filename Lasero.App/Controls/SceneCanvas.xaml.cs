@@ -1162,6 +1162,19 @@ public partial class SceneCanvas : UserControl
 
         if (ViewModel.ActiveTool == DesignerTool.Select)
         {
+            var pointer = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+            if (Keyboard.Modifiers == ModifierKeys.None &&
+                ViewModel.SelectedObjects.Any(obj => !obj.IsLocked) &&
+                SceneHitTester.IsInsideSelectionBounds(ViewModel.SelectedObjects, pointer))
+            {
+                // Photoshop/Inkscape-style move surface: after selection, the transform frame is the
+                // target. Users should not have to re-acquire a 1 px cut contour to move it. Handles
+                // already returned above, so resize/rotate keep priority over this broad move target.
+                BeginMove(e);
+                e.Handled = true;
+                return;
+            }
+
             var candidates = HitTestScene(screen)
                 .GroupBy(candidate => candidate.Object)
                 .Select(group => group.First())

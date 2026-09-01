@@ -20,6 +20,32 @@ public class SceneHitTesterTests
     }
 
     [Fact]
+    public void SelectedStrokeOnlyObjectCanBeGrabbedInsideItsTransformBounds()
+    {
+        var outline = MakeObject(MakeSquare(0, 0, 100, 100));
+
+        var canBeginMove = SceneHitTester.IsInsideSelectionBounds(
+            [outline],
+            new Position(50, 50, 0));
+
+        Assert.True(canBeginMove);
+    }
+
+    [Fact]
+    public void SingleSelectionBoundsFollowObjectRotationInsteadOfAxisAlignedWorldBounds()
+    {
+        var outline = MakeObject(MakeSquare(0, 0, 100, 20));
+        outline.Transform = new ObjectTransform(0, 0, 45, 1, 1);
+
+        Assert.True(SceneHitTester.IsInsideSelectionBounds(
+            [outline],
+            outline.Transform.Apply(new Position(50, 10, 0), outline.LocalPivot)));
+        Assert.False(SceneHitTester.IsInsideSelectionBounds(
+            [outline],
+            new Position(10, 10, 0)));
+    }
+
+    [Fact]
     public void VisibleInnerStrokeWinsOverOuterBoundingBox()
     {
         var inner = MakeObject(MakeSquare(40, 40, 60, 60));

@@ -20,6 +20,32 @@ internal static class SceneHitTester
 {
     internal const double DefaultTolerancePx = 6;
 
+    /// <summary>
+    /// Tests the move surface shown by the selection adorner. A single object uses its rotated local
+    /// bounds; a group uses the shared world-space bounding box displayed by the canvas. This is
+    /// deliberately separate from shape hit-testing: a cut-only closed contour has no fill, but once
+    /// selected it must still be draggable from anywhere inside its transform frame.
+    /// </summary>
+    public static bool IsInsideSelectionBounds(
+        IReadOnlyList<SceneObject> selectedObjects,
+        Position pointerWorld)
+    {
+        ArgumentNullException.ThrowIfNull(selectedObjects);
+        if (selectedObjects.Count == 0) return false;
+
+        if (selectedObjects.Count == 1)
+        {
+            var obj = selectedObjects[0];
+            var local = obj.Transform.Inverse(pointerWorld, obj.LocalPivot);
+            return Contains(obj.LocalBounds, local);
+        }
+
+        var bounds = Lasero.Core.GCode.BoundingBox2D.Empty;
+        foreach (var obj in selectedObjects)
+            bounds = Union(bounds, obj.WorldBounds());
+        return Contains(bounds, pointerWorld);
+    }
+
     public static IReadOnlyList<SceneHitCandidate> HitTest(
         IReadOnlyList<SceneObject> objects,
         Position pointerWorld,
@@ -72,6 +98,22 @@ internal static class SceneHitTester
         foreach (var point in shape.Points)
             bounds = bounds.Include(point.X, point.Y);
         return bounds;
+    }
+
+    private static bool Contains(Lasero.Core.GCode.BoundingBox2D bounds, Position point) =>
+        !bounds.IsEmpty &&
+        point.X >= bounds.MinX && point.X <= bounds.MaxX &&
+        point.Y >= bounds.MinY && point.Y <= bounds.MaxY;
+
+    private static Lasero.Core.GCode.BoundingBox2D Union(
+        Lasero.Core.GCode.BoundingBox2D first,
+        Lasero.Core.GCode.BoundingBox2D second)
+    {
+        if (first.IsEmpty) return second;
+        if (second.IsEmpty) return first;
+        return first
+            .Include(second.MinX, second.MinY)
+            .Include(second.MaxX, second.MaxY);
     }
 
     private static bool IsNearStroke(ImportedShape shape, Position pointer, double toleranceSquared)
