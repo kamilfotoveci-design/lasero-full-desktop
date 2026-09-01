@@ -33,6 +33,18 @@ public sealed class WorkspacePreferences
     public const double MinInspectorWidth = 320;
     public const double MaxInspectorWidth = 560;
 
+    /// <summary>Whether the navigation rail is showing icons only. Remembered because it is a
+    /// posture, not a per-task choice: someone working on a 1366 screen collapses it once and wants
+    /// it collapsed the next morning too.</summary>
+    public bool IsNavCollapsed { get; set; }
+
+    /// <summary>Rail widths. The collapsed value is not a round number by accident: rail padding 14 +
+    /// button padding 10 + a Size.Icon.Md glyph + 10 + 14 is exactly 66, so the icon lands centred
+    /// with no per-button alignment overrides and nothing to keep in sync when either padding
+    /// changes.</summary>
+    public const double ExpandedNavWidth = 164;
+    public const double CollapsedNavWidth = 66;
+
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
         : DefaultInspectorWidth;

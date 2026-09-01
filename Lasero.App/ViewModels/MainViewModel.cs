@@ -42,6 +42,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isDirty;
     [ObservableProperty] private AppScreen _currentScreen = AppScreen.Home;
 
+    /// <summary>Navigation rail showing icons only. The view animates the rail's width from this and
+    /// IconLabel.CompactMode drops the labels; the tooltips and accessible names each button already
+    /// carries are what keeps a collapsed rail usable and screen-reader-navigable.</summary>
+    [ObservableProperty] private bool _isNavCollapsed;
+
     /// <summary>Optional, free-text material for the piece currently loaded — there's no material
     /// library yet, so this is the only source job history has for its material stat/list.</summary>
     [ObservableProperty] private string? _materialName;
@@ -119,6 +124,23 @@ public partial class MainViewModel : ObservableObject
             Settings.Safety.ShowMachineStatusAfterConnect)
         {
             CurrentScreen = AppScreen.Device;
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleNav()
+    {
+        IsNavCollapsed = !IsNavCollapsed;
+        try
+        {
+            _settingsStore.Current.Workspace.IsNavCollapsed = IsNavCollapsed;
+            _settingsStore.Save();
+        }
+        catch (Exception ex)
+        {
+            // Same rule as the inspector width: remembering the layout is a convenience and must
+            // never take the session down with it.
+            Serilog.Log.Warning(ex, "Failed to persist navigation rail state");
         }
     }
 

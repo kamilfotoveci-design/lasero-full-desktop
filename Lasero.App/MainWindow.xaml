@@ -494,11 +494,37 @@
                     <ColumnDefinition Width="138" />
                 </Grid.ColumnDefinitions>
 
-                <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="16,0">
-                    <Image Source="{StaticResource Image.BrandWordmark}"
-                           Width="104" Height="34" Stretch="Uniform"
-                           HorizontalAlignment="Left" VerticalAlignment="Center"
-                           AutomationProperties.Name="Lasero" />
+                <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="14,0"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- The rail hangs directly below this button, which is the whole reason it sits
+                             here rather than at the foot of the rail it controls: the thing you press
+                             and the thing that moves are in the same column. IsHitTestVisibleInChrome
+                             is required - WindowChrome claims the top 60px for dragging, so without it
+                             a click here starts a window drag instead of pressing the button. -->
+                        <Button Style="{StaticResource Button.SidebarToggle}"
+                                Command="{Binding ToggleNavCommand}" Margin="0,0,12,0"
+                                AutomationProperties.Name="Sbalit nebo rozbalit panel">
+                            <Button.ToolTip>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Sbalit panel na ikony" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                                    <Setter Property="Text" Value="Rozbalit panel s popisky" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Button.ToolTip>
+                        </Button>
+                        <Image Source="{StaticResource Image.BrandWordmark}"
+                               Width="104" Height="34" Stretch="Uniform"
+                               VerticalAlignment="Center"
+                               AutomationProperties.Name="Lasero" />
+                    </StackPanel>
                 </Border>
 
                 <!-- Project identity on one line. "Pracovní návrh" was a constant second line that said
@@ -561,7 +587,9 @@
                 persisted width.
             -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="164" />
+                <!-- Auto, not 164: the rail's own Width is what animates (GridLength has no
+                     built-in animation), so the column has to follow it rather than fix it. -->
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" MinWidth="420" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="InspectorColumn" Width="336" MinWidth="320" MaxWidth="560" />
@@ -569,7 +597,7 @@
 
             <!-- Stable application navigation. Design tools live beside the canvas so this rail
                  never changes meaning when the user switches screens. -->
-            <Border Grid.Column="0" Padding="14,16"
+            <Border x:Name="NavRail" Grid.Column="0" Padding="14,16" Width="164"
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0" CornerRadius="0">
@@ -583,27 +611,41 @@
                     <StackPanel Grid.Row="0">
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
-                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Designer}" Command="{Binding ShowDesignerCommand}"
                                 ToolTip="Pracovní plocha pro přípravu grafiky" AutomationProperties.Name="Návrh">
-                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton}" Click="OnMaterialsClick"
                                 ToolTip="Materiály a doporučené parametry gravírování" AutomationProperties.Name="Materiály">
-                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Device}" Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Chat}" Command="{Binding ShowChatCommand}"
                                  ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
                             <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="22" Height="22" Margin="0,0,9,0">
+                                <!-- Hand-built content rather than an IconLabel, so the collapse has
+                                     to be spelled out here: the gap goes with the label, or a
+                                     collapsed rail shows the avatar pushed 9px off centre. -->
+                                <Ellipse Width="22" Height="22">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Margin" Value="0,0,9,0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                                    <Setter Property="Margin" Value="0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
                                     <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
                                 </Ellipse>
-                                <TextBlock Text="Lasero Chat" VerticalAlignment="Center" />
+                                <TextBlock Text="Lasero Chat" VerticalAlignment="Center"
+                                           Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -612,7 +654,7 @@
                         <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="8,8,8,12" />
                         <Button Style="{StaticResource NavButton}" Click="OnSettingsClick"
                                 ToolTip="Předvolby aplikace a pracovní plochy" AutomationProperties.Name="Nastavení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
 
                         <!-- Whoever is signed in, at the foot of the sidebar. The e-mail is the only
@@ -622,14 +664,25 @@
                                 Click="OnSettingsClick" AutomationProperties.Name="Účet"
                                 Visibility="{Binding Account.IsSignedIn, Converter={StaticResource BoolToVisibility}}">
                             <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="26" Height="26" Margin="0,0,9,0"
+                                <Border DockPanel.Dock="Left" Width="26" Height="26"
                                         CornerRadius="{StaticResource Radius.Pill}"
                                         Background="{StaticResource Brush.SelectedSurface}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Margin" Value="0,0,9,0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
+                                                    <Setter Property="Margin" Value="0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <components:IconGlyph IconData="{StaticResource Glyph.User}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                                           Foreground="{StaticResource Brush.AccentText}" />
                                 </Border>
-                                <StackPanel VerticalAlignment="Center">
+                                <StackPanel VerticalAlignment="Center"
+                                            Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
                                     <TextBlock Text="{Binding Account.Email}" FontWeight="Medium"
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="{Binding Account.LicenceLabel}" Style="{StaticResource Text.Muted}"

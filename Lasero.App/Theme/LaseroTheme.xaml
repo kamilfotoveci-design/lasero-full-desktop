@@ -566,6 +566,175 @@
     <!-- Title bar chrome buttons: flat until hover. The hover fill used to be #22242C — a dark-theme
          value that painted a near-black block behind a grey glyph on this white title bar, hiding the
          icon exactly when the pointer was on it. -->
+    <!--
+        Sidebar toggle. Three bars that fold into a cross while the rail is open and unfold back to a
+        menu icon once it is collapsed, driven straight off MainViewModel so the icon can never
+        disagree with the rail below it.
+
+        Drawn from Rectangles in a Grid rather than Paths on a Canvas. The Canvas version looked right
+        in markup and wrong on screen: a Path is laid out at its bounds, not at the coordinates inside
+        its geometry, so all three bars stacked at the canvas origin and the ±7 offsets pushed the top
+        one clean out of the button. Three centred Rectangles have no such gap between what the markup
+        says and where the pixels land, and the bar length is one number instead of two path endpoints.
+
+        The cross is two arms, not three. Rotating all three bars leaves the third lying exactly on top
+        of the first at 135° - a doubled stroke that reads as a thicker, slightly-off arm rather than an
+        X. The middle bar fades and contracts instead, which is also the only part of the gesture that
+        says "the third line went away" rather than "the third line moved somewhere".
+
+        Motion: 220ms, CubicEase EaseInOut, identical on every bar. This is on-screen morphing rather
+        than something entering or leaving, so ease-in-out is the right curve and the three bars have to
+        share it exactly or they stop reading as one object. No overshoot: a bounce on a control the
+        operator hits repeatedly during a session turns from characterful to twitchy fast.
+    -->
+    <Style x:Key="Button.SidebarToggle" TargetType="Button">
+        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Radius.Md}"
+                            SnapsToDevicePixels="True">
+                        <!--
+                            18 wide inside a 36 button: the bars rotate, and a 16-long bar at 45° reaches
+                            about 11px each way, so the icon never comes near the border. The rows are
+                            what space the bars; the transforms only animate, so the resting layout is
+                            correct before a single storyboard has run.
+                        -->
+                        <Grid Width="18" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Rectangle x:Name="BarTop" Grid.Row="0" Height="2" RadiusX="1" RadiusY="1"
+                                       VerticalAlignment="Top" Fill="{TemplateBinding Foreground}"
+                                       RenderTransformOrigin="0.5,0.5">
+                                <Rectangle.RenderTransform>
+                                    <TransformGroup>
+                                        <RotateTransform Angle="0" />
+                                        <TranslateTransform Y="0" />
+                                    </TransformGroup>
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+
+                            <Rectangle x:Name="BarMid" Grid.Row="1" Height="2" RadiusX="1" RadiusY="1"
+                                       Fill="{TemplateBinding Foreground}" RenderTransformOrigin="0.5,0.5">
+                                <Rectangle.RenderTransform>
+                                    <ScaleTransform ScaleX="1" />
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+
+                            <Rectangle x:Name="BarBottom" Grid.Row="2" Height="2" RadiusX="1" RadiusY="1"
+                                       VerticalAlignment="Bottom" Fill="{TemplateBinding Foreground}"
+                                       RenderTransformOrigin="0.5,0.5">
+                                <Rectangle.RenderTransform>
+                                    <TransformGroup>
+                                        <RotateTransform Angle="0" />
+                                        <TranslateTransform Y="0" />
+                                    </TransformGroup>
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
+
+                        <!--
+                            Rail open, so the button offers to close it. The outer bars travel to the
+                            centre (6px each, half the 12px that separates them) and rotate through it;
+                            the middle bar contracts to nothing and takes its opacity with it. Collapsed
+                            is the resting state, so ExitActions just plays the same numbers back.
+                        -->
+                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="False">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard Name="ToCross">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="6">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="45">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+
+                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.ScaleX" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="Opacity" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+
+                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="-6">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="-45">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard Name="ToMenu">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarTop" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+
+                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.ScaleX" To="1">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarMid" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="Opacity" To="1">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+
+                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[1].Y" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="BarBottom" Duration="0:0:0.22"
+                                                         Storyboard.TargetProperty="RenderTransform.Children[0].Angle" To="0">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Button.Chrome" TargetType="Button">
         <Setter Property="Width" Value="46" />
         <Setter Property="Height" Value="32" />

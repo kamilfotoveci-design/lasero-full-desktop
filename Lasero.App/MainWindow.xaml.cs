@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Shell;
 using Lasero.App.ViewModels;
@@ -370,6 +371,12 @@ public partial class MainWindow : Window
     /// layout pass that gave it a size has finished first.</summary>
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainViewModel.IsNavCollapsed))
+        {
+            ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: true);
+            return;
+        }
+
         if (e.PropertyName != nameof(MainViewModel.CurrentScreen)) return;
         if (_viewModel.CurrentScreen != AppScreen.Designer) return;
 
@@ -424,10 +431,49 @@ public partial class MainWindow : Window
     /// </summary>
     private void RestoreWorkspaceLayout()
     {
+        // Restored without animating: the saved posture is where the window starts, not something
+        // the operator just asked for.
+        _viewModel.IsNavCollapsed = _viewModel.SettingsStore.Current.Workspace.IsNavCollapsed;
+        ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: false);
+
         var saved = _viewModel.SettingsStore.Current.Workspace.ClampedInspectorWidth;
         var window = ActualWidth > 0 ? ActualWidth : Width;
         var ceiling = Math.Max(InspectorColumn.MinWidth, window / 3);
         InspectorColumn.Width = new GridLength(Math.Min(saved, ceiling));
+    }
+
+    /// <summary>
+    /// Animates the navigation rail between its two widths.
+    ///
+    /// The animation is on the Border's Width and the column is Auto, because GridLength has no
+    /// built-in animation and writing a GridLengthAnimation to avoid one layout pass per frame is not
+    /// worth it for one panel over 180ms.
+    ///
+    /// 180ms with a cubic ease is inside the 150-300ms band where a transition reads as the panel
+    /// moving rather than as the app stalling; ease-out on the way open and ease-in on the way shut so
+    /// the motion settles where the eye is going to end up. Windows' own animation setting is
+    /// honoured: with it off the rail simply arrives at the new width, which is also what happens on
+    /// the very first layout so the saved state does not animate in at startup.
+    /// </summary>
+    private void ApplyNavRailWidth(bool collapsed, bool animate)
+    {
+        var target = collapsed ? WorkspacePreferences.CollapsedNavWidth : WorkspacePreferences.ExpandedNavWidth;
+
+        if (!animate || !SystemParameters.ClientAreaAnimation)
+        {
+            NavRail.BeginAnimation(FrameworkElement.WidthProperty, null);
+            NavRail.Width = target;
+            return;
+        }
+
+        var slide = new DoubleAnimation
+        {
+            To = target,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = new CubicEase { EasingMode = collapsed ? EasingMode.EaseIn : EasingMode.EaseOut },
+            FillBehavior = FillBehavior.HoldEnd,
+        };
+        NavRail.BeginAnimation(FrameworkElement.WidthProperty, slide);
     }
 
     private void OnInspectorSplitterDragCompleted(object sender, DragCompletedEventArgs e)
