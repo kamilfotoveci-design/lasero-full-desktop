@@ -20,13 +20,14 @@ cd /e/lasero-desktop && dotnet test LaseroDesktop.sln             # baseline pre
 powershell -NoProfile -Command "Get-Process Lasero.App -ErrorAction SilentlyContinue | Stop-Process -Force"
 ```
 
-Vetva `design-system-tokens`, HEAD `853b24f` (commitnutá stabilizácia). **Nad tým je rozrobený,
-necommitnutý KAMIL rebuild** — pozri §2. Ak `git status` ukazuje iné súbory ako v §2, práca v
-Claude Code pokračovala po tomto zápise; ber skutočný `git diff` ako pravdu, nie tento súbor.
+Vetva `design-system-tokens`, HEAD `2c5dcbf`. **Commitnuté aj rozrobené kroky KAMIL rebuildu**
+(§2) — commitol som to takto zámerne, aby handoff začínal z čistého, buildovateľného stromu
+(0 warnings, 389/389 testov v momente commitu). Ak `git status` ukazuje iné súbory, práca
+pokračovala po tomto zápise; ber skutočný `git log`/`git diff` ako pravdu, nie tento súbor.
 
 ---
 
-## 1. Čo je hotové a commitnuté (`853b24f`)
+## 1. Čo je hotové a commitnuté (`853b24f`, `2c5dcbf`)
 
 Dve veci naraz, jeden commit:
 
@@ -52,7 +53,7 @@ tak, kým sám nepovie inak), `TextToolWindow.Style` premenované na `TextStyle`
 
 **Baseline v tomto commite: build 0/0, testy 353/353.**
 
-### 1.1 Následná „UI recovery" prechádzka (necommitnuté, ale malé a bezpečné)
+### 1.1 Následná „UI recovery" prechádzka (commitnuté v `2c5dcbf`)
 
 Po `853b24f` prebehla živá vizuálna kontrola appky (viď §3, `.uiqa/` toolkit už funguje, appka sa
 spúšťa priamo zo session.dat bez loginu). Nájdené a opravené:
@@ -69,9 +70,8 @@ spúšťa priamo zo session.dat bez loginu). Nájdené a opravené:
   floor ešte občas ukáže scrollbar pre Bold/Italic/overflow — akceptované ako zvyškový P2 (pôvodný
   komentár v súbore to aj tak volá „safety net, not normal state").
 
-Toto by malo byť v samostatnom malom commite pred pokračovaním v KAMIL rebuilde — pozri `git diff`
-pre presné súbory (`WorkspaceCanvas.xaml.cs`, `SceneCanvas.xaml.cs`, `SelectionPropertiesBar.xaml`,
-plus nová `InverseBooleanToVisibilityConverter` resource entry v `SelectionPropertiesBar.xaml`).
+Súbory: `WorkspaceCanvas.xaml.cs`, `SceneCanvas.xaml.cs`, `SelectionPropertiesBar.xaml` (plus nová
+`InverseBooleanToVisibilityConverter` resource entry tamže).
 
 ---
 
@@ -135,36 +135,44 @@ súbor**, len v histórii chatu. Ak sa stratí, treba ho odvodiť znova z tejto 
 
 ### 2.2 Presný stav implementácie PRÁVE TERAZ
 
-`git diff --stat` (necommitnuté, nad `853b24f`):
+Commitnuté v `2c5dcbf` (build bol 0/0, testy 389/389 **v momente commitu**):
 ```
-Lasero.App/Controls/SceneCanvas.xaml.cs            |  12 +-   (ruler fix, pozri §1.1)
-Lasero.App/Controls/WorkspaceCanvas.xaml.cs        |  22 ++-  (ruler fix, pozri §1.1)
-Lasero.App/Converters/AssistantClearanceConverter.cs |  29 +++-  (KAMIL: MultiValueConverter)
-Lasero.App/MainWindow.xaml                         |  14 +-   (KAMIL: MultiBinding + ShowCommand na nav rail)
-Lasero.App/MainWindow.xaml.cs                      |  15 ++   (KAMIL: pravdepodobne click handler pre dve commandy naraz)
-Lasero.App/ViewModels/ChatViewModel.cs             |  23 ++-  (backend fáza: SelectedLayerIdProvider)
-Lasero.App/ViewModels/KamilAssistantViewModel.cs   |  85 ++++--  (backend fáza: StepBack, ShowCommand guard, staleness guard)
-Lasero.App/ViewModels/ParameterRecommendation.cs   |   9 ++   (backend fáza: OriginLayerId)
-Lasero.App/Views/Kamil/KamilAssistantHost.xaml     | 176 ++++--  (frontend fáza: avatar-only, geometria, Close štýl)
-Lasero.App/Views/Kamil/KamilAssistantHost.xaml.cs  |  65 ++--  (frontend fáza: AvailableExpandedHeight fix, animácie)
-Lasero.App/Views/SelectionPropertiesBar.xaml       |  44 ++   (pozri §1.1, nesúvisí s KAMILom)
+Lasero.App/Controls/SceneCanvas.xaml.cs              (ruler fix, pozri §1.1)
+Lasero.App/Controls/WorkspaceCanvas.xaml.cs          (ruler fix, pozri §1.1)
+Lasero.App/Converters/AssistantClearanceConverter.cs (KAMIL: MultiValueConverter)
+Lasero.App/MainWindow.xaml                           (KAMIL: MultiBinding + ShowCommand na nav rail)
+Lasero.App/MainWindow.xaml.cs                        (KAMIL: click handler pre dve commandy naraz)
+Lasero.App/ViewModels/ChatViewModel.cs               (backend fáza: SelectedLayerIdProvider)
+Lasero.App/ViewModels/KamilAssistantViewModel.cs     (backend fáza: StepBack, ShowCommand guard, staleness guard)
+Lasero.App/ViewModels/ParameterRecommendation.cs     (backend fáza: OriginLayerId)
+Lasero.App/Views/Kamil/KamilAssistantHost.xaml       (frontend fáza: avatar-only, geometria, Close štýl)
+Lasero.App/Views/Kamil/KamilAssistantHost.xaml.cs    (frontend fáza: AvailableExpandedHeight fix, animácie)
+Lasero.App/Views/SelectionPropertiesBar.xaml         (pozri §1.1, nesúvisí s KAMILom)
+Lasero.Tests/KamilAssistantViewModelTests.cs         (nové, backend fáza)
+Lasero.Tests/ParameterRecommendationTests.cs         (nové, backend fáza)
 ```
 
-**Backend-architect fáza (3) je hotová a overená**: build 0/0, **testy 389/389** (36 nových testov
-v `Lasero.Tests/KamilAssistantViewModelTests.cs` a `ParameterRecommendationTests.cs` — pokrývajú
-všetky prechody stavov, zachovanie konverzácie cez minimize/close/reopen, staleness guard pre
-Apply, `ParameterRecommendation.TryParse` edge cases).
+**Backend-architect fáza (3) je hotová a overená**: 36 nových testov (state transitions,
+zachovanie konverzácie cez minimize/close/reopen, staleness guard pre Apply,
+`ParameterRecommendation.TryParse` edge cases), všetky prechádzajú.
 
-**Frontend-developer fáza (4) bola posledná spustená a jej výstup som nedostal** — session
-skončila pri čakaní na jej dokončenie. Diff vyššie je jej **rozrobený** stav. Over najprv:
+**Frontend-developer fáza (4) bola spustená a odovzdala vyššie uvedený diff, ale jej finálny
+textový report (so zoznamom "čo som overil živo cez `.uiqa/`, čo zostáva") sa **nestihol prijať**
+— session bola ukončená kvôli obmedzenému kreditu skôr, než report prišiel. **Commitol som jej
+posledný známy stav, pretože bol buildovateľný a testovateľný (0/0, 389/389) — nie preto, že je
+nutne hotový.** Over ako prvé:
 
 ```bash
 cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug && dotnet test LaseroDesktop.sln
 ```
 
-Ak je to zelené (0/0, ≥389), fáza 4 pravdepodobne dobehla úspešne — over vizuálne cez `.uiqa/`
-(spusti appku, pozri, či je Minimized fakt len 48px kruh bez pilulky, či Close/Minimize vyzerajú
-inak, či sa dá z Expanded vždy vrátiť). Ak je červené, dokonči/oprav rozrobenú prácu podľa §2.1.
+Potom over **živo cez `.uiqa/`** (§6), konkrétne všetkých 5 bodov: (1) Minimized je fakt len 48px
+kruh bez textu/pilulky, (2) Close a Minimize vyzerajú vizuálne odlišne v Expanded headeri, (3) z
+Expanded sa dá vždy vrátiť na avatar (Minimize tlačidlo aj Esc), (4) KAMIL nekoliduje s
+`CanvasViewControls` (zoom klaster) ani pri zmene veľkosti inšpektora, (5) `ShowCommand` na nav
+rail tlačidle „Lasero Chat" fakt znovu-otvorí KAMIL, keď je `Hidden`. **Nič z toho som v tejto
+session vizuálne neoveril** — diff vyzerá správne pri čítaní kódu, ale live-UI overenie fázy 4
+neprebehlo. Ber to ako prioritu číslo jedna.
 
 **Zostávajúce fázy KAMIL workflow (nespustené)**:
 - Fáza 5 — ui-designer review implementácie (druhé kolo)
