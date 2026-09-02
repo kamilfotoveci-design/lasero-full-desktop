@@ -156,28 +156,59 @@ Lasero.Tests/ParameterRecommendationTests.cs         (nové, backend fáza)
 zachovanie konverzácie cez minimize/close/reopen, staleness guard pre Apply,
 `ParameterRecommendation.TryParse` edge cases), všetky prechádzajú.
 
-**Frontend-developer fáza (4) bola spustená a odovzdala vyššie uvedený diff, ale jej finálny
-textový report (so zoznamom "čo som overil živo cez `.uiqa/`, čo zostáva") sa **nestihol prijať**
-— session bola ukončená kvôli obmedzenému kreditu skôr, než report prišiel. **Commitol som jej
-posledný známy stav, pretože bol buildovateľný a testovateľný (0/0, 389/389) — nie preto, že je
-nutne hotový.** Over ako prvé:
+**Frontend-developer fáza (4) DOKONČENÁ a živo overená** (report prišiel po tom, čo bol tento
+súbor prvýkrát napísaný — toto je opravená, finálna verzia). Build 0/0, testy 389/389 nezmenené.
+Živo overené cez `.uiqa/` (nie len prečítané v kóde):
 
-```bash
-cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug && dotnet test LaseroDesktop.sln
-```
+- **Minimized = 48px kruh** (`Size.Icon.Xxl`), žiadny text/pilulka/pozadie. Hover → scale 1.04 +
+  1px `Brush.PanelBorderStrong` ring, pressed → 0.96, `FocusRing.Pill` znovupoužitý. Overené
+  screenshotom s reálnym hoverom myšou.
+- **QuickAsk 400×132** — obsah (`ContextBar`+`Composer`+chips) sa pri týchto rozmeroch **musel
+  zúžiť** (Grid margin 12→8, ContextBar bottom margin 9→6, chip-row top margin 9→6), inak
+  pretekal/orezával chipy o pár pixelov. **Toto je odchýlka od pôvodnej špecifikácie** ("obsah
+  nezmenený") — nutná, lebo 400×132 na pôvodné rozostupy nestačilo. Vizuálne funguje (screenshot
+  potvrdený), ale stojí za rýchlu kontrolu, či zúžené rozostupy ešte vyzerajú dobre.
+- **Expanded 420×(500–640) — `AvailableExpandedHeight()` fix naozaj funguje**, overené naživo
+  zmenou veľkosti bežiaceho okna medzi 900px a 768px výškou počas otvoreného Expanded stavu: panel
+  reálne zmenil výšku (~635px vs ~585px). Koreň bugu bol dvojitý: (1) `Root.Margin` bolo vždy
+  nulové (skutočný margin sa aplikuje o úroveň vyššie, na samotný `UserControl` v
+  `MainWindow.xaml`), (2) `ActualHeight` hostiteľa bolo **самореferenčné** — Host je
+  `HorizontalAlignment="Right" VerticalAlignment="Bottom"` (size-to-content, nie stretched), takže
+  jeho `ActualHeight` bolo len aktuálna veľkosť Surface, nie skutočný dostupný priestor. Oprava:
+  číta sa `ActualHeight` **rodičovského Gridu** (editor row `*` medzi 60px title a 48px machine
+  strip) cez `Parent as FrameworkElement`, bottom reservation je `this.Margin.Bottom` (Hostov
+  vlastný margin). `ReservedVerticalChrome` zmazané.
+- **Close vs Minimize vizuálne odlíšené** — Close teraz `Button.ChromeClose` (28×28, 8px margin od
+  páru New Chat/Minimize), overené hoverom → červená danger farba ako na titulkovej lište.
+- **Reopen funguje end-to-end**: Close → avatar zmizne → klik na nav rail „Lasero Chat" → naviguje
+  na Chat obrazovku AJ zavolá `Kamil.ShowCommand` (nová `OnLaseroChatClick` v `MainWindow.xaml.cs`,
+  keďže `MainViewModel.cs` bol mimo scope tejto fázy) → návrat na Home → avatar (Minimized) sa
+  znova zobrazí. Celý kolobeh overený naživo.
+- **Kolízia s `CanvasViewControls` vyriešená** — `MultiBinding` funguje, overené na Home (avatar
+  mimo machine strip) aj pri 1366×768 (avatar mimo obsahu, žiadna kolízia).
 
-Potom over **živo cez `.uiqa/`** (§6), konkrétne všetkých 5 bodov: (1) Minimized je fakt len 48px
-kruh bez textu/pilulky, (2) Close a Minimize vyzerajú vizuálne odlišne v Expanded headeri, (3) z
-Expanded sa dá vždy vrátiť na avatar (Minimize tlačidlo aj Esc), (4) KAMIL nekoliduje s
-`CanvasViewControls` (zoom klaster) ani pri zmene veľkosti inšpektora, (5) `ShowCommand` na nav
-rail tlačidle „Lasero Chat" fakt znovu-otvorí KAMIL, keď je `Hidden`. **Nič z toho som v tejto
-session vizuálne neoveril** — diff vyzerá správne pri čítaní kódu, ale live-UI overenie fázy 4
-neprebehlo. Ber to ako prioritu číslo jedna.
+**Dva nálezy nechané pre ďalšie kolo (neboli opravované v tejto fáze, mimo scope):**
+
+1. **QuickAsk rozostupy zúžené** (viď vyššie) — ui-designer by mal skontrolovať, či to ešte sedí s
+   vizuálnym jazykom.
+2. **`Image.KamilAvatar` bitmapa má vpečený zaoblený-štvorcový okraj/pozadie v zdrojovom súbore.**
+   Pri pôvodných 28–30px veľkostiach to nebolo vidieť; pri 48px, kde je celý Minimized povrch
+   tvorený týmto obrázkom orezaným do Ellipse, je nesúlad medzi hranou obrázka a kruhovým orezom
+   viditeľný. **Toto je problém so zdrojovým assetom, nie s kódom** — treba čisto kruhovo
+   orezaný (alebo full-bleed štvorcový) zdrojový obrázok pre avatar, aby vyzeral čisto pri 48px.
+
+Žiadny nový test nepridaný v tejto fáze — reopen-wiring je v code-behind proti živému `Window`,
+mimo existujúcich testovacích vzorov projektu; overené naživo namiesto toho (súhlasí s pôvodným
+zadaním, ktoré presne pre tento prípad live-UI overenie povoľovalo namiesto testu).
 
 **Zostávajúce fázy KAMIL workflow (nespustené)**:
-- Fáza 5 — ui-designer review implementácie (druhé kolo)
-- Fáza 6 — frontend-developer opravuje nálezy z fázy 5
-- Fáza 7 — backend-architect verifikuje state/session integritu po UI zmenách
+- Fáza 5 — ui-designer review implementácie, hlavne tie dva nálezy vyššie (QuickAsk rozostupy,
+  avatar bitmapa)
+- Fáza 6 — frontend-developer opravuje nálezy z fázy 5 (najmä nahradenie/orezanie avatar bitmapy —
+  to je asset práca, nie kód, môže vyžadovať používateľa ak niet zdroja na kruhový orez)
+- Fáza 7 — backend-architect verifikuje state/session integritu po UI zmenách (frontend-developer
+  už poznamenal, že session persistence naprieč reštartom appky funguje nezmenené, ale formálne
+  overenie fázy 7 neprebehlo)
 - Fáza 8 — finálny build/test + finálny report vo formáte, ktorý si používateľ vyžiadal (viď jeho
   posledná KAMIL správa — má presnú šablónu "# KAMIL FLOATING ASSISTANT REPAIR REPORT")
 
