@@ -25,6 +25,117 @@
             <Setter Property="LineHeight" Value="19" />
             <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
         </Style>
+
+        <!--
+            Minimized: the avatar itself, clipped circular, is the entire surface — no pill, no text,
+            no background behind it. Hover lifts it 4% and draws a 1px neutral ring rather than an
+            accent one, because idle Kamil is chrome, not a call to action; the unread/availability dot
+            is the only colour allowed to appear unprompted. Both the ring and the scale ride the same
+            Motion.Fast / Ease.Out pairing every other interactive surface in this app uses, so hovering
+            the badge feels like hovering anything else, not like a separate animation system.
+        -->
+        <Style x:Key="Kamil.MinimizedAvatar" TargetType="Button">
+            <Setter Property="Width" Value="{StaticResource Size.Icon.Xxl}" />
+            <Setter Property="Height" Value="{StaticResource Size.Icon.Xxl}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="{x:Null}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing.Pill}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="AvatarScale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
+
+                            <!-- The image itself is the entire hit target: an Ellipse's fill only
+                                 hit-tests inside the ellipse, so nothing needs an explicit Clip to keep
+                                 the four square corners around it from swallowing clicks. -->
+                            <Ellipse x:Name="Avatar" Effect="{StaticResource Shadow.Sheet}">
+                                <Ellipse.Fill>
+                                    <ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill"
+                                                AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+
+                            <Ellipse x:Name="HoverRing" Margin="-1" Opacity="0" StrokeThickness="1"
+                                     Stroke="{DynamicResource Brush.PanelBorderStrong}" />
+
+                            <!-- Availability, not decoration. Green only when the account is signed in
+                                 and online, because that is the only state in which a question can
+                                 actually be answered; otherwise the dot is muted. -->
+                            <Ellipse Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                     Stroke="{DynamicResource Brush.Panel}" StrokeThickness="1.5"
+                                     ToolTip="{Binding Chat.AvailabilityText}">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.PanelBorderStrong}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Chat.CanUseOnline}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="1.04" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="1.04" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="HoverRing" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="HoverRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <!-- Declared after IsMouseOver so a press while hovering wins: 0.96 is the
+                                 more specific, more recent intent. -->
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="0.96" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="0.96" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid x:Name="Root">
@@ -43,7 +154,7 @@
                 CornerRadius="{StaticResource Radius.Lg}"
                 Effect="{StaticResource Shadow.Dropdown}"
                 RenderTransformOrigin="1,1"
-                Width="176" Height="48">
+                Width="48" Height="48">
             <Border.RenderTransform>
                 <TransformGroup>
                     <ScaleTransform x:Name="SurfaceScale" ScaleX="1" ScaleY="1" />
@@ -54,59 +165,25 @@
             <Grid ClipToBounds="True">
 
                 <!-- ==================== MINIMIZED ==================== -->
-                <Button x:Name="PillLayer" Style="{StaticResource Button.Ghost}"
+                <!--
+                    Avatar only: no pill, no label, no background surface of its own — the circular
+                    image is the whole control. See Kamil.MinimizedAvatar above for the hover ring,
+                    press scale and unread dot; this element only supplies the command and the
+                    automation identity, both unchanged from the old pill so existing bindings and the
+                    .uiqa scripts keep working.
+                -->
+                <Button x:Name="PillLayer" Style="{StaticResource Kamil.MinimizedAvatar}"
                         Command="{Binding OpenQuickAskCommand}"
-                        Padding="10,0" HorizontalContentAlignment="Left"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
                         ToolTip="Kamil — zeptejte se bez opuštění pracovní plochy"
                         automation:AutomationProperties.Name="Otevřít asistenta Kamil">
                     <Button.RenderTransform>
                         <TranslateTransform x:Name="PillOffset" />
                     </Button.RenderTransform>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Grid VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Ellipse Width="28" Height="28">
-                                <Ellipse.Fill>
-                                    <ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill"
-                                                AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" />
-                                </Ellipse.Fill>
-                            </Ellipse>
-                        </Grid>
-
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="KAMIL" FontWeight="SemiBold"
-                                       FontSize="{StaticResource Size.Text.Meta}" />
-                            <TextBlock Text="AI asistent" Style="{StaticResource Text.Muted}" Margin="0,1,0,0" />
-                        </StackPanel>
-
-                        <!--
-                            Availability, not decoration. Green only when the account is signed in and
-                            online, because that is the only state in which a question can actually be
-                            answered; otherwise the dot is muted and the tooltip says why.
-                        -->
-                        <Ellipse Grid.Column="2" Width="7" Height="7" VerticalAlignment="Center" Margin="8,0,2,0"
-                                 ToolTip="{Binding Chat.AvailabilityText}">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="{DynamicResource Brush.PanelBorderStrong}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Chat.CanUseOnline}" Value="True">
-                                            <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                    </Grid>
                 </Button>
 
                 <!-- ==================== QUICK ASK ==================== -->
-                <Grid x:Name="QuickLayer" Margin="12" Opacity="0" Visibility="Collapsed">
+                <Grid x:Name="QuickLayer" Margin="8" Opacity="0" Visibility="Collapsed">
                     <Grid.RenderTransform>
                         <TranslateTransform x:Name="QuickOffset" />
                     </Grid.RenderTransform>
@@ -116,12 +193,12 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <kamil:KamilContextBar Grid.Row="0" Margin="0,0,0,9" />
+                    <kamil:KamilContextBar Grid.Row="0" Margin="0,0,0,6" />
 
                     <kamil:KamilComposer x:Name="QuickComposer" Grid.Row="1"
                                          Placeholder="Napiš dotaz nebo přilož fotku…" />
 
-                    <ItemsControl Grid.Row="2" Margin="0,9,0,0" ItemsSource="{Binding QuickPrompts}">
+                    <ItemsControl Grid.Row="2" Margin="0,6,0,0" ItemsSource="{Binding QuickPrompts}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
@@ -185,6 +262,8 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- New Chat and Minimize stay grouped, ghost until hovered: neither
+                                     one is destructive, and Minimize keeps the whole conversation. -->
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
                                         Command="{Binding Chat.NewChatCommand}"
                                         ToolTip="Nová konverzace"
@@ -199,7 +278,14 @@
                                     <components:IconGlyph IconData="{StaticResource Glyph.Minimize}"
                                                           Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                                 </Button>
-                                <Button Style="{StaticResource Kamil.HeaderButton}"
+
+                                <!-- Close is set apart from the grouped pair by an explicit 8px gap and
+                                     reuses Button.ChromeClose — the same style the window's own
+                                     title-bar close button uses — so the one destructive-looking
+                                     action in this row reads the same way the app's one other "leave"
+                                     control already does, sized down to fit the header's 28px row. -->
+                                <Button Style="{StaticResource Button.ChromeClose}"
+                                        Width="28" Height="28" Margin="8,0,0,0"
                                         Command="{Binding CloseCommand}"
                                         ToolTip="Skrýt asistenta — konverzace zůstane uložená"
                                         automation:AutomationProperties.Name="Skrýt asistenta">

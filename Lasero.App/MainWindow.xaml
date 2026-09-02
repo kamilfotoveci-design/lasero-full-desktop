@@ -355,7 +355,7 @@
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
                             <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
-                        <Button Style="{StaticResource NavButton.Chat}" Command="{Binding ShowChatCommand}"
+                        <Button Style="{StaticResource NavButton.Chat}" Click="OnLaseroChatClick"
                                  ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
                             <StackPanel Orientation="Horizontal">
                                 <!-- Hand-built content rather than an IconLabel, so the collapse has
@@ -505,7 +505,7 @@
 
                 <!-- Undo, redo, pan and zoom. Always present, because none of them depend on a
                      selection. -->
-                <views:CanvasViewControls VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                <views:CanvasViewControls x:Name="CanvasViewControls" VerticalAlignment="Bottom" HorizontalAlignment="Right"
                                           Margin="0,0,20,20" Panel.ZIndex="20"
                                           TargetCanvas="{Binding ElementName=DesignerCanvas}" />
             </Grid>
@@ -565,8 +565,14 @@
                 canvas instead of on top of the operation settings its own "Použít na operaci" writes.
             -->
             <kamil:KamilAssistantHost Grid.Column="1" Grid.ColumnSpan="3" Panel.ZIndex="30"
-                                      DataContext="{Binding Kamil}"
-                                      Margin="{Binding ActualWidth, ElementName=DesignerInspector, Converter={StaticResource AssistantClearance}}" />
+                                      DataContext="{Binding Kamil}">
+                <kamil:KamilAssistantHost.Margin>
+                    <MultiBinding Converter="{StaticResource AssistantClearance}">
+                        <Binding ElementName="DesignerInspector" Path="ActualWidth" />
+                        <Binding ElementName="CanvasViewControls" Path="ActualHeight" />
+                    </MultiBinding>
+                </kamil:KamilAssistantHost.Margin>
+            </kamil:KamilAssistantHost>
         </Grid>
 
         <!--

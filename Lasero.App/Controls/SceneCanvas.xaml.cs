@@ -670,6 +670,11 @@ public partial class SceneCanvas : UserControl
 
         var tickBrush = (Brush)FindResource("Brush.PanelBorder");
         var labelBrush = (Brush)FindResource("Brush.TextSecondary");
+        // FontFamily is inherited from the Window and these labels aren't in the visual
+        // tree yet when measured, so an explicit FontFamily keeps Measure() honest about
+        // the width they'll actually render at (an unparented element has no inheritance
+        // context and would otherwise measure against the default WPF font, not Inter).
+        var labelFont = (FontFamily)FindResource("Font.Numeric");
 
         for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
         {
@@ -678,7 +683,10 @@ public partial class SceneCanvas : UserControl
             TopRuler.Children.Add(tick);
             _topRulerVisuals.Add(tick);
 
-            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 11, Foreground = labelBrush };
+            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 11, FontFamily = labelFont, Foreground = labelBrush };
+            label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (px + 3 + label.DesiredSize.Width > TopRuler.ActualWidth) continue;
+
             Canvas.SetLeft(label, px + 3);
             Canvas.SetTop(label, 2);
             TopRuler.Children.Add(label);
@@ -692,7 +700,7 @@ public partial class SceneCanvas : UserControl
             LeftRuler.Children.Add(tick);
             _leftRulerVisuals.Add(tick);
 
-            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 11, Foreground = labelBrush };
+            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 11, FontFamily = labelFont, Foreground = labelBrush };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - label.DesiredSize.Width));
             Canvas.SetTop(label, py - label.DesiredSize.Height / 2);

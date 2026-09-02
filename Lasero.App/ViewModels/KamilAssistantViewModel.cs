@@ -49,6 +49,12 @@ public partial class KamilAssistantViewModel : ObservableObject
         _scene = scene;
         _connection = connection;
 
+        // The card's Apply button needs to know which operation a recommendation was originally
+        // about, and that can only be captured at the moment the message arrives — by the time the
+        // operator clicks Apply, SelectedLayer may already point at something else entirely. See
+        // IsRecommendationStale below.
+        Chat.SelectedLayerIdProvider = () => _scene.SelectedLayer?.Id;
+
         _scene.PropertyChanged += OnSceneChanged;
         _connection.PropertyChanged += OnConnectionChanged;
         Chat.PropertyChanged += OnChatChanged;
@@ -100,6 +106,14 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     // ------------------------------------------------------------------
     // State transitions
+    //
+    // Four shapes, one enum (KamilAssistantState: Minimized/QuickAsk/Expanded/Hidden). The mapping
+    // from a state to on-screen geometry and layer visibility lives in the view
+    // (KamilAssistantHost.xaml.cs) as two separate switches today; if a fifth state is ever added,
+    // the single source of truth for "what does this state look like" should move onto the enum's
+    // side (e.g. a small static lookup keyed by KamilAssistantState) so the view derives geometry
+    // instead of restating it. Left as a note rather than a change here — the view does not need that
+    // restructuring yet, and it is Phase 4's call to make once it owns that file again.
     // ------------------------------------------------------------------
 
     [RelayCommand]
@@ -132,26 +146,49 @@ public partial class KamilAssistantViewModel : ObservableObject
         FocusReturnRequested?.Invoke();
     }
 
-    [RelayCommand]
+    /// <summary>Whether there is anything to reopen. Guarded to Hidden only: firing this while the
+    /// assistant is already visible must never downgrade an Expanded panel back to a pill, so a
+    /// stray second invocation (e.g. a double click on whatever Phase 4 wires this to) is a no-op
+    /// rather than a surprise minimize.</summary>
+    public bool CanShow => State == KamilAssistantState.Hidden;
+
+    /// <summary>
+    /// Reopens the assistant after <see cref="Close"/>, landing on the pill rather than wherever it
+    /// was before closing — Close already promised the conversation was kept, not the panel size, and
+    /// popping straight back to Expanded would be a bigger interruption than the reopen itself.
+    ///
+    /// This is the command Phase 1's audits flagged as dead: it existed but was never bound to
+    /// anything in a view, so a user who clicked Close lost Kamil until an app restart. The intended
+    /// binding target is the nav rail's existing Kamil-avatar ("Lasero Chat") button — Phase 4 wires
+    /// that up; this command is now correct and guarded to be a safe target for it.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanShow))]
     private void Show()
     {
+        // Execute() on an ICommand is not obliged to re-check CanExecute -- that is advisory for
+        // whatever UI binds it -- so this guards itself too rather than trusting every future caller
+        // to have asked first.
+        if (State != KamilAssistantState.Hidden) return;
         State = KamilAssistantState.Minimized;
     }
 
-    /// <summary>Esc steps back one level rather than closing outright: from the panel to the
-    /// composer, from the composer to the pill. Nothing is ever lost by pressing it.</summary>
+    /// <summary>
+    /// Esc jumps straight to Minimized from either QuickAsk or Expanded, in one press — the same
+    /// destination the Minimize button reaches in one click.
+    ///
+    /// This used to step back one level at a time (Expanded to QuickAsk, then QuickAsk to Minimized),
+    /// on the reasoning that Esc should be gentler than closing outright so an accidental press would
+    /// not fully dismiss a panel someone was mid-scroll on. That reasoning does not survive contact
+    /// with <see cref="Minimize"/> itself: the explicit Minimize button already jumps directly from
+    /// Expanded to Minimized in one click, and a mouse click is at least as easy to fire by accident
+    /// as Esc is. Two different speeds for reaching the same destination was not a safety net, it was
+    /// an inconsistency — Esc being the slower of the two paths taught the operator nothing except
+    /// that keyboard and mouse disagreed about what "back" means. Esc now matches the button. Nothing
+    /// is lost either way: Minimized keeps the conversation exactly like every other transition here.
+    /// </summary>
     public void StepBack()
     {
-        switch (State)
-        {
-            case KamilAssistantState.Expanded:
-                State = KamilAssistantState.QuickAsk;
-                ComposerFocusRequested?.Invoke();
-                break;
-            case KamilAssistantState.QuickAsk:
-                Minimize();
-                break;
-        }
+        if (State is KamilAssistantState.Expanded or KamilAssistantState.QuickAsk) Minimize();
     }
 
     [RelayCommand]
@@ -176,14 +213,32 @@ public partial class KamilAssistantViewModel : ObservableObject
         : "Nejdřív vyberte operaci v panelu vpravo";
 
     /// <summary>
+    /// Whether a card still describes the operation it was originally about. Every recommendation
+    /// remembers which layer was selected when its message arrived (<see cref="ParameterRecommendation.OriginLayerId"/>);
+    /// if the operator has since selected something else, applying the card's numbers to the new,
+    /// unrelated selection would be silent and wrong — an old card sitting in scrollback should not be
+    /// able to reach out and rewrite whatever operation happens to be selected now.
+    ///
+    /// A recommendation with no captured origin (older persisted sessions from before this existed, or
+    /// a message recorded with nothing selected) is never treated as stale — the guard exists to catch
+    /// a *known* mismatch, not to punish messages that predate it.
+    /// </summary>
+    public bool IsRecommendationStale(ParameterRecommendation? recommendation) =>
+        recommendation?.OriginLayerId is { } originLayerId && _scene.SelectedLayer?.Id != originLayerId;
+
+    private bool CanApplyThisRecommendation(ParameterRecommendation? recommendation) =>
+        _scene.SelectedLayer is not null && !IsRecommendationStale(recommendation);
+
+    /// <summary>
     /// Writes the recommendation onto the selected operation through LayerSettings.ApplyRecipe — the
     /// same entry point the material catalogue uses, so the layer records where its numbers came from
     /// and the undo/dirty behaviour is identical to picking a recipe by hand.
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanApplyRecommendation))]
+    [RelayCommand(CanExecute = nameof(CanApplyThisRecommendation))]
     private void ApplyRecommendation(ParameterRecommendation? recommendation)
     {
         if (recommendation is null || _scene.SelectedLayer is not { } layer) return;
+        if (IsRecommendationStale(recommendation)) return;
 
         layer.ApplyRecipe(
             layer.Mode,
@@ -241,5 +296,7 @@ public partial class KamilAssistantViewModel : ObservableObject
         OnPropertyChanged(nameof(IsQuickAsk));
         OnPropertyChanged(nameof(IsExpanded));
         OnPropertyChanged(nameof(IsVisible));
+        OnPropertyChanged(nameof(CanShow));
+        ShowCommand.NotifyCanExecuteChanged();
     }
 }

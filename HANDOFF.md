@@ -1,426 +1,329 @@
 # Lasero Desktop — handoff
 
-Stav ku **koncu session 1. 9. 2026**. Tento súbor existuje preto, aby sa dalo pokračovať v novom
-chate alebo **iným modelom** (táto verzia je písaná pre Codex) bez čítania celej histórie. Popisuje
-kde to je, čo sa spravilo, čo je rozrobené, čo sa nesmie rozbiť a na aké pasce si dať pozor.
-
-Predchádzajúca verzia (rovnaký deň, ráno) je v commite `7506e1f`. Verzia z 31. 8. je v `98fc0d5`.
+Stav ku **2. 9. 2026, popoludnie**. Píšem to pre pokračovanie **v Codexe** — session v Claude Code
+bola veľmi dlhá (stabilizácia → UI recovery → 3-agentový KAMIL rebuild → typografia + ikony
+rozbehnuté) a treba odovzdať bez straty kontextu. Predchádzajúca verzia handoffu (ráno 1. 9., HEAD
+`81d80e7`) je stále v histórii — commit `853b24f` ju nahradil aktuálnym stavom nižšie.
 
 ---
 
-## 1. Kde projekt je
-
-**`E:\lasero-desktop`** — nie na `C:`. Vetva `design-system-tokens`, HEAD `81d80e7`.
-Pracovný strom čistý. **344 testov, všetky prechádzajú.**
-
-**Pozor: `E:` je druhý disk a už sa raz sám odpojil** — `Get-PSDrive` ho prestal vidieť. Ak zmizne,
-projekt je neprístupný; nie je to chyba repozitára.
+## 0. Najdôležitejšie — over toto ako prvé
 
 ```bash
-cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug
+cd /e/lasero-desktop && git status --short   # čo je rozrobené, necommitnuté
+cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug   # musí byť 0/0
+cd /e/lasero-desktop && dotnet test LaseroDesktop.sln             # baseline pred KAMIL Phase 4: 389/389
 ```
 
-```bash
-cd /e/lasero-desktop && dotnet test LaseroDesktop.sln
-```
-
-**Pred každým buildom zabi appku, drží zamknutý `Lasero.App.exe`:**
-
+**Zabi appku pred buildom, drží zamknutý `.exe`:**
 ```bash
 powershell -NoProfile -Command "Get-Process Lasero.App -ErrorAction SilentlyContinue | Stop-Process -Force"
 ```
 
-Spustiteľný build: `E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows\Lasero.App.exe`
+Vetva `design-system-tokens`, HEAD `853b24f` (commitnutá stabilizácia). **Nad tým je rozrobený,
+necommitnutý KAMIL rebuild** — pozri §2. Ak `git status` ukazuje iné súbory ako v §2, práca v
+Claude Code pokračovala po tomto zápise; ber skutočný `git diff` ako pravdu, nie tento súbor.
 
-### 1.1 Technológia — čítaj, než začneš
+---
 
-Je to **WPF na .NET 8** (`net8.0-windows`), MVVM, `CommunityToolkit.Mvvm`. **Nie WinUI 3, nie
-WinAppSDK, nie Win2D.** CLAUDE.md kedysi tvrdil WinUI3/Win2D a bola to fikcia; prepísaný bol
-v minulej session. Ak niekde uvidíš WinUI, je to chyba dokumentu, nie stav kódu.
+## 1. Čo je hotové a commitnuté (`853b24f`)
 
-Prechod na WinUI 3 by nebol prepnutie ale prepis: iný XAML dialekt (`Microsoft.UI.Xaml`), iný
-templating, iné okenné chrome (`WindowChrome` a `WindowFrameHook` by padli), packaging/identity,
-a `System.Drawing`/`System.Windows.Media` cesty v rastri a v canvase by sa museli nahradiť. Bez
-zadania to nerob.
+Dve veci naraz, jeden commit:
 
-### 1.2 Vizuálne overovanie — WPF, nie web
+1. **Prevzatý veľký rozrobený redesign**, ktorý ležal necommitnutý v strome: kompaktný nástrojový
+   rail v Designeri (`DesignerToolRail`), plávajúca kontextová `SelectionPropertiesBar` (namiesto
+   celoškej lišty), panel stroja vytiahnutý z inšpektora do vlastného okna
+   (`MachineControlWindow`), KAMIL rozdelený do `Views/Kamil/*`, oprava hover/press animácie (dve
+   nezávislé vrstvy namiesto jednej, ktorá vedela zostať „zaseknutá" tmavá po kliku, čo otvoril
+   okno), a nová funkcia **hold-to-fire positioning laser** (nízkovýkonový laser na polohovanie,
+   `JogViewModel`).
+2. **Opravená skutočná bezpečnostná diera**, ktorú tento redesign priniesol: positioning laser
+   hlási GRBL stav `Idle` rovnako ako vypnutý stroj, takže Jog/Home/SetOriginHere/GoToWorkZero
+   zostávali spustiteľné, kým bol lúč fyzicky zapnutý. Pridané `CanManualMotionWithLaserOff()`,
+   zapojené do všetkých pohybových príkazov, regresný test
+   `MotionCommandsAreBlockedWhileThePositioningLaserIsLit`.
 
-Browser tooling neplatí. Skripty sú v `.uiqa/`:
+Vedľajšie upratovanie v tom istom commite: 5 osirotených zoom-click handlerov zmazaných z
+`MainWindow.xaml.cs` (skutočná implementácia je teraz v `CanvasViewControls.xaml.cs`), nepoužívaný
+`IsBelowWidth` converter resource odstránený z `MainWindow.xaml` (samotná trieda
+`IsBelowWidthConverter.cs` **zostala** — používateľ zamietol jej zmazanie pri jednom `rm`, nechaj
+tak, kým sám nepovie inak), `TextToolWindow.Style` premenované na `TextStyle` (tienilo
+`FrameworkElement.Style`, CS0108 warning).
+
+**Baseline v tomto commite: build 0/0, testy 353/353.**
+
+### 1.1 Následná „UI recovery" prechádzka (necommitnuté, ale malé a bezpečné)
+
+Po `853b24f` prebehla živá vizuálna kontrola appky (viď §3, `.uiqa/` toolkit už funguje, appka sa
+spúšťa priamo zo session.dat bez loginu). Nájdené a opravené:
+
+- **Ruler v Designeri orezával posledný label** (`"520"` → `"52"`) — `WorkspaceCanvas.xaml.cs`
+  (moja prvá, čiastočná oprava) aj **`SceneCanvas.xaml.cs`** (skutočne používaný live kontrol,
+  opravu doplnil live-testing agent — koreň bol, že label sa meral pred pridaním do stromu bez
+  nastaveného `FontFamily`, takže `DesiredSize` podhodnotil reálnu šírku).
+- **`SelectionPropertiesBar` pretekala aj pri plnej šírke okna**, nielen na 1080px floor ako
+  hovoril pôvodný komentár — keď je vybraný text, celý riadok (Poloha+Rozměr+Otočení+Text cluster
+  ~370px+Uspořádání+Přetečení) presahuje dostupnú šírku canvas stĺpca. Oprava: **Align/Flip menu sa
+  skryje, keď je vybraný text** (`Scene.IsTextSelected` → `InverseBoolToVisibility`), rovnaké
+  príkazy sú duplikované do overflow „…" menu. Pri 1480/1920px teraz nepreteká vôbec, pri 1366px
+  floor ešte občas ukáže scrollbar pre Bold/Italic/overflow — akceptované ako zvyškový P2 (pôvodný
+  komentár v súbore to aj tak volá „safety net, not normal state").
+
+Toto by malo byť v samostatnom malom commite pred pokračovaním v KAMIL rebuilde — pozri `git diff`
+pre presné súbory (`WorkspaceCanvas.xaml.cs`, `SceneCanvas.xaml.cs`, `SelectionPropertiesBar.xaml`,
+plus nová `InverseBooleanToVisibilityConverter` resource entry v `SelectionPropertiesBar.xaml`).
+
+---
+
+## 2. KAMIL rebuild — rozrobené, TOTO je hlavná nedokončená vec
+
+Zadanie prišlo v troch vlnách (užívateľ postupne sprísňoval požiadavky), použil sa **3-agentový
+tímový postup** cez custom subagentov nainštalovaných v `.claude/agents/` (pozri §5 — **Codex má
+tieto persony prečítať a prevziať ich rozdelenie zodpovednosti**, nie ich mechanicky kopírovať ako
+konfiguráciu, lebo Codex nemá rovnaký subagent mechanizmus ako Claude Code).
+
+### 2.1 Rozhodnutý cieľový dizajn (nemeň bez dôvodu — je to finálna špecifikácia od ui-designer fázy)
+
+**Minimalizovaný stav KAMILa je LEN avatar/hlava — kruh 48px, žiadny text, žiadna pilulka.**
+Predchádzajúci dizajn (176×48 pilulka s "KAMIL"/"AI asistent" textom) je **zamietnutý používateľom**
+explicitne. Presné čísla:
+
+| stav | rozmery | anchor |
+|---|---|---|
+| Minimized | 48×48 kruh, `Size.Icon.Xxl` token, `Radius.Pill` | rovnaký bottom-right bod ako doteraz |
+| QuickAsk | 400×132 (bolo 440×156) | rastie z rovnakého bodu (`RenderTransformOrigin="1,1"`) |
+| Expanded | 420×(500–640 adaptívne, bolo 340–640) | rastie z rovnakého bodu, hlavne nahor |
+
+**Prechody** (všetky `Ease.Out`, žiadny bounce/overshoot): Minimized→QuickAsk 210ms,
+QuickAsk→Minimized 210ms, QuickAsk→Expanded 240ms, Expanded→Minimized 210ms.
+**Expanded→QuickAsk zámerne NEEXISTUJE** — Expanded sa vždy zmenšuje rovno na Minimized (cez
+Minimize tlačidlo alebo Esc). Minimized→Expanded priamo tiež neexistuje — klik na avatar vždy
+otvorí najprv QuickAsk.
+
+**Skutočný root-cause pôvodného hláseného bugu** ("Expanded sa nedá vrátiť späť"): `MinimizeCommand`
+**fungoval správne** už predtým (jeden krok, hocikedy). Reálny problém: **Close vyzeral vizuálne
+identicky ako Minimize** (obe malé bezpopisné ghost ikonové tlačidlá) a Close vedie do stavu
+`Hidden`, z ktorého **`ShowCommand` nebol nikde v UI napojený** — potvrdené grepom, nula miest
+volania. Operátor klikol Close namiesto Minimize a KAMIL zmizol natrvalo do reštartu appky.
+
+Oprava (rozdelená medzi backend-architect a frontend-developer fázy):
+- **Close dostáva vlastný vizuál** — prevziať `Button.ChromeClose` (rovnaký štýl ako titulková
+  lišta okna) namiesto `Kamil.HeaderButton`, 8px medzera od New Chat/Minimize páru.
+- **`ShowCommand` sa naviaže** na nav rail tlačidlo „Lasero Chat" (Kamil avatar v ráile) — pri kliku
+  má spustiť aj navigáciu na Chat obrazovku aj `ShowCommand` ak je `State == Hidden`.
+- **`StepBack()` (Esc) prerobený** aby skákal rovno na Minimized z hocijakého stavu (bolo:
+  Expanded→QuickAsk→Minimized, dva stlačenia Esc) — teraz symetrické s tlačidlom Minimize.
+
+**Ďalší potvrdený, nezávislý bug**: `AvailableExpandedHeight()` v `KamilAssistantHost.xaml.cs`
+meria `ActualHeight` hostiteľa **predtým, ako sa prekreslí** (číta starú veľkosť z predošlého
+stavu), plus má **druhú, nezávislú** hardcoded konštantu `ReservedVerticalChrome = 24` navrch
+existujúceho `AssistantClearanceConverter` marginu — dva rôzne zdroje "koľko miesta dole
+rezervovať" v dvoch súboroch. Oprava: zmazať `ReservedVerticalChrome`, jediný zdroj clearance je
+`AssistantClearanceConverter`.
+
+**Kolízia so `CanvasViewControls`** (zoom/undo klaster, dolný pravý roh canvasu): KAMIL dnes sedí s
+takmer nulovou medzerou vedľa/nad tým klastrom (rovnaký pravý okraj, takmer rovnaký spodný okraj) —
+vyzerá to ako jeden súvislý pruh. Oprava: `AssistantClearanceConverter` sa mení z
+`IValueConverter` na **`IMultiValueConverter`** s druhým vstupom `CanvasViewControls.ActualHeight`,
+výstup `Thickness(0, 0, 20+inspectorWidth, 16+canvasControlsHeight+16)`. Binding v `MainWindow.xaml`
+treba prerobiť z `Binding`+`Converter` na `MultiBinding` s dvomi `Binding`.
+
+Plný spec (vizuálne stavy hover/pressed/focus/unread indicator, presné hex/token hodnoty,
+zdôvodnenia) je v transcript výstupe ui-designer agenta z tejto session — **nie je uložený ako
+súbor**, len v histórii chatu. Ak sa stratí, treba ho odvodiť znova z tejto tabuľky + princípov v
+§3 nižšie (Apple-like disciplína, žiadny glow/gradient/glassmorphism).
+
+### 2.2 Presný stav implementácie PRÁVE TERAZ
+
+`git diff --stat` (necommitnuté, nad `853b24f`):
+```
+Lasero.App/Controls/SceneCanvas.xaml.cs            |  12 +-   (ruler fix, pozri §1.1)
+Lasero.App/Controls/WorkspaceCanvas.xaml.cs        |  22 ++-  (ruler fix, pozri §1.1)
+Lasero.App/Converters/AssistantClearanceConverter.cs |  29 +++-  (KAMIL: MultiValueConverter)
+Lasero.App/MainWindow.xaml                         |  14 +-   (KAMIL: MultiBinding + ShowCommand na nav rail)
+Lasero.App/MainWindow.xaml.cs                      |  15 ++   (KAMIL: pravdepodobne click handler pre dve commandy naraz)
+Lasero.App/ViewModels/ChatViewModel.cs             |  23 ++-  (backend fáza: SelectedLayerIdProvider)
+Lasero.App/ViewModels/KamilAssistantViewModel.cs   |  85 ++++--  (backend fáza: StepBack, ShowCommand guard, staleness guard)
+Lasero.App/ViewModels/ParameterRecommendation.cs   |   9 ++   (backend fáza: OriginLayerId)
+Lasero.App/Views/Kamil/KamilAssistantHost.xaml     | 176 ++++--  (frontend fáza: avatar-only, geometria, Close štýl)
+Lasero.App/Views/Kamil/KamilAssistantHost.xaml.cs  |  65 ++--  (frontend fáza: AvailableExpandedHeight fix, animácie)
+Lasero.App/Views/SelectionPropertiesBar.xaml       |  44 ++   (pozri §1.1, nesúvisí s KAMILom)
+```
+
+**Backend-architect fáza (3) je hotová a overená**: build 0/0, **testy 389/389** (36 nových testov
+v `Lasero.Tests/KamilAssistantViewModelTests.cs` a `ParameterRecommendationTests.cs` — pokrývajú
+všetky prechody stavov, zachovanie konverzácie cez minimize/close/reopen, staleness guard pre
+Apply, `ParameterRecommendation.TryParse` edge cases).
+
+**Frontend-developer fáza (4) bola posledná spustená a jej výstup som nedostal** — session
+skončila pri čakaní na jej dokončenie. Diff vyššie je jej **rozrobený** stav. Over najprv:
+
+```bash
+cd /e/lasero-desktop && dotnet build LaseroDesktop.sln -c Debug && dotnet test LaseroDesktop.sln
+```
+
+Ak je to zelené (0/0, ≥389), fáza 4 pravdepodobne dobehla úspešne — over vizuálne cez `.uiqa/`
+(spusti appku, pozri, či je Minimized fakt len 48px kruh bez pilulky, či Close/Minimize vyzerajú
+inak, či sa dá z Expanded vždy vrátiť). Ak je červené, dokonči/oprav rozrobenú prácu podľa §2.1.
+
+**Zostávajúce fázy KAMIL workflow (nespustené)**:
+- Fáza 5 — ui-designer review implementácie (druhé kolo)
+- Fáza 6 — frontend-developer opravuje nálezy z fázy 5
+- Fáza 7 — backend-architect verifikuje state/session integritu po UI zmenách
+- Fáza 8 — finálny build/test + finálny report vo formáte, ktorý si používateľ vyžiadal (viď jeho
+  posledná KAMIL správa — má presnú šablónu "# KAMIL FLOATING ASSISTANT REPAIR REPORT")
+
+---
+
+## 3. Vizuálny smer (nezmenené, stále platí)
+
+**Svetlý režim.** Neutrálny grafit + soft white + kobaltová modrá `#2563EB`, jedna interakčná
+farba. Zdroj pravdy: `Lasero.App/Theme/LaseroTheme.xaml`, vysvetlenie `DESIGN.md`.
+
+- Hover = neutrálny wash, nikdy neprevezme kobalt (to je len pre selected/active).
+- `Radius.Sm`(6) ikonové tlačidlá, `Radius.Md`(8) tlačidlá/vstupy, `Radius.Lg`(12) panely/popupy,
+  `Radius.Pill` len skutočné kruhy.
+- Ikony: jedna rodina, 24×24 grid, stroke `Size.Icon.Stroke`(1.75), round cap/join. **Toto sa
+  čoskoro mení** — pozri §4.3, prebieha migrácia na Iconoir.
+- Nič pod 12px FontSize, žiadny literál v XAML (`ThemeTokenTests.cs` to stráži).
+
+Apple-like disciplína pre KAMIL a novú typografiu: pár konzistentných veľkostí, silná hierarchia,
+sebavedomé stredné hmotnosti, kompaktné ovládanie, zdržanlivý bold, žiadna dekorácia, žiadne
+obrovské nadpisy.
+
+---
+
+## 4. Ďalšie zadané, ešte nespustené/rozbehnuté úlohy
+
+Používateľ zadal tri ďalšie veľké úlohy počas tejto session, **v tomto poradí, každá čaká na
+predchádzajúcu kvôli konfliktu v tých istých zdieľaných súboroch** (`LaseroTheme.xaml`,
+`SharedUiStyles.xaml`, `Icons.xaml`, `MainWindow.xaml`, KAMIL views):
+
+### 4.1 Neue Montreal typografia
+
+**Fáza 1 (detekcia fontu) je hotová a overená dvomi API** (GDI+ `InstalledFontCollection` aj WPF
+`Fonts.SystemFontFamilies` cez DirectWrite):
+
+- **Presný WPF FontFamily string: `"Neue Montreal"`** — jedna rodina, WPF ju vidí správne
+  zjednotenú (na rozdiel od GDI+, ktoré ju vidí ako 4 samostatné pseudo-rodiny).
+- **Reálne nainštalované hmotnosti**: Light(300), Normal/Regular(400), Medium(500), Bold(700) —
+  každá skutočný samostatný obrys (súbory `neuemontreal-{regular,medium,bold,light}.otf` +
+  kurzívy, v `%LOCALAPPDATA%\Microsoft\Windows\Fonts`, per-user inštalácia nie systémová).
+- **SemiBold/Demi(600) NEEXISTUJE** — ani ako súbor, ani vo WPF enumerácii. Použitie
+  `FontWeight="SemiBold"` by spadlo do nedefinovaného/nepotvrdeného matchovacieho správania WPF.
+  **Mapuj koncepčný "SemiBold" tier (nadpisy, navigácia, dôležité hodnoty) na skutočný Bold(700)
+  font-weight explicitne** — nie na FontWeight enum hodnotu SemiBold.
+
+Zvyšok úlohy (audit existujúcej typografie, centrálny `LaseroFontFamily` resource, sémantické
+štýly ako `PageTitle`/`SectionTitle`/atď., fallback reťazec, responsive/DPI QA, ui-designer review)
+**nezačaté**. Presné zadanie s cieľovou škálou (11/12/13/14/16/20, presné mapovanie na obrazovky
+Home/Designer/Materials/Settings/KAMIL) je v histórii chatu — veľmi detailné, oplatí sa ho
+znovu-prečítať celé, nie parafrázovať.
+
+### 4.2 Iconoir + custom Lasero SVG ikony
+
+**Fáza 1 (audit súčasného stavu) hotová**: mechanizmus je `Icons.xaml` (83 `Geometry` resources,
+kľúč `Glyph.<Name>`, 24×24 grid) + `IconGlyph` control (`Path.Data` = geometria, `Path.Stroke`
+dedí `Foreground`, `StrokeThickness` = `Size.Icon.Stroke` token) — **tento mechanizmus sa má
+znovupoužiť, nie nahradiť**. 16 z 83 ikon je nepoužívaných (menovite v transcript výstupe, grep
+potvrdené). Niekoľko nekonzistentných hardcoded veľkostí/strokes mimo `IconGlyph` nájdených
+(shípka combobox 1.6 vs globál 1.75, title-bar Minimize 16px vs Maximize/Close 12px, atď.).
+
+**Fáza 2 (overenie oficiálneho zdroja Iconoir) hotová**:
+- Repo: `github.com/iconoir-icons/iconoir`, licencia **MIT** (overené priamym fetchom LICENSE
+  súboru), aktuálny release `v7.12.1` (12. 8. 2026), aktívne udržiavané.
+- SVG žijú v `/icons/regular/` (hlavná, ~1600+ ikon, stroke štýl) a `/icons/solid/` (len 256 ikon,
+  filled štýl, čiastočná podmnožina — nie každá regular ikona má solid variant).
+- Overená špecifikácia (fetchnuté reálne súbory `home.svg`, `settings.svg`, `link.svg`,
+  `undo.svg`): `viewBox="0 0 24 24"`, `stroke-width="1.5"`, `stroke-linecap="round"`,
+  `stroke-linejoin="round"`, `fill="none"` na root, `stroke="currentColor"` na každej `<path>`.
+  **Toto je veľmi blízke súčasnému Lasero systému** (24×24 grid, round cap/join) až na
+  `stroke-width` (Iconoir 1.5 vs Lasero token 1.75) — treba sa rozhodnúť, či prebrať Iconoirovu
+  1.5 alebo si nechať 1.75 a mierne poupraviť SVG pri importe (spec to nechá na frontend-developer
+  fázu, obe voľby sú obhájiteľné).
+- **Nepotvrdené presné názvy súborov** pre save/delete/refresh/lock/group/flip-horizontal/atď. —
+  pri budovaní mapovacej tabuľky (§ Phase 4 v zadaní) treba dotazovať GitHub Contents API pre
+  `icons/regular/`, nehádať kebab-case názvy naslepo (viacero intuitívnych názvov ako `home-alt`
+  neexistuje).
+
+Zvyšok úlohy (fázy 3–10: stiahnutie assetov, mapovacia tabuľka, custom laser ikony ako
+Frame/Engrave/Positioning Laser/Work Origin, WPF integrácia, DPI QA, cleanup starých ikon)
+**nezačaté**.
+
+---
+
+## 5. Custom subagenti — čítaj a preber, nie kopíruj mechanicky
+
+V tejto session boli nainštalované tri custom subagent persony (stiahnuté zo subagents.cc, overený
+bezpečný obsah pred uložením) do `C:\Users\Ruzovka\Videos\.claude\agents\` (**pozor: nie v
+`E:\lasero-desktop`**, ale v pracovnom adresári Claude Code session):
+
+- `frontend-developer.md` — WPF/XAML implementačná perspektíva
+- `ui-designer.md` — UX/vizuálny dizajn, hierarchia, interakcia
+- `backend-architect.md` — stavové/aplikačné архитектúra, MVVM, testovanie
+
+Celý KAMIL rebuild (§2) bol robený **explicitným zadaním používateľa** cez tento trojicový postup:
+paralelný read-only audit → ui-designer špecifikácia → backend-architect oprava logiky →
+frontend-developer implementácia → review → fix → verifikácia. Používateľ výslovne trval na tom,
+že "Do not perform the whole task yourself" — každá fáza musí ísť cez pomenovaného agenta.
+
+**Codex nemá rovnaký `subagent_type` mechanizmus ako Claude Code** (Task tool s pomenovanými
+personami). Ak chceš zachovať rovnaké rozdelenie zodpovednosti a kvalitu bez prerušenia (aby si sa
+nemusel pýtať používateľa "ako mám nastaviť agentov"):
+
+1. **Prečítaj si tie tri `.md` súbory priamo** (`C:\Users\Ruzovka\Videos\.claude\agents\*.md`) —
+   obsahujú detailný popis zodpovednosti, prístupu a princípov pre každú rolu.
+2. Keď zadanie/pokračovanie vyžaduje "ui-designer" prácu, **prepni sa do tej perspektívy sám**
+   (alebo spusti vlastný subprocess/plán s tým promptom ako system kontextom) — nečakaj, že
+   Claude-Code-špecifický `subagent_type: "ui-designer"` bude fungovať v Codexe, nebude.
+3. Rovnaké odporúčanie pre `.agents/plugins/lasero-*` (Antigravity formát, `E:\lasero-desktop\.agents\plugins\`) —
+   sú tam doménové pravidlá (kto vlastní ktoré súbory, aké sú bezpečnostné limity pre
+   `lasero-machine`) written for a different tool's plugin schema, ale obsah pravidiel je
+   univerzálne platný a stojí za prečítanie, hlavne `.agents/rules/AGENTS.md` (project-wide rules,
+   nezávislé od nástroja) a `.agents/plugins/lasero-lead/rules/AGENTS.md`.
+
+Skrátka: **neinštaluj cudziu subagent konfiguráciu do Codexu naslepo** — prečítaj si obsah tých
+súborov ako kontext/inštrukcie a nes rovnaké rozdelenie zodpovednosti a rovnaké princípy (najmä
+"stability first", "no fake UI", "one owner per shared file", "build → test → continue") ďalej vo
+vlastnom pracovnom štýle.
+
+---
+
+## 6. `.uiqa/` toolkit — funguje, používaj ho
+
+Appka beží živo, prihlásená (`session.dat` existuje), appka sa dá spustiť priamo:
+```bash
+Start-Process -FilePath "E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows\Lasero.App.exe" -WorkingDirectory "E:\lasero-desktop\Lasero.App\bin\Debug\net8.0-windows"
+```
+Ak nabehne dialóg **„Nalezena záloha projektu"** (leftover autosave z predošlej testovacej
+session), **zahoď ju** (`Zahodit zálohu`) — nie je to skutočný projekt používateľa.
 
 | skript | na čo |
 |---|---|
-| `shot.ps1 -Out x.png -WindowTitle "Lasero Desktop"` | screenshot okna cez `PrintWindow` |
-| `screen.ps1 -Out x.png [-X -Y -W -H -Scale]` | **`CopyFromScreen`** — jediná cesta k tooltipom, ContextMenu a Popup |
-| `crop.ps1 -In a.png -Out b.png -X .. -Y .. -W .. -H .. -Scale ..` | výrez a zväčšenie |
-| `click.ps1 -X .. -Y .. [-Move hover]` | klik alebo len presun kurzora, súradnice relatívne k **hlavnému** oknu |
-| `rclick.ps1 -X .. -Y ..` | pravý klik |
-| `drag.ps1` / `slowdrag.ps1` | ťahanie |
-| `resize.ps1 -W .. -H .. -X .. -Y ..` | veľkosť a poloha okna |
-| `top.ps1 [-Off]` | dá okno dopredu **a** nastaví topmost |
-| `uia.ps1 -Contains "text" \| -List` | UI Automation invoke podľa časti prístupného mena, diakritika sa ignoruje |
-| `ui.ps1 -Action click -Name "…"` | starší UIA klik podľa presného mena |
-| `toggle.ps1 -Name "…"` | vypíše prvky daného mena a skúsi SelectionItem / Toggle / Invoke |
-| `setvalue.ps1 -Name "…" -Value "…"` | zápis do TextBoxu cez ValuePattern |
+| `shot.ps1 -Out x.png [-WindowTitle "..."]` | screenshot okna cez `PrintWindow` |
+| `crop.ps1 -In a.png -Out b.png -X.. -Y.. -W.. -H.. -Scale 2` | výrez a zväčšenie na kontrolu pixelov |
+| `invoke.ps1 -Name "..." [-Window "..."]` | najspoľahlivejší klik — cez UI Automation Invoke/SelectionItem/Toggle podľa presného mena |
+| `click.ps1 -X.. -Y.. [-Move hover]` | súradnicový klik, keď `invoke.ps1` zlyhá (napr. flyout menu tlačidlá hlásia NO_INVOKABLE) |
+| `drag.ps1 -X1.. -Y1.. -X2.. -Y2..` | ťahanie myšou |
+| `resize.ps1 -W.. -H.. [-X.. -Y..]` | zmena veľkosti/pozície okna pre responsive QA |
+| `ui.ps1 -Action tree -Depth N [-Window "..."]` | dump UI Automation stromu (mená, offscreen/disabled flagy) |
 
-**Postup, ktorý funguje spoľahlivo:**
-
-```bash
-powershell -NoProfile -File .uiqa/uia.ps1 -Contains "obnovit"     # ak nabehol dialóg zálohy
-powershell -NoProfile -Command "cd 'E:\lasero-desktop'; & '.uiqa\resize.ps1' -W 1700 -H 1000 -X 60 -Y 20; & '.uiqa\top.ps1'; & '.uiqa\click.ps1' -X 800 -Y 700 -Move hover; Start-Sleep -Milliseconds 800; & '.uiqa\shot.ps1' -Out '.uiqa\x.png' -WindowTitle 'Lasero Desktop'"
-```
+**Poučenie z tejto session**: klikaj a hneď screenshotni, over, potom ďalší krok. Séria naslepo
+zreťazených klikov vytvorila duplicitné testovacie objekty na plátne, ktoré vyzerali ako bug, ale
+neboli — strávil som s tým zbytočne čas. Appku po teste **zabi bez uloženia**
+(`Stop-Process -Name Lasero.App -Force`), nikdy needit File→Save na testovacej session.
 
 ---
 
-## 2. Pasce QA — každá z nich stála čas
-
-1. **`shot.ps1` používa `PrintWindow`, takže nezachytí tooltip, ContextMenu ani Popup** — sú to
-   samostatné top-level okná. Na ne `screen.ps1`.
-2. **`PrintWindow` vráti bielu plochu, keď je okno zakryté iným.** Vyzerá to ako rozbité UI a nie je.
-   Preto `top.ps1` pred každým screenshotom.
-3. **`top.ps1` musí urobiť dve veci:** `SetWindowPos(HWND_TOPMOST)` **a** ťuknúť ALT pred
-   `SetForegroundWindow` — Windows odmieta zmenu foregroundu z procesu, ktorý nie je vpredu.
-4. **`shot.ps1 -WindowTitle 'Lasero Desktop'` môže trafiť tooltip**, ktorý má rovnaký titul. Dostaneš
-   obrázok 160×28. Pred screenshotom odveď kurzor: `click.ps1 -X 800 -Y 700 -Move hover`.
-5. **PowerShell mrzačí diakritiku v argumentoch z Bash toolu.** `-Name "Obnovit projekt"` nikdy
-   netrafilo. `uia.ps1 -Contains "obnovit"` porovnáva bez diakritiky a bez ohľadu na veľkosť.
-6. **Kliky podľa súradníc sú nespoľahlivé**, appka si po pripojení stroja sama prepne obrazovku a
-   okno sa vie premaximalizovať. Po `resize.ps1` si vždy over veľkosť z výstupu `shot.ps1`.
-7. Po nečistom ukončení nabehne **„Nalezena záloha projektu"**. Pri QA použi **„Obnovit projekt"**
-   (`uia.ps1 -Contains "obnovit"`), zálohu nezahadzuj. Môžu prísť dva dialógy za sebou.
-8. Na testovanie netreba hardvér: v *Zařízení* je port **`SIMULÁTOR — Virtuální laser`**. Appka si ho
-   pamätá a **pripojí sa sama** — potom si prepne panel na tab *Stroj*, čo vyzerá ako chyba UI.
-   Počas QA sa mi cez zle mierený klik naozaj spustila úloha; na simulátore je to bezpečné, na
-   stroji nie.
-9. V Bash tooling nefunguje `python`/`python3` (Windows Store stub). Používaj
-   `/c/Users/Ruzovka/AppData/Local/Programs/Python/Python312/python.exe`, a **dlhšie skripty zapíš
-   do súboru** — vnorený heredoc v jednom Bash príkaze padne na `unexpected EOF`.
-
----
-
-## 3. Vizuálny smer
-
-**Svetlý režim.** Neutrálny grafit + soft white + kobaltová modrá. **Jedna interakčná farba.**
-Modrá `#2563EB` znamená vybrané/aktívne/primárne všade. Rozpočet ~90 % neutrál, 8 % modrá,
-2 % sémantická. Červená len pre nebezpečné akcie a bodku v logu.
-
-Zdroj pravdy pre tokeny je **`Lasero.App/Theme/LaseroTheme.xaml`**, vysvetlenie je
-**`DESIGN.md`**, a celý specimen je **`docs/design/foundation.html`**. Keď sa specimen a téma
-nezhodujú, je to chyba na zavretie, nie variácia — a specimen nemá automaticky pravdu.
-
-Tmavá paleta je odskúšaná a funkčná (`ef64ab6`, vrátené v `918a263`); je to **zmena hodnôt
-v `LaseroTheme.xaml`, nie prepis markupu**.
-
-Pravidlá, ktoré sa v tejto session opakovane porušili a treba ich držať:
-
-- **Hover je neutrálny wash bez zmeny okraja. Kobalt znamená vybrané.** Prvok, ktorý na hover
-  prevezme vybraný odtieň, je chyba — DESIGN.md to hovorí menovite.
-- **`Radius.Sm` (6) patrí ikonovým tlačidlám**, `Radius.Md` (8) tlačidlám a vstupom, `Radius.Lg` (12)
-  panelom a popupom, `Radius.Pill` len skutočným kruhom.
-- **Ikony: jedna rodina, 24×24 mriežka, stroke `Size.Icon.Stroke` (1.75), round cap a join.**
-  Nekresli 2px hranaté pruhy „nastilizované do ikony".
-- **Nič pod 12 px.** Žiadny literálny `FontSize` ani `CornerRadius` v XAML — drží to test.
-- Layout: title bar 60, nav rail 164 (zbalený 74), canvas min 420, inšpektor 336 (280–560),
-  status strip 56.
-
-**Testy, ktoré držia dizajn systém:** `Lasero.Tests/ThemeTokenTests.cs`.
-
----
-
-## 4. Čo sa v tejto session spravilo
-
-Šesť commitov nad `7506e1f`.
-
-### `f513df3` — vrstva vie, z akého materiálu má čísla
-
-`LayerSettings.MaterialLabel` (string?), persistované v projekte ako aditívne pole, takže v6 súbory
-sa načítajú s `null`. Je to **len prezentácia**, nič v toolpath ho nečíta.
-
-Pravidlo, ktoré to robí užitočným: **label expiruje.** Každý setter `Speed`, `Power`, `Passes`,
-`FillLineIntervalMm` a `Mode` ho zmaže, takže ručne prepísané číslo zhodí názov materiálu namiesto
-toho, aby vrstva tvrdila recept, ktorý už nemá. Preto je aplikácia receptu **jedno volanie**
-`LayerSettings.ApplyRecipe(...)` a nie päť priradení. `MaterialDisplayLabel` vracia
-„Vlastní nastavení", keď label nie je.
-
-### `b25e94b` — jeden blok „Nastavení práce" v inšpektore
-
-Šesť riadkov label vľavo / ovládací prvok vpravo: **Materiál, Režim, Rychlost, Výkon, Průchody,
-Interval.** Predtým to boli tri sekcie plus disclosure: segmentovaný `Zpracování`, mriežka
-`Nastavení` s tromi číslami, Expander s intervalom a tlačidlo „Doporučené parametry" pod tým.
-
-- **Materiál** je `Button` v štýle `Field.Select` (chrome selectu + chevron), nie skutočný ComboBox —
-  otvára to isté zoskupené menu receptov (katalóg + vlastné presety, s rýchlosťou a výkonom pri
-  každej položke), čo ComboBox s reťazcami nedokáže zobraziť.
-- **Režim** je `ComboBox` s `ComboBoxItem.IsSelected` bindingom cez `EnumToBool` — presne ako
-  predtým radio segmenty. Rastrová vrstva namiesto selectu ukáže „Obrázek · řádkové gravírování“:
-  nie je čo voliť.
-- **Interval** má celý riadok (label aj pole) nedostupný, keď sa nič nevyplňuje —
-  `WorkSettingRow.FillOnly` v lokálnych resources view.
-
-Chovanie nezmenené: tie isté property, tie isté two-way bindingy, to isté menu receptov.
-
-### `354f9da` — akcie vrstvy na riadok, popupy dostali chrome appky
-
-- **„+ Nová vrstva" je preč.** Vrstva vzniká kreslením alebo importom; prázdna nemala čo povedať.
-  `SceneViewModel.AddLayer` je odstránený, aby nevyzeral funkčne.
-- **Kontextové menu na riadku vrstvy** (pravý klik): zaradiť/vyradiť z úlohy, vyradiť všetky okrem
-  tejto, skryť/zobraziť, skryť všetky okrem tejto, vybrať všetky tvary v tejto vrstve, duplikovať,
-  odstrániť. Hlavičky sa preklápajú podľa stavu. `DuplicateSelectedLayer` bol dovtedy **mŕtvy kód
-  bez volajúceho**.
-- `OnLayerRowRightButtonDown` označí riadok pred otvorením menu — WPF neoznačuje `ListBoxItem` pravým
-  tlačidlom, takže bez toho by „Odstranit" na treťom riadku zmazal prvý.
-- Príslušnosť objektu k vrstve bola napísaná dvakrát (počítanie vs. výber). Je to netriviálne (shape
-  odkazuje na vrstvu ID, staršie projekty len farbou, raster patrí podľa druhu) a obe kópie sa museli
-  zhodovať. Teraz je jedno `UsesLayer`.
-- **`ContextMenu` nemal štýl.** `MenuItem` a submenu áno, takže submenu vyzeralo správne a menu, ktoré
-  ho drží, bolo stock WPF: hranaté rohy, plochý šedý vlas, žiadny tieň a starý ľavý žliabok na ikony.
-  `HasDropShadow` musí zostať `True` — to je to, čo Popupu pod ním zapne transparentnosť, bez ktorej
-  zaoblený roh nemá o čo byť zaoblený. Opravilo to naraz zoom presety, menu receptov aj nové menu
-  vrstvy.
-- Zoom presety sú teraz **25 / 50 / 75 / 100 %** + „Přizpůsobit oknu".
-
-### `5ae615f` + `21ffa12` + `81d80e7` — zbaliteľný nav rail, tri kolá
-
-Rail sa zbalí na **74 px** ikonový pruh a späť na 164. Stav sa pamätá
-(`WorkspacePreferences.IsNavCollapsed`) — je to postoj, nie voľba na jednu úlohu.
-
-- Šírka 74 je odvodená od **najširšej veci v pruhu**, nie typickej: 14 + 10 + 26px avatar účtu +
-  10 + 14. Pri 66 (odvodených od 18px glyfov) sa avatar **tichšie orezal** o pravú hranu.
-- Zbalený rail má padding 18 namiesto 14, inak ikony sedia 8 px vľavo od stredu.
-- Labely idú cez `IconLabel.CompactMode`. Chat a účet si obsah skladajú ručne, takže tam je to
-  vypísané zvlášť vrátane zhodenia 9px medzery za avatarom.
-- Stĺpec je nastavovaný z kódu, **animuje sa `Width` samotného Borderu** (`GridLength` nemá
-  animáciu). 180 ms, `CubicEase`, ease-out pri otváraní / ease-in pri zatváraní. Ctí sa
-  `SystemParameters.ClientAreaAnimation`, a uložený stav sa nasadzuje **bez animácie**.
-- Ovládač prešiel tri polohy: päta railu → titulná lišta → **pravá hrana railu**. Finálne je to
-  22px chevron handle na hrane v polovici výšky, chevron sa **otočí o 180°** (nie výmena dvoch
-  glyfov), 220 ms `CubicEase EaseInOut`.
-- Titulná lišta je **identita** — wordmark, projekt, neuložené zmeny, okenné tlačidlá. Ovládač tam
-  nepatrí a MainWindow.xaml to má napísané.
-- **Hover-to-expand bol nasadený a na žiadosť používateľa vyhodený.** Na canvas appke je ľavá hrana
-  na cestách všade: kurzor ňou prechádza k toolbaru, k plátnu, do menu. Ani s 180 ms otváracieho
-  a 260 ms zatváracieho intentu to neprestalo hýbať panelom v koutku oka. **Rail sa mení len klikom
-  na handle.**
-
----
-
-## 5. Rozrobené — pokračovať tu
-
-Používateľove poradie bolo **1, 4, 2, 3**:
-
-- **1 — toolbar editora** ✅ (`5b683e1`)
-- **4 — `ProcessStatusCard`** ✅ (`0061e7f`, `3efdfae`)
-- **2 — pravý inšpektor** 🔶 **rozrobené, pozri nižšie**
-- **3 — spodný stavový pruh** ⬅️ nezačaté
-
-### 5.1 Pravý inšpektor — čo z §4.1 ešte chýba
-
-Hotové: prepínač Vrstvy | Stroj, zoznam vrstiev, kontextové menu, **Nastavení práce**.
-
-**Chýba, v tomto poradí, prilepené na spodok tabu Vrstvy (nie v ScrollVieweri):**
-
-1. **Odhadovaný čas** — hodnota je `GCode.EstimatedTimeLabel`, drží „—“ dokým sa nespustí
-   `PreviewSimulationCommand`. **To je zámer, nemeň to na permanentný readout** — dôvod je vypísaný
-   v komentári v `MainWindow.xaml` pri tlačidle „Odhad času": číslo v kúte si vyžaduje dôveru, ktorú
-   si nezaslúžilo, a operátor nevidí, čo do neho vstúpilo.
-2. **Rámování** — sekcia s **Náhled rámování** a **Rámovat**.
-   - `Náhled rámování` **neexistuje** a treba ho napísať: obrys úlohy na plátne bez pohybu stroja.
-     V `SceneCanvas` na to nie je overlay; `Document.BoundingBox` + `FramingService.BuildFrameGCode`
-     už existujú.
-   - `Rámovat` = `GCode.RunFramingCommand`, existuje.
-   - **Prepínač režimu rámovania do inšpektora nedávaj.** Používateľ rozhodol: *„celý obrys zachovaj
-     len."* Existujúci prepínač Celý obrys / Pouze rohy **zostáva tam, kde je** (Expander „Nastavení
-     kontroly oblasti" na tabe Stroj). Je to vratné čítanie krátkej instrukcie; ak sa téma vráti,
-     over ju.
-3. **Spustit — červené.** Použi `Button.DangerSolid`; `JobStartActionButton` v `MainWindow.xaml`
-   dnes dedí z `JobPrimaryButton`/`PrimaryAction` (modré). `Button.Danger` je tichý variant,
-   `Button.DangerSolid` je plný.
-
-**Umiestnenie akcií úlohy — rozhodnuté používateľom:** na obrazovke **Návrh** nesú Spustit /
-Rámovat / Pozastavit / Zastavit tlačidlá **inšpektor**, prilepené na spodok tabu Vrstvy, aby sa
-Zastavit nedalo odscrollovať. Na **Domů / Zařízení / Chat** zostávajú v spodnom pruhu, aby sa žiadna
-akcia stroja nestala nedosiahnuteľnou. Štýly `JobIdleActionButton`, `JobStartActionButton`,
-`JobRunningActionButton`, `JobPausedActionButton`, `JobActiveStopButton` sú dnes v resources
-`MainWindow.xaml` — pre použitie v `DesignerInspectorView` ich treba presunúť do
-`SharedUiStyles.xaml` (pozor na poradie `StaticResource`, §7.4) a `MainWindowNavigationTests` má
-test na to, že `JobActiveStopButton` dedí z `JobDangerButton` deklarovaného **pred** ním.
-
-Tab *Stroj* má svoju `ProcessStatusCard` s primary/secondary akciami, takže tam sa Zastavit
-nestratí — nezdvojuj ho tam.
-
-### 5.2 Spodný stavový pruh (§4.2)
-
-Mockup: `● Připojeno · Lasero L2 Pro · COM4 · Ovládání stroje | Pracovní plocha 400 × 400 mm |
-Materiál Překližka (3 mm) | Náhled práce`
-
-Dnešný pruh má stavové pilulky, názov súboru a hlášku. Chýba názov stroja, port, plocha, materiál
-a „Náhled práce". **Všetko potrebné existuje:**
-
-| údaj | zdroj |
-|---|---|
-| názov stroja | `Connection.ActiveMachineName` |
-| port | `Connection.SelectedPort` |
-| pracovná plocha | `Connection.WorkAreaWidthMm` / `WorkAreaHeightMm` |
-| materiál | `Scene.SelectedLayer.MaterialDisplayLabel` (nové z `f513df3`) |
-| Náhled práce | `GCode.PreviewSimulationCommand` |
-| Ovládání stroje | `ShowDeviceCommand`, alebo `DesignerInspectorView.ShowMachineTab()` |
-
-Na položky pruhu je štýl `StatusItem` v `SharedUiStyles.xaml`.
-
-### 5.3 Lasero Chat (§4.4)
-
-Nezačaté. Používateľ: *„lasero chat musi fungovat a vizuálne sa podobat rovnako ako lasero app na
-webe."* Poslal screenshoty webového chatu: hlavička s avatarom KAMIL, `⏱ Historie` / `+ Nový chat`,
-kontextový chip, bubliny (asistent biela karta, používateľ plná bublina), indikátor psaní, karta
-**DOPORUČENÉ PARAMETRY** so štyrmi dlaždicami a `Uložit parametry`, „Fungovalo nastavení?" s 👍/👎,
-návrhové chipy.
-
-**Rozhodnuté:** akcent v chate zostáva **kobaltový `#2563EB`**, nie webová červená. Chat preberá
-rozvrh, bubliny a karty; červená zostáva vyhradená nebezpečným akciám.
-
-### 5.4 Diódový katalóg (§5 starého handoffu)
-
-**Rozhodnuté:** zvyšok materiálov sa **doplní z publikovaných tabuliek** (lasertinkerer.com a
-podobné, ten istý zdroj, z ktorého už vyšla preglejka a MDF), prepočíta rovnakou metódou a doplní
-testom na monotónnosť dávky. **Nie sú to používateľove merania** a treba to tak označiť.
-
-Overené je dnes len **preglejka a MDF na rez**. Web `lasero-app` má tú istú starú chybu a zámerne sa
-neopravoval — desktop je teda dočasne rozdielny od webu; je to v komentári v `MaterialCatalog` aj
-v teste `Catalog_MatchesTheAgreedRecipeValues`.
-
-### 5.5 Nová požiadavka od zákazníka — QR kódy
-
-Zákazník chce **šablónu, v ktorej sa mení len QR kód** (variabilné dáta). Overené k dnešnému dňu:
-**LightBurn to umie** — `Tools > Create QR Code` (od 0.9.15) a QR/čiarové kódy podporujú
-CSV-merge variable text (`%0`, `%1`, … plus Variable Offset na sériové čísla a riadky CSV).
-Variable Text je v porovnávacej tabuľke odškrtnutý pre **Core aj Pro**, QR nástroj je v produkte
-dávno pred rozdelením licencií — Core by teda mal stačiť, ale pred nákupom to nech potvrdí
-LightBurn support.
-
-Do Lasera sa to dá postaviť a nie je to malé. Návrh rozsahu, keby sa šlo do toho:
-
-1. **Encoder** — QR (model 2, ECC L–H) v čistom C# v `Lasero.Core`, bez natívnej závislosti.
-2. **Nový typ objektu scény** — `QrCodeObject`, ktorý si drží **payload ako dáta** a geometriu
-   generuje. To je celý fígeľ: „obměnit QR kód" znamená prepísať text a nechať geometriu prepočítať,
-   nie importovať nový SVG.
-3. **Serializácia** — payload, veľkosť modulu, ECC, quiet zone do `ProjectFile` (aditívne polia,
-   ako `MaterialLabel`).
-4. **Vykreslenie** — moduly ako výplňové obdĺžniky vo `LayerMode.Fill`; **nie obrys každého modulu**,
-   inak sa reže mriežka namiesto gravírovania plochy.
-5. **Variabilné dáta** — zdroj (ručný zoznam, CSV, alebo číselná séria) + dávkový beh: jedna šablóna,
-   N úloh. Tu treba rozhodnúť, či sa to rieši ako N úloh za sebou alebo array na plátne.
-6. **Overenie** — test, že vygenerovaný QR sa dá prečítať dekóderom, nie len že „vyzerá ako QR".
-
----
-
-## 6. Bezpečnostná hranica — nemeniť
-
-Prezentácia sa meniť môže, **správanie nie**. Nikdy neupravovať sémantiku Start, Pause, Stop, Frame,
-Home, Origin, Jog, Reset, Unlock, súradníc stroja, firmware príkazov ani bezpečnostných kontrol
-kvôli vzhľadu.
-
-- Dostupnosť Start/Frame rozhoduje **výhradne `CanRun` / `CanFrame` + `JobPreflight`**.
-  `JobStatusViewModel` je čistá prezentácia — binduje tie isté príkazy a berie ich `CanExecute` tak,
-  ako ho nájde; nemôže sprístupniť akciu stroja. Vlastní len formulácie a to, do ktorého z dvoch
-  akčných slotov ktorý príkaz patrí.
-- `ProcessStatusCard` nedrží vlastný stav vrátane progressu. Ak nie je čo merať, je pruh neurčitý.
-- Nikdy nezobrazovať „Ready", kým to appka nepotvrdila. `JobRunState.Idle` je zámerne „Bez úlohy".
-- Stav sa nikdy nesmie oznamovať iba farbou — vždy tvar (ikona) + slovo + farba.
-- **`Safety.RequireFramingBeforeStart` nedávaj vedľa Spustit.** Je to poistka, dnes dostupná len
-  v Nastavení; jedným klikom vedľa červeného Spustit ju nikto nechce vypnúť omylom.
-- Sprievodca zariadením posiela pri skene **iba `$$`**. Jediný zápis do stroja je `$32=1` a nikdy
-  nie automaticky.
-- **Zmeny, ktoré zmenili generovaný G-kód:** tolerancia flattenovania textu 0,2 → 0,01 mm (`3ff71c2`)
-  a **diódové recepty na rez preglejky a MDF** (`c5d76c4`).
-
----
-
-## 7. WPF pasce — všetky sú systémové
-
-Prvých deväť je z minulých sessions a stále platia. Zvyšok je nový.
-
-1. **Implicitný `Style TargetType="Window"` sa nevzťahuje na žiadne okno v tejto appke.** WPF hľadá
-   implicitný štýl podľa **presného typu**, a každé okno tu je odvodená trieda. **Každý root okna si
-   nastavuje `Background` aj `Foreground` sám.**
-2. **WPF ignoruje implicitné štýly deklarované vnútri šablóny.** Pre prvok vytvorený
-   v `ControlTemplate` sa implicitný štýl hľadá **len v `Application.Resources`**. Odovzdaj ho
-   **explicitne kľúčom**.
-3. **`DockPanel` neklipuje.** Keď je dieťa širšie než jeho slot, podlezie pod susedné dieťa a
-   v markupe nie je vidieť nič zlé; UIA hlási prvok na správnom mieste so správnou šírkou.
-4. **Poradie v `ResourceDictionary` platí pre `StaticResource`.** Štýl, ktorý odkazuje na iný štýl,
-   musí byť **za ním**, inak appka padne pri štarte na `Cannot find resource named …`.
-5. **Obrovský `CornerRadius` na tenkom širokom `Border`i nie je zaoblený pruh** — WPF klampuje rádius
-   po osiach, takže `Radius.Pill` na prvku 3 px vysokom vykreslí šošovku.
-6. **`ToolBar` rieši pretečenie za teba** — `ToolBarPanel` + `ToolBarOverflowPanel` +
-   `HasOverflowItems` + `ToolBar.OverflowMode`. Nepíš to ručne.
-7. **Plátno si drží měřítko, kým je skryté.** `SceneCanvas` nemá pri `Visibility="Collapsed"` veľkosť,
-   takže `FitToView` treba zavolať až keď je editor viditeľný, na `DispatcherPriority.Background`.
-8. **Lokálna hodnota na prvku prebije Setter zo štýlu.** Stálo to raz `Height` scrollbaru a v tejto
-   session `Margin` — `InlineTitleInput` má `Margin="-6,0,0,0"`, ale prvok mal lokálne
-   `Margin="0,0,0,16"`, takže editovateľný nadpis sedel odsadený proti všetkým ostatným v paneli.
-   To isté platí pre `IconLabel.Text`: preto existuje `CompactMode`.
-9. **Vypnuté tlačidlo si kreslí plochu.** Pri `Button.Ghost` to obracia hierarchiu — na to je
-   `ButtonChrome.SuppressDisabledSurface`.
-10. **Dieťa `Grid`u väčšie než slot, do ktorého bolo arrangované, dostane layout clip.** Nie Border,
-    nie `ClipToBounds` — vlastný WPF mechanizmus. 164 px široký rail v 74 px stĺpci nakreslil labely
-    a odsekol ich na 74. Riešenie: `Grid.ColumnSpan` cez susedný stĺpec + `HorizontalAlignment="Left"`
-    + `Panel.ZIndex`. Dieťa, ktoré preteká **z rodiča**, sa neklipuje — klipuje sa až prvok, ktorý
-    je väčší ako **svoj slot**.
-11. **`Path` v `Canvas`e sa layoutuje podľa svojich bounds, nie podľa súradníc vo `Data`.**
-    `M4,12 L20,12` v `Canvas` bez `Canvas.Top` sa nakreslí na hornej hrane canvasu, nie na y=12.
-    Tri takéto „linky" sa naskladali na seba a posun ±7 vytlačil hornú mimo tlačidla. Na pruhy použi
-    `Rectangle` v `Grid`e s riadkami.
-12. **`IsKeyboardFocused` nie je `:focus-visible`.** Nerozlíši Tab od kliknutia myšou, takže prvok
-    po kliku zostane orámovaný akcentom a vyzerá zapnutý. Použi **`FocusVisualStyle`** — WPF ho
-    aplikuje len pri fokuse z klávesnice. V téme je `FocusRing.Pill`.
-13. **`ContextMenu` potrebuje vlastný štýl aj keď `MenuItem` už štýl má.** A `HasDropShadow` musí
-    zostať `True`, inak Popup pod ním nemá `AllowsTransparency` a zaoblené rohy nefungujú.
-14. **`GridLength` sa nedá `DoubleAnimation`ovať.** Animuj `Width` prvku a daj stĺpcu `Auto`, alebo
-    stĺpec nastav skokom a animuj len prvok.
-
----
-
-## 8. Otvorené / neriešené
-
-- **SVG import je hranatý.** `SvgPathParser.cs` má `const int CurveSteps = 16` — pevný počet krokov
-  na krivku nezávislý od veľkosti. Správne je subdivízia podľa tolerancie tetivy, ale parser pracuje
-  v SVG user units pred transformáciou, takže absolútna mm tolerancia tam nie je dostupná.
-- **Uložená šírka inšpektora je 546 px.** Pri načítaní sa obmedzuje na tretinu okna, ale **hodnota na
-  disku sa neprepisuje** — je to preferencia používateľa. Dôsledok: aj pri 1700 px je workspace pod
-  prahom 1060, takže popisky v toolbare sa zbaľujú. Zbalený rail teraz vracia 90 px, čo to zmierňuje.
-- `LaseroProjectFile.Version` má default `7`, ale `Deserialize` aj `CreateArchiveSnapshot` ho natvrdo
-  nastavia na `6`. Nič `Version` nečíta.
-- **Avatar KAMILa v raile je rastrová fotka medzi 1.75px outline glyfmi** a v zbalenom pruhu to je
-  vidieť. Je to zámerná voľba (je to tvár asistenta), ale ako rodina to nesedí.
-- Staré publish výstupy `artifacts/` (3,4 GB) a `dist/` (1,1 GB) ležia v repozitári. Regenerovateľné.
-- `TextToolWindow.Style` tieni `FrameworkElement.Style` — jediný build warning (CS0108).
-
-### 8.1 Staršie, stále platné
-
-- **Offset / Posunout** (nezačaté) — dialóg ako v LightBurne. Odporúčaný postup:
-  `Geometry.GetWidenedPathGeometry(new Pen(...))` s `PenLineJoin` podľa štýlu rohu, potom
-  union/difference. `PenLineJoin.Round/Bevel/Miter` mapuje presne na Oblý/Kosý/Roh.
-- **Rohové úchopy pre Zkreslit textu** — dátový model (`TextDistortion`,
-  `SetSelectedTextDistortionCorner`) a testy existujú, chýba ovládanie na plátne
-  v `SceneCanvas.DrawSingleObjectHandles`. **Pasca:** `ResizeHandle` pomenúva roh s najmenším Y ako
-  `Top`, ale plátno kreslí najmenšie Y dole. `TextDistortionCorner` je v dokumentovom priestore.
-- **Assety:** fotka gravírovania v hero, render gravírky, náhledy projektů — **žiadne reálne assety
-  neexistujú**, všetko sú kreslené zástupné z vlastnej ikonovej sady. Zámerne: appka nemá ako vedieť,
-  aký stroj zákazník má, a stock render cudzej gravírky je obrázok nesprávneho stroja.
-- Z mockupu nie je nasadené: typografická škála **s riadkovaním** (stupeň 18 px chýba, riadkovania
-  nie sú definované), overenie piatich stavových pilulek proti mockupu, popisky skupin nad toolbarom,
-  svislá lišta nástrojů po ľavej strane plátna, horní pruh „Návrh – Motýl" so stavom „Uloženo",
-  rozměrový popisek u výběru na plátně.
-
----
-
-## 9. Ako pracovať
-
-- **Funkčnosť sa nesmie rozbiť.** Gating Start/Frame zostáva výhradne na
-  `CanRun`/`CanFrame`/`JobPreflight` — §6.
-- Všetky farby, rozmery a rádiusy z tokenov v `LaseroTheme.xaml`. Testy zakazujú literálne
-  `FontSize` a `CornerRadius` v XAML.
-- Po každej zmene: **build + testy + reálne spusti appku a pozri sa na výsledok** cez `.uiqa/`.
-  Nestačí, že to skompiluje — v tejto session sa štyri chyby ukázali až na screenshote (orezaný
-  avatar, deformovaný X, odseknuté labely, modrý handle po kliku).
-- Commituj po logických celkoch, **anglicky, s vysvetlením PREČO**.
-- **UI texty sú česky.** Handoff a komentáre v kóde nie.
+## 7. Čo NEROB
+
+- Nemeň `JogViewModel` bezpečnostnú logiku (§1) bez konkrétneho nového nálezu.
+- Nemeň GRBL/preflight/Start/Frame/Pause/Resume/Stop sémantiku kvôli UI problému — vyrieš to v
+  layoute.
+- Nevytváraj druhý konkurenčný design-token systém popri `LaseroTheme.xaml`.
+- Nezačínaj typografiu (§4.1) ani ikony (§4.2) implementačne, kým nie je KAMIL (§2) commitnutý a
+  zelený — všetky tri sa dotýkajú tých istých zdieľaných súborov.
+- Nepridávaj `IsEnabled="False"` natvrdo v XAML — vždy cez CanExecute binding.
+- Necommituj `.uiqa/*.png` screenshoty (sú to scratch artefakty, nie sú v `.gitignore`, ale nemajú
+  čo robiť v histórii) ani `docs/stitch-*`/`.agents/` bez opýtania sa používateľa — tie boli pridané
+  v samostatnej úlohe (setup agentov v Antigravite), nie sú súčasť kódu appky.

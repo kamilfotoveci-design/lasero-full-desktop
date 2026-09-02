@@ -20,24 +20,28 @@ public partial class KamilAssistantHost : UserControl
 {
     // Geometry. Fixed per state so a transition is a single interpolation with a known destination,
     // rather than a measure pass the animation has to chase.
-    private const double PillWidth = 176;
+    private const double PillWidth = 48;
     private const double PillHeight = 48;
-    private const double QuickWidth = 440;
-    private const double QuickHeight = 156;
-    private const double ExpandedWidth = 424;
+    private const double QuickWidth = 400;
+    private const double QuickHeight = 132;
+    private const double ExpandedWidth = 420;
     private const double ExpandedMaxHeight = 640;
-    private const double ExpandedMinHeight = 340;
+    private const double ExpandedMinHeight = 500;
 
-    /// <summary>Room left for the machine strip and the window's own chrome. The panel is clamped to
-    /// what is left, so Rámovat, Spustit, Pauza and Zastavit are never covered on a short window.</summary>
-    private const double ReservedVerticalChrome = 24;
-
-    private static readonly Duration ShapeDuration = TimeSpan.FromMilliseconds(210);
+    // Shape duration depends on which pair of states is involved — QuickAsk to/from Expanded is the
+    // biggest change of shape and reads better slightly slower than the other two, which both move a
+    // 48px badge a comparatively short distance.
+    private static readonly Duration ShapeDurationDefault = TimeSpan.FromMilliseconds(210);
+    private static readonly Duration ShapeDurationToExpanded = TimeSpan.FromMilliseconds(240);
     private static readonly Duration ContentDuration = TimeSpan.FromMilliseconds(130);
 
     private KamilAssistantViewModel? _viewModel;
     private INotifyCollectionChanged? _messages;
     private IInputElement? _focusBeforeOpening;
+
+    // The state this control last actually rendered, so a transition can pick its own duration (see
+    // <see cref="ShapeDurationFor"/>) instead of every transition running at the same speed.
+    private KamilAssistantState _lastRenderedState = KamilAssistantState.Minimized;
 
     public KamilAssistantHost()
     {
@@ -114,6 +118,7 @@ public partial class KamilAssistantHost : UserControl
     private void ApplyState(KamilAssistantState state, bool animate)
     {
         var (width, height) = MeasureState(state);
+        var duration = ShapeDurationFor(_lastRenderedState, state);
 
         Root.Visibility = state == KamilAssistantState.Hidden ? Visibility.Collapsed : Visibility.Visible;
         if (state == KamilAssistantState.Hidden) return;
@@ -127,11 +132,13 @@ public partial class KamilAssistantHost : UserControl
             Surface.Width = width;
             Surface.Height = height;
             SetLayerOpacity(state, immediate: true);
+            _lastRenderedState = state;
             return;
         }
 
-        AnimateSurface(width, height);
+        AnimateSurface(width, height, duration);
         SetLayerOpacity(state, immediate: false);
+        _lastRenderedState = state;
     }
 
     private (double Width, double Height) MeasureState(KamilAssistantState state) => state switch
@@ -141,19 +148,39 @@ public partial class KamilAssistantHost : UserControl
         _ => (PillWidth, PillHeight),
     };
 
+    /// <summary>Only QuickAsk &lt;-&gt; Expanded — the biggest change of shape — runs slower than the
+    /// other two transitions. Every other pair (including a same-state reapply) uses the default.</summary>
+    private static Duration ShapeDurationFor(KamilAssistantState from, KamilAssistantState to) =>
+        (from, to) is (KamilAssistantState.QuickAsk, KamilAssistantState.Expanded)
+            or (KamilAssistantState.Expanded, KamilAssistantState.QuickAsk)
+            ? ShapeDurationToExpanded
+            : ShapeDurationDefault;
+
     /// <summary>
-    /// The tallest the panel may be here and now. Bounded by the host's own height, which is the
-    /// workspace between the title bar and the machine strip — so the panel shrinks on a 768px screen
-    /// instead of running off the top or sitting over the job controls.
+    /// The tallest the panel may be here and now.
+    ///
+    /// This control is Bottom/Right-aligned and sized to its own content (<see cref="Surface"/>'s
+    /// explicit Width/Height), so its own <c>ActualHeight</c> is not "room available" — it is
+    /// whatever the panel currently measures, which made the old clamp circular and meant Expanded
+    /// could never actually grow past <see cref="ExpandedMinHeight"/> no matter how tall the window
+    /// was. The figure that *is* the real workspace height is the parent Grid's — the "Main editor"
+    /// row in MainWindow.xaml, Height="*" between the 60px title bar row and the 48px machine-strip
+    /// row — because this control is declared as a direct, unstretched child of it.
+    ///
+    /// The bottom reservation is this control's own <c>Margin</c> (the live
+    /// <see cref="Lasero.App.Converters.AssistantClearanceConverter"/> output bound in
+    /// MainWindow.xaml), not <see cref="Root"/>'s — <c>Root</c> is the internal Grid one level below
+    /// this control and never had a margin of its own; the real margin lives on this UserControl.
     /// </summary>
     private double AvailableExpandedHeight()
     {
-        var host = ActualHeight > 0 ? ActualHeight : ExpandedMaxHeight;
-        var room = host - Root.Margin.Top - Root.Margin.Bottom - ReservedVerticalChrome;
+        var workspace = Parent as FrameworkElement;
+        var host = workspace?.ActualHeight > 0 ? workspace.ActualHeight : ExpandedMaxHeight;
+        var room = host - Margin.Top - Margin.Bottom;
         return Math.Clamp(Math.Min(ExpandedMaxHeight, room), ExpandedMinHeight, ExpandedMaxHeight);
     }
 
-    private void AnimateSurface(double width, double height)
+    private void AnimateSurface(double width, double height, Duration duration)
     {
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
@@ -163,7 +190,7 @@ public partial class KamilAssistantHost : UserControl
         Surface.BeginAnimation(WidthProperty, new DoubleAnimation
         {
             To = width,
-            Duration = ShapeDuration,
+            Duration = duration,
             EasingFunction = ease,
             FillBehavior = FillBehavior.HoldEnd,
         });
@@ -171,7 +198,7 @@ public partial class KamilAssistantHost : UserControl
         Surface.BeginAnimation(HeightProperty, new DoubleAnimation
         {
             To = height,
-            Duration = ShapeDuration,
+            Duration = duration,
             EasingFunction = ease,
             FillBehavior = FillBehavior.HoldEnd,
         });

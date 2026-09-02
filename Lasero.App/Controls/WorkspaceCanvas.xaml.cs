@@ -361,16 +361,28 @@ public partial class WorkspaceCanvas : UserControl
     {
         var tickBrush = (Brush)FindResource("Brush.PanelBorder");
         var labelBrush = (Brush)FindResource("Brush.TextSecondary");
+        // FontFamily is inherited from the Window, but these labels aren't in the
+        // visual tree yet when we Measure() them below — an unparented element has
+        // no inheritance context, so Measure would silently fall back to the WPF
+        // default font instead of Inter. That understates the real rendered width
+        // enough that the right-edge fit check below passes for labels that then
+        // get clipped by TopRuler's own ClipToBounds once actually added. Setting
+        // the same font explicitly keeps the measurement honest.
+        var labelFont = (FontFamily)FindResource("Font.Numeric");
 
         for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
         {
             var px = ToCanvasX(x);
             TopRuler.Children.Add(new Line { X1 = px, X2 = px, Y1 = TopRuler.ActualHeight - 6, Y2 = TopRuler.ActualHeight, Stroke = tickBrush, StrokeThickness = 1 });
 
-            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 9, Foreground = labelBrush };
-            Canvas.SetLeft(label, px + 3);
-            Canvas.SetTop(label, 2);
-            TopRuler.Children.Add(label);
+            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 9, FontFamily = labelFont, Foreground = labelBrush };
+            label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (px + 3 + label.DesiredSize.Width <= TopRuler.ActualWidth)
+            {
+                Canvas.SetLeft(label, px + 3);
+                Canvas.SetTop(label, 2);
+                TopRuler.Children.Add(label);
+            }
         }
 
         for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
@@ -378,7 +390,7 @@ public partial class WorkspaceCanvas : UserControl
             var py = ToCanvasY(y);
             LeftRuler.Children.Add(new Line { X1 = LeftRuler.ActualWidth - 6, X2 = LeftRuler.ActualWidth, Y1 = py, Y2 = py, Stroke = tickBrush, StrokeThickness = 1 });
 
-            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 9, Foreground = labelBrush };
+            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 9, FontFamily = labelFont, Foreground = labelBrush };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - label.DesiredSize.Width));
             Canvas.SetTop(label, py - label.DesiredSize.Height / 2);

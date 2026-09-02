@@ -304,6 +304,21 @@ public partial class MainWindow : Window
     private void OnMaterialsClick(object sender, RoutedEventArgs e)
         => OpenMaterials();
 
+    /// <summary>
+    /// Navigates to the Chat screen and, if Kamil was previously closed (see
+    /// KamilAssistantViewModel.Close), reopens it on the Minimized badge. A single Command binding
+    /// could only ever do one of the two, and Phase 1 flagged the gap this left: closing Kamil and
+    /// then clicking this same rail button navigated to Chat but never brought the assistant back,
+    /// leaving no way to reopen it short of an app restart. ShowCommand is already guarded by CanShow
+    /// (State == Hidden), so firing it unconditionally here is safe whether or not there is anything
+    /// to reopen.
+    /// </summary>
+    private void OnLaseroChatClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.ShowChatCommand.Execute(null);
+        if (_viewModel.Kamil.ShowCommand.CanExecute(null)) _viewModel.Kamil.ShowCommand.Execute(null);
+    }
+
     /// <summary>Modal on purpose: the wizard opens and closes the serial ports the rest of the app
     /// would otherwise be using at the same moment.</summary>
     public void OpenDeviceWizard()

@@ -48,6 +48,15 @@ public partial class ChatViewModel : ObservableObject
     /// </summary>
     public Func<LaseroChatContext>? ContextProvider { get; set; }
 
+    /// <summary>
+    /// Reports which operation is selected in the workspace at the moment a message is recorded, so a
+    /// recommendation parsed out of that message can later tell whether it is still about the
+    /// operation it was talking about. Same "set by the host once at startup" shape as
+    /// <see cref="ContextProvider"/>, and optional for the same reason: a chat opened before a host
+    /// attaches must still work, just without staleness tracking.
+    /// </summary>
+    public Func<Guid?>? SelectedLayerIdProvider { get; set; }
+
     public ChatViewModel(LaseroChatClient client, AccountViewModel account, ChatStore store)
     {
         _client = client;
@@ -209,7 +218,10 @@ public partial class ChatViewModel : ObservableObject
 
     private ChatMessageItem AddMessage(LaseroChatRole role, string text)
     {
-        var message = new ChatMessageItem(Guid.NewGuid(), role, text, DateTimeOffset.Now);
+        var message = new ChatMessageItem(Guid.NewGuid(), role, text, DateTimeOffset.Now)
+        {
+            OriginLayerId = SelectedLayerIdProvider?.Invoke(),
+        };
         Messages.Add(message);
         RefreshState();
         return message;
@@ -324,6 +336,14 @@ public sealed record ChatMessageItem(Guid Id, LaseroChatRole Role, string Text, 
     public string TimeLabel => CreatedAt.ToString("HH:mm");
 
     /// <summary>
+    /// Which operation was selected in the workspace when this message was recorded, if known. Null
+    /// for messages loaded from a session persisted before this was tracked, or recorded with nothing
+    /// selected — a recommendation with no origin is never treated as stale (see
+    /// <see cref="KamilAssistantViewModel.IsRecommendationStale"/>).
+    /// </summary>
+    public Guid? OriginLayerId { get; init; }
+
+    /// <summary>
     /// Machine settings named in this answer, if it named any. Parsed once and remembered — the
     /// message text never changes, and the list re-templates on every scroll.
     /// </summary>
@@ -334,6 +354,7 @@ public sealed record ChatMessageItem(Guid Id, LaseroChatRole Role, string Text, 
             if (_recommendationResolved) return _recommendation;
             _recommendationResolved = true;
             _recommendation = IsUser ? null : ParameterRecommendation.TryParse(Text);
+            if (_recommendation is not null) _recommendation.OriginLayerId = OriginLayerId;
             return _recommendation;
         }
     }

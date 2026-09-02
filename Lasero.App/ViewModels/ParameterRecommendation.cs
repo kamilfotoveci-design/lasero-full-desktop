@@ -19,6 +19,15 @@ public sealed partial class ParameterRecommendation
     public int Passes { get; }
     public int? Dpi { get; }
 
+    /// <summary>
+    /// Which operation was selected in the workspace when the message carrying this recommendation
+    /// arrived, if known. Not part of parsing — TryParse only ever reads the reply text — so this is
+    /// set once by <see cref="ChatMessageItem.Recommendation"/> right after parsing, from the layer id
+    /// the message itself captured. <see cref="KamilAssistantViewModel.IsRecommendationStale"/> uses
+    /// it to tell whether an old card in scrollback still matches what is selected now.
+    /// </summary>
+    public Guid? OriginLayerId { get; internal set; }
+
     /// <summary>Scan-line spacing implied by the DPI, in the same unit LayerSettings stores. Falls
     /// back to the layer default when the answer named no resolution.</summary>
     public double FillLineIntervalMm => Dpi is > 0 ? 25.4 / Dpi.Value : 25.4 / 254;

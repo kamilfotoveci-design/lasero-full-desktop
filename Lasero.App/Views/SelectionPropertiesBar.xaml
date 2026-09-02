@@ -20,6 +20,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
 
         <Style x:Key="BarLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -254,9 +255,14 @@
                 </StackPanel>
 
                 <!-- ============ Uspořádání ============ -->
-                <Border Style="{StaticResource BarDivider}" />
+                <!-- Collapsed while text is selected: the Text cluster above already pushes this row
+                     past the width a text selection has to fit in, and both Align and Flip/Rotate are
+                     duplicated into the overflow menu below, so nothing here becomes unreachable. -->
+                <Border Style="{StaticResource BarDivider}"
+                        Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource InverseBoolToVisibility}}" />
 
-                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0">
+                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0"
+                      Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource InverseBoolToVisibility}}">
                     <MenuItem Style="{StaticResource BarMenuItem}"
                               IsEnabled="{Binding Scene.HasMultipleSelection}"
                               ToolTip="Zarovnat vybrané objekty k sobě"
@@ -278,7 +284,8 @@
                     </MenuItem>
                 </Menu>
 
-                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="2,0,0,0">
+                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="2,0,0,0"
+                      Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource InverseBoolToVisibility}}">
                     <MenuItem Style="{StaticResource BarMenuItem}"
                               ToolTip="Zrcadlit nebo otočit vybrané objekty"
                               AutomationProperties.Name="Zrcadlit nebo otočit">
@@ -321,6 +328,37 @@
                         <MenuItem Header="Trasovat bitmapu" InputGestureText="Alt+T"
                                   Command="{Binding Scene.TraceSelectedRasterCommand}"
                                   Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}" />
+
+                        <!-- Align/Flip/Rotate normally have their own visible menus in the row above;
+                             those two collapse while text is selected (see the Uspořádání comment),
+                             so their only reachable copy at that point is here. -->
+                        <MenuItem Header="Zarovnat vlevo" Command="{Binding Scene.AlignLeftCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zarovnat na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zarovnat vpravo" Command="{Binding Scene.AlignRightCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zarovnat nahoru" Command="{Binding Scene.AlignTopCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zarovnat na střed svisle" Command="{Binding Scene.AlignMiddleCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zarovnat dolů" Command="{Binding Scene.AlignBottomCommand}"
+                                  IsEnabled="{Binding Scene.HasMultipleSelection}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <Separator Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
 
                         <MenuItem Header="Duplikovat" InputGestureText="Ctrl+D" Command="{Binding Scene.DuplicateCommand}" />
                         <MenuItem Command="{Binding Scene.ToggleLockCommand}">
