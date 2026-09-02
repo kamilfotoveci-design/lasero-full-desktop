@@ -1,0 +1,123 @@
+<UserControl x:Class="Lasero.App.Views.Kamil.KamilComposer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             x:Name="Root">
+    <!--
+        One composer, used by both the Quick Ask pill and the expanded panel. Only the placeholder
+        differs, so the control the operator types into is literally the same shape in both states —
+        which is what makes the transition between them read as one object growing rather than two
+        surfaces swapping.
+
+        No attachment button and no microphone. Lasero has neither an attachment pipeline nor voice
+        input, and a control that does nothing is worse than an absent one.
+    -->
+    <Border x:Name="Shell"
+            Background="{DynamicResource Brush.Panel}"
+            BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Md}"
+            Padding="4,3,4,3">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Style.Triggers>
+                    <!-- The focus cue is on the surface, not a ring around the TextBox: the whole
+                         composer is the control as far as the operator is concerned. -->
+                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=Root}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                    </DataTrigger>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding IsMouseOver, ElementName=Root}" Value="True" />
+                            <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=Root}" Value="False" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Margin="8,0,6,0" VerticalAlignment="Center">
+                <TextBox x:Name="Input"
+                         Background="Transparent" BorderThickness="0" Padding="0,6"
+                         MaxLength="4000"
+                         TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalContentAlignment="Center"
+                         MaxHeight="96"
+                         VerticalScrollBarVisibility="Auto"
+                         PreviewKeyDown="OnInputPreviewKeyDown"
+                         automation:AutomationProperties.Name="Dotaz pro Kamila"
+                         Text="{Binding Chat.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <!-- A watermark rather than a real value: a placeholder written into Text would be
+                     sent as the question the first time someone pressed Enter without looking. -->
+                <TextBlock Text="{Binding Placeholder, ElementName=Root}"
+                           IsHitTestVisible="False"
+                           VerticalAlignment="Center" Margin="1,0,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=Input}" Value="">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <Button Grid.Column="1" x:Name="SendButton"
+                    Style="{StaticResource Kamil.SendButton}"
+                    Command="{Binding Chat.SendCommand}"
+                    ToolTipService.ShowOnDisabled="True"
+                    automation:AutomationProperties.Name="Odeslat dotaz">
+                <Button.ToolTip>
+                    <ToolTip>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Odeslat · Enter" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Chat.IsBusy}" Value="True">
+                                            <Setter Property="Text" Value="Kamil právě odpovídá" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Chat.CanUseOnline}" Value="False">
+                                            <Setter Property="Text" Value="Kamil potřebuje připojení k internetu" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </ToolTip>
+                </Button.ToolTip>
+                <Grid>
+                    <components:IconGlyph IconData="{StaticResource Glyph.Send}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Foreground="White">
+                        <components:IconGlyph.Style>
+                            <Style TargetType="components:IconGlyph">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Chat.IsBusy}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </components:IconGlyph.Style>
+                    </components:IconGlyph>
+                    <!-- A determinate-looking spinner would imply progress the request cannot report.
+                         An indeterminate bar inside the button says "working" and nothing more. -->
+                    <ProgressBar IsIndeterminate="True" Width="18" Height="3" Background="Transparent"
+                                 BorderThickness="0" Foreground="White"
+                                 Visibility="{Binding Chat.IsBusy, Converter={StaticResource BoolToVisibilityShared}}" />
+                </Grid>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

@@ -26,6 +26,7 @@ public partial class HomeViewModel : ObservableObject
     public ObservableCollection<RecentProjectItemViewModel> RecentProjectRows { get; } = new();
     public ObservableCollection<JobHistoryEntry> TodayJobs { get; } = new();
     public ObservableCollection<MaterialUsage> RecentMaterials { get; } = new();
+    public ObservableCollection<MaterialUsageItemViewModel> RecentMaterialRows { get; } = new();
 
     /// <summary>What the device card shows. Every one of these reads through to live connection state,
     /// so a disconnected app names no machine, no port and no firmware instead of inventing them.</summary>
@@ -38,6 +39,10 @@ public partial class HomeViewModel : ObservableObject
     public string DeviceConnectionLabel => Connection.IsConnected
         ? $"USB  ·  {Connection.SelectedPort}  ·  {Connection.BaudRate} Bd"
         : "Připojte gravírku kabelem USB";
+
+    /// <summary>The same fact as DeviceConnectionLabel, short enough for a half-width stat tile. The
+    /// long form stays for places that have a full row to spend on it.</summary>
+    public string ConnectionSummaryLabel => Connection.IsConnected ? $"USB ({Connection.SelectedPort})" : "—";
 
     /// <summary>GRBL's banner is "Grbl 1.1h ['$' for help]" — the version is the useful half.</summary>
     public string FirmwareLabel
@@ -60,6 +65,19 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty] private int _completedJobsCount;
     [ObservableProperty] private int _materialsUsedCount;
     [ObservableProperty] private string _mostUsedMaterialLabel = "—";
+
+    /// <summary>The most recently finished job, for Home's "poslední úloha" panel. Informational
+    /// only: a history entry records a name, a material and a duration, not the file it came from,
+    /// so there is nothing here that could honestly re-run the job.</summary>
+    [ObservableProperty] private string? _lastJobName;
+    [ObservableProperty] private string _lastJobResultLabel = string.Empty;
+    [ObservableProperty] private string? _lastJobMaterialLabel;
+    [ObservableProperty] private string _lastJobCompletedLabel = string.Empty;
+
+    public bool HasLastJob => !string.IsNullOrWhiteSpace(LastJobName);
+    public bool HasRecentMaterials => RecentMaterialRows.Count > 0;
+
+    partial void OnLastJobNameChanged(string? value) => OnPropertyChanged(nameof(HasLastJob));
 
     /// <summary>Raised when the user clicks a recent-project card; MainViewModel subscribes and owns
     /// the actual confirm-replacement + load flow (same as the existing OpenProjectCommand file-dialog path).</summary>
@@ -89,6 +107,7 @@ public partial class HomeViewModel : ObservableObject
                 OnPropertyChanged(nameof(DeviceName));
                 OnPropertyChanged(nameof(ConnectionBadgeLabel));
                 OnPropertyChanged(nameof(DeviceConnectionLabel));
+                OnPropertyChanged(nameof(ConnectionSummaryLabel));
                 OnPropertyChanged(nameof(FirmwareLabel));
             }
         };
@@ -135,8 +154,55 @@ public partial class HomeViewModel : ObservableObject
         OnPropertyChanged(nameof(HasTodayJobs));
 
         RecentMaterials.Clear();
-        foreach (var usage in JobHistorySummary.GroupByMaterial(entries)) RecentMaterials.Add(usage);
+        RecentMaterialRows.Clear();
+        var nowLocal = DateTime.Now;
+        foreach (var usage in JobHistorySummary.GroupByMaterial(entries))
+        {
+            RecentMaterials.Add(usage);
+            RecentMaterialRows.Add(new MaterialUsageItemViewModel(usage, nowLocal));
+        }
         OnPropertyChanged(nameof(HasMaterials));
+        OnPropertyChanged(nameof(HasRecentMaterials));
+
+        RefreshLastJob(entries, nowLocal);
+    }
+
+    private void RefreshLastJob(IReadOnlyList<JobHistoryEntry> entries, DateTime nowLocal)
+    {
+        var last = entries.Count == 0 ? null : entries.MaxBy(e => e.CompletedUtc);
+        LastJobName = last?.Name;
+        if (last is null)
+        {
+            LastJobResultLabel = string.Empty;
+            LastJobMaterialLabel = null;
+            LastJobCompletedLabel = string.Empty;
+            return;
+        }
+
+        // Only completed jobs are ever appended (see GCodeViewModel.JobCompleted), so "Dokončeno"
+        // is a statement of fact here rather than an assumption about how the run ended.
+        LastJobResultLabel = $"Dokončeno · {FormatJobDuration(last.DurationSeconds)}";
+        LastJobMaterialLabel = string.IsNullOrWhiteSpace(last.MaterialName) ? null : last.MaterialName;
+        LastJobCompletedLabel = DescribeCompletion(last.CompletedUtc.ToLocalTime(), nowLocal);
+    }
+
+    /// <summary>Job durations are minutes and seconds far more often than hours, so the hour part
+    /// only appears once there is one.</summary>
+    private static string FormatJobDuration(double totalSeconds)
+    {
+        var span = TimeSpan.FromSeconds(Math.Max(0, totalSeconds));
+        if (span.TotalHours >= 1) return $"{(int)span.TotalHours} h {span.Minutes} min {span.Seconds} s";
+        if (span.TotalMinutes >= 1) return $"{span.Minutes} min {span.Seconds} s";
+        return $"{span.Seconds} s";
+    }
+
+    private static string DescribeCompletion(DateTime moment, DateTime nowLocal)
+    {
+        var today = nowLocal.Date;
+        var day = moment.Date;
+        if (day == today) return $"dnes v {moment:HH:mm}";
+        if (day == today.AddDays(-1)) return $"včera v {moment:HH:mm}";
+        return $"{moment:d. M. yyyy} v {moment:HH:mm}";
     }
 
     private static string FormatDuration(double totalSeconds)

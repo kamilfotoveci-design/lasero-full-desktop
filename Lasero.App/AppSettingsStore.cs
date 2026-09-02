@@ -24,7 +24,7 @@ public sealed class WorkspacePreferences
     /// the app with the workspace collapsed.</summary>
     public double InspectorWidth { get; set; } = DefaultInspectorWidth;
 
-    public const double DefaultInspectorWidth = 336;
+    public const double DefaultInspectorWidth = 320;
 
     /// <summary>The lower bound has to match DesignerInspectorView's own MinWidth. When it was
     /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than

@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lasero.Core.Grbl;
@@ -11,6 +12,9 @@ public partial class JogViewModel : ObservableObject
 {
     private readonly ILaserMachine _connection;
     private readonly AppSettingsStore _settingsStore;
+    private long _positioningLaserRequest;
+    private double _positioningLaserMaximumSValue = 1000;
+    private bool _positioningLaserModeEnabled;
 
     public double[] StepSizePresets { get; } = [0.1, 1, 5, 10, 50, 100];
 
@@ -21,6 +25,13 @@ public partial class JogViewModel : ObservableObject
     [ObservableProperty] private bool _enableZAxis = true;
     [ObservableProperty] private bool _invertZAxis;
     [ObservableProperty] private string? _lastActionMessage;
+    [ObservableProperty] private double _positioningLaserPowerPercent = 1;
+    [ObservableProperty] private bool _isPositioningLaserOn;
+
+    public bool CanUsePositioningLaser =>
+        _positioningLaserModeEnabled &&
+        CanManualMotion() &&
+        IsValidPositioningPower(PositioningLaserPowerPercent);
 
     /// <summary>Whether a click-to-jog request would currently be accepted — bindable so the
     /// workspace preview canvas can show a crosshair cursor only when it would actually do something.</summary>
@@ -39,13 +50,60 @@ public partial class JogViewModel : ObservableObject
     private bool HasFreshStatus() => _connection.LastStatusReceivedUtc is { } timestamp
         && DateTime.UtcNow - timestamp <= TimeSpan.FromSeconds(2);
     private bool CanManualMotion() => IsConnected() && HasFreshStatus() && _connection.LastStatus?.Mode == GrblMachineMode.Idle;
-    private bool CanHome() => IsConnected() && HasFreshStatus()
+    // The positioning laser reports Idle to GRBL — CanManualMotion alone would happily let Jog/Home/
+    // GoToWorkZero run while the beam is physically lit. Every motion command must also check this.
+    private bool CanManualMotionWithLaserOff() => CanManualMotion() && !IsPositioningLaserOn;
+    private bool CanHome() => IsConnected() && HasFreshStatus() && !IsPositioningLaserOn
         && _connection.LastStatus?.Mode is GrblMachineMode.Idle or GrblMachineMode.Alarm;
     private bool CanUnlock() => IsConnected()
         && (_connection.LastStatus?.Mode == GrblMachineMode.Alarm
             || _connection.ActiveAlert?.Kind == MachineAlertKind.Alarm);
-    private bool CanJogXY() => CanManualMotion() && IsPositiveFinite(StepSizeMm) && IsPositiveFinite(JogFeedRate);
-    private bool CanJogZ() => EnableZAxis && CanManualMotion() && IsPositiveFinite(ZStepSizeMm) && IsPositiveFinite(ZJogFeedRate);
+    private bool CanJogXY() => CanManualMotionWithLaserOff() && IsPositiveFinite(StepSizeMm) && IsPositiveFinite(JogFeedRate);
+    private bool CanJogZ() => EnableZAxis && CanManualMotionWithLaserOff() && IsPositiveFinite(ZStepSizeMm) && IsPositiveFinite(ZJogFeedRate);
+
+    public void ConfigurePositioningLaser(double? maximumSValue, bool? laserModeEnabled)
+    {
+        _positioningLaserMaximumSValue = maximumSValue is > 0 && double.IsFinite(maximumSValue.Value)
+            ? maximumSValue.Value
+            : 1000;
+        _positioningLaserModeEnabled = laserModeEnabled == true;
+        OnPropertyChanged(nameof(CanUsePositioningLaser));
+    }
+
+    /// <summary>
+    /// Energizes the laser at a deliberately low percentage of the controller's $30 maximum.
+    /// The view invokes this on pointer/key down and always pairs it with StopPositioningLaserAsync
+    /// on release; this is not a toggle that can be accidentally left enabled.
+    /// </summary>
+    public async Task StartPositioningLaserAsync()
+    {
+        if (!CanUsePositioningLaser || IsPositioningLaserOn) return;
+
+        var request = Interlocked.Increment(ref _positioningLaserRequest);
+        var sValue = _positioningLaserMaximumSValue * PositioningLaserPowerPercent / 100.0;
+        var result = await _connection.SendCommandAsync(
+            $"M3 S{sValue.ToString("0.###", CultureInfo.InvariantCulture)}");
+
+        // A release can queue M5 while M3 is awaiting its controller acknowledgement. Never let the
+        // older completion turn the UI back on after that release.
+        if (request != Volatile.Read(ref _positioningLaserRequest)) return;
+        IsPositioningLaserOn = result.IsOk;
+        LastActionMessage = result.IsOk
+            ? $"Polohovací paprsek: {PositioningLaserPowerPercent:0.#} %."
+            : result.Message ?? "Polohovací paprsek se nepodařilo zapnout.";
+    }
+
+    public async Task StopPositioningLaserAsync()
+    {
+        Interlocked.Increment(ref _positioningLaserRequest);
+        IsPositioningLaserOn = false;
+        if (!IsConnected()) return;
+
+        var result = await _connection.SendCommandAsync("M5");
+        LastActionMessage = result.IsOk
+            ? "Polohovací paprsek je vypnutý."
+            : result.Message ?? "Polohovací paprsek se nepodařilo vypnout.";
+    }
 
     [RelayCommand(CanExecute = nameof(CanJogXY))]
     private Task JogXPos() => JogAsync(StepSizeMm, 0, 0);
@@ -92,7 +150,7 @@ public partial class JogViewModel : ObservableObject
     /// the machine currently is (never a plunge triggered by a click).</summary>
     public async Task JogToPointAsync(double worldX, double worldY)
     {
-        if (!CanManualMotion()) return;
+        if (!CanManualMotionWithLaserOff()) return;
         var z = _connection.LastStatus?.WorkPosition.Z ?? 0;
         var result = await _connection.JogAsync(worldX, worldY, z, JogFeedRate, relative: false);
         LastActionMessage = result.IsOk ? $"Přesun na {worldX:0.#}, {worldY:0.#}." : result.Message;
@@ -133,14 +191,14 @@ public partial class JogViewModel : ObservableObject
         LastActionMessage = "Příkaz resetu byl odeslán.";
     }
 
-    [RelayCommand(CanExecute = nameof(CanManualMotion))]
+    [RelayCommand(CanExecute = nameof(CanManualMotionWithLaserOff))]
     private async Task SetOriginHere()
     {
         var result = await _connection.SetWorkOriginAsync(1, Position.Zero);
         LastActionMessage = result.IsOk ? "Pracovní nula byla nastavena na aktuální pozici (G54)." : result.Message;
     }
 
-    [RelayCommand(CanExecute = nameof(CanManualMotion))]
+    [RelayCommand(CanExecute = nameof(CanManualMotionWithLaserOff))]
     private async Task GoToWorkZero()
     {
         var result = await _connection.SendCommandAsync("G90 G0 X0 Y0");
@@ -149,6 +207,7 @@ public partial class JogViewModel : ObservableObject
 
     private void NotifyMachineStateChanged()
     {
+        if (!IsConnected()) IsPositioningLaserOn = false;
         NotifyXyJogCommands();
         NotifyZJogCommands();
         CancelJogCommand.NotifyCanExecuteChanged();
@@ -158,6 +217,7 @@ public partial class JogViewModel : ObservableObject
         SetOriginHereCommand.NotifyCanExecuteChanged();
         GoToWorkZeroCommand.NotifyCanExecuteChanged();
         CanJogToPoint = CanManualMotion();
+        OnPropertyChanged(nameof(CanUsePositioningLaser));
     }
 
     partial void OnStepSizeMmChanged(double value) => NotifyXyJogCommands();
@@ -166,6 +226,13 @@ public partial class JogViewModel : ObservableObject
     partial void OnZJogFeedRateChanged(double value) => NotifyZJogCommands();
     partial void OnEnableZAxisChanged(bool value) => NotifyZJogCommands();
     partial void OnInvertZAxisChanged(bool value) => NotifyZJogCommands();
+    partial void OnPositioningLaserPowerPercentChanged(double value) =>
+        OnPropertyChanged(nameof(CanUsePositioningLaser));
+
+    // The laser being lit must immediately re-gate every motion command (Jog/Home/SetOriginHere/
+    // GoToWorkZero) — see CanManualMotionWithLaserOff. NotifyMachineStateChanged already resets
+    // IsPositioningLaserOn to false on disconnect, which safely re-enters this once and settles.
+    partial void OnIsPositioningLaserOnChanged(bool value) => NotifyMachineStateChanged();
 
     private void NotifyXyJogCommands()
     {
@@ -186,6 +253,8 @@ public partial class JogViewModel : ObservableObject
     }
 
     private static bool IsPositiveFinite(double value) => double.IsFinite(value) && value > 0;
+    private static bool IsValidPositioningPower(double value) =>
+        double.IsFinite(value) && value is >= 0.1 and <= 5;
 
     private static void RunOnUiThread(Action action)
     {

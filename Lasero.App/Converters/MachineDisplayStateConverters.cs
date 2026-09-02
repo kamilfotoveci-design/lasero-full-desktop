@@ -36,6 +36,29 @@ public sealed class MachineDisplayStateToLabelConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>The same state as a <see cref="Components.StatePillKind"/>, so a StatusBadge can report the
+/// machine without a second colour table. Follows the brush converter exactly: Ready only for Idle,
+/// and anything unconfirmed stays Neutral rather than optimistic.</summary>
+public sealed class MachineDisplayStateToStatePillKindConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is LaserMachineDisplayState state
+            ? state switch
+            {
+                LaserMachineDisplayState.Idle => Components.StatePillKind.Ready,
+                LaserMachineDisplayState.Run or LaserMachineDisplayState.Jog or LaserMachineDisplayState.Home
+                    => Components.StatePillKind.Busy,
+                LaserMachineDisplayState.Hold or LaserMachineDisplayState.Door or LaserMachineDisplayState.Check
+                    => Components.StatePillKind.Warning,
+                LaserMachineDisplayState.Alarm or LaserMachineDisplayState.Error => Components.StatePillKind.Error,
+                _ => Components.StatePillKind.Neutral,
+            }
+            : Components.StatePillKind.Neutral;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Colour for that same state. Green only for Idle, because green here reads as "you may
 /// start"; anything the app cannot confirm stays neutral grey rather than optimistic.</summary>
 public sealed class MachineDisplayStateToBrushConverter : IValueConverter

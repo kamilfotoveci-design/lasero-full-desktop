@@ -8,13 +8,14 @@ public sealed class GrblDeviceProfileParserTests
     public void ParsesWorkAreaAndLaserModeFromStandardSettings()
     {
         var profile = GrblDeviceProfileParser.Parse(
-            ["$32=1", "$130=500.000", "$131=400.000", "$132=80.000"],
+            ["$30=1000", "$32=1", "$130=500.000", "$131=400.000", "$132=80.000"],
             "Grbl 1.1h");
 
         Assert.Equal("Grbl 1.1h", profile.FirmwareBanner);
         Assert.Equal(500, profile.MaxTravelXmm);
         Assert.Equal(400, profile.MaxTravelYmm);
         Assert.Equal(80, profile.MaxTravelZmm);
+        Assert.Equal(1000, profile.MaxSpindleSpeed);
         Assert.True(profile.LaserModeEnabled);
     }
 

@@ -91,6 +91,11 @@ public sealed class ThemeTokenTests
     /// <summary>
     /// Hover and press are one ink-wash mechanic at two strengths. If a per-kind pressed colour ever
     /// appears, the same state ends up with two implementations that have to agree by hand.
+    ///
+    /// The two strengths are now two layers of the same brush rather than two opacities of one layer.
+    /// Sharing a layer meant press had to restore hover's value on release, and it never did: a click
+    /// that opened a window left the button washed dark for the rest of the session, because the
+    /// pointer leaves without WPF raising the hover exit. Independent layers cannot strand each other.
     /// </summary>
     [Fact]
     public void PressIsTheHoverWashAtAHigherStrength()
@@ -98,8 +103,18 @@ public sealed class ThemeTokenTests
         // The comment block above Brush.HoverWash names both retired keys to explain why they are
         // absent, so the markup has to be stripped of comments before asserting they are unused.
         var theme = XmlComment.Replace(File.ReadAllText(ThemePath("LaseroTheme.xaml")), string.Empty);
+
+        // One brush for both states.
+        Assert.Contains("<Border x:Name=\"Hover\"\n                                Background=\"{StaticResource Brush.HoverWash}\"", theme, StringComparison.Ordinal);
+        Assert.Contains("<Border x:Name=\"Press\"\n                                Background=\"{StaticResource Brush.HoverWash}\"", theme, StringComparison.Ordinal);
+
         Assert.Contains("Storyboard.TargetName=\"Hover\" Storyboard.TargetProperty=\"Opacity\" To=\"0.06\"", theme, StringComparison.Ordinal);
-        Assert.Contains("Storyboard.TargetName=\"Hover\" Storyboard.TargetProperty=\"Opacity\" To=\"0.14\"", theme, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetName=\"Press\" Storyboard.TargetProperty=\"Opacity\" To=\"0.08\"", theme, StringComparison.Ordinal);
+
+        // Every wash that goes up has to come back down, or the state is strandable again.
+        Assert.Contains("Storyboard.TargetName=\"Hover\" Storyboard.TargetProperty=\"Opacity\" To=\"0\"", theme, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetName=\"Press\" Storyboard.TargetProperty=\"Opacity\" To=\"0\"", theme, StringComparison.Ordinal);
+
         Assert.DoesNotContain("Brush.AccentPressed", theme, StringComparison.Ordinal);
         Assert.DoesNotContain("Brush.DangerPressed", theme, StringComparison.Ordinal);
     }

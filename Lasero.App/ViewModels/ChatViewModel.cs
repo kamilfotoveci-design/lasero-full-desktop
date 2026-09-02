@@ -38,6 +38,16 @@ public partial class ChatViewModel : ObservableObject
         ? "Offline — historii můžete číst, nové zprávy vyžadují internet."
         : "Online — Kamil používá kontext vaší gravírky a projektu.";
 
+    /// <summary>
+    /// Supplies the workspace context sent with every question — selected material, operation and
+    /// the connected machine. Set by the assistant host once at startup.
+    ///
+    /// A callback rather than a constructor dependency because this view model is a singleton created
+    /// before the shell exists, and because the answer has to reflect the workspace at the moment the
+    /// question is asked, not at the moment the chat was constructed.
+    /// </summary>
+    public Func<LaseroChatContext>? ContextProvider { get; set; }
+
     public ChatViewModel(LaseroChatClient client, AccountViewModel account, ChatStore store)
     {
         _client = client;
@@ -45,6 +55,18 @@ public partial class ChatViewModel : ObservableObject
         _store = store;
         _account.PropertyChanged += OnAccountPropertyChanged;
     }
+
+    /// <summary>The neutral context used before a host attaches, and if a provider ever throws — a
+    /// question must still be answerable when the shell cannot describe itself.</summary>
+    private static LaseroChatContext DefaultContext => new(
+        MachineName: null,
+        MachineId: null,
+        PowerWatts: 20,
+        LaserType: "diode",
+        LaserDescription: "diodový laser 450 nm",
+        Experience: "beginner",
+        MaterialName: null,
+        Operation: "engrave");
 
     public void InitializeForCurrentAccount()
     {
@@ -93,15 +115,7 @@ public partial class ChatViewModel : ObservableObject
             var history = Messages
                 .Select(message => new LaseroChatTurn(message.Role, message.Text))
                 .ToArray();
-            var response = await _client.SendAsync(idToken, history, new LaseroChatContext(
-                MachineName: null,
-                MachineId: null,
-                PowerWatts: 20,
-                LaserType: "diode",
-                LaserDescription: "diodový laser 450 nm",
-                Experience: "beginner",
-                MaterialName: null,
-                Operation: "engrave"));
+            var response = await _client.SendAsync(idToken, history, ResolveContext());
             AddMessage(LaseroChatRole.Assistant, response);
             Persist();
         }
@@ -129,6 +143,22 @@ public partial class ChatViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private LaseroChatContext ResolveContext()
+    {
+        if (ContextProvider is null) return DefaultContext;
+        try
+        {
+            return ContextProvider() ?? DefaultContext;
+        }
+        catch (Exception exception)
+        {
+            // Describing the workspace is an enhancement to the answer, never a precondition for
+            // getting one.
+            Log.Warning(exception, "Could not read workspace context for Kamil; sending defaults");
+            return DefaultContext;
         }
     }
 
@@ -286,7 +316,27 @@ public sealed record ChatSessionItem(Guid Id, string Title, DateTimeOffset Updat
 
 public sealed record ChatMessageItem(Guid Id, LaseroChatRole Role, string Text, DateTimeOffset CreatedAt)
 {
+    private bool _recommendationResolved;
+    private ParameterRecommendation? _recommendation;
+
     public bool IsUser => Role == LaseroChatRole.User;
     public string Author => IsUser ? "Vy" : "Kamil";
     public string TimeLabel => CreatedAt.ToString("HH:mm");
+
+    /// <summary>
+    /// Machine settings named in this answer, if it named any. Parsed once and remembered — the
+    /// message text never changes, and the list re-templates on every scroll.
+    /// </summary>
+    public ParameterRecommendation? Recommendation
+    {
+        get
+        {
+            if (_recommendationResolved) return _recommendation;
+            _recommendationResolved = true;
+            _recommendation = IsUser ? null : ParameterRecommendation.TryParse(Text);
+            return _recommendation;
+        }
+    }
+
+    public bool HasRecommendation => Recommendation is not null;
 }

@@ -242,6 +242,27 @@ public partial class SceneCanvas : UserControl
         ApplyFit(box);
     }
 
+    /// <summary>
+    /// Puts the machine bed in the middle of the view without changing the zoom.
+    ///
+    /// Distinct from FitToView, which also picks a scale: after working at a chosen magnification,
+    /// "where is the bed" and "show me everything" are different questions, and answering the first
+    /// with the second throws away the magnification the operator set.
+    ///
+    /// Only the pan offset moves. The scale, the world/screen transforms and everything derived from
+    /// them are the same ones ApplyFit already uses.
+    /// </summary>
+    public void CenterWorkArea()
+    {
+        if (ActualWidth <= 0 || ActualHeight <= 0 || _scale <= 0) return;
+        if (WorkAreaWidthMm <= 0 || WorkAreaHeightMm <= 0) return;
+
+        _autoFit = false;
+        _offsetXMm = WorkAreaWidthMm / 2 - (ActualWidth / 2 - MarginPx) / _scale;
+        _offsetYMm = WorkAreaHeightMm / 2 - (ActualHeight / 2 - MarginPx) / _scale;
+        RepositionAll();
+    }
+
     private static readonly DependencyPropertyKey ZoomPercentPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(ZoomPercent), typeof(int), typeof(SceneCanvas), new PropertyMetadata(100));
 

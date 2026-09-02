@@ -188,6 +188,9 @@
     <system:Double x:Key="Size.Icon.Md">18</system:Double>
     <system:Double x:Key="Size.Icon.Lg">20</system:Double>
     <system:Double x:Key="Size.Icon.Xl">24</system:Double>
+    <!-- Between Xl and Hero: a glyph that anchors a card or a status disc without becoming the
+         full-height empty-state illustration Hero is meant for. -->
+    <system:Double x:Key="Size.Icon.Xxl">48</system:Double>
     <!-- Hero-sized: only for a section illustration, never for a control. -->
     <system:Double x:Key="Size.Icon.Hero">72</system:Double>
     <!-- The exported SVG assets in docs/design/icons-custom all carry stroke-width 1.75. The renderer
@@ -354,6 +357,17 @@
                                 Background="{StaticResource Brush.HoverWash}"
                                 Opacity="0"
                                 CornerRadius="{StaticResource Radius.Md}" />
+                        <!--
+                            Press has its own layer rather than sharing Hover's opacity. When the two
+                            shared one, a click that opened a window left the wash at its pressed value
+                            forever: the pointer leaves without WPF raising the hover exit, so nothing
+                            ever animated it back and the button stayed a solid grey box. Two layers,
+                            two independent triggers, no state either one can strand.
+                        -->
+                        <Border x:Name="Press"
+                                Background="{StaticResource Brush.HoverWash}"
+                                Opacity="0"
+                                CornerRadius="{StaticResource Radius.Md}" />
                         <Border x:Name="FocusRing"
                                 BorderBrush="{StaticResource Brush.FocusRing}"
                                 BorderThickness="0"
@@ -381,7 +395,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.14" Duration="0:0:0.05" />
+                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.05" />
                                         <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.96" Duration="0:0:0.05" />
                                         <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.96" Duration="0:0:0.05" />
                                     </Storyboard>
@@ -390,6 +404,7 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                         <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                         <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>

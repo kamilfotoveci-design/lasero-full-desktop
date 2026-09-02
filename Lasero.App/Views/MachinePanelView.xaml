@@ -164,20 +164,58 @@
                     <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
                                 BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Pracovní plocha" Style="{StaticResource MachineSectionTitle}" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource Text.Numeric}">
+                                    <Run Text="{Binding Connection.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                                    <Run Text=" × " />
+                                    <Run Text="{Binding Connection.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                                    <Run Text=" mm" />
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
+                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="Pracovní plocha" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,9" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <StackPanel><TextBlock Text="Šířka (mm)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Connection.WorkAreaWidthMm, UpdateSourceTrigger=PropertyChanged, StringFormat=0.##}" /></StackPanel>
-                                    <StackPanel Grid.Column="2"><TextBlock Text="Výška (mm)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Connection.WorkAreaHeightMm, UpdateSourceTrigger=PropertyChanged, StringFormat=0.##}" /></StackPanel>
+                                <TextBlock Text="Polohovací paprsek" Style="{StaticResource MachineSectionTitle}" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,7">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="88" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Výkon" Style="{StaticResource MachineFieldLabel}" VerticalAlignment="Center" Margin="0" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding Jog.PositioningLaserPowerPercent, UpdateSourceTrigger=PropertyChanged, StringFormat=0.#}"
+                                             HorizontalContentAlignment="Right"
+                                             ToolTip="Povolený rozsah pro polohování je 0,1 až 5 %." />
+                                    <TextBlock Grid.Column="2" Text="%" Style="{StaticResource Text.Muted}" Margin="7,0,0,0" VerticalAlignment="Center" />
                                 </Grid>
-                                <Button Command="{Binding Connection.SaveWorkspaceAsDefaultCommand}" Margin="0,8,0,0">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Save}" Text="Uložit plochu pro tento stroj" />
+                                <TextBlock Text="Doporučeno 1 %. Paprsek svítí pouze po dobu držení tlačítka."
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <Button x:Name="PositioningLaserButton"
+                                        Style="{StaticResource Button.Danger}"
+                                        IsEnabled="{Binding Jog.CanUsePositioningLaser}"
+                                        PreviewMouseLeftButtonDown="OnPositioningLaserPressed"
+                                        PreviewMouseLeftButtonUp="OnPositioningLaserReleased"
+                                        LostMouseCapture="OnPositioningLaserLostCapture"
+                                        PreviewKeyDown="OnPositioningLaserKeyDown"
+                                        PreviewKeyUp="OnPositioningLaserKeyUp"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        ToolTip="Vyžaduje připojený nečinný GRBL laser s potvrzeným režimem $32=1.">
+                                    <components:IconLabel IconData="{StaticResource Glyph.Zap}" Text="Podržet pro paprsek" />
                                 </Button>
+                                <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}"
+                                           TextWrapping="Wrap" Margin="0,7,0,0"
+                                           Visibility="{Binding Jog.LastActionMessage, Converter={StaticResource NotNullToVisibility}}" />
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="{Binding Connection.WorkspaceMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.WorkspaceMessage, Converter={StaticResource NotNullToVisibility}}" />
-                        <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Numeric}" TextWrapping="Wrap" Margin="0,7,0,0" Visibility="{Binding Connection.FirmwareBanner, Converter={StaticResource NotNullToVisibility}}" />
+
                         <Button Command="{Binding Connection.DisconnectCommand}" Margin="0,9,0,0">
                             <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit zařízení" />
                         </Button>

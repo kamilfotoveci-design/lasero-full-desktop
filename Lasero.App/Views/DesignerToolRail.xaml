@@ -1,0 +1,278 @@
+<UserControl x:Class="Lasero.App.Views.DesignerToolRail"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Lasero.App.Converters"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:vm="clr-namespace:Lasero.App.ViewModels"
+             Width="56">
+    <!--
+        The editor's 56px rail. Two kinds of thing live here and they are kept visually apart: at the
+        top and the bottom, places you can go; in the middle, tools that change what a click on the
+        canvas does. A hairline and a wider gap separate the groups, so the strip never reads as one
+        undifferentiated column of glyphs.
+
+        Every button is icon-only, so every button carries a tooltip and an accessible name. Nothing
+        here is new behaviour — each one invokes a command the toolbar already invoked.
+    -->
+    <UserControl.Resources>
+        <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
+
+        <!-- Shared geometry for both kinds of rail entry: a 40px square inside the 56px rail, with
+             room on the left for the 3px active marker. -->
+        <Style x:Key="RailButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <!--
+            Tools are a radio group over Scene.ActiveTool, exactly as the old toolbar had them. The
+            active tool is marked four ways — tint, accent border, accent glyph and the left bar — so
+            it survives a glance and colour-blindness alike.
+        -->
+        <Style x:Key="RailTool" TargetType="RadioButton">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{StaticResource Radius.Sm}" />
+                            <Border x:Name="Marker" Width="3" Height="20" HorizontalAlignment="Left"
+                                    Margin="-8,0,0,0" CornerRadius="{StaticResource Radius.Pill}"
+                                    Background="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A rail entry that opens a menu. Same 40px box as its neighbours; the stock MenuItem
+             chrome would otherwise draw a different shape in the middle of the column. -->
+        <Style x:Key="RailMenu" TargetType="MenuItem">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid>
+                            <Border x:Name="Surface" Background="Transparent"
+                                    BorderBrush="Transparent" BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Sm}">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Right"
+                                   HorizontalOffset="4" PopupAnimation="Fade">
+                                <Border Background="{DynamicResource Brush.Panel}"
+                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                        CornerRadius="{StaticResource Radius.Md}" Padding="4"
+                                        Effect="{StaticResource Shadow.Dropdown}">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RailGlyph" TargetType="components:IconGlyph">
+            <Setter Property="Width" Value="{StaticResource Size.Icon.Lg}" />
+            <Setter Property="Height" Value="{StaticResource Size.Icon.Lg}" />
+        </Style>
+
+        <Style x:Key="RailDivider" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="12,10" />
+            <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource Brush.Sidebar}"
+            BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,1,0">
+        <Grid Margin="0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- ============ Kam jít ============ -->
+            <StackPanel Grid.Row="0">
+                <Button Style="{StaticResource RailButton}" Command="{Binding ShowHomeCommand}"
+                        ToolTip="Domů — přehled projektů, úloh a zařízení"
+                        AutomationProperties.Name="Domů">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Home}" />
+                </Button>
+                <!-- No "Návrh" entry. Showing the current screen as a highlighted pen directly above
+                     the drawing tools made it look like a selected tool, so it read as a sixth thing
+                     a click on the canvas might do. The rail is only shown in Designer, so a marker
+                     for "you are in Designer" was telling the operator where they already are. -->
+            </StackPanel>
+
+            <Border Grid.Row="1" Style="{StaticResource RailDivider}" />
+
+            <!-- ============ Nástroje ============ -->
+            <StackPanel Grid.Row="2">
+                <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
+                             IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
+                             ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Vybrat">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Select}" />
+                </RadioButton>
+                <!-- Pan is deliberately not here. It lives on the floating view cluster with zoom,
+                     where the other view controls are, and it is also the middle mouse button,
+                     space+drag and H. A second entry in the rail was one more mode to get stuck in
+                     for something the operator already has three routes to. -->
+                <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
+                             IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Text, Mode=TwoWay}"
+                             ToolTip="Vložit text (T)" AutomationProperties.Name="Text">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Text}" />
+                </RadioButton>
+
+                <!-- Every closed shape behind one entry. The glyph reports whichever shape tool is
+                     currently active, so the rail still says what a click will draw. -->
+                <Menu Background="Transparent" HorizontalAlignment="Center" Padding="0" Margin="0">
+                    <MenuItem Style="{StaticResource RailMenu}"
+                              ToolTip="Tvary — obdélník, elipsa, mnohoúhelníky a hvězdy"
+                              AutomationProperties.Name="Tvary">
+                        <MenuItem.Header>
+                            <components:IconGlyph>
+                                <components:IconGlyph.Style>
+                                    <Style TargetType="components:IconGlyph" BasedOn="{StaticResource RailGlyph}">
+                                        <Setter Property="IconData" Value="{StaticResource Glyph.Rectangle}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Ellipse}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Ellipse}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Triangle}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Pentagon}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Hexagon}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Octagon}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Star}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Star}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.DoubleStar}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Star}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </components:IconGlyph.Style>
+                            </components:IconGlyph>
+                        </MenuItem.Header>
+                        <MenuItem Header="Obdélník  (R)" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Rectangle}" />
+                        <MenuItem Header="Elipsa  (E)" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Ellipse}" />
+                        <Separator />
+                        <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
+                        <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
+                        <MenuItem Header="Šestiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Hexagon}" />
+                        <MenuItem Header="Osmiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Octagon}" />
+                        <Separator />
+                        <MenuItem Header="Hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Star}" />
+                        <MenuItem Header="Dvojitá hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.DoubleStar}" />
+                    </MenuItem>
+                </Menu>
+
+                <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
+                             IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
+                             ToolTip="Nakreslit čáru (L) — se Shiftem po 45°" AutomationProperties.Name="Čára">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Line}" />
+                </RadioButton>
+
+                <!-- Import is a tool, not a destination: it adds content to the design in front of
+                     you, which is why it belongs in this group and not with the screens. -->
+                <Button Style="{StaticResource RailButton}" Command="{Binding GCode.LoadFileCommand}"
+                        ToolTip="Importovat — načíst SVG, obrázek nebo G-code do návrhu"
+                        AutomationProperties.Name="Importovat grafiku">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Import}" />
+                </Button>
+            </StackPanel>
+
+            <Border Grid.Row="4" Style="{StaticResource RailDivider}" />
+
+            <!-- ============ Ostatní obrazovky ============ -->
+            <StackPanel Grid.Row="5">
+                <Button Style="{StaticResource RailButton}" Click="OnMaterialsClick"
+                        ToolTip="Materiály — knihovna a doporučené parametry"
+                        AutomationProperties.Name="Materiály">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Materials}" />
+                </Button>
+                <Button Style="{StaticResource RailButton}" Command="{Binding ShowDeviceCommand}"
+                        ToolTip="Zařízení — připojení, poloha a ruční ovládání gravírky"
+                        AutomationProperties.Name="Zařízení">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Device}" />
+                </Button>
+                <Button Style="{StaticResource RailButton}" Command="{Binding ShowChatCommand}"
+                        ToolTip="Lasero Chat — pomoc s návrhem, materiály a gravírováním"
+                        AutomationProperties.Name="Lasero Chat">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Chat}" />
+                </Button>
+                <Button Style="{StaticResource RailButton}" Click="OnSettingsClick"
+                        ToolTip="Nastavení — předvolby aplikace a pracovní plochy"
+                        AutomationProperties.Name="Nastavení">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Settings}" />
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

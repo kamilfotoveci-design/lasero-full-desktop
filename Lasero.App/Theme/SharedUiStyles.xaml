@@ -320,4 +320,123 @@
         <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="Margin" Value="0,18,0,18" />
     </Style>
+
+    <!--
+        Palette swatch. The outer button is 28px for a comfortable pointer target while the colour
+        chip itself stays 18px, and the active swatch gets a ring instead of leaving twelve identical
+        squares with no indication of which one is in play. Hover changes the ring's colour rather
+        than its thickness, so the chip does not shift by a pixel when the pointer crosses it.
+
+        Shared rather than window-local since the layer palette moved out of the status strip and
+        into the operation inspector, where the colour actually belongs.
+    -->
+    <Style x:Key="QuickLayerButton" TargetType="Button">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border x:Name="Ring" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="2" />
+                        <Border x:Name="LayerColor" Width="18" Height="18" CornerRadius="{StaticResource Radius.Sm}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="LayerColor" Property="Opacity" Value="0.68" />
+                        </Trigger>
+                        <!-- Tag carries the "is this the selected layer's colour" MultiBinding. -->
+                        <Trigger Property="Tag" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        Inspector section header: an uppercase micro-label with generous space above it. The Designer
+        inspector uses these instead of stacking each group inside its own card — a panel that is
+        itself a column of cards has two competing edges everywhere and reads as clutter.
+    -->
+    <Style x:Key="InspectorGroupHeader" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="InspectorGroupDivider" TargetType="Border">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+    </Style>
+
+    <!-- ==================================================================
+         Kamil — the floating assistant.
+
+         A floating surface is allowed slightly softer geometry than the editor chrome it sits over,
+         because it has to read as a separate object rather than another docked panel. That is the
+         only licence it takes: the colours, type, icons and control heights are the product's.
+         ================================================================== -->
+
+    <!-- Send. Square-ish and accent-filled, sized to sit inside the composer's 4px padding without
+         making the composer taller than a standard control. -->
+    <Style x:Key="Kamil.SendButton" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+    <!-- Header actions: new chat, minimize, close. Ghost until hovered, so the header stays quiet. -->
+    <Style x:Key="Kamil.HeaderButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="2,0,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    </Style>
+
+    <!-- A read-only context fact: screen, material, machine. Not a button — nothing happens when you
+         press it, so it must not look pressable. -->
+    <Style x:Key="Kamil.ContextChip" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- A follow-up or starter prompt. This one *is* pressable, so it carries a border and a hover. -->
+    <Style x:Key="Kamil.PromptChip" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
 </ResourceDictionary>

@@ -8,6 +8,7 @@ public sealed record GrblDeviceProfile
     public double? MaxTravelXmm { get; init; }
     public double? MaxTravelYmm { get; init; }
     public double? MaxTravelZmm { get; init; }
+    public double? MaxSpindleSpeed { get; init; }
     public bool? LaserModeEnabled { get; init; }
     public IReadOnlyDictionary<int, double> NumericSettings { get; init; } = new Dictionary<int, double>();
 }
@@ -31,6 +32,7 @@ public static class GrblDeviceProfileParser
             MaxTravelXmm = GetPositive(settings, 130),
             MaxTravelYmm = GetPositive(settings, 131),
             MaxTravelZmm = GetPositive(settings, 132),
+            MaxSpindleSpeed = GetPositive(settings, 30),
             LaserModeEnabled = settings.TryGetValue(32, out var laserMode) ? laserMode >= 0.5 : null,
             NumericSettings = settings,
         };

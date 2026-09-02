@@ -10,6 +10,11 @@
                 <ResourceDictionary Source="Theme/SharedUiStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <converters:InverseBooleanConverter x:Key="InverseBoolConverter" />
+            <!-- Application-wide so the Kamil surfaces, which are templated across several files,
+                 do not each declare their own copy of the framework converter. -->
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityShared" />
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityShared" />
+            <converters:NotNullToVisibilityConverter x:Key="NotNullToVisibilityShared" />
             <Style TargetType="{x:Type Window}">
                 <Setter Property="Icon" Value="pack://application:,,,/Assets/Lasero.ico" />
             </Style>

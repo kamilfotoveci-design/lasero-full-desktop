@@ -4,375 +4,358 @@
              xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
              xmlns:conv="clr-namespace:Lasero.App.Converters"
              xmlns:components="clr-namespace:Lasero.App.Components">
+    <!--
+        The selection's contextual toolbar, floating over the top of the canvas.
+
+        It replaces the old full-width two-line bar. That version carried every command that could
+        apply to a selection, which is what made it two lines tall and the editor feel crowded: it
+        cost ~78px of permanent chrome to show controls most of which were used rarely.
+
+        What stays visible is what gets touched constantly — position, size, rotation — plus the two
+        arrange menus. Everything else moved into the "…" overflow, and all of it is also still on the
+        canvas context menu, which has always carried the same commands. Nothing was removed.
+
+        The bar only exists while something is selected, so it costs nothing the rest of the time.
+    -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
 
-        <!--
-            Two spacings and nothing else. Controls that belong to one another sit 6px apart; groups
-            are separated by 16px and a hairline. Everything in between was what made the old
-            single-row version read as one undifferentiated run of boxes.
-        -->
         <Style x:Key="BarLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+            <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Margin" Value="0,0,6,0" />
         </Style>
 
-        <Style x:Key="BarCheck" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
-            <Setter Property="VerticalAlignment" Value="Center" />
+        <Style x:Key="BarField" TargetType="Border" BasedOn="{StaticResource UnitField.Shell}">
+            <Setter Property="Width" Value="100" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
         </Style>
 
-        <!-- Row gap between the bar's two lines. A Grid row rather than a margin so the two lines of
-             every group stay on the same baselines across the whole bar. -->
-        <Style x:Key="BarGroup" TargetType="Grid">
+        <Style x:Key="BarDivider" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Margin" Value="9,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+        </Style>
+
+        <Style x:Key="BarGlyph" TargetType="components:IconGlyph">
+            <Setter Property="Width" Value="{StaticResource Size.Icon.Sm}" />
+            <Setter Property="Height" Value="{StaticResource Size.Icon.Sm}" />
+        </Style>
+
+        <!-- A menu entry shaped like the ghost icon buttons beside it, so the strip reads as one row
+             of controls rather than buttons with a MenuItem wedged between them. -->
+        <Style x:Key="BarMenuItem" TargetType="MenuItem">
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid>
+                            <Border x:Name="Surface" Background="Transparent"
+                                    BorderBrush="Transparent" BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Sm}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Border Background="{DynamicResource Brush.Panel}"
+                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                        CornerRadius="{StaticResource Radius.Md}" Padding="4"
+                                        Effect="{StaticResource Shadow.Dropdown}">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
-    <!--
-        The selection's own properties, across the full width of the window and above everything else,
-        the way LightBurn, Illustrator and CorelDRAW all place them.
-
-        They used to share the canvas toolbar, which is only as wide as the canvas column: 1082px at a
-        1600px window against the ~1500px the controls need, so the row wrapped at every window size.
-        Full width plus two lines is what makes them fit. When even that is not enough — at the
-        window's 1080px minimum, with text selected — the bar scrolls sideways rather than clipping a
-        field in half.
-    -->
-    <Border Background="{StaticResource Brush.Panel}"
-            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
-            Padding="16,9"
+    <Border Background="{DynamicResource Brush.Panel}"
+            BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Md}" Padding="12,7"
+            Effect="{StaticResource Shadow.Sheet}"
             Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
+        <!-- A safety net, not a normal state: at the window's 1080px minimum with text selected the
+             row genuinely cannot fit, and scrolling it beats clipping a field in half. -->
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                      Focusable="False" Padding="0,0,0,2">
+                      Focusable="False">
+            <!-- The 5px slim bar the rest of the product uses. A full-weight scrollbar under a
+                 floating 46px toolbar was thicker than the gap it sat in. -->
+            <ScrollViewer.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Slim}" />
+            </ScrollViewer.Resources>
             <StackPanel Orientation="Horizontal">
 
-                <!-- What is selected. Named first because every control to its right acts on it. -->
-                <Grid Style="{StaticResource BarGroup}" Margin="0,0,16,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Výběr" Style="{StaticResource BarLabel}" Margin="0" />
-                    <TextBlock Grid.Row="2" Text="{Binding Scene.SelectionSummary}"
-                               Foreground="{StaticResource Brush.TextPrimary}" FontWeight="Medium"
-                               FontSize="{StaticResource Size.Text.Meta}"
-                               MaxWidth="150" TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Scene.SelectionSummary}"
-                               VerticalAlignment="Center" />
-                </Grid>
+                <!-- ============ Poloha ============ -->
+                <StackPanel Orientation="Horizontal"
+                            IsEnabled="{Binding Scene.CanEditSelectedPosition}"
+                            Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                    <TextBlock Text="X" Style="{StaticResource BarLabel}" />
+                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose X">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Poloha na ose X v milimetrech"
+                                     Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
+                    <TextBlock Text="Y" Style="{StaticResource BarLabel}" Margin="10,0,5,0" />
+                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose Y">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Poloha na ose Y v milimetrech"
+                                     Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
 
-                <Border Width="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,2,16,2" />
+                <Border Style="{StaticResource BarDivider}"
+                        Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}" />
 
-                <!-- Position -->
-                <Grid Style="{StaticResource BarGroup}"
-                      IsEnabled="{Binding Scene.CanEditSelectedPosition}"
-                      Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <TextBlock DockPanel.Dock="Left" Text="X" Style="{StaticResource BarLabel}" Width="16" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="96"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Poloha středu objektu na ose X">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Poloha na ose X v milimetrech"
-                                         Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                    <DockPanel Grid.Row="2">
-                        <TextBlock DockPanel.Dock="Left" Text="Y" Style="{StaticResource BarLabel}" Width="16" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="96"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Poloha středu objektu na ose Y">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Poloha na ose Y v milimetrech"
-                                         Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                </Grid>
-
-                <!-- Size. The aspect lock sits between width and height, spanning both lines: it ties
-                     the two together and its position says so without a caption. -->
-                <Grid Style="{StaticResource BarGroup}" Margin="14,0,0,0"
-                      IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                      Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0" Grid.Column="0">
-                        <TextBlock DockPanel.Dock="Left" Text="Š" Style="{StaticResource BarLabel}" Width="16" ToolTip="Šířka" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="96"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Výsledná šířka objektu">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Šířka v milimetrech"
-                                         Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                    <DockPanel Grid.Row="2" Grid.Column="0">
-                        <TextBlock DockPanel.Dock="Left" Text="V" Style="{StaticResource BarLabel}" Width="16" ToolTip="Výška" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="96"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Výsledná výška objektu">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Výška v milimetrech"
-                                         Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                    <ToggleButton Grid.Row="0" Grid.RowSpan="3" Grid.Column="1"
-                                  Style="{StaticResource Toggle.Icon}" Margin="8,0,0,0"
+                <!-- ============ Rozměr ============ -->
+                <!-- The aspect lock sits between width and height because it ties the two together;
+                     its position says so without needing a caption. -->
+                <StackPanel Orientation="Horizontal"
+                            IsEnabled="{Binding Scene.CanTransformSelectedObject}"
+                            Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                    <TextBlock Text="Š" Style="{StaticResource BarLabel}" ToolTip="Šířka" />
+                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná šířka objektu">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Šířka v milimetrech"
+                                     Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
+                    <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="6,0"
                                   IsChecked="{Binding Scene.LockAspectRatio}"
                                   ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
                                   AutomationProperties.Name="Zachovat poměr stran">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Link}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </ToggleButton>
-                </Grid>
-
-                <!-- Rotation -->
-                <Grid Style="{StaticResource BarGroup}" Margin="14,0,0,0"
-                      IsEnabled="{Binding Scene.CanRotateSelectedObject}"
-                      Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.RotateRight}"
-                                              Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                              Foreground="{StaticResource Brush.TextSecondary}"
-                                              VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Otočení" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="80"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Otočení objektu ve stupních">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Otočení ve stupních"
-                                         Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                </Grid>
-
-                <!-- ===================== Text ===================== -->
-                <!-- Present only for a text object. Every control re-renders the contours as one
-                     undoable edit; before the object kept its wording and type settings, a wrong font
-                     meant deleting the text and typing it again. -->
-                <Border Width="1" Background="{StaticResource Brush.PanelBorder}" Margin="16,2"
-                        Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
-
-                <Grid Style="{StaticResource BarGroup}"
-                      IsEnabled="{Binding Scene.CanEditSelectedText}"
-                      Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <TextBlock DockPanel.Dock="Left" Text="Text" Style="{StaticResource BarLabel}" Width="40" />
-                        <TextBox Width="200" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
-                                 VerticalContentAlignment="Center" Padding="10,0"
-                                 KeyDown="OnValueFieldKeyDown"
-                                 automation:AutomationProperties.Name="Znění textu"
-                                 ToolTip="Znění textu"
-                                 Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
-                    </DockPanel>
-                    <DockPanel Grid.Row="2">
-                        <TextBlock DockPanel.Dock="Left" Text="Písmo" Style="{StaticResource BarLabel}" Width="40" />
-                        <!-- Each family renders in itself, so the list is browsable by eye rather than
-                             by recognising names. -->
-                        <ComboBox Width="200" Height="{StaticResource Size.Control.Compact}"
-                                  ItemsSource="{Binding Scene.FontFamilies}"
-                                  SelectedItem="{Binding Scene.SelectedTextFontFamily}"
-                                  MaxDropDownHeight="320"
-                                  automation:AutomationProperties.Name="Písmo"
-                                  ToolTip="Písmo, kterým je text vysázený">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </DockPanel>
-                </Grid>
-
-                <Grid Style="{StaticResource BarGroup}" Margin="14,0,0,0"
-                      IsEnabled="{Binding Scene.CanEditSelectedText}"
-                      Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <TextBlock DockPanel.Dock="Left" Text="Výška" Style="{StaticResource BarLabel}" />
-                        <Border Style="{StaticResource UnitField.Shell}" Width="88"
-                                Height="{StaticResource Size.Control.Compact}"
-                                ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                                <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
-                                         automation:AutomationProperties.Name="Výška písma v milimetrech"
-                                         Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                            </DockPanel>
-                        </Border>
-                    </DockPanel>
-                    <StackPanel Grid.Row="2" Orientation="Horizontal">
-                        <ToggleButton Style="{StaticResource Toggle.Icon}"
-                                      IsChecked="{Binding Scene.SelectedTextBold}"
-                                      ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
-                            <TextBlock Text="B" FontWeight="Bold" FontSize="{StaticResource Size.Text.Section}" />
-                        </ToggleButton>
-                        <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="6,0,0,0"
-                                      IsChecked="{Binding Scene.SelectedTextItalic}"
-                                      ToolTip="Kurzíva" AutomationProperties.Name="Kurzíva">
-                            <TextBlock Text="I" FontStyle="Italic" FontSize="{StaticResource Size.Text.Section}" FontFamily="Georgia, Times New Roman" />
-                        </ToggleButton>
-                    </StackPanel>
-                </Grid>
-
-                <Grid Style="{StaticResource BarGroup}" Margin="14,0,0,0"
-                      IsEnabled="{Binding Scene.CanEditSelectedText}"
-                      Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <CheckBox Grid.Row="0" Style="{StaticResource BarCheck}" Content="Velká písmena"
-                              IsChecked="{Binding Scene.SelectedTextUppercase}"
-                              ToolTip="Vysadí text kapitálkami, napsané znění zůstane zachované"
-                              AutomationProperties.Name="Velká písmena" />
-                    <CheckBox Grid.Row="2" Style="{StaticResource BarCheck}" Content="Svařeno"
-                              IsChecked="{Binding Scene.SelectedTextWeld}"
-                              ToolTip="Spojí přesahující obrysy písmen do jednoho obrysu, aby laser nevypálil šev uvnitř přesahu"
-                              AutomationProperties.Name="Svařit obrysy písmen" />
-                </Grid>
-
-                <!-- ===================== Actions ===================== -->
-                <Border Width="1" Background="{StaticResource Brush.PanelBorder}" Margin="16,2" />
-
-                <!-- Icon-only with tooltips and accessible names. Group, unite, ungroup and trace appear
-                     only when they apply, so this is a short run most of the time. -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.GroupSelectionCommand}"
-                            Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="Seskupit výběr · Ctrl+G" AutomationProperties.Name="Seskupit výběr">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UniteSelectionCommand}"
-                            Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="Sjednotit uzavřené vektory do jednoho tvaru · Ctrl+Shift+U" AutomationProperties.Name="Sjednotit tvary">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.UngroupSelectionCommand}"
-                            Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="Rozdělit skupinu nebo text na části · Ctrl+Shift+G" AutomationProperties.Name="Rozdělit skupinu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.TraceSelectedRasterCommand}"
-                            Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="Převést bitmapu na vektorové obrysy · Alt+T" AutomationProperties.Name="Trasovat bitmapu">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.ToggleLockCommand}"
-                            AutomationProperties.Name="Zamknout nebo odemknout výběr">
-                        <Button.ToolTip>
-                            <ToolTip>
-                                <TextBlock>
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Zamknout výběr proti úpravám" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True">
-                                                    <Setter Property="Text" Value="Odemknout výběr" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </ToolTip>
-                        </Button.ToolTip>
-                        <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}">
+                        <!-- A padlock that opens and closes, rather than a chain link: the state is
+                             the point of this control, and a closed lock says "tied together" at a
+                             glance where a link glyph looked the same either way. -->
+                        <components:IconGlyph>
                             <components:IconGlyph.Style>
-                                <Style TargetType="components:IconGlyph">
+                                <Style TargetType="components:IconGlyph" BasedOn="{StaticResource BarGlyph}">
                                     <Setter Property="IconData" Value="{StaticResource Glyph.Unlock}" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True">
+                                        <DataTrigger Binding="{Binding Scene.LockAspectRatio}" Value="True">
                                             <Setter Property="IconData" Value="{StaticResource Glyph.Lock}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </components:IconGlyph.Style>
                         </components:IconGlyph>
-                    </Button>
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DuplicateCommand}"
-                            ToolTip="Duplikovat výběr · Ctrl+D" AutomationProperties.Name="Duplikovat výběr">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-                    <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.DeleteCommand}"
-                            Foreground="{StaticResource Brush.Danger}"
-                            ToolTip="Odstranit výběr · Delete" AutomationProperties.Name="Odstranit výběr">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                    </Button>
-
-                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="2,0,0,0">
-                        <MenuItem Padding="10,9" ToolTip="Další úpravy: otočení, zrcadlení, pořadí a zarovnání"
-                                  AutomationProperties.Name="Další úpravy">
-                            <MenuItem.Header>
-                                <components:IconGlyph IconData="{StaticResource Glyph.More}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                            </MenuItem.Header>
-                            <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
-                            <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
-                            <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
-                            <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
-                            <Separator />
-                            <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
-                            <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
-                            <MenuItem Header="Zarovnat" Visibility="{Binding Scene.HasMultipleSelection, Converter={StaticResource BoolToVisibility}}">
-                                <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
-                                <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
-                                <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
-                                <Separator />
-                                <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
-                                <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
-                                <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="Zrušit zkreslení textu" Command="{Binding Scene.ResetSelectedTextDistortionCommand}"
-                                      Visibility="{Binding Scene.IsSelectedTextDistorted, Converter={StaticResource BoolToVisibility}}" />
-                            <MenuItem Header="Zobrazit na plátně" IsCheckable="True" IsChecked="{Binding Scene.Selected.IsVisible}" />
-                            <MenuItem Header="Zahrnout do úlohy" IsCheckable="True" IsChecked="{Binding Scene.Selected.IncludeInOutput}" />
-                        </MenuItem>
-                    </Menu>
+                    </ToggleButton>
+                    <TextBlock Text="V" Style="{StaticResource BarLabel}" ToolTip="Výška" />
+                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná výška objektu">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Výška v milimetrech"
+                                     Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
+
+                <Border Style="{StaticResource BarDivider}"
+                        Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}" />
+
+                <!-- ============ Otočení ============ -->
+                <!-- Editable, unlike the mockup's read-only degree button: a laser job is placed to a
+                     number, and typing 45 is the whole point of having the field. -->
+                <StackPanel Orientation="Horizontal"
+                            IsEnabled="{Binding Scene.CanRotateSelectedObject}"
+                            Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                    <components:IconGlyph Style="{StaticResource BarGlyph}" IconData="{StaticResource Glyph.RotateRight}"
+                                          Foreground="{DynamicResource Brush.TextSecondary}"
+                                          VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Otočení" />
+                    <Border Style="{StaticResource BarField}" Width="74" ToolTip="Otočení objektu ve stupních">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Otočení ve stupních"
+                                     Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============ Text ============ -->
+                <Border Style="{StaticResource BarDivider}"
+                        Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+
+                <StackPanel Orientation="Horizontal"
+                            IsEnabled="{Binding Scene.CanEditSelectedText}"
+                            Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                    <TextBox Width="118" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
+                             VerticalContentAlignment="Center" Padding="10,0" Margin="0,0,6,0"
+                             KeyDown="OnValueFieldKeyDown"
+                             automation:AutomationProperties.Name="Znění textu" ToolTip="Znění textu"
+                             Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
+                    <!-- Each family renders in itself, so the list is browsable by eye. -->
+                    <ComboBox Width="112" Height="{StaticResource Size.Control.Compact}" Margin="0,0,6,0"
+                              ItemsSource="{Binding Scene.FontFamilies}"
+                              SelectedItem="{Binding Scene.SelectedTextFontFamily}"
+                              MaxDropDownHeight="320"
+                              automation:AutomationProperties.Name="Písmo"
+                              ToolTip="Písmo, kterým je text vysázený">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Border Style="{StaticResource BarField}" Width="78" Margin="0,0,6,0"
+                            ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                                     automation:AutomationProperties.Name="Výška písma v milimetrech"
+                                     Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                        </DockPanel>
+                    </Border>
+                    <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                  IsChecked="{Binding Scene.SelectedTextBold}"
+                                  ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
+                        <TextBlock Text="B" FontWeight="Bold" FontSize="{StaticResource Size.Text.Section}" />
+                    </ToggleButton>
+                    <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="4,0,0,0"
+                                  IsChecked="{Binding Scene.SelectedTextItalic}"
+                                  ToolTip="Kurzíva" AutomationProperties.Name="Kurzíva">
+                        <TextBlock Text="I" FontStyle="Italic" FontSize="{StaticResource Size.Text.Section}" FontFamily="Georgia, Times New Roman" />
+                    </ToggleButton>
+                </StackPanel>
+
+                <!-- ============ Uspořádání ============ -->
+                <Border Style="{StaticResource BarDivider}" />
+
+                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0">
+                    <MenuItem Style="{StaticResource BarMenuItem}"
+                              IsEnabled="{Binding Scene.HasMultipleSelection}"
+                              ToolTip="Zarovnat vybrané objekty k sobě"
+                              AutomationProperties.Name="Zarovnat">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <components:IconGlyph Style="{StaticResource BarGlyph}" IconData="{StaticResource Glyph.AlignCenterHorizontal}" />
+                                <components:IconGlyph Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" Margin="3,1,0,0"
+                                                      IconData="{StaticResource Glyph.ChevronDown}" />
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
+                        <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
+                        <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
+                        <Separator />
+                        <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
+                        <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
+                        <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
+                    </MenuItem>
+                </Menu>
+
+                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="2,0,0,0">
+                    <MenuItem Style="{StaticResource BarMenuItem}"
+                              ToolTip="Zrcadlit nebo otočit vybrané objekty"
+                              AutomationProperties.Name="Zrcadlit nebo otočit">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <components:IconGlyph Style="{StaticResource BarGlyph}" IconData="{StaticResource Glyph.FlipHorizontal}" />
+                                <components:IconGlyph Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" Margin="3,1,0,0"
+                                                      IconData="{StaticResource Glyph.ChevronDown}" />
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
+                        <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
+                        <Separator />
+                        <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
+                        <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
+                    </MenuItem>
+                </Menu>
+
+                <!-- ============ Přetečení ============ -->
+                <!-- Everything that used to sit on the old bar as its own visible control. All of it
+                     is also on the canvas context menu; this is the pointer-reachable copy for people
+                     who are already up here editing values. -->
+                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="2,0,0,0">
+                    <MenuItem Style="{StaticResource BarMenuItem}"
+                              ToolTip="Další úpravy výběru"
+                              AutomationProperties.Name="Další úpravy výběru">
+                        <MenuItem.Header>
+                            <components:IconGlyph Style="{StaticResource BarGlyph}" IconData="{StaticResource Glyph.More}" />
+                        </MenuItem.Header>
+
+                        <MenuItem Header="Seskupit výběr" InputGestureText="Ctrl+G"
+                                  Command="{Binding Scene.GroupSelectionCommand}"
+                                  Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Sjednotit tvary" InputGestureText="Ctrl+Shift+U"
+                                  Command="{Binding Scene.UniteSelectionCommand}"
+                                  Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Rozdělit skupinu" InputGestureText="Ctrl+Shift+G"
+                                  Command="{Binding Scene.UngroupSelectionCommand}"
+                                  Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Trasovat bitmapu" InputGestureText="Alt+T"
+                                  Command="{Binding Scene.TraceSelectedRasterCommand}"
+                                  Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}" />
+
+                        <MenuItem Header="Duplikovat" InputGestureText="Ctrl+D" Command="{Binding Scene.DuplicateCommand}" />
+                        <MenuItem Command="{Binding Scene.ToggleLockCommand}">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                    <Setter Property="Header" Value="Zamknout výběr" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Scene.IsSelectedLocked}" Value="True">
+                                            <Setter Property="Header" Value="Odemknout výběr" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
+                        <MenuItem Header="Odstranit" InputGestureText="Delete" Command="{Binding Scene.DeleteCommand}" />
+
+                        <Separator />
+                        <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
+                        <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
+
+                        <Separator />
+                        <MenuItem Header="Velká písmena" IsCheckable="True"
+                                  IsChecked="{Binding Scene.SelectedTextUppercase}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Svařeno" IsCheckable="True"
+                                  IsChecked="{Binding Scene.SelectedTextWeld}"
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Zrušit zkreslení textu" Command="{Binding Scene.ResetSelectedTextDistortionCommand}"
+                                  Visibility="{Binding Scene.IsSelectedTextDistorted, Converter={StaticResource BoolToVisibility}}" />
+
+                        <Separator />
+                        <MenuItem Header="Zobrazit na plátně" IsCheckable="True" IsChecked="{Binding Scene.Selected.IsVisible}" />
+                        <MenuItem Header="Zahrnout do úlohy" IsCheckable="True" IsChecked="{Binding Scene.Selected.IncludeInOutput}" />
+                    </MenuItem>
+                </Menu>
             </StackPanel>
         </ScrollViewer>
     </Border>

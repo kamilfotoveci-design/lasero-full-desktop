@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly DispatcherTimer _autosaveTimer;
     private MaterialsWindow? _materialsWindow;
+    private MachineControlWindow? _machineControlWindow;
     private PreviewWindow? _previewWindow;
     // The font chosen last time. Re-picking the same family for every label on one sheet is the
     // normal case, so the dialog opens on the previous choice rather than back on the default.
@@ -179,7 +180,10 @@ public partial class MainWindow : Window
         _viewModel.SaveSettings();
     }
 
-    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    private void OnSettingsClick(object sender, RoutedEventArgs e) => OpenSettings();
+
+    /// <summary>Public so the Designer rail can reach it — same route the sidebar's own entry takes.</summary>
+    public void OpenSettings()
     {
         var dialog = new SettingsWindow(_viewModel) { Owner = this };
         dialog.ShowDialog();
@@ -225,11 +229,11 @@ public partial class MainWindow : Window
 
         // Remember the choice for the next piece of text: setting the same font again for every
         // label on a sheet is the common case.
-        _lastTextStyle = dialog.Style;
+        _lastTextStyle = dialog.TextStyle;
 
         try
         {
-            _viewModel.Scene.AddText(dialog.TextValue, position, dialog.HeightMm, dialog.Style);
+            _viewModel.Scene.AddText(dialog.TextValue, position, dialog.HeightMm, dialog.TextStyle);
             _viewModel.Scene.ActiveTool = DesignerTool.Select;
         }
         catch (Exception ex)
@@ -320,6 +324,22 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>The Designer inspector's "Ovládání stroje" route. One instance, reactivated rather
+    /// than reopened, and non-modal so the operator can jog while watching the artwork.</summary>
+    public void OpenMachineControl()
+    {
+        if (_machineControlWindow is not null)
+        {
+            _machineControlWindow.Activate();
+            return;
+        }
+
+        _machineControlWindow = new MachineControlWindow(_viewModel) { Owner = this };
+        _machineControlWindow.Closed += (_, _) => _machineControlWindow = null;
+        _machineControlWindow.PositionBeside(this);
+        _machineControlWindow.Show();
+    }
+
     public void OpenMaterials()
     {
         if (_materialsWindow is not null)
@@ -358,13 +378,6 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
-    // SceneCanvas.ZoomIn/ZoomOut/FitToView have always been public — nothing in this window ever
-    // called them (the canvas element had no x:Name), so the "Zobrazenie 100 %" toolbar text has
-    // always just been a hardcoded, dead label. These three handlers are the first real callers.
-    private void OnZoomInClick(object sender, RoutedEventArgs e) => DesignerCanvas.ZoomIn();
-    private void OnZoomOutClick(object sender, RoutedEventArgs e) => DesignerCanvas.ZoomOut();
-    private void OnFitToViewClick(object sender, RoutedEventArgs e) => DesignerCanvas.FitToView();
-
     /// <summary>The canvas is collapsed while another screen is showing, so it has no size to fit
     /// against and lands on whatever scale it last had. Fitting once it is actually visible is why
     /// the bed fills the view when the operator arrives in the editor, at Background priority so the
@@ -378,29 +391,15 @@ public partial class MainWindow : Window
         }
 
         if (e.PropertyName != nameof(MainViewModel.CurrentScreen)) return;
+
+        ApplyWorkspaceMode();
+
         if (_viewModel.CurrentScreen != AppScreen.Designer) return;
 
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
             if (_viewModel.CurrentScreen == AppScreen.Designer) DesignerCanvas.FitToView();
         }));
-    }
-
-    private void OnZoomPickerClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button button || button.ContextMenu is not { } menu) return;
-        menu.PlacementTarget = button;
-        menu.Placement = PlacementMode.Bottom;
-        menu.IsOpen = true;
-    }
-
-    /// <summary>The preset asks for a scale; the canvas decides what it can actually reach and reports
-    /// back through ZoomPercent. That is why the readout is bound to the canvas and not to the chosen
-    /// preset — a clamped request would otherwise show a zoom the view never got to.</summary>
-    private void OnZoomPresetClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: string tag } && int.TryParse(tag, out var percent))
-            DesignerCanvas.SetZoomPercent(percent);
     }
 
     private void OnAboutClick(object sender, RoutedEventArgs e) =>
@@ -435,6 +434,13 @@ public partial class MainWindow : Window
         // the operator just asked for.
         _viewModel.IsNavCollapsed = _viewModel.SettingsStore.Current.Workspace.IsNavCollapsed;
         ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: false);
+        ApplyWorkspaceMode();
+
+        // Starting straight into the editor skips the screen change that normally triggers the fit,
+        // so the canvas would keep whatever scale it measured before the rail and inspector had their
+        // final widths. Background priority: after this layout pass, not during it.
+        if (_viewModel.CurrentScreen == AppScreen.Designer)
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => DesignerCanvas.FitToView()));
 
         var saved = _viewModel.SettingsStore.Current.Workspace.ClampedInspectorWidth;
         var window = ActualWidth > 0 ? ActualWidth : Width;
@@ -455,8 +461,46 @@ public partial class MainWindow : Window
     /// honoured: with it off the rail simply arrives at the new width, which is also what happens on
     /// the very first layout so the saved state does not animate in at startup.
     /// </summary>
+    /// <summary>
+    /// Swaps the left column between the full application sidebar and the Designer's 56px rail.
+    ///
+    /// Deliberately not folded into IsNavCollapsed. That flag is the operator's own posture, saved
+    /// across sessions; the editor's narrow rail is a property of the screen. Overloading one onto
+    /// the other would mean opening the editor silently rewrote a preference, and leaving it would
+    /// then collapse Home too.
+    ///
+    /// The two rails are separate controls and exactly one is visible, so nothing about the sidebar's
+    /// collapse, animation or peek behaviour runs while Designer is showing.
+    /// </summary>
+    private void ApplyWorkspaceMode()
+    {
+        var designer = _viewModel.CurrentScreen == AppScreen.Designer;
+
+        NavRailHost.Visibility = designer ? Visibility.Collapsed : Visibility.Visible;
+        DesignerRail.Visibility = designer ? Visibility.Visible : Visibility.Collapsed;
+
+        if (designer)
+        {
+            // No animation between screens: switching to the editor is a navigation, and sliding the
+            // rail would make it read as a panel opening rather than a different screen arriving.
+            NavRail.BeginAnimation(FrameworkElement.WidthProperty, null);
+            NavColumn.Width = new GridLength(DesignerRailWidth);
+            return;
+        }
+
+        ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: false);
+    }
+
+    /// <summary>Matches DesignerToolRail's own Width. The rail is a fixed strip, not a resizable
+    /// panel, so the number lives in exactly these two places and nowhere else.</summary>
+    private const double DesignerRailWidth = 56;
+
     private void ApplyNavRailWidth(bool collapsed, bool animate)
     {
+        // Designer owns the column while it is showing; a posture change made from a dialog must not
+        // reach in and resize the editor's rail underneath it.
+        if (_viewModel.CurrentScreen == AppScreen.Designer) return;
+
         // The column is set rather than animated: it defines the canvas's slot, and animating both
         // would have the workspace relayout on every frame for no visible gain. The rail's own width is
         // what the eye follows.

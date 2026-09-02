@@ -4,29 +4,18 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Lasero.App.ViewModels;
 using Lasero.Core.Layers;
-using Lasero.Core.Materials;
 
 namespace Lasero.App.Views;
 
 public partial class DesignerInspectorView : UserControl
 {
+    /// <summary>More passes than this is not a setting, it is a typo — and every pass is another run
+    /// of the laser over the same path.</summary>
+    private const int MaxPasses = 50;
+
     public DesignerInspectorView()
     {
         InitializeComponent();
-    }
-
-    public void ShowMachineTab() => MachineTabRadio.IsChecked = true;
-
-    private void OnTransformFieldKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || sender is not TextBox field) return;
-
-        // TextBox bindings normally commit only after focus leaves the field. Dimension editing in
-        // a desktop design tool is keyboard-driven, so Enter must commit immediately and keep the
-        // field ready for another precise value.
-        field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-        field.SelectAll();
-        e.Handled = true;
     }
 
     // A right-click has to land on the row it was aimed at before the menu opens: Duplikovat and
@@ -42,10 +31,33 @@ public partial class DesignerInspectorView : UserControl
         }
     }
 
+    /// <summary>
+    /// Opens the manual machine panel beside the canvas. This is the Designer's route to everything
+    /// that used to sit behind the inspector's "Stroj" tab — jogging, homing, unlock, origin, the
+    /// positioning beam, the job status card with its time estimate, and the framing and placement
+    /// settings. Dropping the tab without this left all of it reachable only from the Device screen.
+    /// </summary>
+    private void OnMachineControlClick(object sender, RoutedEventArgs e)
+    {
+        if (Window.GetWindow(this) is MainWindow window) window.OpenMachineControl();
+    }
+
+    private void OnPassesIncrementClick(object sender, RoutedEventArgs e) => StepPasses(sender, +1);
+
+    private void OnPassesDecrementClick(object sender, RoutedEventArgs e) => StepPasses(sender, -1);
+
+    /// <summary>The stepper writes the same property the field does, clamped to at least one pass —
+    /// a zero-pass operation would be silently skipped by the machine.</summary>
+    private static void StepPasses(object sender, int delta)
+    {
+        if (sender is not FrameworkElement { Tag: LayerSettings layer }) return;
+        layer.Passes = Math.Clamp(layer.Passes + delta, 1, MaxPasses);
+    }
+
     private void OnApplyMaterialClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel ||
-            sender is not Button { Tag: LayerSettings layer } button)
+            sender is not FrameworkElement { Tag: LayerSettings layer } source)
         {
             return;
         }
@@ -80,7 +92,7 @@ public partial class DesignerInspectorView : UserControl
         }
         menu.Items.Add(personal);
 
-        menu.PlacementTarget = button;
+        menu.PlacementTarget = source;
         menu.IsOpen = true;
     }
 }

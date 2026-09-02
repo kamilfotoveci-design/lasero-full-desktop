@@ -10,7 +10,7 @@ public partial class TextToolWindow : Window
 {
     public string TextValue { get; private set; } = string.Empty;
     public double HeightMm { get; private set; } = 12;
-    public VectorTextStyle Style { get; private set; } = VectorTextStyle.Default;
+    public VectorTextStyle TextStyle { get; private set; } = VectorTextStyle.Default;
 
     /// <summary>
     /// Families that can actually produce outlines, sorted for scanning. Symbol fonts are left in —
@@ -90,7 +90,7 @@ public partial class TextToolWindow : Window
 
         TextValue = text;
         HeightMm = height;
-        Style = new VectorTextStyle
+        TextStyle = new VectorTextStyle
         {
             FontFamily = FontFamilyInput.SelectedItem as string ?? "Segoe UI",
             Bold = BoldToggle.IsChecked == true,

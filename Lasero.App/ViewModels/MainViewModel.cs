@@ -35,6 +35,10 @@ public partial class MainViewModel : ObservableObject
     public HomeViewModel Home { get; }
     public MaterialsViewModel Materials { get; }
     public ChatViewModel Chat { get; }
+
+    /// <summary>The floating assistant. One instance for the whole shell, so moving between screens
+    /// never tears down the conversation.</summary>
+    public KamilAssistantViewModel Kamil { get; }
     public AppSettings Settings => _settingsStore.Current;
 
     [ObservableProperty] private string _projectName = "Nový projekt";
@@ -70,6 +74,19 @@ public partial class MainViewModel : ObservableObject
     /// should start over rather than resume wherever the operator abandoned it last time.</summary>
     public DeviceWizardViewModel CreateDeviceWizard() => _deviceWizardFactory();
 
+    /// <summary>The assistant's context follows the shell. Switching screens updates what Kamil is
+    /// told, and never touches the conversation.</summary>
+    partial void OnCurrentScreenChanged(AppScreen value) => Kamil.ScreenLabel = DescribeScreen(value);
+
+    private static string DescribeScreen(AppScreen screen) => screen switch
+    {
+        AppScreen.Home => "Domů",
+        AppScreen.Designer => "Návrh",
+        AppScreen.Device => "Zařízení",
+        AppScreen.Chat => "Kamil",
+        _ => "Lasero",
+    };
+
     partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(HasOpenProject));
     partial void OnProjectPathChanged(string? value) => OnPropertyChanged(nameof(HasOpenProject));
 
@@ -84,6 +101,7 @@ public partial class MainViewModel : ObservableObject
         HomeViewModel home,
         MaterialsViewModel materials,
         ChatViewModel chat,
+        KamilAssistantViewModel kamil,
         ProjectRecoveryStore recoveryStore,
         AppSettingsStore settingsStore,
         RecentProjectsStore recentProjectsStore,
@@ -102,6 +120,11 @@ public partial class MainViewModel : ObservableObject
         Home = home;
         Materials = materials;
         Chat = chat;
+        Kamil = kamil;
+        // Questions now carry the workspace with them: selected material, operation and the connected
+        // machine, instead of the nulls the send path used to hardcode.
+        Chat.ContextProvider = Kamil.BuildContext;
+        Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
         _recoveryStore = recoveryStore;
         _settingsStore = settingsStore;
         _recentProjectsStore = recentProjectsStore;
@@ -127,9 +150,17 @@ public partial class MainViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(ConnectionViewModel.IsConnected) &&
             Connection.IsConnected &&
+            CurrentScreen != AppScreen.Designer &&
             Settings.Safety.ShowMachineStatusAfterConnect)
         {
             CurrentScreen = AppScreen.Device;
+        }
+
+        if (e.PropertyName == nameof(ConnectionViewModel.DetectedDevice))
+        {
+            Jog.ConfigurePositioningLaser(
+                Connection.DetectedDevice?.MaxSpindleSpeed,
+                Connection.DetectedDevice?.LaserModeEnabled);
         }
     }
 
@@ -248,10 +279,16 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void SaveProject() => TrySaveProject();
 
-    public bool TrySaveProject()
+    /// <summary>"Uložit jako…" — the same save, forced through the file dialog so the operator can
+    /// branch a project without overwriting the one it came from. Separate from SaveProject because
+    /// a plain save on a known path must never ask.</summary>
+    [RelayCommand]
+    private void SaveProjectAs() => TrySaveProject(forceDialog: true);
+
+    public bool TrySaveProject(bool forceDialog = false)
     {
         var path = ProjectPath;
-        if (string.IsNullOrWhiteSpace(path))
+        if (forceDialog || string.IsNullOrWhiteSpace(path))
         {
             var dialog = new SaveFileDialog
             {

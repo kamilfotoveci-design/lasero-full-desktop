@@ -1,0 +1,161 @@
+<UserControl x:Class="Lasero.App.Components.ParameterRecommendationCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:conv="clr-namespace:Lasero.App.Converters"
+             x:Name="Root">
+    <!--
+        Settings Kamil named, laid out so they can be read at a glance and applied without retyping.
+        DataContext is a ParameterRecommendation; the command and its availability come from the
+        assistant, because whether there is an operation to apply to is not a property of the advice.
+
+        Values are set in Font.Numeric with tabular figures — the four tiles line up as a table, which
+        is how an operator compares them against what the operation currently has.
+    -->
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+
+        <Style x:Key="Tile" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+        <Style x:Key="TileCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="TileValue" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
+            <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style x:Key="TileUnit" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="4,0,0,2" />
+        </Style>
+        <Style x:Key="TileGlyph" TargetType="components:IconGlyph">
+            <Setter Property="Width" Value="{StaticResource Size.Icon.Chrome}" />
+            <Setter Property="Height" Value="{StaticResource Size.Icon.Chrome}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource Brush.SelectedSurface}"
+            BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Md}" Margin="0,10,0,0">
+        <StackPanel>
+            <Border Padding="12,9" BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Foreground="{DynamicResource Brush.AccentText}"
+                                          VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="DOPORUČENÉ PARAMETRY"
+                               FontSize="{StaticResource Size.Text.Meta}" FontWeight="Bold"
+                               Foreground="{DynamicResource Brush.AccentText}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <Grid Margin="12,12,12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Style="{StaticResource Tile}">
+                    <StackPanel>
+                        <DockPanel>
+                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
+                                                  IconData="{StaticResource Glyph.Refresh}" />
+                            <TextBlock Text="Rychlost" Style="{StaticResource TileCaption}" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding SpeedLabel}" Style="{StaticResource TileValue}" />
+                            <TextBlock Text="mm/min" Style="{StaticResource TileUnit}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Tile}">
+                    <StackPanel>
+                        <DockPanel>
+                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
+                                                  IconData="{StaticResource Glyph.Zap}" />
+                            <TextBlock Text="Výkon" Style="{StaticResource TileCaption}" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding PowerLabel}" Style="{StaticResource TileValue}" />
+                            <TextBlock Text="%" Style="{StaticResource TileUnit}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource Tile}">
+                    <StackPanel>
+                        <DockPanel>
+                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
+                                                  IconData="{StaticResource Glyph.Redo}" />
+                            <TextBlock Text="Průchody" Style="{StaticResource TileCaption}" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding PassesLabel}" Style="{StaticResource TileValue}" />
+                            <TextBlock Text="×" Style="{StaticResource TileUnit}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Only when the answer actually named a resolution. An empty DPI tile would be a
+                     value the operator could mistake for a recommendation. -->
+                <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource Tile}"
+                        Visibility="{Binding HasDpi, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <DockPanel>
+                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
+                                                  IconData="{StaticResource Glyph.Image}" />
+                            <TextBlock Text="DPI" Style="{StaticResource TileCaption}" />
+                        </DockPanel>
+                        <TextBlock Text="{Binding DpiLabel}" Style="{StaticResource TileValue}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Button Style="{StaticResource PrimaryBlue}" Margin="12,12,12,12"
+                    HorizontalAlignment="Stretch"
+                    Command="{Binding ApplyCommand, ElementName=Root}"
+                    CommandParameter="{Binding}"
+                    ToolTipService.ShowOnDisabled="True"
+                    ToolTip="{Binding ApplyTooltip, ElementName=Root}"
+                    automation:AutomationProperties.Name="Použít doporučené parametry na vybranou operaci">
+                <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít na operaci"
+                                      Foreground="White" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+            </Button>
+
+            <!-- Confirmation that the click reached the operation. The operation panel is usually
+                 behind the assistant, so the change is not otherwise visible from here. -->
+            <StackPanel Orientation="Horizontal" Margin="12,0,12,12"
+                        Visibility="{Binding AppliedMessage, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
+                <components:IconGlyph IconData="{StaticResource Glyph.Check}"
+                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                      Foreground="{DynamicResource Brush.Success}"
+                                      VerticalAlignment="Top" Margin="0,1,7,0" />
+                <TextBlock Text="{Binding AppliedMessage, ElementName=Root}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Success}"
+                           FontSize="{StaticResource Size.Text.Meta}" MaxWidth="270" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

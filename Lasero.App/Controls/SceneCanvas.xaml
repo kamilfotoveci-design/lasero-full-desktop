@@ -6,8 +6,14 @@
              KeyDown="OnCanvasKeyDown"
              KeyUp="OnCanvasKeyUp"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
-    <Border Effect="{StaticResource Shadow.Sheet}">
-        <Border Background="{StaticResource Brush.Canvas.Surround}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
+    <!--
+        No card. The canvas used to sit inside a rounded, bordered, drop-shadowed sheet, which framed
+        the drawing area as one panel among several; in the editor it is the subject, so it runs to
+        the edges of its column and the rail and inspector borders do the separating. Nothing about
+        the coordinate maths, hit testing, rulers or bed rendering changed — only this wrapper.
+    -->
+    <Border>
+        <Border Background="{StaticResource Brush.Canvas.Surround}" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="20" />

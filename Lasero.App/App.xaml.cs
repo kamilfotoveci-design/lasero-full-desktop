@@ -86,6 +86,7 @@ public partial class App : Application
                 services.AddSingleton<MaterialsViewModel>();
                 services.AddSingleton<AccountViewModel>();
                 services.AddSingleton<ChatViewModel>();
+                services.AddSingleton<KamilAssistantViewModel>();
                 services.AddSingleton<HomeViewModel>();
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<MainWindow>();
