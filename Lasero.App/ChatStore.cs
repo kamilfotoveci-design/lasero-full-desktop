@@ -1,6 +1,4 @@
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Lasero.Core.LaseroApi;
 using Serilog;
@@ -54,12 +52,7 @@ public sealed class ChatStore
         }
     }
 
-    private string PathFor(string userId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(userId);
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId)))[..24];
-        return Path.Combine(_directory, $"{hash}.json");
-    }
+    private string PathFor(string userId) => Path.Combine(_directory, AccountScopedStorage.FileNameFor(userId));
 }
 
 public sealed record StoredChatSession(
