@@ -19,3 +19,9 @@ Thumbs.db
 
 # Publish/packaging outputs (regenerable)
 artifacts/
+
+# Generated UI-QA screenshots (ad-hoc debug/verification captures, not app
+# assets, not referenced by code or docs). Nested dated audit folders too.
+# Existing already-tracked reference screenshots under .uiqa/ are untouched
+# by this rule (gitignore only affects untracked files).
+.uiqa/**/*.png
