@@ -303,6 +303,13 @@ public partial class ChatViewModel : ObservableObject
             OnPropertyChanged(nameof(AvailabilityText));
             SendCommand.NotifyCanExecuteChanged();
         }
+        else if (eventArgs.PropertyName == nameof(AccountViewModel.UserId))
+        {
+            // Session-identity-driven, not dependent on any window being reopened or shown — this
+            // is what makes InitializeForCurrentAccount fire reliably on every sign-in, sign-out,
+            // and account switch, instead of relying on callers to remember to call it.
+            InitializeForCurrentAccount();
+        }
     }
 
     partial void OnInputChanged(string value)

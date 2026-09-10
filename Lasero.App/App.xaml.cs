@@ -112,8 +112,10 @@ public partial class App : Application
             }
         }
 
-        viewModel.Chat.InitializeForCurrentAccount();
-
+        // No explicit reload call here: MainViewModel and its sub-viewmodels were already
+        // constructed (and their AccountViewModel.PropertyChanged subscriptions wired) above, before
+        // TryResumeSessionAsync/SignIn ever changed Account.UserId — so Chat/Materials/Home's
+        // account-scoped caches have already reloaded for the now-current account automatically.
         var window = new MainWindow(viewModel);
         MainWindow = window;
         window.Show();

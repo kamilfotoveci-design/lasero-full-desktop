@@ -190,10 +190,14 @@ public partial class MainWindow : Window
         if (!dialog.SignOutRequested) return;
 
         Hide();
+        // No explicit reload call needed here, for either branch: SignOutCommand (run inside
+        // SettingsWindow, before dialog.ShowDialog() above returned) already cleared every
+        // account-scoped store the moment Account.UserId became null, and a successful sign-in
+        // below reloads them again the moment SignInCommand sets UserId to the new account — both
+        // driven by AccountViewModel.PropertyChanged, not by this window's own show/hide ordering.
         var login = new LoginWindow(_viewModel.Account) { Owner = this };
         if (login.ShowDialog() == true)
         {
-            _viewModel.Chat.InitializeForCurrentAccount();
             Show();
             Activate();
         }

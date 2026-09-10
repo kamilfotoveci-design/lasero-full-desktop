@@ -50,11 +50,7 @@ public partial class MaterialsViewModel : ObservableObject
         _settingsStore = settingsStore;
         _syncClient = syncClient;
         _account = account;
-        _account.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName is nameof(AccountViewModel.IsSignedIn) or nameof(AccountViewModel.IsOffline))
-                SynchronizeCommand.NotifyCanExecuteChanged();
-        };
+        _account.PropertyChanged += OnAccountPropertyChanged;
         _selectedTechnology = settingsStore.Current.Machine.LaserTechnology;
         _selectedPowerWatts = settingsStore.Current.Machine.LaserPowerWatts;
         foreach (var preset in _store.Presets)
@@ -147,6 +143,32 @@ public partial class MaterialsViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowAllMaterials() => SelectedMaterial = null;
+
+    /// <summary>Reloads the personal catalog from the now-active account's own local cache instead
+    /// of whatever loaded before an account was known. Mirrors ChatViewModel.InitializeForCurrentAccount's
+    /// role for chat history. Called automatically by <see cref="OnAccountPropertyChanged"/>
+    /// whenever Account.UserId changes — session-identity-driven, not dependent on any window being
+    /// reopened or shown — but stays public so it can also be exercised directly in tests.</summary>
+    public void ReloadForAccount()
+    {
+        foreach (var preset in Presets) preset.PropertyChanged -= OnPresetPropertyChanged;
+        _store.SwitchAccount(_account.UserId);
+        Presets.Clear();
+        foreach (var preset in _store.Presets)
+        {
+            preset.PropertyChanged += OnPresetPropertyChanged;
+            Presets.Add(preset);
+        }
+        OnPropertyChanged(nameof(HasPresets));
+    }
+
+    private void OnAccountPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(AccountViewModel.IsSignedIn) or nameof(AccountViewModel.IsOffline))
+            SynchronizeCommand.NotifyCanExecuteChanged();
+        else if (args.PropertyName == nameof(AccountViewModel.UserId))
+            ReloadForAccount();
+    }
 
     [RelayCommand]
     private void SaveAsPersonal(MaterialRecipe? recipe)

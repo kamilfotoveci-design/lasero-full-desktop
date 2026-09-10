@@ -17,6 +17,7 @@ public partial class HomeViewModel : ObservableObject
 {
     private readonly RecentProjectsStore _recentProjectsStore;
     private readonly JobHistoryStore _jobHistoryStore;
+    private readonly AccountViewModel _account;
 
     public ConnectionViewModel Connection { get; }
     public MachineStatusViewModel MachineStatus { get; }
@@ -88,10 +89,12 @@ public partial class HomeViewModel : ObservableObject
         JobHistoryStore jobHistoryStore,
         ConnectionViewModel connection,
         MachineStatusViewModel machineStatus,
-        GCodeViewModel gcode)
+        GCodeViewModel gcode,
+        AccountViewModel account)
     {
         _recentProjectsStore = recentProjectsStore;
         _jobHistoryStore = jobHistoryStore;
+        _account = account;
         Connection = connection;
         MachineStatus = machineStatus;
         GCode = gcode;
@@ -115,9 +118,20 @@ public partial class HomeViewModel : ObservableObject
         _recentProjectsStore.Changed += RefreshRecentProjects;
         _jobHistoryStore.Changed += RefreshJobHistory;
         GCode.PropertyChanged += OnGCodePropertyChanged;
+        _account.PropertyChanged += OnAccountPropertyChanged;
 
         RefreshRecentProjects();
         RefreshJobHistory();
+    }
+
+    /// <summary>Keeps the recent-projects cache scoped to whichever account is actually signed in —
+    /// session-identity-driven (fires on every sign-in, sign-out, and account switch via
+    /// AccountViewModel.UserId), not dependent on any window being reopened or shown. RefreshRecentProjects
+    /// then runs automatically too, via RecentProjectsStore.Changed, which SwitchAccount always raises.</summary>
+    private void OnAccountPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AccountViewModel.UserId))
+            _recentProjectsStore.SwitchAccount(_account.UserId);
     }
 
     private void OnGCodePropertyChanged(object? sender, PropertyChangedEventArgs e)
