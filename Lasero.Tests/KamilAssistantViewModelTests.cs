@@ -294,7 +294,9 @@ public sealed class KamilAssistantViewModelTests : IDisposable
         var account = new AccountViewModel(
             new LaseroAuthClient(http),
             new LaseroAccountClient(http),
-            new SessionStore(Path.Combine(_directory, $"session-{Guid.NewGuid():N}.json")));
+            new SessionStore(Path.Combine(_directory, $"session-{Guid.NewGuid():N}.json")),
+            new DeviceIdStore(Path.Combine(_directory, $"device-id-{Guid.NewGuid():N}.txt")),
+            new DeviceActivationClient(http));
         var chat = new ChatViewModel(
             new LaseroChatClient(http),
             account,

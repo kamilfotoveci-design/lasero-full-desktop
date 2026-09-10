@@ -122,7 +122,9 @@ public sealed class MaterialSwatchViewModelTests
         var account = new AccountViewModel(
             new LaseroAuthClient(http),
             new LaseroAccountClient(http),
-            new SessionStore(Path.Combine(directory.Root, "session.json")));
+            new SessionStore(Path.Combine(directory.Root, "session.json")),
+            new DeviceIdStore(Path.Combine(directory.Root, "device-id.txt")),
+            new DeviceActivationClient(http));
         return new MaterialsViewModel(
             new MaterialPresetStore(Path.Combine(directory.Root, "materials.json")),
             new AppSettingsStore(Path.Combine(directory.Root, "settings.json")),

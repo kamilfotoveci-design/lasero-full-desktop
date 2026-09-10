@@ -78,6 +78,8 @@ public partial class App : Application
                 services.AddSingleton<LaseroChatClient>();
                 services.AddSingleton<MaterialSyncClient>();
                 services.AddSingleton<SessionStore>();
+                services.AddSingleton<DeviceIdStore>();
+                services.AddSingleton<DeviceActivationClient>();
                 services.AddSingleton(_ => ProjectRecoveryStore.CreateDefault());
                 services.AddSingleton(_ => RecentProjectsStore.CreateDefault());
                 services.AddSingleton(_ => JobHistoryStore.CreateDefault());

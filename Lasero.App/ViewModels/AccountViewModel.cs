@@ -13,6 +13,8 @@ public partial class AccountViewModel : ObservableObject
     private readonly LaseroAuthClient _authClient;
     private readonly LaseroAccountClient _accountClient;
     private readonly SessionStore _sessionStore;
+    private readonly DeviceIdStore _deviceIdStore;
+    private readonly DeviceActivationClient _deviceActivationClient;
     private FirebaseSession? _session;
 
     [ObservableProperty] private string _email = string.Empty;
@@ -37,11 +39,14 @@ public partial class AccountViewModel : ObservableObject
     [ObservableProperty] private string _licenseCode = string.Empty;
     [ObservableProperty] private string? _userId;
 
-    public AccountViewModel(LaseroAuthClient authClient, LaseroAccountClient accountClient, SessionStore sessionStore)
+    public AccountViewModel(LaseroAuthClient authClient, LaseroAccountClient accountClient, SessionStore sessionStore,
+        DeviceIdStore deviceIdStore, DeviceActivationClient deviceActivationClient)
     {
         _authClient = authClient;
         _accountClient = accountClient;
         _sessionStore = sessionStore;
+        _deviceIdStore = deviceIdStore;
+        _deviceActivationClient = deviceActivationClient;
     }
 
     public async Task TryResumeSessionAsync()
@@ -60,6 +65,7 @@ public partial class AccountViewModel : ObservableObject
             IsOffline = false;
             _sessionStore.SaveRefreshToken(_session.RefreshToken, _session.LocalId, Email);
             _ = RefreshEntitlementAsync();
+            _ = RegisterDeviceActivationAsync();
         }
         catch (LaseroAuthException ex)
         {
@@ -120,6 +126,7 @@ public partial class AccountViewModel : ObservableObject
             IsOffline = false;
             Password = string.Empty;
             _ = RefreshEntitlementAsync();
+            _ = RegisterDeviceActivationAsync();
         }
         catch (LaseroAuthException ex)
         {
@@ -235,6 +242,25 @@ public partial class AccountViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to refresh entitlement status");
+        }
+    }
+
+    /// <summary>Passive telemetry only — records that this install is active for this account, with
+    /// zero effect on sign-in, entitlement, or any feature. Best-effort by design: any failure here
+    /// (offline, server error, timeout) is swallowed and logged, never surfaced to the user, and
+    /// never retried — the next successful sign-in or session resume tries again naturally.</summary>
+    private async Task RegisterDeviceActivationAsync()
+    {
+        if (_session is null || IsOffline) return;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+            var deviceId = _deviceIdStore.GetOrCreate();
+            await _deviceActivationClient.RegisterAsync(_session.IdToken, deviceId, "desktop", timeout.Token);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Failed to register device activation (non-fatal, no retry)");
         }
     }
 
