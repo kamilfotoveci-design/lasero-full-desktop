@@ -77,13 +77,19 @@ public static class JobPreflight
 
     private static void ValidateBounds(JobPreflightContext context, ICollection<PreflightIssue> issues)
     {
-        if (context.WorkAreaWidthMm <= 0 || context.WorkAreaHeightMm <= 0)
+        if (!double.IsFinite(context.WorkAreaWidthMm) || !double.IsFinite(context.WorkAreaHeightMm) || context.WorkAreaWidthMm <= 0 || context.WorkAreaHeightMm <= 0)
         {
             issues.Add(Block("machine.invalid-work-area", "Rozměry pracovní plochy nejsou platné."));
             return;
         }
 
         var bounds = context.Document!.BoundingBox;
+        if (!double.IsFinite(bounds.MinX) || !double.IsFinite(bounds.MinY) ||
+            !double.IsFinite(bounds.MaxX) || !double.IsFinite(bounds.MaxY))
+        {
+            issues.Add(Block("job.invalid-bounds", "Dráha obsahuje neplatné souřadnice. Připravte úlohu znovu."));
+            return;
+        }
         const double tolerance = 0.001;
         if (bounds.MinX < -tolerance || bounds.MinY < -tolerance
             || bounds.MaxX > context.WorkAreaWidthMm + tolerance

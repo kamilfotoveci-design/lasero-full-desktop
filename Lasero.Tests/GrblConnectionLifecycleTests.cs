@@ -277,7 +277,15 @@ public sealed class GrblConnectionLifecycleTests
 
         public bool WaitForLineCount(int expected)
         {
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+            // Was a 1-second deadline. Two of this class's own tests
+            // (SettingsQueryStartsCollectingOnlyWhenItsOwnCommandIsSent,
+            // ErrorLineRaisesErrorReceivedSetsActiveAlertAndClearsOnNextOk) have shown up individually
+            // flaky across multiple sessions — always passing on an immediate isolated rerun, only
+            // failing occasionally inside a full-suite run. That signature (fine alone, occasionally
+            // slow under full-suite thread-pool/GC contention) points at this fixed wall-clock
+            // deadline being marginal under load, not a race in GrblConnection itself — widened well
+            // past what a healthy run ever needs, to absorb that contention instead of racing it.
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
             while (_writtenLines.Count < expected && DateTime.UtcNow < deadline)
                 LineWritten.Wait(TimeSpan.FromMilliseconds(20));
             return _writtenLines.Count >= expected;

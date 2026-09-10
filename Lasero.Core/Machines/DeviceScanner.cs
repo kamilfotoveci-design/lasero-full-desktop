@@ -31,10 +31,8 @@ public sealed record DiscoveredMachine(
 public sealed record DeviceScanProgress(string PortName, int BaudRate, int PortIndex, int PortCount);
 
 /// <summary>
-/// Walks the serial ports looking for a GRBL controller, the way the operator would if they did it
-/// by hand: open the port, ask for <c>$$</c>, and see whether anything sensible comes back.
-/// Only that one query is sent — never motion, never a settings write — because a scan may well
-/// land on a 3D printer or some other board that is not a laser at all.
+/// Passive discovery offers the simulator without opening physical ports. A physical probe is
+/// available only through an explicitly selected port and baud rate, never from ScanAsync.
 /// </summary>
 public sealed class DeviceScanner
 {
@@ -62,19 +60,10 @@ public sealed class DeviceScanner
         IProgress<DeviceScanProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var ports = _portNames()
-            .Where(port => !VirtualGrblTransport.IsVirtualPort(port))
-            .ToArray();
+        // Discovery is passive: even a settings query can reset an unrelated USB device on open.
+        // Physical connections belong to the explicit selected-port workflow.
+        cancellationToken.ThrowIfCancellationRequested();
         var found = new List<DiscoveredMachine>();
-
-        for (var i = 0; i < ports.Length; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var machine = await ProbePortAsync(ports[i], i, ports.Length, progress, cancellationToken)
-                .ConfigureAwait(false);
-            if (machine is not null) found.Add(machine);
-        }
-
         if (IncludeSimulator)
         {
             var simulator = await ProbeAsync(VirtualGrblTransport.PortName, BaudRates[0], cancellationToken)
@@ -85,24 +74,15 @@ public sealed class DeviceScanner
         return found;
     }
 
-    private async Task<DiscoveredMachine?> ProbePortAsync(
-        string port,
-        int index,
-        int count,
-        IProgress<DeviceScanProgress>? progress,
-        CancellationToken cancellationToken)
+    /// <summary>Only after the operator explicitly selects and authorizes this port and baud.
+    /// Never called by discovery or startup; no baud-rate guessing.</summary>
+    public Task<DiscoveredMachine?> ProbeSelectedPortAsync(string port, int baudRate, CancellationToken cancellationToken = default)
     {
-        foreach (var baudRate in BaudRates)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report(new DeviceScanProgress(port, baudRate, index, count));
-            var machine = await ProbeAsync(port, baudRate, cancellationToken).ConfigureAwait(false);
-            if (machine is not null) return machine;
-        }
-
-        return null;
+        ArgumentException.ThrowIfNullOrWhiteSpace(port);
+        if (baudRate <= 0) throw new ArgumentOutOfRangeException(nameof(baudRate));
+        cancellationToken.ThrowIfCancellationRequested();
+        return ProbeAsync(port, baudRate, cancellationToken);
     }
-
     private async Task<DiscoveredMachine?> ProbeAsync(string port, int baudRate, CancellationToken cancellationToken)
     {
         ILaserMachine? machine = null;

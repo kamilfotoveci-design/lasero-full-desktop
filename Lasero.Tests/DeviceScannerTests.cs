@@ -19,9 +19,9 @@ public sealed class DeviceScannerTests
         };
         var scanner = new DeviceScanner(factory, () => ["COM3", "COM7"]) { IncludeSimulator = false };
 
-        var found = await scanner.ScanAsync();
+        var found = await scanner.ProbeSelectedPortAsync("COM7", 57600);
 
-        var machine = Assert.Single(found);
+        var machine = Assert.IsType<DiscoveredMachine>(found);
         Assert.Equal("COM7", machine.PortName);
         Assert.Equal(57600, machine.BaudRate);
         Assert.Equal(400, machine.Profile.MaxTravelXmm);
@@ -40,7 +40,7 @@ public sealed class DeviceScannerTests
         };
         var scanner = new DeviceScanner(factory, () => ["COM3"]) { IncludeSimulator = false };
 
-        Assert.Empty(await scanner.ScanAsync());
+        Assert.Null(await scanner.ProbeSelectedPortAsync("COM3", 115200));
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class DeviceScannerTests
         };
         var scanner = new DeviceScanner(factory, () => ["COM3", "COM7"]) { IncludeSimulator = false };
 
-        await scanner.ScanAsync();
+        await scanner.ProbeSelectedPortAsync("COM7", 115200);
 
         Assert.All(factory.Created, machine => Assert.False(machine.IsOpen));
         Assert.All(factory.Created, machine => Assert.True(machine.IsDisposed));
@@ -67,30 +67,19 @@ public sealed class DeviceScannerTests
         };
         var scanner = new DeviceScanner(factory, () => ["COM7"]) { IncludeSimulator = false };
 
-        await scanner.ScanAsync();
+        await scanner.ProbeSelectedPortAsync("COM7", 115200);
 
         Assert.All(factory.Created, machine => Assert.Empty(machine.SentCommands));
     }
 
     [Fact]
-    public async Task ProgressNamesThePortAndBaudRateBeingTried()
+    public async Task DiscoveryNeverOpensPhysicalPorts()
     {
         var factory = new FakeMachineFactory();
-        var scanner = new DeviceScanner(factory, () => ["COM3"])
-        {
-            IncludeSimulator = false,
-            BaudRates = [115200, 9600],
-        };
-        var reports = new List<DeviceScanProgress>();
-
-        await scanner.ScanAsync(new Progress<DeviceScanProgress>(reports.Add));
-
-        // Progress<T> posts asynchronously, so the scan can finish before every report lands; what
-        // matters is that the ones that arrive describe a real attempt.
-        Assert.All(reports, report => Assert.Equal("COM3", report.PortName));
-        Assert.All(reports, report => Assert.Contains(report.BaudRate, scanner.BaudRates));
+        var scanner = new DeviceScanner(factory, () => ["COM3", "COM7"]) { IncludeSimulator = false };
+        Assert.Empty(await scanner.ScanAsync());
+        Assert.Empty(factory.Created);
     }
-
     private sealed class FakeMachineFactory : ILaserMachineFactory
     {
         public Dictionary<string, (int BaudRate, string[] Settings)> Responders { get; } = new();

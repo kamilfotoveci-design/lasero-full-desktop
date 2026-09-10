@@ -24,6 +24,7 @@ public sealed class GrblConnection : ILaserMachine
     private readonly object _lifecycleLock = new();
     private readonly object _settingsLock = new();
     private readonly object _alertLock = new();
+    private readonly object _statusLock = new();
     private readonly object _commandDispatchLock = new();
     private readonly ConcurrentQueue<TaskCompletionSource<GrblCommandResult>> _pendingResponses = new();
     private readonly List<string> _settingsCollector = [];
@@ -48,6 +49,21 @@ public sealed class GrblConnection : ILaserMachine
         _protocolParser = protocolParser ?? new GrblProtocolParser();
     }
 
+    private string _compatibilityId = MachineCompatibilityCatalog.ExistingGrblId;
+    public string CompatibilityId
+    {
+        get => _compatibilityId;
+        set
+        {
+            lock (_lifecycleLock)
+            {
+                if (State != GrblConnectionState.Disconnected)
+                    throw new InvalidOperationException("Před změnou profilu odpojte zařízení.");
+                MachineCompatibilityCatalog.Get(value);
+                _compatibilityId = value;
+            }
+        }
+    }
     public TimeSpan CommandTimeout { get; set; } = TimeSpan.FromSeconds(8);
     public GrblConnectionState State => (GrblConnectionState)Volatile.Read(ref _state);
     public MachineStatus? LastStatus { get; private set; }
@@ -79,21 +95,26 @@ public sealed class GrblConnection : ILaserMachine
             if (State != GrblConnectionState.Disconnected)
                 throw new InvalidOperationException("Spojení už existuje — nejprve jej odpojte.");
 
+            MachineCompatibilityCatalog.RequireDirectConnection(_compatibilityId);
             Interlocked.Exchange(ref _disconnecting, 0);
             SetState(GrblConnectionState.Connecting);
             try
             {
+                Interlocked.Exchange(ref _resetting, 0);
+                Interlocked.Increment(ref _commandGeneration);
                 FirmwareBanner = null;
-                LastStatus = null;
-                LastStatusReceivedUtc = null;
+                InvalidateStatus();
                 lock (_alertLock) _activeAlert = null;
                 _transport.LineReceived += OnLineReceived;
                 _transport.UnexpectedlyClosed += OnUnexpectedlyClosed;
                 _transport.Open(portName, baudRate);
 
-                _queue = new BlockingCollection<QueuedCommand>();
-                _sessionCancellation = new CancellationTokenSource();
-                _queueThread = new Thread(() => QueueLoop(_queue, _sessionCancellation.Token))
+                var queue = new BlockingCollection<QueuedCommand>(256);
+                var cancellation = new CancellationTokenSource();
+                var sessionToken = cancellation.Token;
+                _queue = queue;
+                _sessionCancellation = cancellation;
+                _queueThread = new Thread(() => QueueLoop(queue, sessionToken))
                 {
                     IsBackground = true,
                     Name = "Grbl-CommandQueue",
@@ -127,35 +148,22 @@ public sealed class GrblConnection : ILaserMachine
     public void CancelJog() => SafeWriteRealtime(GrblRealtimeCommand.JogCancel);
     public void SoftReset()
     {
-        if (State != GrblConnectionState.Connected) return;
-
         Exception? writeFailure = null;
-        Interlocked.Exchange(ref _resetting, 1);
-        try
+        lock (_commandDispatchLock)
         {
-            lock (_commandDispatchLock)
-            {
-                Interlocked.Increment(ref _commandGeneration);
-                FailAllPending("Zařízení bylo resetováno.");
-                FailQueued(_queue, "Příkaz byl zrušen resetem zařízení.");
-                FailSettingsQuery("Dotaz byl zrušen resetem zařízení.");
-                try
-                {
-                    _transport.WriteRealtimeByte(GrblRealtimeCommand.SoftReset);
-                }
-                catch (Exception ex)
-                {
-                    writeFailure = ex;
-                }
-            }
+            if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0) return;
+            // Keep commands blocked until a fresh startup banner establishes a response boundary.
+            Interlocked.Exchange(ref _resetting, 1);
+            Interlocked.Increment(ref _commandGeneration);
+            InvalidateStatus();
+            FirmwareBanner = null;
+            FailAllPending("Zařízení bylo resetováno.");
+            FailQueued(_queue, "Příkaz byl zrušen resetem zařízení.");
+            FailSettingsQuery("Dotaz byl zrušen resetem zařízení.");
+            try { _transport.WriteRealtimeByte(GrblRealtimeCommand.SoftReset); }
+            catch (Exception ex) { writeFailure = ex; }
         }
-        finally
-        {
-            Interlocked.Exchange(ref _resetting, 0);
-        }
-
-        if (writeFailure is not null)
-            DisconnectCore(writeFailure);
+        if (writeFailure is not null) DisconnectCore(writeFailure);
     }
 
     public void StartStatusPolling(TimeSpan interval)
@@ -175,27 +183,20 @@ public sealed class GrblConnection : ILaserMachine
     {
         if (string.IsNullOrWhiteSpace(line))
             return Task.FromResult(GrblCommandResult.Failure("Prázdný příkaz nebyl odeslán."));
-        if (State != GrblConnectionState.Connected)
-            return Task.FromResult(GrblCommandResult.Failure("Zařízení není připojeno."));
-
-        var queue = _queue;
-        if (queue is null || queue.IsAddingCompleted)
-            return Task.FromResult(GrblCommandResult.Failure("Spojení se právě ukončuje."));
-
-        var generation = Volatile.Read(ref _commandGeneration);
-        if (Volatile.Read(ref _resetting) != 0)
-            return Task.FromResult(GrblCommandResult.Failure("Zařízení se právě resetuje."));
-
-        var completion = new TaskCompletionSource<GrblCommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        try
+        lock (_commandDispatchLock)
         {
-            queue.Add(new QueuedCommand(line, completion, generation));
+            if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0)
+                return Task.FromResult(GrblCommandResult.Failure("Zařízení není připojeno."));
+            if (Volatile.Read(ref _resetting) != 0)
+                return Task.FromResult(GrblCommandResult.Failure("Čekám na potvrzení restartu zařízení."));
+            var queue = _queue;
+            if (queue is null || queue.IsAddingCompleted)
+                return Task.FromResult(GrblCommandResult.Failure("Spojení se právě ukončuje."));
+            var completion = new TaskCompletionSource<GrblCommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!queue.TryAdd(new QueuedCommand(line, completion, Volatile.Read(ref _commandGeneration))))
+                completion.TrySetResult(GrblCommandResult.Failure("Fronta příkazů je plná. Počkejte na dokončení probíhající operace."));
+            return completion.Task;
         }
-        catch (InvalidOperationException)
-        {
-            completion.TrySetResult(GrblCommandResult.Failure("Spojení bylo ukončeno."));
-        }
-        return completion.Task;
     }
 
     public Task<GrblCommandResult> JogAsync(double x, double y, double z, double feedRatePerMinute, bool relative = true)
@@ -264,7 +265,11 @@ public sealed class GrblConnection : ILaserMachine
                 {
                     lock (_commandDispatchLock)
                     {
-                        if (command.Generation != Volatile.Read(ref _commandGeneration))
+                        if (cancellationToken.IsCancellationRequested
+                            || Volatile.Read(ref _disconnecting) != 0
+                            || Volatile.Read(ref _resetting) != 0
+                            || !ReferenceEquals(queue, _queue)
+                            || command.Generation != Volatile.Read(ref _commandGeneration))
                         {
                             command.Completion.TrySetResult(GrblCommandResult.Failure("Příkaz byl zrušen resetem zařízení."));
                             continue;
@@ -326,8 +331,12 @@ public sealed class GrblConnection : ILaserMachine
         {
             if (_protocolParser.TryParseStatus(line, out var status))
             {
-                LastStatus = status;
-                LastStatusReceivedUtc = DateTime.UtcNow;
+                lock (_statusLock)
+                {
+                    if (Volatile.Read(ref _resetting) != 0 || Volatile.Read(ref _disconnecting) != 0) return;
+                    LastStatus = status;
+                    LastStatusReceivedUtc = DateTime.UtcNow;
+                }
                 if (status.Mode != GrblMachineMode.Alarm)
                     ClearAlertOfKind(MachineAlertKind.Alarm);
                 InvokeSafely(StatusUpdated, status, nameof(StatusUpdated));
@@ -341,18 +350,22 @@ public sealed class GrblConnection : ILaserMachine
             // accepted under the old parser/planner state so no stale line can run after reset.
             lock (_commandDispatchLock)
             {
+                if (Volatile.Read(ref _disconnecting) != 0) return;
                 Interlocked.Increment(ref _commandGeneration);
+                InvalidateStatus();
                 FailAllPending("Řadič byl restartován.");
                 FailQueued(_queue, "Příkaz byl zrušen restartem řadiče.");
                 FailSettingsQuery("Dotaz byl zrušen restartem řadiče.");
+                FirmwareBanner = line;
+                Interlocked.Exchange(ref _resetting, 0);
             }
-            FirmwareBanner = line;
             InvokeSafely(Connected, line, nameof(Connected));
             return;
         }
 
         if (line == "ok")
         {
+            if (Volatile.Read(ref _resetting) != 0 || Volatile.Read(ref _disconnecting) != 0) return;
             lock (_settingsLock)
             {
                 if (Volatile.Read(ref _settingsQueryCollecting) != 0)
@@ -404,7 +417,8 @@ public sealed class GrblConnection : ILaserMachine
 
     private void SafeWriteRealtime(byte value)
     {
-        if (State != GrblConnectionState.Connected) return;
+        if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0) return;
+        if (value == GrblRealtimeCommand.CycleStartResume && Volatile.Read(ref _resetting) != 0) return;
         try
         {
             _transport.WriteRealtimeByte(value);
@@ -424,15 +438,19 @@ public sealed class GrblConnection : ILaserMachine
 
             var cancellation = _sessionCancellation;
             var queue = _queue;
-            cancellation?.Cancel();
-            if (queue is not null && !queue.IsAddingCompleted)
-                queue.CompleteAdding();
-
-            FailAllPending(reason is TimeoutException
-                ? "Zařízení neodpovědělo v časovém limitu."
-                : "Spojení bylo ukončeno.");
-            FailQueued(queue, "Spojení bylo ukončeno.");
-            FailSettingsQuery("Spojení bylo ukončeno.");
+            lock (_commandDispatchLock)
+            {
+                Interlocked.Increment(ref _commandGeneration);
+                cancellation?.Cancel();
+                if (queue is not null && !queue.IsAddingCompleted) queue.CompleteAdding();
+                InvalidateStatus();
+                FirmwareBanner = null;
+                FailAllPending(reason is TimeoutException
+                    ? "Zařízení neodpovědělo v časovém limitu."
+                    : "Spojení bylo ukončeno.");
+                FailQueued(queue, "Spojení bylo ukončeno.");
+                FailSettingsQuery("Spojení bylo ukončeno.");
+            }
 
             CleanupTransportSubscriptions();
             try { _transport.Close(); } catch { }
@@ -455,6 +473,15 @@ public sealed class GrblConnection : ILaserMachine
         finally
         {
             Interlocked.Exchange(ref _disconnecting, 0);
+        }
+    }
+
+    private void InvalidateStatus()
+    {
+        lock (_statusLock)
+        {
+            LastStatus = null;
+            LastStatusReceivedUtc = null;
         }
     }
 

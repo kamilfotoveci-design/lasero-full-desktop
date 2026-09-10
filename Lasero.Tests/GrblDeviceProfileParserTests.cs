@@ -1,9 +1,26 @@
 using Lasero.Core.Grbl;
+using Lasero.Core.Machines;
 
 namespace Lasero.Tests;
 
 public sealed class GrblDeviceProfileParserTests
 {
+    [Fact]
+    public void PixiSizedTravelDoesNotProveModelIdentity()
+    {
+        var profile = GrblDeviceProfileParser.Parse(["$130=100", "$131=100", "$30=1000", "$32=1"]);
+
+        Assert.Null(KnownMachineProfiles.Match(profile));
+    }
+
+    [Fact]
+    public void AlphaSizedTravelDoesNotProveModelIdentity()
+    {
+        var profile = GrblDeviceProfileParser.Parse(["$130=400", "$131=410", "$30=1000", "$32=1"]);
+
+        Assert.Null(KnownMachineProfiles.Match(profile));
+    }
+
     [Fact]
     public void ParsesWorkAreaAndLaserModeFromStandardSettings()
     {

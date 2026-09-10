@@ -50,7 +50,7 @@ public static class GrblDeviceProfileParser
         var valueEnd = line.IndexOfAny([' ', '\t', '('], equals + 1);
         var valueText = valueEnd < 0 ? line[(equals + 1)..] : line[(equals + 1)..valueEnd];
         return int.TryParse(line.AsSpan(1, equals - 1), NumberStyles.None, CultureInfo.InvariantCulture, out number)
-            && double.TryParse(valueText, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+            && double.TryParse(valueText, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value);
     }
 
     private static double? GetPositive(IReadOnlyDictionary<int, double> settings, int number) =>

@@ -694,6 +694,7 @@ public partial class GCodeViewModel : ObservableObject
             return;
         }
 
+        var confirmedDocument = Document;
         var enabledLayers = Layers.Where(layer => layer.IsEnabled).ToList();
         var settingsSummary = enabledLayers.Count switch
         {
@@ -720,6 +721,16 @@ public partial class GCodeViewModel : ObservableObject
             return;
         }
 
+        // Recheck after the operator's confirmation; device status may have changed meanwhile.
+        preflight = EvaluatePreflight();
+        if (!ReferenceEquals(confirmedDocument, Document) || !preflight.CanStart)
+        {
+            JobState = JobRunState.Ready;
+            PreflightMessage = preflight.FirstBlockingIssue?.Message ?? "Úloha se změnila. Zkontrolujte ji a spusťte znovu.";
+            LastMessage = PreflightMessage;
+            RefreshCommands();
+            return;
+        }
         PreflightMessage = null;
         _runStopwatch.Restart();
         ElapsedDuration = TimeSpan.Zero;
@@ -819,7 +830,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             CurrentLine = current;
             TotalLines = total;
-            ProgressPercent = total == 0 ? 0 : 100.0 * current / total;
+            ProgressPercent = total == 0 ? 0 : Math.Min(99, 100.0 * current / total);
             OnPropertyChanged(nameof(VisualProgressPercent));
             UpdateRunTiming();
         });
