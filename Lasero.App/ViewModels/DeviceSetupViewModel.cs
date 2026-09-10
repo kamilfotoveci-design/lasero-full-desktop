@@ -89,7 +89,7 @@ public partial class DeviceSetupViewModel : ObservableObject
             _connection.IdentificationMessage ?? "Lasero rozpoznalo zařízení a načetlo jeho parametry.",
         ProcessStatus.Error =>
             $"{_connection.ConnectionError} Zkontrolujte USB kabel, napájení a jestli port nedrží jiný program.",
-        _ => "Připojte gravírku kabelem USB. Průvodce zařízením port najde sám.",
+        _ => "Vyberte model a konkrétní sériový port v panelu Ovládání stroje. Průvodce nabízí bezpečný simulátor; fyzické porty nezkouší.",
     };
 
     /// <summary>A bar only while something is genuinely running, and indeterminate throughout: GRBL
@@ -165,7 +165,7 @@ public partial class DeviceSetupViewModel : ObservableObject
         get
         {
             var banner = _connection.DetectedDevice?.FirmwareBanner;
-            if (string.IsNullOrWhiteSpace(banner)) return "—";
+            if (string.IsNullOrWhiteSpace(banner)) return "Neznámo";
             var bracket = banner.IndexOf('[');
             return (bracket > 0 ? banner[..bracket] : banner).Trim();
         }

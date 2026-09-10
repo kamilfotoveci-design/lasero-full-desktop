@@ -319,17 +319,30 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnLaseroChatClick(object sender, RoutedEventArgs e)
     {
-        _viewModel.ShowChatCommand.Execute(null);
-        if (_viewModel.Kamil.ShowCommand.CanExecute(null)) _viewModel.Kamil.ShowCommand.Execute(null);
+        OpenKamilInDesigner();
     }
 
-    /// <summary>Modal on purpose: the wizard opens and closes the serial ports the rest of the app
-    /// would otherwise be using at the same moment.</summary>
+    /// <summary>Opens Kamil only in the Designer workspace, at its fixed bottom-right canvas anchor.</summary>
+    public void OpenKamilInDesigner()
+    {
+        if (_viewModel.ShowDesignerCommand.CanExecute(null))
+            _viewModel.ShowDesignerCommand.Execute(null);
+
+        if (_viewModel.Kamil.ShowCommand.CanExecute(null))
+            _viewModel.Kamil.ShowCommand.Execute(null);
+        else if (_viewModel.Kamil.ExpandCommand.CanExecute(null))
+            _viewModel.Kamil.ExpandCommand.Execute(null);
+    }
+
+    /// <summary>Opens the in-window device connection overlay (DeviceWizardOverlay, declared once
+    /// in MainWindow.xaml) with a fresh DeviceWizardViewModel, rather than a modal window — the
+    /// wizard still opens and closes the serial ports the rest of the app would otherwise be using,
+    /// but the overlay's own RequestClose already cancels an in-flight scan/connect safely first.</summary>
     public void OpenDeviceWizard()
     {
         try
         {
-            new DeviceWizardWindow(_viewModel.CreateDeviceWizard()) { Owner = this }.ShowDialog();
+            DeviceWizardOverlayHost.Show(_viewModel.CreateDeviceWizard());
         }
         catch (Exception ex)
         {

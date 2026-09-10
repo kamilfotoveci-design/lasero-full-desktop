@@ -41,6 +41,17 @@ public partial class DeviceWizardViewModel : ObservableObject
     [ObservableProperty] private string _machineName = "Laserové zařízení";
     [ObservableProperty] private bool _isEnablingLaserMode;
 
+    /// <summary>True once a connection attempt against <see cref="SelectedMachine"/> has run to
+    /// completion without the controller actually ending up connected — wrong/busy port, cable
+    /// unplugged mid-attempt, etc. The wizard stays on Results so the same card can show a calm
+    /// retry rather than silently advancing to a Setup screen that has nothing to configure.</summary>
+    [ObservableProperty] private bool _connectFailed;
+
+    /// <summary>How long <see cref="UseSelectedMachine"/> waits for the controller to identify
+    /// itself before treating the attempt as failed. Internal so tests can shrink it instead of
+    /// sleeping for the real 8 seconds slower hardware may legitimately need.</summary>
+    internal TimeSpan IdentificationTimeout { get; set; } = TimeSpan.FromSeconds(8);
+
     public DeviceWizardViewModel(
         DeviceScanner scanner,
         ConnectionViewModel connection,
@@ -85,6 +96,7 @@ public partial class DeviceWizardViewModel : ObservableObject
     partial void OnSelectedMachineChanged(DiscoveredMachine? value)
     {
         if (value is not null) MachineName = value.DisplayName;
+        ConnectFailed = false;
         OnPropertyChanged(nameof(LaserModeNeedsAttention));
         UseSelectedMachineCommand.NotifyCanExecuteChanged();
         EnableLaserModeCommand.NotifyCanExecuteChanged();
@@ -99,6 +111,7 @@ public partial class DeviceWizardViewModel : ObservableObject
 
         FoundMachines.Clear();
         SelectedMachine = null;
+        ConnectFailed = false;
         Step = DeviceWizardStep.Scanning;
         ScanStatus = "Hledám připojená zařízení…";
 
@@ -150,8 +163,12 @@ public partial class DeviceWizardViewModel : ObservableObject
     private async Task UseSelectedMachine()
     {
         var machine = SelectedMachine!;
+        ConnectFailed = false;
         if (_connection.IsConnected) _connection.DisconnectCommand.Execute(null);
 
+        // Choosing the explicitly labelled simulator must not inherit a blocked hardware profile.
+        if (machine.IsSimulator)
+            _connection.SelectedCompatibility = MachineCompatibilityCatalog.Get(MachineCompatibilityCatalog.ExistingGrblId);
         _connection.RefreshPortsCommand.Execute(null);
         _connection.SelectedPort = machine.PortName;
         _connection.BaudRate = machine.BaudRate;
@@ -159,7 +176,17 @@ public partial class DeviceWizardViewModel : ObservableObject
 
         // The Device panel re-reads $$ on every connect and writes the bed size it finds. Waiting for
         // that before showing the fields keeps it from overwriting a size the operator typed here.
-        var identified = await WaitForIdentificationAsync(TimeSpan.FromSeconds(8)).ConfigureAwait(true);
+        var identified = await WaitForIdentificationAsync(IdentificationTimeout).ConfigureAwait(true);
+
+        // A port that never actually connected (wrong port, cable unplugged, held by another
+        // program) is not "connected but slow to identify" — advancing to Setup there used to show
+        // a configuration screen for a machine that was never actually there. Stay on Results and
+        // let the card offer a calm retry instead.
+        if (!_connection.IsConnected)
+        {
+            ConnectFailed = true;
+            return;
+        }
 
         SetupMessage = identified
             ? _connection.IdentificationMessage

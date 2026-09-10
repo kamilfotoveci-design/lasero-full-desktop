@@ -129,6 +129,12 @@
                              string ("SIMULÁTOR — Virtuální laser", "USB-SERIAL CH340 (COM3)"). The port
                              is the field the operator actually reads, so it gets the full width; the
                              refresh button sits beside it rather than floating on top of it. -->
+                        <TextBlock Text="Model a stav kompatibility" Style="{StaticResource MachineFieldLabel}" />
+                        <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
+                                  SelectedItem="{Binding Connection.SelectedCompatibility}"
+                                  DisplayMemberPath="DisplayName" ToolTip="Vyberte přesný model; neověřené profily nepovolují připojení." />
+                        <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}"
+                                   TextWrapping="Wrap" Margin="0,6,0,10" />
                         <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Margin="8,0,0,0"

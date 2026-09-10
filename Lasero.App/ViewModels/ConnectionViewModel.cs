@@ -14,6 +14,20 @@ public partial class ConnectionViewModel : ObservableObject
     private readonly AppSettingsStore _settingsStore;
     private CancellationTokenSource? _identificationCancellation;
 
+    public IReadOnlyList<MachineCompatibility> CompatibilityOptions => MachineCompatibilityCatalog.All;
+    public MachineCompatibility SelectedCompatibility
+    {
+        get => MachineCompatibilityCatalog.Get((_connection as GrblConnection)?.CompatibilityId ?? MachineCompatibilityCatalog.ExistingGrblId);
+        set
+        {
+            if (value is null || IsConnected || IsConnecting) return;
+            if (_connection is GrblConnection grbl) grbl.CompatibilityId = value.Id;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CompatibilityMessage));
+            ConnectCommand.NotifyCanExecuteChanged();
+        }
+    }
+    public string CompatibilityMessage => SelectedCompatibility.Limitation;
     public ObservableCollection<string> AvailablePorts { get; } = new();
     public int[] CommonBaudRates { get; } = [9600, 19200, 38400, 57600, 115200, 230400];
 
@@ -98,10 +112,18 @@ public partial class ConnectionViewModel : ObservableObject
             var profile = GrblDeviceProfileParser.Parse(settings, _connection.FirmwareBanner);
             RunOnUiThread(() =>
             {
+                if (cancellationToken.IsCancellationRequested || !IsConnected) return;
+                if (profile.NumericSettings.Count < 4)
+                {
+                    IdentificationMessage = "Odpověď neověřuje řadič GRBL. Zkontrolujte profil, port a firmware.";
+                    return;
+                }
                 DetectedDevice = profile;
-                ActiveMachineName = string.IsNullOrWhiteSpace(profile.FirmwareBanner)
-                    ? SelectedPort ?? "Laserové zařízení"
-                    : profile.FirmwareBanner;
+                var knownMachine = KnownMachineProfiles.Match(profile);
+                ActiveMachineName = knownMachine?.DisplayName ??
+                    (string.IsNullOrWhiteSpace(profile.FirmwareBanner)
+                        ? SelectedPort ?? "Laserové zařízení"
+                        : profile.FirmwareBanner);
                 ActiveMachineProfileId = BuildMachineProfileId(profile, SelectedPort);
                 _settingsStore.Current.Machine.ActiveProfileId = ActiveMachineProfileId;
 
@@ -113,8 +135,8 @@ public partial class ConnectionViewModel : ObservableObject
                 }
                 else
                 {
-                    if (profile.MaxTravelXmm is { } width) WorkAreaWidthMm = width;
-                    if (profile.MaxTravelYmm is { } height) WorkAreaHeightMm = height;
+                    WorkAreaWidthMm = profile.MaxTravelXmm ?? knownMachine?.WorkAreaWidthMm ?? WorkAreaWidthMm;
+                    WorkAreaHeightMm = profile.MaxTravelYmm ?? knownMachine?.WorkAreaHeightMm ?? WorkAreaHeightMm;
                     WorkspaceMessage = "Rozměry byly načteny ze zařízení. Uložte je jako výchozí, pokud jsou správné.";
                 }
 
@@ -164,7 +186,7 @@ public partial class ConnectionViewModel : ObservableObject
         OnPropertyChanged(nameof(HasAvailablePorts));
     }
 
-    private bool CanConnect() => !IsConnected && !IsConnecting && !string.IsNullOrEmpty(SelectedPort);
+    private bool CanConnect() => SelectedCompatibility.AllowsDirectConnection && !IsConnected && !IsConnecting && !string.IsNullOrEmpty(SelectedPort);
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private void Connect()
