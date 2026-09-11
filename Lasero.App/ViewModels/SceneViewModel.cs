@@ -1706,6 +1706,55 @@ public partial class SceneViewModel : ObservableObject
         NotifyTextStateChanged();
     }
 
+    /// <summary>
+    /// Commits the canvas's inline text editor as one undoable edit — the same ReplaceObjectsCommand
+    /// ApplyTextSource already uses for every other change to a text object's wording or style, so
+    /// typing directly on the canvas shares one undo history with the selection bar's own text field.
+    /// Unlike ApplyTextSource this does not require the object to currently be Selected, since inline
+    /// editing commits from a LostKeyboardFocus callback after focus may have already moved elsewhere.
+    ///
+    /// An empty result removes the object rather than leaving something Rebuild would reject:
+    /// TextSource requires non-empty wording (see VectorTextFactory.BuildLocalGeometry), so there is
+    /// no valid empty text object to fall back to — an empty inline editor becomes a delete, using the
+    /// same DeleteObjectsCommand the Delete key already uses, not a bespoke removal path.
+    /// </summary>
+    public void CommitTextEdit(SceneObject item, string? text)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (item.Text is null || !Objects.Contains(item)) return;
+
+        var trimmed = text?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+        {
+            if (SelectedObjects.Contains(item)) SelectedObjects.Remove(item);
+            Execute(new DeleteObjectsCommand(Scene, [item]));
+            return;
+        }
+
+        if (trimmed == item.Text.Text) return;
+
+        var source = item.Text with { Text = trimmed };
+        SceneObject replacement;
+        try
+        {
+            replacement = VectorTextFactory.Rebuild(item, source);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException)
+        {
+            VectorOperationRejected?.Invoke(ex.Message);
+            return;
+        }
+
+        var wasSelected = SelectedObjects.Contains(item);
+        Execute(new ReplaceObjectsCommand(Scene, [item], [replacement]));
+        if (wasSelected)
+        {
+            SelectedObjects.Clear();
+            SelectedObjects.Add(replacement);
+        }
+        NotifyTextStateChanged();
+    }
+
     private void NotifyTextStateChanged()
     {
         OnPropertyChanged(nameof(IsTextSelected));

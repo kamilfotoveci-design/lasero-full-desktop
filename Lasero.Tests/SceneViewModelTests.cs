@@ -499,6 +499,86 @@ public class SceneViewModelTests
         Assert.Equal((bounds.MinY + bounds.MaxY) / 2, viewModel.SelectedY, precision: 6);
     }
 
+    // The Text tool's canvas click handler (MainWindow.OnTextPlacementRequested) calls this same
+    // AddText overload and deliberately never resets ActiveTool afterwards, matching the shape tools
+    // staying active after a draw. AddText/AddDrawingObject not touching ActiveTool is the behavior
+    // that makes that possible - this pins it so a future change to AddDrawingObject cannot silently
+    // reintroduce the old "creates one object, then reverts to Select" dialog-era behavior.
+    [Fact]
+    public void AddingTextDoesNotChangeTheActiveTool()
+    {
+        var viewModel = new SceneViewModel { ActiveTool = DesignerTool.Text };
+
+        viewModel.AddText("TEXT", new Position(0, 0, 0), 12);
+
+        Assert.Equal(DesignerTool.Text, viewModel.ActiveTool);
+        Assert.Single(viewModel.Objects);
+    }
+
+    // Creating text and committing an inline edit to its wording are two separate undo steps - one
+    // Ctrl+Z each - because they are two separate user actions (place the object, then finish typing
+    // into it), the same granularity every other canvas edit already commits at.
+    [Fact]
+    public void CommitTextEditPushesOneUndoableReplacementSeparateFromCreation()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.AddText("TEXT", new Position(5, 5, 0), 12);
+        var created = Assert.Single(viewModel.Objects);
+
+        viewModel.CommitTextEdit(created, "Hello");
+
+        var edited = Assert.Single(viewModel.Objects);
+        Assert.Equal("Hello", edited.Text!.Text);
+        Assert.Same(edited, viewModel.Selected);
+        Assert.True(viewModel.CanUndo);
+
+        viewModel.UndoCommand.Execute(null);
+        var afterFirstUndo = Assert.Single(viewModel.Objects);
+        Assert.Equal("TEXT", afterFirstUndo.Text!.Text);
+        Assert.True(viewModel.CanUndo);
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Empty(viewModel.Objects);
+    }
+
+    // TextSource/VectorTextFactory has no such thing as a valid empty text object (Rebuild throws on
+    // empty wording), so committing the inline editor empty removes the object instead - through the
+    // same DeleteObjectsCommand the Delete key uses, which is why undoing it brings the object back.
+    [Fact]
+    public void CommitTextEditWithEmptyWordingRemovesTheObject()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.AddText("TEXT", new Position(0, 0, 0), 12);
+        var created = Assert.Single(viewModel.Objects);
+        Assert.Contains(created, viewModel.SelectedObjects);
+
+        viewModel.CommitTextEdit(created, "   ");
+
+        Assert.Empty(viewModel.Objects);
+        Assert.Empty(viewModel.SelectedObjects);
+
+        viewModel.UndoCommand.Execute(null);
+        var restored = Assert.Single(viewModel.Objects);
+        Assert.Equal("TEXT", restored.Text!.Text);
+    }
+
+    // Losing focus with nothing actually typed (e.g. the caret was placed and then clicked away
+    // without editing) must not push a no-op command onto the undo stack.
+    [Fact]
+    public void CommitTextEditWithUnchangedWordingIsANoOp()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.AddText("TEXT", new Position(0, 0, 0), 12);
+        var created = Assert.Single(viewModel.Objects);
+        var undoDepthBefore = viewModel.CanUndo;
+
+        viewModel.CommitTextEdit(created, "TEXT");
+
+        // Same instance, not a replacement - proves no ReplaceObjectsCommand was pushed for a no-op edit.
+        Assert.Same(created, Assert.Single(viewModel.Objects));
+        Assert.Equal(undoDepthBefore, viewModel.CanUndo);
+    }
+
     // Background removal swaps which file RasterFilePath points at as one ReplaceObjectsCommand step
     // -- the same "content changed" contract text and vector-path edits use -- so Ctrl+Z restores the
     // original file and Ctrl+Y reapplies the removal, matching CommitTextEditPushesOneUndoableReplacementSeparateFromCreation.
@@ -611,6 +691,21 @@ public class SceneViewModelTests
         Assert.False(viewModel.IsSelectedRaster);
         Assert.False(viewModel.CanRemoveSelectedBackground);
     }
+
+    [Fact]
+    public void CommitTextEditIgnoresAnObjectThatIsNotText()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.DrawPrimitive(DesignerTool.Rectangle, new Position(0, 0, 0), new Position(10, 10, 0));
+        var rectangle = Assert.Single(viewModel.Objects);
+        var undoDepthBefore = viewModel.CanUndo;
+
+        viewModel.CommitTextEdit(rectangle, "Hello");
+
+        Assert.Equal(undoDepthBefore, viewModel.CanUndo);
+        Assert.Same(rectangle, Assert.Single(viewModel.Objects));
+    }
+
     [Fact]
     public void ChangingVectorLayerFromLineToFillChangesGeneratedToolpath()
     {

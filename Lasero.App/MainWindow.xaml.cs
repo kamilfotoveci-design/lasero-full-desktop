@@ -23,9 +23,6 @@ public partial class MainWindow : Window
     private MaterialsWindow? _materialsWindow;
     private MachineControlWindow? _machineControlWindow;
     private PreviewWindow? _previewWindow;
-    // The font chosen last time. Re-picking the same family for every label on one sheet is the
-    // normal case, so the dialog opens on the previous choice rather than back on the default.
-    private VectorTextStyle _lastTextStyle = VectorTextStyle.Default;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -229,26 +226,27 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// Creates a text object instantly at the click point with placeholder wording and the default
+    /// style — no modal dialog in between. Replaces the old flow that opened TextToolWindow on every
+    /// click; the tool deliberately does NOT revert to Select afterwards (AddText below only adds and
+    /// selects, unlike PlaceAndAdd), so another click keeps placing more text, matching how the shape
+    /// tools already behave. Wording/font/style stay editable afterwards — inline on the canvas via
+    /// SceneCanvas's inline text editor, or from the selection bar's own text controls.
+    /// </summary>
     private void OnTextPlacementRequested(Position position)
     {
-        var dialog = new TextToolWindow(_lastTextStyle) { Owner = this };
-        if (dialog.ShowDialog() != true) return;
-
-        // Remember the choice for the next piece of text: setting the same font again for every
-        // label on a sheet is the common case.
-        _lastTextStyle = dialog.TextStyle;
-
+        const string placeholderText = "TEXT";
         try
         {
-            _viewModel.Scene.AddText(dialog.TextValue, position, dialog.HeightMm, dialog.TextStyle);
-            _viewModel.Scene.ActiveTool = DesignerTool.Select;
+            _viewModel.Scene.AddText(placeholderText, position, TextSource.DefaultHeightMm, VectorTextStyle.Default);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to create vector text");
             LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                 "Text se nepodařilo vytvořit",
-                "Text nelze převést na vektorové křivky. Zkuste kratší text, jiný font nebo menší velikost.",
+                "Text nelze převést na vektorové křivky. Zkuste jiný font nebo menší velikost.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));

@@ -128,6 +128,15 @@ public partial class SceneCanvas : UserControl
     private DesignerTool _drawingTool;
     private Position _drawStartWorld;
 
+    // Inline text editing — a plain TextBox laid directly on DrawCanvas, positioned/sized/rotated
+    // in screen space from the object's own corners exactly the way the selection handles above are
+    // (Transform.Apply -> ToCanvasX/Y), so it needs no separate popup window and no ScaleTransform
+    // hacks. Only one object can be edited at a time; the object's own rendered Path visuals are
+    // hidden for the duration so the live TextBox is the only thing on screen (see BeginInlineTextEdit
+    // / CommitInlineTextEdit).
+    private SceneObject? _editingTextObject;
+    private TextBox? _inlineTextEditor;
+
     public event Action<Position>? TextPlacementRequested;
 
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
@@ -352,6 +361,18 @@ public partial class SceneCanvas : UserControl
 
     private void RebuildAll()
     {
+        // Defensive only — the normal commit path (CommitInlineTextEdit) always detaches the editor
+        // itself before touching Objects, so this should not fire mid-edit. It exists so that if some
+        // other change ever rebuilds the scene while a canvas text edit is open, the stale TextBox
+        // reference (about to be swept up by the Children.Clear() below) is not left dangling.
+        if (_inlineTextEditor is not null)
+        {
+            _inlineTextEditor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
+            _inlineTextEditor.LostKeyboardFocus -= OnInlineEditorLostFocus;
+            _inlineTextEditor = null;
+            _editingTextObject = null;
+        }
+
         foreach (var obj in _objectVisuals.Keys.ToList())
             RemoveObjectVisuals(obj);
         DrawCanvas.Children.Clear();
@@ -1187,6 +1208,12 @@ public partial class SceneCanvas : UserControl
         // Bailing out here lets the handle's own handler run in both cases.
         if (IsSelectionHandle(e.OriginalSource)) return;
 
+        // A click inside the live inline text editor is not canvas interaction — let the TextBox
+        // handle its own caret placement/selection. GetPosition transforms into the editor's own local
+        // space, so this rectangle test is correct even while the editor is rotated to match the text.
+        if (_inlineTextEditor is not null && IsWithinInlineEditor(e))
+            return;
+
         var screen = e.GetPosition(DrawCanvas);
 
         if (_isSpacePressed || ViewModel.ActiveTool == DesignerTool.Pan)
@@ -1220,6 +1247,9 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        // Double-click an existing text object enters inline editing, regardless of which of these two
+        // tools is active — Pan and shape-drawing already returned above, so Select/Text are the only
+        // tools left where "the user double-clicked a piece of text" is unambiguous.
         // VECTOR PATH TOOL HOOK: double-click a selected vector path enters Node Edit mode; while that mode
         // is active every further Select-tool click on the canvas (that a node/handle hit target did not
         // already claim -- those route away via IsSelectionHandle above) belongs to
@@ -1246,9 +1276,35 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        if (e.ClickCount >= 2 && ViewModel.ActiveTool is DesignerTool.Select or DesignerTool.Text)
+        {
+            var doubleClicked = HitTestScene(screen)
+                .Select(candidate => candidate.Object)
+                .FirstOrDefault(candidate => candidate.IsText && !candidate.IsLocked);
+            if (doubleClicked is not null)
+            {
+                Focus();
+                BeginInlineTextEdit(doubleClicked);
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (ViewModel.ActiveTool == DesignerTool.Text)
         {
             Focus();
+
+            // Never create a new TEXT object underneath an existing one — select what is already
+            // there instead, the same way clicking existing artwork does with the Select tool.
+            var hit = HitTestScene(screen).FirstOrDefault();
+            if (hit is not null)
+            {
+                ViewModel.SelectedObjects.Clear();
+                ViewModel.SelectedObjects.Add(hit.Object);
+                e.Handled = true;
+                return;
+            }
+
             TextPlacementRequested?.Invoke(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
             e.Handled = true;
             return;
@@ -1298,6 +1354,180 @@ public partial class SceneCanvas : UserControl
             (obj, shape) => obj.IsRaster ||
                 ViewModel.LayerModeFor(shape.LayerId, shape.LayerColor) is LayerMode.Fill or LayerMode.FillAndCut,
             (obj, shape) => obj.IsVisible && ViewModel.IsLayerVisible(shape.LayerId, shape.LayerColor));
+    }
+
+    // ------------------------------------------------------------------
+    // Inline text editing - a TextBox laid directly over the rendered object, in the same screen
+    // space (and using the same Transform.Apply -> ToCanvasX/Y conversion) as the selection handles,
+    // so it tracks zoom, pan and the object own rotation without any ScaleTransform trick. Only the
+    // wording is edited here; font/height/bold/italic/uppercase/weld stay on the selection bar text
+    // controls, which already go through SceneViewModel.ApplyTextSource the same way this commits
+    // through CommitTextEdit - both are one ReplaceObjectsCommand per commit, sharing one undo history.
+    // ------------------------------------------------------------------
+
+    private bool IsWithinInlineEditor(MouseButtonEventArgs e)
+    {
+        if (_inlineTextEditor is null) return false;
+        var local = e.GetPosition(_inlineTextEditor);
+        return local.X >= 0 && local.Y >= 0 &&
+               local.X <= _inlineTextEditor.ActualWidth && local.Y <= _inlineTextEditor.ActualHeight;
+    }
+
+    private void BeginInlineTextEdit(SceneObject obj)
+    {
+        if (ViewModel is null || obj.Text is null || obj.IsLocked) return;
+        if (ReferenceEquals(_editingTextObject, obj)) return;
+        if (_editingTextObject is not null) CommitInlineTextEdit(applyChanges: true);
+
+        if (ViewModel.SelectedObjects.Count != 1 || !ViewModel.SelectedObjects.Contains(obj))
+        {
+            ViewModel.SelectedObjects.Clear();
+            ViewModel.SelectedObjects.Add(obj);
+        }
+
+        // Swap cleanly: the flattened contours and the live editor must never both be visible, or the
+        // wording would appear to double while typing.
+        if (_objectVisuals.TryGetValue(obj, out var hiddenPaths))
+            foreach (var path in hiddenPaths) path.Visibility = Visibility.Collapsed;
+
+        var editor = new TextBox
+        {
+            Text = obj.Text.Text,
+            AcceptsReturn = true,
+            AcceptsTab = false,
+            TextWrapping = TextWrapping.NoWrap,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            Background = Brushes.Transparent,
+            SelectionBrush = SelectionBrush,
+            Foreground = TextForegroundBrush(obj),
+            CaretBrush = TextForegroundBrush(obj),
+            FontStyle = obj.Text.Italic ? FontStyles.Italic : FontStyles.Normal,
+            FontWeight = obj.Text.Bold ? FontWeights.Bold : FontWeights.Normal,
+            CharacterCasing = obj.Text.Uppercase ? CharacterCasing.Upper : CharacterCasing.Normal,
+            RenderTransformOrigin = new Point(0, 0),
+        };
+
+        try
+        {
+            editor.FontFamily = new FontFamily(string.IsNullOrWhiteSpace(obj.Text.FontFamily)
+                ? Lasero.Core.Scene.TextSource.DefaultFontFamily
+                : obj.Text.FontFamily);
+        }
+        catch
+        {
+            editor.FontFamily = new FontFamily(Lasero.Core.Scene.TextSource.DefaultFontFamily);
+        }
+
+        editor.PreviewKeyDown += OnInlineEditorPreviewKeyDown;
+        editor.LostKeyboardFocus += OnInlineEditorLostFocus;
+
+        _editingTextObject = obj;
+        _inlineTextEditor = editor;
+
+        DrawCanvas.Children.Add(editor);
+        PositionInlineTextEditor(obj, editor);
+
+        editor.Focus();
+        Keyboard.Focus(editor);
+        // Typing over the placeholder should replace it immediately - the same reason double-clicking
+        // a word normally selects it, just extended to the whole field on entry.
+        editor.SelectAll();
+    }
+
+    private void PositionInlineTextEditor(SceneObject obj, TextBox editor)
+    {
+        var pivot = obj.LocalPivot;
+        var topLeftWorld = obj.Transform.Apply(
+            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.TopLeft), pivot);
+        var topRightWorld = obj.Transform.Apply(
+            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.TopRight), pivot);
+        var bottomLeftWorld = obj.Transform.Apply(
+            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.BottomLeft), pivot);
+
+        var topLeftScreen = new Point(ToCanvasX(topLeftWorld.X), ToCanvasY(topLeftWorld.Y));
+        var topRightScreen = new Point(ToCanvasX(topRightWorld.X), ToCanvasY(topRightWorld.Y));
+        var bottomLeftScreen = new Point(ToCanvasX(bottomLeftWorld.X), ToCanvasY(bottomLeftWorld.Y));
+
+        var widthPx = Distance(topLeftScreen, topRightScreen);
+        var heightPx = Distance(topLeftScreen, bottomLeftScreen);
+        // Screen-space angle derived from the same rotated corners the selection outline already
+        // draws, rather than negating Transform.RotationDeg by hand - that keeps this correct under
+        // the canvas Y-flip without having to reason about its sign separately.
+        var angleDeg = Math.Atan2(
+            topRightScreen.Y - topLeftScreen.Y, topRightScreen.X - topLeftScreen.X) * 180.0 / Math.PI;
+
+        editor.Width = Math.Max(widthPx, 24);
+        editor.Height = Math.Max(heightPx, 18);
+        editor.FontSize = Math.Max(4, obj.Text!.HeightMm * Math.Abs(obj.Transform.ScaleY) * _scale);
+        editor.RenderTransform = new RotateTransform(angleDeg);
+        Canvas.SetLeft(editor, topLeftScreen.X);
+        Canvas.SetTop(editor, topLeftScreen.Y);
+    }
+
+    private void OnInlineEditorPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            CommitInlineTextEdit(applyChanges: true);
+            // Same Escape convention OnCanvasKeyDown already uses elsewhere: leave a non-Select tool
+            // first, only clear the selection once already on Select.
+            if (ViewModel is not null)
+            {
+                if (ViewModel.ActiveTool != DesignerTool.Select)
+                    ViewModel.ActiveTool = DesignerTool.Select;
+                else
+                    ViewModel.SelectedObjects.Clear();
+            }
+            Focus();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            CommitInlineTextEdit(applyChanges: true);
+            Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void OnInlineEditorLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_inlineTextEditor is null || !ReferenceEquals(sender, _inlineTextEditor)) return;
+        CommitInlineTextEdit(applyChanges: true);
+    }
+
+    /// <summary>
+    /// Detaches the live editor and, unless cancelled, pushes the edited wording as one undoable
+    /// ReplaceObjectsCommand (or removes the object if it was emptied) via SceneViewModel.CommitTextEdit
+    /// - never more than once per edit session, since this only runs from Escape, Enter, or losing
+    /// keyboard focus, not from every keystroke.
+    /// </summary>
+    private void CommitInlineTextEdit(bool applyChanges)
+    {
+        if (_inlineTextEditor is null || _editingTextObject is null) return;
+
+        var editor = _inlineTextEditor;
+        var obj = _editingTextObject;
+        _inlineTextEditor = null;
+        _editingTextObject = null;
+
+        editor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
+        editor.LostKeyboardFocus -= OnInlineEditorLostFocus;
+        DrawCanvas.Children.Remove(editor);
+
+        if (_objectVisuals.TryGetValue(obj, out var paths))
+            foreach (var path in paths) path.Visibility = Visibility.Visible;
+
+        if (applyChanges) ViewModel?.CommitTextEdit(obj, editor.Text);
+    }
+
+    private static Brush TextForegroundBrush(SceneObject obj)
+    {
+        var color = obj.LocalShapes.FirstOrDefault()?.LayerColor ?? Lasero.App.VectorTextFactory.DefaultColor;
+        return new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B));
     }
 
     private static double Distance(Point a, Point b) =>
