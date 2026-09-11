@@ -37,7 +37,7 @@
             <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="20">
                 <Grid>
                     <Viewbox Stretch="Uniform">
-                        <Grid Width="{Binding PreviewWidthMm}" Height="{Binding PreviewHeightMm}" Background="White">
+                        <Grid Width="{Binding PreviewWidthMm, Mode=OneWay}" Height="{Binding PreviewHeightMm, Mode=OneWay}" Background="White">
                             <Image Source="{Binding SourceImage}" Stretch="Fill" Opacity="0.34" RenderOptions.BitmapScalingMode="HighQuality" />
                             <Path Data="{Binding PreviewGeometry}" Stroke="{StaticResource Brush.Accent}" StrokeThickness="0.45" Fill="Transparent" />
                         </Grid>
