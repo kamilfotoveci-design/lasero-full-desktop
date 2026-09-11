@@ -43,6 +43,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Matches Lasero.Core.csproj's PlatformTarget — needed for Microsoft.AI.DirectML's own
+         .targets file to actually copy DirectML.dll into this project's output directory (see the
+         comment there); with the implicit AnyCPU default that copy is silently skipped. -->
+    <PlatformTarget>x64</PlatformTarget>
     <ApplicationIcon>Assets\Lasero.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Lasero.App</AssemblyName>

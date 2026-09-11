@@ -52,6 +52,15 @@ public partial class SceneViewModel : ObservableObject
     [ObservableProperty] private bool _lockAspectRatio = true;
     [ObservableProperty] private DesignerTool _activeTool = DesignerTool.Select;
 
+    /// <summary>Drives the OBRÁZEK section's inline spinner in DesignerInspectorView — set by
+    /// MainWindow around its model-download/inference calls, which is where the actual work happens
+    /// (see BackgroundRemovalRequested). Kept as plain observable state, not a dialog, per the "feels
+    /// like Crop/Brightness-Contrast" requirement: only the one-time model download gets a dialog.</summary>
+    [ObservableProperty] private bool _isRemovingBackground;
+    [ObservableProperty] private string? _backgroundRemovalStatus;
+    [ObservableProperty] private string? _backgroundRemovalError;
+    [ObservableProperty] private double _backgroundRemovalProgress;
+
     public bool HasSelection => SelectedObjects.Count > 0;
     public bool HasMultipleSelection => SelectedObjects.Count > 1;
     public int SelectionCount => SelectedObjects.Count;
@@ -73,6 +82,13 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.SelectMany(item => item.LocalShapes).Count() >= 2 &&
         SelectedObjects.SelectMany(item => item.LocalShapes).All(shape => shape.IsClosed && shape.Points.Count >= 3);
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
+    public bool CanRemoveSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false };
+    public bool CanRestoreSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: true };
+
+    /// <summary>Gates the inspector's OBRÁZEK section — true for exactly one selected raster object,
+    /// regardless of lock state (unlike CanRemove/CanRestoreSelectedBackground, a locked image should
+    /// still show the section, just with its action disabled, not disappear entirely).</summary>
+    public bool IsSelectedRaster => SelectedObjects.Count == 1 && Selected?.IsRaster == true;
     public bool IsSelectedLayerRaster => SelectedLayer?.IsRaster == true;
     public bool CanEditSelectedLayerColor => SelectedLayer is not null && !IsSelectedLayerRaster;
     public bool CanAssignSelectionToLayer => HasSelection && SelectedObjects.All(item => !item.IsRaster) &&
@@ -105,6 +121,7 @@ public partial class SceneViewModel : ObservableObject
 
     public event Action? Changed;
     public event Action<SceneObject>? TraceRasterRequested;
+    public event Action<SceneObject>? BackgroundRemovalRequested;
     public event Action<string>? VectorOperationRejected;
 
     public SceneViewModel()
@@ -125,6 +142,7 @@ public partial class SceneViewModel : ObservableObject
             .ToList();
         if (selectedColors.Count > 0 && selectedColors.All(color => color.IsApproximately(selectedColors[0])))
             SelectedLayer = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(selectedColors[0]));
+        BackgroundRemovalError = null;
         NotifySelectionStateChanged();
         NotifyLayerStateChanged();
         RefreshCommands();
@@ -233,6 +251,17 @@ public partial class SceneViewModel : ObservableObject
             TraceRasterRequested?.Invoke(source);
     }
 
+    /// <summary>Kicks off "Odstranit pozadí" — the view (DesignerInspectorView/MainWindow) owns the
+    /// actual model-download prompt, off-thread inference call and processing-state UI, matching how
+    /// TraceSelectedRaster hands off to MainWindow.OnTraceRasterRequested rather than doing any of
+    /// that work in the view model itself.</summary>
+    [RelayCommand(CanExecute = nameof(CanRemoveSelectedBackground))]
+    private void RemoveSelectedBackground()
+    {
+        if (Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false } source)
+            BackgroundRemovalRequested?.Invoke(source);
+    }
+
     public void ReplaceRasterWithTrace(SceneObject source, BitmapTraceResult result)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -295,6 +324,65 @@ public partial class SceneViewModel : ObservableObject
             [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Fill, "Text")]);
     }
 
+    /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
+    /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
+    /// their own kind of content edit, so Ctrl+Z restores the original file and Ctrl+Y reapplies the
+    /// removal exactly like those. removedBackgroundFilePath is the new file BackgroundRemovalService
+    /// already wrote (with real alpha transparency); this method only ever swaps which file
+    /// RasterFilePath points at — geometry, layer, transform and every other property are untouched.</summary>
+    public void CommitBackgroundRemoval(SceneObject item, string removedBackgroundFilePath)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentException.ThrowIfNullOrWhiteSpace(removedBackgroundFilePath);
+        if (!item.IsRaster || item.HasBackgroundRemoved || !Objects.Contains(item)) return;
+
+        var replacement = WithRasterFile(item, removedBackgroundFilePath, item.RasterFilePath);
+        var wasSelected = SelectedObjects.Contains(item);
+        Execute(new ReplaceObjectsCommand(Scene, [item], [replacement]));
+        if (wasSelected)
+        {
+            SelectedObjects.Clear();
+            SelectedObjects.Add(replacement);
+        }
+        NotifySelectionStateChanged();
+    }
+
+    /// <summary>"Obnovit pozadí" — points RasterFilePath back at the preserved original as one more
+    /// ReplaceObjectsCommand undo step. The background-removed file itself is left on disk (undo/redo
+    /// of the restore, or a future re-removal, may still need it), matching the non-destructive
+    /// contract: neither file this object has ever pointed at is deleted by these operations.</summary>
+    [RelayCommand(CanExecute = nameof(CanRestoreSelectedBackground))]
+    public void RestoreSelectedBackground()
+    {
+        if (Selected is not { HasBackgroundRemoved: true, OriginalRasterFilePath: { } original } item || !Objects.Contains(item))
+            return;
+
+        var replacement = WithRasterFile(item, original, null);
+        var wasSelected = SelectedObjects.Contains(item);
+        Execute(new ReplaceObjectsCommand(Scene, [item], [replacement]));
+        if (wasSelected)
+        {
+            SelectedObjects.Clear();
+            SelectedObjects.Add(replacement);
+        }
+        NotifySelectionStateChanged();
+    }
+
+    private static SceneObject WithRasterFile(SceneObject item, string rasterFilePath, string? originalRasterFilePath) => new()
+    {
+        LocalShapes = item.LocalShapes,
+        LocalPivot = item.LocalPivot,
+        LocalBounds = item.LocalBounds,
+        RasterFilePath = rasterFilePath,
+        RasterOptions = item.RasterOptions,
+        OriginalRasterFilePath = originalRasterFilePath,
+        Text = item.Text,
+        Name = item.Name,
+        Transform = item.Transform,
+        IsVisible = item.IsVisible,
+        IsLocked = item.IsLocked,
+        IncludeInOutput = item.IncludeInOutput,
+    };
     private void PlaceAndAdd(SceneObject obj, IReadOnlyList<Lasero.Core.Layers.LayerSettings> candidateLayers)
     {
         var (offsetX, offsetY) = NextCascadeOffset();
@@ -1114,6 +1202,7 @@ public partial class SceneViewModel : ObservableObject
                 IncludeInOutput = obj.IncludeInOutput,
                 RasterFilePath = obj.RasterFilePath,
                 RasterOptions = obj.RasterOptions,
+                OriginalRasterFilePath = obj.OriginalRasterFilePath,
                 Text = obj.Text,
             }).ToList(),
             Layers = Layers.Select(layer => new ProjectLayer
@@ -1197,6 +1286,7 @@ public partial class SceneViewModel : ObservableObject
                     LocalBounds = item.LocalBounds,
                     RasterFilePath = item.RasterFilePath,
                     RasterOptions = item.RasterOptions,
+                    OriginalRasterFilePath = item.OriginalRasterFilePath,
                     Text = item.Text,
                     Name = item.Name,
                     Transform = item.Transform,
@@ -1246,6 +1336,8 @@ public partial class SceneViewModel : ObservableObject
         UngroupSelectionCommand.NotifyCanExecuteChanged();
         UniteSelectionCommand.NotifyCanExecuteChanged();
         TraceSelectedRasterCommand.NotifyCanExecuteChanged();
+        RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
+        RestoreSelectedBackgroundCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedChanged(SceneObject? value)
@@ -1485,6 +1577,9 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanUngroupSelection));
         OnPropertyChanged(nameof(CanUniteSelection));
         OnPropertyChanged(nameof(CanTraceSelectedRaster));
+        OnPropertyChanged(nameof(CanRemoveSelectedBackground));
+        OnPropertyChanged(nameof(CanRestoreSelectedBackground));
+        OnPropertyChanged(nameof(IsSelectedRaster));
         OnPropertyChanged(nameof(CanAssignSelectionToLayer));
         OnPropertyChanged(nameof(SelectedX));
         OnPropertyChanged(nameof(SelectedY));

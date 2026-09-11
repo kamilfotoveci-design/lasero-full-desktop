@@ -122,6 +122,81 @@
 
                 <Border Style="{StaticResource InspectorGroupDivider}" />
 
+                <!-- ==================== OBRÁZEK ==================== -->
+                <!--
+                    Shown only when exactly one bitmap (raster) object is selected — never for SVG
+                    paths, text, shapes or groups. "Odstranit pozadí" is meant to read as an ordinary
+                    bitmap edit, not a special AI callout: same section chrome as ZAŘÍZENÍ/OPERACE
+                    above, same button styling as every other selected-object action. Processing runs
+                    in place (spinner + status text, no dialog); the one-time model download is the
+                    only step with a dialog, and it is a plain LaseroDialogWindow prompt raised from
+                    MainWindow.OnBackgroundRemovalRequested — nothing about ONNX/DirectML/models is
+                    ever named here.
+                -->
+                <StackPanel Margin="16,14,16,14"
+                            Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Obrázek" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,10" />
+
+                    <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
+                            Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
+                            Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}"
+                            Content="Odstranit pozadí" />
+
+                    <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
+                            Command="{Binding Scene.RestoreSelectedBackgroundCommand}"
+                            Visibility="{Binding Scene.CanRestoreSelectedBackground, Converter={StaticResource BoolToVisibility}}"
+                            Content="Obnovit pozadí" />
+
+                    <!-- Inline loading indicator, contextual to the "Odstranit pozadí" button just
+                         above it rather than a generic full-panel spinner. It fades in over Motion.Fast
+                         instead of the instant Visibility snap it used to have; disappearing stays
+                         instant (Opacity is reset in ExitActions with a zero-length animation, ready for
+                         the next fade-in), which reads as fine because the layer underneath it always
+                         swaps to a concrete Success/Error state at that moment - nothing is ever left
+                         blank mid-transition. -->
+                    <Border x:Name="BackgroundRemovalSpinner" Margin="0,8,0,0" Background="{DynamicResource Brush.PanelRaised}"
+                            CornerRadius="{StaticResource Radius.Sm}" Opacity="0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Scene.IsRemovingBackground}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     To="1" Duration="{StaticResource Motion.Fast}"
+                                                                     EasingFunction="{StaticResource Ease.Out}" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <ProgressBar Width="72" Height="4" Minimum="0" Maximum="1"
+                                         Value="{Binding Scene.BackgroundRemovalProgress}"
+                                         Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding Scene.BackgroundRemovalStatus}" VerticalAlignment="Center" Style="{StaticResource RowLabel}" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Danger}"
+                               Text="{Binding Scene.BackgroundRemovalError}"
+                               Visibility="{Binding Scene.BackgroundRemovalError, Converter={StaticResource NotNullToVisibility}}" />
+                </StackPanel>
+
+                <Border Style="{StaticResource InspectorGroupDivider}"
+                        Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}" />
+
                 <!-- ==================== OPERACE ==================== -->
                 <!--
                     The operation stack, top to bottom in the order the machine will run it. This is

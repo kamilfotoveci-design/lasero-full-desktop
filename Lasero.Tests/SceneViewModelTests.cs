@@ -358,6 +358,118 @@ public class SceneViewModelTests
         Assert.Equal((bounds.MinY + bounds.MaxY) / 2, viewModel.SelectedY, precision: 6);
     }
 
+    // Background removal swaps which file RasterFilePath points at as one ReplaceObjectsCommand step
+    // -- the same "content changed" contract text and vector-path edits use -- so Ctrl+Z restores the
+    // original file and Ctrl+Y reapplies the removal, matching CommitTextEditPushesOneUndoableReplacementSeparateFromCreation.
+    [Fact]
+    public void CommitBackgroundRemovalPushesOneUndoableReplacement()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        viewModel.Objects.Add(bitmap);
+        viewModel.SelectedObjects.Add(bitmap);
+
+        viewModel.CommitBackgroundRemoval(bitmap, "photo.nobg.png");
+
+        var replaced = Assert.Single(viewModel.Objects);
+        Assert.Equal("photo.nobg.png", replaced.RasterFilePath);
+        Assert.Equal("photo.png", replaced.OriginalRasterFilePath);
+        Assert.True(replaced.HasBackgroundRemoved);
+        Assert.Same(replaced, viewModel.Selected);
+        Assert.True(viewModel.CanUndo);
+
+        viewModel.UndoCommand.Execute(null);
+        var restored = Assert.Single(viewModel.Objects);
+        Assert.Equal("photo.png", restored.RasterFilePath);
+        Assert.False(restored.HasBackgroundRemoved);
+
+        viewModel.RedoCommand.Execute(null);
+        var redone = Assert.Single(viewModel.Objects);
+        Assert.Equal("photo.nobg.png", redone.RasterFilePath);
+        Assert.True(redone.HasBackgroundRemoved);
+    }
+
+    [Fact]
+    public void CommitBackgroundRemovalIgnoresAnObjectThatAlreadyHasItRemoved()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        viewModel.Objects.Add(bitmap);
+        viewModel.CommitBackgroundRemoval(bitmap, "photo.nobg.png");
+        var alreadyRemoved = Assert.Single(viewModel.Objects);
+        var undoDepthBefore = viewModel.CanUndo;
+
+        viewModel.CommitBackgroundRemoval(alreadyRemoved, "photo.nobg2.png");
+
+        Assert.Same(alreadyRemoved, Assert.Single(viewModel.Objects));
+        Assert.Equal(undoDepthBefore, viewModel.CanUndo);
+    }
+
+    [Fact]
+    public void RestoreSelectedBackgroundPointsRasterFilePathBackAtTheOriginal()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        viewModel.Objects.Add(bitmap);
+        viewModel.SelectedObjects.Add(bitmap);
+        viewModel.CommitBackgroundRemoval(bitmap, "photo.nobg.png");
+
+        viewModel.RestoreSelectedBackground();
+
+        var restored = Assert.Single(viewModel.Objects);
+        Assert.Equal("photo.png", restored.RasterFilePath);
+        Assert.False(restored.HasBackgroundRemoved);
+        Assert.Same(restored, viewModel.Selected);
+
+        viewModel.UndoCommand.Execute(null);
+        var afterUndo = Assert.Single(viewModel.Objects);
+        Assert.Equal("photo.nobg.png", afterUndo.RasterFilePath);
+        Assert.True(afterUndo.HasBackgroundRemoved);
+    }
+
+    [Fact]
+    public void RestoreSelectedBackgroundIsANoOpWhenBackgroundWasNeverRemoved()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        viewModel.Objects.Add(bitmap);
+        viewModel.SelectedObjects.Add(bitmap);
+        var undoDepthBefore = viewModel.CanUndo;
+
+        viewModel.RestoreSelectedBackground();
+
+        Assert.Same(bitmap, Assert.Single(viewModel.Objects));
+        Assert.Equal(undoDepthBefore, viewModel.CanUndo);
+    }
+
+    [Fact]
+    public void CanRemoveAndRestoreSelectedBackgroundReflectSelectionState()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        viewModel.Objects.Add(bitmap);
+        viewModel.SelectedObjects.Add(bitmap);
+
+        Assert.True(viewModel.IsSelectedRaster);
+        Assert.True(viewModel.CanRemoveSelectedBackground);
+        Assert.False(viewModel.CanRestoreSelectedBackground);
+
+        viewModel.CommitBackgroundRemoval(bitmap, "photo.nobg.png");
+
+        Assert.False(viewModel.CanRemoveSelectedBackground);
+        Assert.True(viewModel.CanRestoreSelectedBackground);
+    }
+
+    [Fact]
+    public void IsSelectedRasterIsFalseForAVectorObject()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.DrawPrimitive(DesignerTool.Rectangle, new Position(0, 0, 0), new Position(10, 10, 0));
+        Assert.Single(viewModel.Objects);
+
+        Assert.False(viewModel.IsSelectedRaster);
+        Assert.False(viewModel.CanRemoveSelectedBackground);
+    }
     [Fact]
     public void ChangingVectorLayerFromLineToFillChangesGeneratedToolpath()
     {

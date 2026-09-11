@@ -31,6 +31,16 @@ public sealed partial class SceneObject : ObservableObject
     public RasterImportOptions? RasterOptions { get; init; }
     public bool IsRaster => RasterFilePath is not null;
 
+    /// <summary>Set once "Odstranit pozadí" has pointed RasterFilePath at a generated transparent-
+    /// background file — holds the untouched original import so "Obnovit pozadí" (and a project
+    /// reload) can point RasterFilePath back at it. Null means RasterFilePath already IS the original
+    /// (background removal was never run, or has been restored). Both display and G-code generation
+    /// read whichever file RasterFilePath currently points at, so swapping this one field is the
+    /// entire "apply/restore" operation — see BackgroundRemovalService for how the new file is
+    /// produced and SceneViewModel.CommitBackgroundRemoval/RestoreBackground for the undo step.</summary>
+    public string? OriginalRasterFilePath { get; init; }
+    public bool HasBackgroundRemoved => OriginalRasterFilePath is not null;
+
     /// <summary>Set only for text created with the text tool. LocalShapes is then a cached render of
     /// this record: changing the wording, font or style re-renders the contours instead of leaving
     /// the operator with curves they can no longer edit. Objects loaded from projects saved before
@@ -205,6 +215,7 @@ public sealed partial class SceneObject : ObservableObject
         LocalBounds = LocalBounds,
         RasterFilePath = RasterFilePath,
         RasterOptions = RasterOptions,
+        OriginalRasterFilePath = OriginalRasterFilePath,
         Text = Text,
         Name = Name,
         Transform = Transform,

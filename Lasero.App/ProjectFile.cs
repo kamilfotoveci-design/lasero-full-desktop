@@ -46,6 +46,12 @@ public sealed class ProjectObject
     public string? RasterAssetEntry { get; set; }
     public RasterImportOptions? RasterOptions { get; set; }
 
+    /// <summary>Present only once background removal has run on this object — the untouched original
+    /// import, packaged the same way RasterFilePath/RasterAssetEntry are so it round-trips through
+    /// save/load exactly like the (possibly background-removed) file RasterFilePath points at.</summary>
+    public string? OriginalRasterFilePath { get; set; }
+    public string? OriginalRasterAssetEntry { get; set; }
+
     /// <summary>Present only for text created with the text tool. Absent in projects saved before
     /// text became editable, and absent for every other kind of object, so the field is a plain
     /// addition: an older reader ignores it and an older project simply has no text to restore.</summary>
@@ -169,25 +175,36 @@ public static class ProjectFileSerializer
         for (var index = 0; index < snapshot.Objects.Count; index++)
         {
             var item = snapshot.Objects[index];
-            if (string.IsNullOrWhiteSpace(item.RasterFilePath))
-                continue;
-
-            var rasterPath = Path.GetFullPath(item.RasterFilePath);
-            if (!File.Exists(rasterPath))
-                throw new FileNotFoundException($"Zdrojový obrázek objektu „{item.Name}“ nebyl nalezen.", rasterPath);
-
-            var extension = NormalizeAssetExtension(Path.GetExtension(rasterPath));
-            var entryName = $"assets/raster-{index:D4}{extension}";
-            var assetEntry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
-            using (var input = new FileStream(rasterPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var output = assetEntry.Open())
-                input.CopyTo(output);
-
-            item.RasterAssetEntry = entryName;
+            item.RasterAssetEntry = ArchiveRasterFile(archive, item.Name, item.RasterFilePath, $"assets/raster-{index:D4}");
             item.RasterFilePath = null;
+
+            item.OriginalRasterAssetEntry = ArchiveRasterFile(archive, item.Name, item.OriginalRasterFilePath, $"assets/raster-original-{index:D4}");
+            item.OriginalRasterFilePath = null;
         }
 
         return snapshot;
+    }
+
+    /// <summary>Packages one raster file (the current RasterFilePath, or the preserved
+    /// OriginalRasterFilePath) into the archive under entryPrefix + its normalized extension. Returns
+    /// null (and archives nothing) when path is absent, which is the normal case for
+    /// OriginalRasterFilePath on objects that have never had their background removed.</summary>
+    private static string? ArchiveRasterFile(ZipArchive archive, string objectName, string? path, string entryPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath))
+            throw new FileNotFoundException($"Zdrojový obrázek objektu „{objectName}“ nebyl nalezen.", fullPath);
+
+        var entryName = $"{entryPrefix}{NormalizeAssetExtension(Path.GetExtension(fullPath))}";
+        var assetEntry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+        using (var input = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (var output = assetEntry.Open())
+            input.CopyTo(output);
+
+        return entryName;
     }
 
     private static void MigrateLayerIds(LaseroProjectFile project)
@@ -211,31 +228,37 @@ public static class ProjectFileSerializer
     {
         foreach (var item in project.Objects)
         {
-            if (string.IsNullOrWhiteSpace(item.RasterAssetEntry))
-                continue;
-
-            ValidateAssetEntryName(item.RasterAssetEntry);
-            var entry = archive.GetEntry(item.RasterAssetEntry)
-                ?? throw new InvalidDataException($"Projekt neobsahuje rastrový asset „{item.RasterAssetEntry}“.");
-
-            Directory.CreateDirectory(cacheDirectory);
-            var destination = Path.Combine(cacheDirectory, Path.GetFileName(entry.FullName));
-            var temporaryPath = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                using (var input = entry.Open())
-                using (var output = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                    input.CopyTo(output);
-                File.Move(temporaryPath, destination, overwrite: true);
-            }
-            finally
-            {
-                if (File.Exists(temporaryPath))
-                    File.Delete(temporaryPath);
-            }
-
-            item.RasterFilePath = destination;
+            item.RasterFilePath = ExtractRasterAsset(archive, cacheDirectory, item.RasterAssetEntry) ?? item.RasterFilePath;
+            item.OriginalRasterFilePath = ExtractRasterAsset(archive, cacheDirectory, item.OriginalRasterAssetEntry) ?? item.OriginalRasterFilePath;
         }
+    }
+
+    private static string? ExtractRasterAsset(ZipArchive archive, string cacheDirectory, string? assetEntryName)
+    {
+        if (string.IsNullOrWhiteSpace(assetEntryName))
+            return null;
+
+        ValidateAssetEntryName(assetEntryName);
+        var entry = archive.GetEntry(assetEntryName)
+            ?? throw new InvalidDataException($"Projekt neobsahuje rastrový asset „{assetEntryName}“.");
+
+        Directory.CreateDirectory(cacheDirectory);
+        var destination = Path.Combine(cacheDirectory, Path.GetFileName(entry.FullName));
+        var temporaryPath = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var input = entry.Open())
+            using (var output = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                input.CopyTo(output);
+            File.Move(temporaryPath, destination, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
+
+        return destination;
     }
 
     private static string GetDefaultAssetCacheDirectory(string projectPath)

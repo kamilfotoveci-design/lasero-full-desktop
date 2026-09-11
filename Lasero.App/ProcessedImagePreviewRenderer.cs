@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -24,12 +25,21 @@ public static class ProcessedImagePreviewRenderer
     /// in the right place", which continuous tone answers and a dither pattern does not.
     /// Only the on-screen preview changes; the G-code path keeps the operator's actual options.
     /// </summary>
-    public static BitmapSource RenderFileForCanvas(string filePath, RasterImportOptions options) =>
-        Render(RasterImporter.LoadProcessedPreview(filePath, options with
-        {
-            UseDithering = false,
-            UseThreshold = false,
-        }));
+    public static BitmapSource RenderFileForCanvas(string filePath, RasterImportOptions options)
+    {
+        // The canvas is for judging placement and subject isolation. Do not route this preview
+        // through BitmapLoader: it intentionally composites transparent pixels onto white for the
+        // engraving pipeline, which would make a successfully removed background look like a solid
+        // rectangle again. The machine preview still uses RenderFile/LoadProcessedPreview below.
+        using var stream = File.OpenRead(filePath);
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        return bitmap;
+    }
 
     public static BitmapSource Render(ProcessedImage image)
     {

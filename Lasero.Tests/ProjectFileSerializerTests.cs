@@ -97,6 +97,64 @@ public sealed class ProjectFileSerializerTests : IDisposable
     }
 
     [Fact]
+    public void Save_EmbedsOriginalRasterAssetAlongsideBackgroundRemovedFile()
+    {
+        var currentPath = Path.Combine(_directory, "nobg.png");
+        var originalPath = Path.Combine(_directory, "original.png");
+        var projectPath = Path.Combine(_directory, "background-removed.lasero");
+        var cachePath = Path.Combine(_directory, "cache");
+        var currentBytes = new byte[] { 9, 8, 7 };
+        var originalBytes = new byte[] { 1, 2, 3, 4 };
+        File.WriteAllBytes(currentPath, currentBytes);
+        File.WriteAllBytes(originalPath, originalBytes);
+        var project = new LaseroProjectFile
+        {
+            Objects =
+            [
+                new ProjectObject
+                {
+                    Name = "Foto",
+                    RasterFilePath = currentPath,
+                    OriginalRasterFilePath = originalPath,
+                    RasterOptions = new Lasero.Core.Import.RasterImportOptions(),
+                }
+            ]
+        };
+
+        ProjectFileSerializer.Save(projectPath, project);
+        File.Delete(currentPath);
+        File.Delete(originalPath);
+
+        var loaded = ProjectFileSerializer.Load(projectPath, cachePath);
+        var loadedObject = loaded.Objects[0];
+
+        Assert.NotNull(loadedObject.RasterFilePath);
+        Assert.NotNull(loadedObject.OriginalRasterFilePath);
+        Assert.True(File.Exists(loadedObject.RasterFilePath));
+        Assert.True(File.Exists(loadedObject.OriginalRasterFilePath));
+        Assert.Equal(currentBytes, File.ReadAllBytes(loadedObject.RasterFilePath));
+        Assert.Equal(originalBytes, File.ReadAllBytes(loadedObject.OriginalRasterFilePath));
+        Assert.NotEqual(loadedObject.RasterFilePath, loadedObject.OriginalRasterFilePath);
+    }
+
+    [Fact]
+    public void Save_WithoutBackgroundRemoval_LeavesOriginalRasterFilePathNull()
+    {
+        var sourcePath = Path.Combine(_directory, "plain.png");
+        var projectPath = Path.Combine(_directory, "plain.lasero");
+        File.WriteAllBytes(sourcePath, [1]);
+        var project = new LaseroProjectFile
+        {
+            Objects = [new ProjectObject { Name = "Foto", RasterFilePath = sourcePath }]
+        };
+
+        ProjectFileSerializer.Save(projectPath, project);
+        var loaded = ProjectFileSerializer.Load(projectPath, Path.Combine(_directory, "cache2"));
+
+        Assert.Null(loaded.Objects[0].OriginalRasterFilePath);
+    }
+
+    [Fact]
     public void FailedAssetSave_PreservesPreviousProject()
     {
         var projectPath = Path.Combine(_directory, "safe.lasero");

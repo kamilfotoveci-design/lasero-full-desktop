@@ -7,6 +7,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Shell;
 using Lasero.App.ViewModels;
+using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Grbl;
 using Lasero.Core.Jobs;
 using Lasero.Core.Scene;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly DispatcherTimer _autosaveTimer;
+    private readonly BackgroundRemovalService _backgroundRemovalService = new();
     private MaterialsWindow? _materialsWindow;
     private MachineControlWindow? _machineControlWindow;
     private PreviewWindow? _previewWindow;
@@ -32,6 +34,7 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         _viewModel.GCode.SimulationStarted += OnSimulationStarted;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
+        _viewModel.Scene.BackgroundRemovalRequested += OnBackgroundRemovalRequested;
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
         _viewModel.DeviceWizardRequested += OpenDeviceWizard;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -294,6 +297,72 @@ public partial class MainWindow : Window
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
+        }
+    }
+
+    /// <summary>Handles "Odstranit pozadí" from the inspector's OBRÁZEK section. The one-time model
+    /// download is the only step that gets a dialog (per the product spec); everything else — the
+    /// spinner and its text, any error message — is plain state on SceneViewModel that
+    /// DesignerInspectorView binds to directly, so the button stays a normal bitmap-editing action
+    /// instead of turning into an AI callout. Inference itself runs off the UI thread inside
+    /// BackgroundRemovalService.RemoveBackgroundAsync (Task.Run), so awaiting it here never blocks
+    /// the dispatcher.</summary>
+    private async void OnBackgroundRemovalRequested(SceneObject source)
+    {
+        if (string.IsNullOrWhiteSpace(source.RasterFilePath)) return;
+        var scene = _viewModel.Scene;
+
+        if (!_backgroundRemovalService.IsModelAvailable)
+        {
+            var choice = LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+                "Stažení AI modelu",
+                "Pro odstranění pozadí je potřeba stáhnout lokální AI model.\nModel se stáhne pouze jednou a potom funguje offline.",
+                "Stáhnout",
+                CancelText: "Zrušit"));
+            if (choice != LaseroDialogChoice.Primary) return;
+
+            scene.BackgroundRemovalError = null;
+            scene.IsRemovingBackground = true;
+            scene.BackgroundRemovalProgress = 0;
+            scene.BackgroundRemovalStatus = "Stahuji AI model… 0 %";
+            try
+            {
+                var progress = new Progress<double>(value =>
+                {
+                    scene.BackgroundRemovalProgress = Math.Clamp(value, 0, 1);
+                    scene.BackgroundRemovalStatus = $"Stahuji AI model… {value:P0}";
+                });
+                await _backgroundRemovalService.DownloadModelAsync(progress);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to download the background removal model");
+                scene.IsRemovingBackground = false;
+                scene.BackgroundRemovalError = "Stažení modelu se nezdařilo. Zkontrolujte připojení k internetu a zkuste to znovu.";
+                return;
+            }
+        }
+
+        scene.BackgroundRemovalError = null;
+        scene.IsRemovingBackground = true;
+        scene.BackgroundRemovalProgress = 1;
+        scene.BackgroundRemovalStatus = "Odstraňuji pozadí…";
+        try
+        {
+            var resultPath = await _backgroundRemovalService.RemoveBackgroundAsync(source.RasterFilePath);
+            scene.CommitBackgroundRemoval(source, resultPath);
+            if (_viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
+                _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
+            _viewModel.GCode.LastMessage = "Pozadí bylo odstraněno. Změnu lze vrátit pomocí Ctrl+Z.";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to remove background for {RasterPath}", source.RasterFilePath);
+            scene.BackgroundRemovalError = "Odstranění pozadí se nezdařilo. Zkuste to znovu.";
+        }
+        finally
+        {
+            scene.IsRemovingBackground = false;
         }
     }
 
