@@ -6,6 +6,7 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:views="clr-namespace:Lasero.App.Views"
         xmlns:kamil="clr-namespace:Lasero.App.Views.Kamil"
+        xmlns:devicesetup="clr-namespace:Lasero.App.Views.DeviceSetup"
         xmlns:vm="clr-namespace:Lasero.App.ViewModels"
         xmlns:jobs="clr-namespace:Lasero.Core.Jobs;assembly=Lasero.Core"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -753,5 +754,16 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!--
+            Device connection flow. An in-window overlay over the whole shell (RowSpan="3") rather
+            than scoped to one screen like Kamil, because it can be opened from Home, Zařízení or the
+            status strip's own "Připojit" affordance — see MainWindow.OpenDeviceWizard. Declared once
+            here and driven entirely by DeviceWizardOverlay.Show(), the same "one persistent surface,
+            state animated in code-behind" pattern KamilAssistantHost uses, just without a minimized
+            resting shape of its own.
+        -->
+        <devicesetup:DeviceWizardOverlay x:Name="DeviceWizardOverlayHost" Grid.Row="0" Grid.RowSpan="3"
+                                         Panel.ZIndex="90" />
     </Grid>
 </Window>

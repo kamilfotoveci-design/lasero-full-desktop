@@ -11,14 +11,24 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
-                        <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Md}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
-                        </Border>
+                        <Border x:Name="NavBackground" Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Md}" Padding="{TemplateBinding Padding}" />
+                        <!-- Dedicated overlays keep hover/press feedback local to this instance and let
+                             the active surface remain selected while the pointer passes over it. -->
+                        <Border x:Name="NavHover" Background="{StaticResource Brush.HoverWash}" CornerRadius="{StaticResource Radius.Md}" Opacity="0" />
+                        <Border x:Name="NavPress" Background="{StaticResource Brush.HoverWash}" CornerRadius="{StaticResource Radius.Md}" Opacity="0" />
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                                          Margin="{TemplateBinding Padding}"
+                                          Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentStringFormat="{TemplateBinding ContentStringFormat}" />
                         <!--
                             Active-screen marker. The selected item is told by a tinted surface,
                             accent text, a heavier weight and the icon it already carries. The leading
@@ -29,8 +39,27 @@
                                 Background="Transparent" />
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.Field}" /></Trigger>
-                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="NavBackground" Property="Background" Value="{DynamicResource Brush.PanelBorder}" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="NavHover" Storyboard.TargetProperty="Opacity" To="0.06"
+                                                         Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="NavHover" Storyboard.TargetProperty="Opacity" To="0"
+                                                         Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="NavPress" Property="Opacity" Value="0.08" />
+                        </Trigger>
                         <!-- The per-screen NavButton.* styles cannot reach a template element from a
                              Style trigger, so they flag the active item through Tag and the template
                              turns that into the marker bar. -->
@@ -58,17 +87,23 @@
         <Setter Property="Padding" Value="16" />
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
+    <!-- A 1px hairline separating adjacent zones in a horizontal bar (bottom job strip, selection
+         toolbar) — shared so every bar uses the same divider instead of relying on Margin gaps alone. -->
+    <Style x:Key="BarDivider" TargetType="Border">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Margin" Value="9,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+    </Style>
+
     <Style x:Key="PanelTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
-    <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+    <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
         <Setter Property="Effect" Value="{x:Null}" />
     </Style>
 
@@ -161,7 +196,7 @@
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
 
-    <Style x:Key="Button.Regular" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Style x:Key="Button.Regular" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
     </Style>
@@ -179,6 +214,47 @@
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="Padding" Value="8,0" />
         <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <!-- Button.Link's ToggleButton counterpart. A WPF Style's TargetType must match the element it's
+         applied to exactly (Button and ToggleButton are siblings under ButtonBase, not one another's
+         subtype), so a disclosure toggle bound through IsChecked cannot reuse Button.Link directly —
+         this repeats its look with a self-contained template instead of Button's default chrome. -->
+    <Style x:Key="ToggleButton.Link" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                            CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
@@ -371,10 +447,13 @@
         inspector uses these instead of stacking each group inside its own card — a panel that is
         itself a column of cards has two competing edges everywhere and reads as clutter.
     -->
+    <!-- Same type scale as PanelTitle (16px/SemiBold/primary ink) — a prior audit found this style at
+         a quarter the visual weight (12px/uppercase/secondary-ink), the clearest single signal that
+         Home and the Designer inspector read as different products. VerticalAlignment stays local
+         since, unlike PanelTitle, this header shares a row with reorder buttons at some call sites. -->
     <Style x:Key="InspectorGroupHeader" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
-        <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
@@ -421,7 +500,9 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <!-- A follow-up or starter prompt. This one *is* pressable, so it carries a border and a hover. -->
+    <!-- A follow-up or starter prompt. This one *is* pressable, so it carries a border — hover/press
+         feedback comes from Button.Ghost's own inherited neutral wash, same as every other button in
+         the app, rather than a per-kind accent color. -->
     <Style x:Key="Kamil.PromptChip" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
@@ -432,11 +513,5 @@
         <Setter Property="MinHeight" Value="28" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="Margin" Value="0,0,6,6" />
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
-            </Trigger>
-        </Style.Triggers>
     </Style>
 </ResourceDictionary>

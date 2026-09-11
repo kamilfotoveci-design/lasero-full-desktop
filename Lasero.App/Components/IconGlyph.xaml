@@ -3,15 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root" Focusable="False" IsHitTestVisible="False"
              SnapsToDevicePixels="True">
+    <!--
+        Two rendering modes share this one component rather than forking a second one, per the
+        Designer icon audit: most glyphs are hand-authored 24x24 centerline strokes (Fill=Transparent,
+        Stroke=Foreground). A Designer-scoped subset (Glyph.Fill.*) are imported Phosphor Regular
+        silhouettes instead — filled shapes with FillRule=Nonzero baked into the geometry's own "F1"
+        prefix, not centerline strokes — so IsFilled swaps Stroke/Fill instead of adding a transform.
+        GridSize matches the geometry's own authoring grid (24 for hand-authored, 256 for Phosphor,
+        which ships on a 256x256 viewBox) so the Viewbox scales either down to the requested size
+        without the caller doing any coordinate math. Default is the original 24/stroke behaviour, so
+        every existing icon across the app is untouched unless a caller opts in.
+    -->
     <Viewbox Stretch="Uniform">
-        <Canvas Width="24" Height="24">
-            <Path Data="{Binding IconData, ElementName=Root}"
-                  Stroke="{Binding Foreground, ElementName=Root}"
-                  StrokeThickness="{StaticResource Size.Icon.Stroke}"
-                  StrokeStartLineCap="Round"
-                  StrokeEndLineCap="Round"
-                  StrokeLineJoin="Round"
-                  Fill="Transparent" />
+        <Canvas Width="{Binding GridSize, ElementName=Root}" Height="{Binding GridSize, ElementName=Root}">
+            <Path Data="{Binding IconData, ElementName=Root}">
+                <Path.Style>
+                    <Style TargetType="Path">
+                        <Setter Property="Fill" Value="Transparent" />
+                        <Setter Property="Stroke" Value="{Binding Foreground, ElementName=Root}" />
+                        <Setter Property="StrokeThickness" Value="{StaticResource Size.Icon.Stroke}" />
+                        <Setter Property="StrokeStartLineCap" Value="Round" />
+                        <Setter Property="StrokeEndLineCap" Value="Round" />
+                        <Setter Property="StrokeLineJoin" Value="Round" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFilled, ElementName=Root}" Value="True">
+                                <Setter Property="Fill" Value="{Binding Foreground, ElementName=Root}" />
+                                <Setter Property="Stroke" Value="{x:Null}" />
+                                <Setter Property="StrokeThickness" Value="0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Path.Style>
+            </Path>
         </Canvas>
     </Viewbox>
 </UserControl>

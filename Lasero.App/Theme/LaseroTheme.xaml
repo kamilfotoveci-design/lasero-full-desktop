@@ -39,78 +39,96 @@
     <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
 
     <!--
-        Neutral graphite + soft white + cobalt blue.
+        Graphite + warm white + laser red. Migrated 2026-09 from the previous neutral-graphite +
+        cobalt-blue palette (see git history / DESIGN.md for the superseded table).
 
-        The palette this replaces ran three accents at once: amber for active navigation and the
-        active tool, blue for canvas selection and focus, and near-black for primary buttons — so
-        "this is the thing you are on" was told in a different colour depending on where you looked.
-        There is now one interaction colour. Blue means selected/active/primary everywhere: nav item,
-        tool, toggle, focus ring, canvas selection, Start.
+        Two roles that used to share one colour are now deliberately different colours:
+        Brush.PrimaryAction (graphite, #181818) is ordinary buttons — Nový projekt, Připojit
+        zařízení, Potvrdit. Brush.Accent (laser red, #E4513D) is the interaction/selection signal —
+        canvas selection, keyboard focus, the active tool, active navigation. Painting both the same
+        colour would make every button read as "selected," and painting every button red would burn
+        out the one colour meant to mean "this is the thing you are on." This reverses an earlier,
+        now-wrong simplification: Brush.PrimaryAction/PrimaryActionHover/OnPrimaryAction were removed
+        in 2026-08 as duplicate names for Accent at *identical* values — that reasoning no longer
+        holds now that the two roles carry genuinely different colours.
 
-        Budget: roughly 90% neutral surfaces and text, 8% blue interaction, 2% semantic
-        green/amber/red. Red stays reserved for danger and the wordmark's brand dot; it is not a
-        third UI colour.
+        Budget: roughly 75% neutral surfaces and text, 15-20% graphite, 2-5% laser red. Red is a
+        controlled technical/brand accent, not a second UI background colour — no red cards, no red
+        panels, no red gradients.
     -->
 
-    <!-- Interaction -->
-    <SolidColorBrush x:Key="Brush.Accent" Color="#2563EB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentHover" Color="#1D4ED8" po:Freeze="False" />
+    <!-- Primary action: ordinary buttons. Graphite, not the interaction colour. -->
+    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#181818" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryActionHover" Color="#2E2E2E" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryActionPressed" Color="#0F0F0F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
+
+    <!-- Interaction: selection, focus, the active tool, active navigation. Laser red — small,
+         controlled, and never the fill of an ordinary button. -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#E4513D" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#CC402E" po:Freeze="False" />
     <!-- Foreground/fill for anything drawn on top of the accent — including the scene canvas's
-         resize and rotate handles (blue outline, white core). SceneCanvas resolved this key with
+         resize and rotate handles (red outline, white core). SceneCanvas resolved this key with
          FindResource and it was never defined, so building the selection adorner threw
          ResourceReferenceKeyNotFoundException and took the whole app down via the global handler. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
     <!--
-        Accent text. Same cobalt as the fill on this light theme, but it is its own token because the
-        two roles diverge the moment the chrome goes dark: #2563EB stays right as a fill on a dark
-        surface and drops to about 2.5:1 as text on one. Anything that *writes* in the accent colour
-        binds here; fills, borders, focus rings and canvas selection bind to Brush.Accent.
+        Accent text. Same red as the fill on this light theme, but it is its own token because the
+        two roles diverge the moment the chrome goes dark. Anything that *writes* in the accent
+        colour binds here; fills, borders, focus rings and canvas selection bind to Brush.Accent.
     -->
-    <SolidColorBrush x:Key="Brush.AccentText" Color="#2563EB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#EFF6FF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#BFDBFE" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.FocusRing" Color="#2563EB" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#E4513D" po:Freeze="False" />
+    <!-- A very small warm-red tint, not a saturated fill — "selected" should read as a quiet tint
+         plus a red border, the same relationship the old cobalt selection had to its own fill. -->
+    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#FCECEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#F3C2B9" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#E4513D" po:Freeze="False" />
 
-    <!-- Primary action is the interaction colour, so it uses Brush.Accent directly. It used to be
-         near-black, which meant a black "Náhled" in the header and a blue Start at the bottom were
-         two different primary languages. The removed Brush.PrimaryAction, Brush.PrimaryActionHover and
-         Brush.OnPrimaryAction were a second set of names for Accent/AccentHover/OnAccent at identical
-         values, so a reader had no way to tell which of the two sets a control was supposed to use. -->
+    <!-- Brand. The wordmark's red dot, and now also Brush.Accent's value — the brand identity pair
+         is graphite (Brush.PrimaryAction) plus this red, per the 2026-09 brand direction. -->
+    <SolidColorBrush x:Key="Brush.Brand" Color="#E4513D" po:Freeze="False" />
 
-    <!-- Brand. The wordmark's red dot only; not a UI colour. -->
-    <SolidColorBrush x:Key="Brush.Brand" Color="#FF3B30" po:Freeze="False" />
-
-    <!-- Surfaces -->
-    <SolidColorBrush x:Key="Brush.Background" Color="#F7F7F5" po:Freeze="False" />
+    <!-- Surfaces. Warm neutrals derived from #F7F6F3, not the previous cooler #F7F7F5 family. -->
+    <SolidColorBrush x:Key="Brush.Background" Color="#F7F6F3" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.TitleBar" Color="#FFFFFF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Sidebar" Color="#FFFFFF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F3F4F2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Field" Color="#F3F4F2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E4E5E2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D2D4D0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F1EFEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Field" Color="#F1EFEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E6E3DC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D3CFC5" po:Freeze="False" />
 
     <!--
         Canvas. Its own tokens rather than the panel ones, because the bed does not follow the chrome:
         it stays white whatever the theme does, since the operator judges burn contrast against real
         material. The surround is the neutral field colour, so the bed reads as a sheet on a table.
-    -->
-    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#F3F4F2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.WorkArea" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#E4E5E2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#28657082" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#682F6FC9" po:Freeze="False" />
 
-    <!-- Text -->
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#171918" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#666B68" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#929793" po:Freeze="False" />
+        Grid no longer echoes the interaction colour (the old minor/major grid were both cobalt-tinted
+        to match Brush.Accent). A red grid would compete with red-toned artwork and read as alarm
+        colour on a calm technical surface, so both steps are warm neutral gray instead — major only
+        slightly stronger than minor, never accent-coloured.
+    -->
+    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#F1EFEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.WorkArea" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#E6E3DC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#288A857C" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#3D8A857C" po:Freeze="False" />
+
+    <!-- Text. TextPrimary now matches the brand graphite exactly. -->
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#181818" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#5C5A54" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#8B887F" po:Freeze="False" />
 
     <!-- Disabled -->
-    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#F1F2F0" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#A4A8A5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#F0EEE8" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#A6A29A" po:Freeze="False" />
 
-    <!-- Semantic. Used for state, never for decoration. -->
+    <!-- Semantic. Used for state, never for decoration. Unchanged by the 2026-09 palette migration
+         on purpose: Brush.Danger must stay visually distinct from Brush.Accent/Brush.Brand now that
+         the brand accent is also a red, so machine error/danger states are never mistaken for a
+         brand moment. Brush.Info no longer borrows the interaction colour's value (it used to equal
+         Brush.Accent by coincidence, back when Accent was cobalt) — information does not need its
+         own hue, so it is graphite-neutral instead of either accent red or a third colour. -->
     <SolidColorBrush x:Key="Brush.Success" Color="#15803D" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#F0FDF4" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Warning" Color="#D97706" po:Freeze="False" />
@@ -118,9 +136,9 @@
     <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.DangerMuted" Color="#FEF2F2" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#EFF6FF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#BFDBFE" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Info" Color="#4A473F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#F1EFEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#E6E3DC" po:Freeze="False" />
 
     <!-- Component-level neutrals -->
     <!--
@@ -128,13 +146,15 @@
         at 6% for hover and 14% for press (see the Button template). That is why there is no
         Brush.AccentPressed or Brush.DangerPressed — a per-kind pressed colour would be a second
         mechanic for the same state, and it would have to be re-derived for every new button kind.
-        The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.
+        The wash works on a red fill, a graphite fill, a white surface and a transparent ghost alike
+        — though on Brush.PrimaryAction's near-black fill the dark wash is necessarily subtle; the
+        0.96 press-scale transform carries most of the felt feedback there. See Button.Primary below.
     -->
-    <SolidColorBrush x:Key="Brush.HoverWash" Color="#171918" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E4E5E2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D2D4D0" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D2D4D0" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A4A8A5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.HoverWash" Color="#181818" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E6E3DC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D3CFC5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D3CFC5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A6A29A" po:Freeze="False" />
 
     <!--
         Elevation ladder. Docked panels get a border, never a shadow — the canvas stays the focus.
@@ -144,15 +164,18 @@
         Sheet is paper on a desk, not a floating surface. Tooltip barely lifts. Dropdown is light.
         Modal is the only real one.
     -->
-    <DropShadowEffect x:Key="Shadow.Sheet" Color="#171918" Opacity="0.10" BlurRadius="6" ShadowDepth="1" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Tooltip" Color="#171918" Opacity="0.14" BlurRadius="12" ShadowDepth="2" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#171918" Opacity="0.16" BlurRadius="18" ShadowDepth="4" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Modal" Color="#171918" Opacity="0.22" BlurRadius="48" ShadowDepth="14" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Sheet" Color="#181818" Opacity="0.10" BlurRadius="6" ShadowDepth="1" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Tooltip" Color="#181818" Opacity="0.14" BlurRadius="12" ShadowDepth="2" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#181818" Opacity="0.16" BlurRadius="18" ShadowDepth="4" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Modal" Color="#181818" Opacity="0.22" BlurRadius="48" ShadowDepth="14" Direction="270" />
 
     <!-- Motion language: short and ease-out, no bounce or overshoot (DESIGN.md). An overshoot curve
          on press-release reads as playful, which is wrong for a machine-control workbench. -->
+    <Duration x:Key="Motion.VeryFast">0:0:0.09</Duration>
     <Duration x:Key="Motion.Fast">0:0:0.1</Duration>
     <Duration x:Key="Motion.Base">0:0:0.18</Duration>
+    <!-- Dialogs and the largest sheet-style overlays only - not ordinary hover/press/popover motion. -->
+    <Duration x:Key="Motion.Panel">0:0:0.2</Duration>
     <CubicEase x:Key="Ease.Out" EasingMode="EaseOut" />
 
     <!-- 4pt spacing scale (4/8/12/16/20/24/32) — enforced as literal multiples throughout instead of ad hoc margins. -->
@@ -199,6 +222,7 @@
 
     <system:Double x:Key="Size.Control.Compact">32</system:Double>
     <system:Double x:Key="Size.Control.Base">36</system:Double>
+    <system:Double x:Key="Size.Control.Primary">38</system:Double>
     <system:Double x:Key="Size.Control.Large">44</system:Double>
 
     <!--
@@ -212,20 +236,14 @@
     <system:Double x:Key="Size.Toolbar.Height">64</system:Double>
 
     <!--
-        Inter, bundled as an application resource (see the .csproj). The pack URI points at the
-        folder; the "#Inter" fragment names the family inside it. The trailing Segoe entries are a
-        safety net only — the bundled files mean they should never be reached.
-
-        Weight discipline: 400 body, 500 controls/labels/values, 600 headings and selected nav.
-        700 is reserved for a screen's own title.
-
-        Font.Numeric is the same family, not a monospace. Cascadia's fixed pitch made every value in
-        the inspector look like console output; Inter's tabular figures (Typography.NumeralAlignment
-        below) give column alignment without the terminal texture.
+        Segoe UI Variable is the native Windows UI face. Keeping the shell on the system variable
+        family preserves ClearType/DPI hinting and avoids the heavy, uneven appearance of the
+        imported display face at small WPF sizes. Neue Montreal remains available as a design asset,
+        but is not forced onto every control until its WPF rasterization is separately validated.
     -->
-    <FontFamily x:Key="Font.Ui">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
-    <FontFamily x:Key="Font.Display">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Display, Segoe UI</FontFamily>
-    <FontFamily x:Key="Font.Numeric">pack://application:,,,/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Ui">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Numeric">Segoe UI Variable Text, Segoe UI</FontFamily>
     <!-- Genuinely fixed-pitch content only: the GRBL console and raw G-code, where column position
          carries meaning. Not for ordinary numeric fields. -->
     <FontFamily x:Key="Font.Mono">Cascadia Mono,Consolas,Courier New</FontFamily>
@@ -233,6 +251,11 @@
          for a dark chrome and stays in the project; this key is the single place to switch. -->
     <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmark.png" CacheOption="OnLoad" />
     <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/KamilAvatar.png" CacheOption="OnLoad" />
+    <!-- Original 1254px transparent artwork supplied by the user. Decode once at 256px: enough for
+         the 72-DIP presentation avatar at 200% DPI while avoiding a full 6MB decode per instance. -->
+    <BitmapImage x:Key="Image.LaseroAvatarSource"
+                 UriSource="/Lasero.App;component/Assets/LaseroAvatar.png"
+                 DecodePixelWidth="256" CacheOption="OnLoad" />
 
     <!-- ===================== Base ===================== -->
 
@@ -249,8 +272,11 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+        <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
     </Style>
 
     <!--
@@ -338,9 +364,14 @@
         <Setter Property="Padding" Value="14,0" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <!-- The template below draws its own FocusRing border on IsKeyboardFocused; without nulling
+             the default FocusVisualStyle, WPF layers its own dashed-rectangle adorner on top of it. -->
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -446,12 +477,46 @@
     <!-- Flat, no glow — the file-level comment on the "Panel" style above already commits this app to
          exactly one shadow (the canvas). A permanent red glow under every primary button contradicted
          that rule and read as generic AI-glow styling rather than restrained Windows 11 chrome. -->
+    <!-- Primary is graphite, not the red interaction colour — see the palette comment at the top of
+         this file. Its near-black fill makes the shared dark hover/press wash too subtle to read on
+         its own, so this style also swaps the Button's own Background/BorderBrush on IsMouseOver/
+         IsPressed (a plain Style.Trigger property setter, not TargetName — Style triggers cannot
+         address a named template part, only ControlTemplate triggers can) — the base template's "Bg"
+         Border reads both via TemplateBinding, so this needs no template of its own. -->
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
+        <Setter Property="Background" Value="{StaticResource Brush.PrimaryAction}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryAction}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.OnPrimaryAction}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
+        <Setter Property="Padding" Value="16,0" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.PrimaryActionHover}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryActionHover}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.PrimaryActionPressed}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryActionPressed}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Secondary is the default action on a neutral surface: quiet fill, explicit edge, medium
+         label. Outline carries the same geometry for contexts where the surrounding surface already
+         supplies enough contrast. Both remain native Buttons, so command and CanExecute semantics are
+         identical to the implicit style. -->
+    <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+
+    <Style x:Key="Button.Outline" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
     </Style>
 
     <!-- Icon buttons are square at the shared Base height so they line up with text buttons and
@@ -474,6 +539,17 @@
     <Style x:Key="Button.GhostIcon" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- Tool is the shared 36px square for editor rails and compact contextual toolbars. Icon is
+         intentionally 32px for inline/title-bar actions; Tool gives the canvas chrome a little more
+         hit area without turning it into a stack of cards. -->
+    <Style x:Key="Button.Tool" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Margin" Value="0,1" />
     </Style>
 
     <!--
@@ -686,6 +762,11 @@
         </Setter>
     </Style>
 
+    <!-- The click TARGET stays the full 46x32 caption-height rectangle (Fitts's law — a title-bar
+         button is easiest to hit flush against the screen edge), but the visual hover/focus fill is
+         inset with a rounded corner rather than painting that whole rectangle edge-to-edge. A
+         full-bleed square hover fill read as a harsh, cropped-looking block jammed into the window's
+         corner, out of step with the rounded language (Radius.Sm/Md/Lg/Pill) used everywhere else. -->
     <Style x:Key="Button.Chrome" TargetType="Button">
         <Setter Property="Width" Value="46" />
         <Setter Property="Height" Value="32" />
@@ -696,7 +777,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" Margin="4" CornerRadius="{StaticResource Radius.Sm}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -719,7 +800,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" Margin="4" CornerRadius="{StaticResource Radius.Sm}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -755,6 +836,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
@@ -903,6 +985,7 @@
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -929,6 +1012,7 @@
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
         <Setter Property="PasswordChar" Value="●" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="PasswordBox">
@@ -952,6 +1036,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
@@ -1034,6 +1119,7 @@
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -1288,6 +1374,7 @@
     <Style TargetType="ListBoxItem">
         <Setter Property="Padding" Value="6,4" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -1388,16 +1475,40 @@
         </Setter>
     </Style>
 
+    <!--
+        6px, not the previous 10px: at 10px this read as a leftover OS scrollbar against the rest of
+        the app's thin-stroke, low-chrome language, especially wherever a panel scrolls by default
+        (the Designer inspector, any dialog body) rather than as an occasional overflow affordance.
+
+        The MinWidth/MinHeight="0" setters are load-bearing, not decoration: WPF's ScrollBar has a
+        built-in default MinWidth/MinHeight (from SystemParameters' scrollbar metrics, ~15-17px on a
+        typical display) that a Style's Width/Height Setter does NOT override on its own — Width only
+        sets the element's preferred size, MinWidth still floors the final rendered size underneath
+        it. Every previous value here (this app's old 10px, and briefly a 6px attempt) was silently
+        clamped back up to that native floor; only the Thumb's own inset ever actually got thinner,
+        which is what made the bug so easy to miss in a casual screenshot. Confirmed with a
+        pixel-level readback of the rendered window (GetPixel across the thumb), not just a visual
+        check — don't downgrade this back to eyeballing a screenshot if it regresses.
+
+        SelectionPropertiesBar and KamilAssistantHost used to also carry a
+        `<Style TargetType="ScrollBar">` in their own ScrollViewer.Resources expecting the keyed
+        ScrollBar.Slim template to win locally — that's a different, unrelated dead pattern (an
+        implicit style placed in a ScrollViewer's own Resources does not reach the ScrollBar its
+        default template generates), and was removed from both files. This one definition is what
+        every scrollbar in the app now actually renders with.
+    -->
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Width" Value="10" />
+        <Setter Property="Width" Value="6" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
                     <Grid Background="{TemplateBinding Background}">
                         <Track x:Name="PART_Track" IsDirectionReversed="True">
                             <Track.Thumb>
-                                <Thumb Style="{StaticResource ScrollBarThumb}" />
+                                <Thumb Style="{StaticResource ScrollBarThumb.Slim}" />
                             </Track.Thumb>
                         </Track>
                     </Grid>
@@ -1407,14 +1518,14 @@
         <Style.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto" />
-                <Setter Property="Height" Value="10" />
+                <Setter Property="Height" Value="6" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ScrollBar">
                             <Grid Background="{TemplateBinding Background}">
                                 <Track x:Name="PART_Track" IsDirectionReversed="False">
                                     <Track.Thumb>
-                                        <Thumb Style="{StaticResource ScrollBarThumb}" />
+                                        <Thumb Style="{StaticResource ScrollBarThumb.Slim}" />
                                     </Track.Thumb>
                                 </Track>
                             </Grid>

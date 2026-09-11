@@ -49,11 +49,12 @@ public sealed class ThemeTokenTests
     }
 
     [Theory]
-    // Removed because each was a second name for an existing token at an identical value, which
-    // left no way to tell which of the two a control was supposed to use.
-    [InlineData("Brush.PrimaryAction")]
-    [InlineData("Brush.PrimaryActionHover")]
-    [InlineData("Brush.OnPrimaryAction")]
+    // Brush.PrimaryAction/PrimaryActionHover/OnPrimaryAction were removed in 2026-08 as a second
+    // name for Brush.Accent at an identical value, then reintroduced in the 2026-09 graphite/red
+    // palette migration once Accent (red, interaction/selection) and PrimaryAction (graphite,
+    // ordinary buttons) became genuinely different colours — the original "no way to tell which of
+    // the two a control was supposed to use" reasoning no longer applies once the two names carry
+    // two different values.
     [InlineData("Brush.BrandRed")]
     // Removed because it carried three unrelated roles at one value: informational panels,
     // selection surfaces and a dropdown hover wash.
@@ -187,7 +188,7 @@ public sealed class ThemeTokenTests
         Assert.Contains("x:Key=\"Size.Icon.Stroke\">1.75<", theme, StringComparison.Ordinal);
 
         var glyph = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Lasero.App", "Components", "IconGlyph.xaml"));
-        Assert.Contains("StrokeThickness=\"{StaticResource Size.Icon.Stroke}\"", glyph, StringComparison.Ordinal);
+        Assert.Contains("Property=\"StrokeThickness\" Value=\"{StaticResource Size.Icon.Stroke}\"", glyph, StringComparison.Ordinal);
 
         var assets = Path.Combine(FindRepositoryRoot(), "docs", "design", "icons-custom");
         if (!Directory.Exists(assets))
