@@ -257,6 +257,121 @@ public class SceneViewModelTests
         Assert.Equal(2, result.LocalShapes.Count);
     }
 
+    // Shared fixture for the three tests below: two 20x10 squares, back at x=0 (world x:[0,20]),
+    // front at x=10 (world x:[10,30]) — a 10x10 overlap. Added to Objects back-then-front, matching
+    // CombineSelection's own "process by scene z-order, back to front" convention.
+    private static (SceneViewModel ViewModel, SceneObject Back, SceneObject Front) MakeOverlappingSquaresFixture()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var back = MakeClosedObject(layer);
+        var front = MakeClosedObject(layer, 10);
+        viewModel.Objects.Add(back);
+        viewModel.Objects.Add(front);
+        viewModel.SelectedObjects.Add(back);
+        viewModel.SelectedObjects.Add(front);
+        return (viewModel, back, front);
+    }
+
+    private static void AssertBoundsApproximately(BoundingBox2D expected, BoundingBox2D actual)
+    {
+        // Geometry.Combine flattens through a 0.002mm tolerance (BooleanGeometryToleranceMm), so an
+        // exact comparison is too strict here — precision: 2 (0.01mm) comfortably absorbs that while
+        // still catching a real shape error.
+        Assert.Equal(expected.MinX, actual.MinX, precision: 2);
+        Assert.Equal(expected.MinY, actual.MinY, precision: 2);
+        Assert.Equal(expected.MaxX, actual.MaxX, precision: 2);
+        Assert.Equal(expected.MaxY, actual.MaxY, precision: 2);
+    }
+
+    [Fact]
+    public void SubtractSelectionRemovesTheFrontShapesAreaFromTheBackShape()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        viewModel.SubtractSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal("Odečtený vektor", result.Name);
+        AssertBoundsApproximately(new BoundingBox2D(0, 0, 10, 10), result.WorldBounds());
+    }
+
+    [Fact]
+    public void IntersectSelectionKeepsOnlyTheOverlappingArea()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        viewModel.IntersectSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal("Průnik vektorů", result.Name);
+        AssertBoundsApproximately(new BoundingBox2D(10, 0, 20, 10), result.WorldBounds());
+    }
+
+    [Fact]
+    public void IntersectSelectionTreatsDisconnectedFiguresInOneObjectAsOneSource()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+
+        ImportedShape Rectangle(double minX, double minY, double maxX, double maxY) => new()
+        {
+            GeometrySetId = Guid.NewGuid(),
+            LayerId = layer.Id,
+            LayerColor = layer.Color,
+            PreferredMode = LayerMode.Cut,
+            IsClosed = true,
+            Points =
+            [
+                new Position(minX, minY, 0), new Position(maxX, minY, 0),
+                new Position(maxX, maxY, 0), new Position(minX, maxY, 0),
+                new Position(minX, minY, 0),
+            ],
+        };
+
+        var disconnectedBack = new SceneObject
+        {
+            Name = "Dvě části",
+            LocalShapes = [Rectangle(0, 0, 10, 10), Rectangle(20, 0, 30, 10)],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 0, 30, 10),
+            Transform = ObjectTransform.Identity,
+        };
+        var front = new SceneObject
+        {
+            Name = "Pruh",
+            LocalShapes = [Rectangle(0, 2, 30, 8)],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 2, 30, 8),
+            Transform = ObjectTransform.Identity,
+        };
+        viewModel.Objects.Add(disconnectedBack);
+        viewModel.Objects.Add(front);
+        viewModel.SelectedObjects.Add(disconnectedBack);
+        viewModel.SelectedObjects.Add(front);
+
+        viewModel.IntersectSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal(2, result.LocalShapes.Count);
+        AssertBoundsApproximately(new BoundingBox2D(0, 2, 30, 8), result.WorldBounds());
+    }
+
+    [Fact]
+    public void ExcludeSelectionKeepsBothNonOverlappingPartsAsSeparateContours()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        viewModel.ExcludeSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal("Vyloučený vektor", result.Name);
+        Assert.Equal(2, result.LocalShapes.Count);
+        AssertBoundsApproximately(new BoundingBox2D(0, 0, 30, 10), result.WorldBounds());
+    }
+
     [Fact]
     public void DrawingEllipseCreatesAClosedCurveInsideTheDraggedBounds()
     {

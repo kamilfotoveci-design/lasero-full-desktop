@@ -923,6 +923,104 @@ public partial class SceneViewModel : ObservableObject
         }
     }
 
+    /// <summary>Subtract, intersect and exclude (XOR) — the other three of the four standard boolean
+    /// modes, sharing UniteSelection's CanExecute (CanUniteSelection: same "closed shapes only, at
+    /// least two" requirement applies to any of the four) and its geometry/rejection plumbing
+    /// (BuildFilledGeometry, ToImportedShapes, IsSafeUnionResult, NormalizeNestedCompoundPaths,
+    /// FindUnionTargetShape, RejectVectorUnion). Their names say "union", but the logic underneath is
+    /// identical for every mode — only Geometry.Combine's own mode argument changes, which is exactly
+    /// what this method threads through. Kept as a copy of UniteSelection's shape rather than a shared
+    /// refactor of it, so this addition cannot regress the existing, already-tested union path.
+    ///
+    /// Source order matters for Subtract (it does not, mathematically, for Intersect/Xor, but folding
+    /// left-to-right is deterministic either way): sources are processed back-to-front by scene
+    /// z-order, so Subtract reads as "shapes in front cut a hole in the shape behind them" — Minus
+    /// Front in Illustrator, Subtract in Figma — rather than an order the user cannot predict from
+    /// selection order alone.</summary>
+    private void CombineSelection(GeometryCombineMode mode, string resultName)
+    {
+        var sources = SelectedObjects.OrderBy(item => Scene.Objects.IndexOf(item)).ToList();
+        if (sources.Count == 0) return;
+
+        var sourceShapes = sources.SelectMany(item => item.GetWorldShapes()).ToList();
+        var targetShape = FindUnionTargetShape(sources, sourceShapes);
+
+        try
+        {
+            Geometry? combined = null;
+            foreach (var source in sources)
+            {
+                var normalizedShapes = NormalizeNestedCompoundPaths(source.GetWorldShapes());
+                Geometry? sourceGeometry = null;
+                foreach (var geometrySet in normalizedShapes.GroupBy(shape => shape.GeometrySetId))
+                {
+                    var figureGeometry = BuildFilledGeometry(geometrySet);
+                    sourceGeometry = sourceGeometry is null
+                        ? figureGeometry
+                        : Geometry.Combine(
+                            sourceGeometry,
+                            figureGeometry,
+                            GeometryCombineMode.Union,
+                            null,
+                            BooleanGeometryToleranceMm,
+                            ToleranceType.Absolute);
+                }
+
+                if (sourceGeometry is null) continue;
+                combined = combined is null
+                    ? sourceGeometry
+                    : Geometry.Combine(
+                        combined,
+                        sourceGeometry,
+                        mode,
+                        null,
+                        BooleanGeometryToleranceMm,
+                        ToleranceType.Absolute);
+            }
+
+            if (combined is null || combined.GetArea(BooleanGeometryToleranceMm, ToleranceType.Absolute) <= MinimumUnitedAreaSquareMm)
+            {
+                RejectVectorUnion("Výsledkem operace by byla prázdná plocha.");
+                return;
+            }
+
+            var contours = ToImportedShapes(
+                combined,
+                Guid.NewGuid(),
+                targetShape.LayerId,
+                targetShape.LayerColor,
+                targetShape.PreferredMode);
+            if (!IsSafeBooleanResult(sourceShapes, contours))
+            {
+                RejectVectorUnion("Výsledná geometrie by byla prázdná nebo poškozená.");
+                return;
+            }
+
+            var result = CreateVectorObject(
+                contours,
+                resultName,
+                sources.Any(item => item.IsVisible),
+                sources.Any(item => item.IncludeInOutput));
+
+            Execute(new ReplaceObjectsCommand(Scene, sources, [result]));
+            SelectedObjects.Clear();
+            SelectedObjects.Add(result);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            RejectVectorUnion("Křivky obsahují neplatné nebo vzájemně se křížící body.");
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
+    private void SubtractSelection() => CombineSelection(GeometryCombineMode.Exclude, "Odečtený vektor");
+
+    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
+    private void IntersectSelection() => CombineSelection(GeometryCombineMode.Intersect, "Průnik vektorů");
+
+    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
+    private void ExcludeSelection() => CombineSelection(GeometryCombineMode.Xor, "Vyloučený vektor");
+
     private static IReadOnlyList<ImportedShape> NormalizeNestedCompoundPaths(
         IReadOnlyList<ImportedShape> shapes)
     {
@@ -1099,6 +1197,39 @@ public partial class SceneViewModel : ObservableObject
                resultBounds.MinY <= sourceBounds.MinY + margin &&
                resultBounds.MaxX >= sourceBounds.MaxX - margin &&
                resultBounds.MaxY >= sourceBounds.MaxY - margin;
+    }
+
+    /// <summary>Subtract/Intersect/Exclude's own safety check, used instead of IsSafeUnionResult.
+    /// Those three modes are *expected* to shrink the extent — removing area is the entire point —
+    /// so IsSafeUnionResult's "must retain the complete extent" rule would reject every correct
+    /// result from them (caught by a failing test, not just reasoned about: an early version of this
+    /// reused IsSafeUnionResult verbatim and rejected a plain, valid subtract). The invariant that
+    /// still catches the same real failure (a self-intersecting/degenerate contour collapsing to
+    /// garbage) without assuming which direction the extent should move is the opposite one: the
+    /// result must stay within the combined extent of the inputs, never producing geometry outside
+    /// where the sources were.</summary>
+    private static bool IsSafeBooleanResult(
+        IReadOnlyList<ImportedShape> sourceShapes,
+        IReadOnlyList<ImportedShape> resultShapes)
+    {
+        if (resultShapes.Count == 0 || resultShapes.SelectMany(shape => shape.Points).Any(point =>
+                !double.IsFinite(point.X) || !double.IsFinite(point.Y)))
+            return false;
+
+        var area = resultShapes.Sum(shape => Math.Abs(SignedArea(shape.Points)));
+        if (!double.IsFinite(area) || area <= MinimumUnitedAreaSquareMm)
+            return false;
+
+        var sourceBounds = BoundsOf(sourceShapes);
+        var resultBounds = BoundsOf(resultShapes);
+        if (sourceBounds.IsEmpty || resultBounds.IsEmpty)
+            return false;
+
+        var margin = BooleanGeometryToleranceMm * 4;
+        return resultBounds.MinX >= sourceBounds.MinX - margin &&
+               resultBounds.MinY >= sourceBounds.MinY - margin &&
+               resultBounds.MaxX <= sourceBounds.MaxX + margin &&
+               resultBounds.MaxY <= sourceBounds.MaxY + margin;
     }
 
     private static BoundingBox2D BoundsOf(IEnumerable<ImportedShape> shapes)
@@ -1335,6 +1466,9 @@ public partial class SceneViewModel : ObservableObject
         GroupSelectionCommand.NotifyCanExecuteChanged();
         UngroupSelectionCommand.NotifyCanExecuteChanged();
         UniteSelectionCommand.NotifyCanExecuteChanged();
+        SubtractSelectionCommand.NotifyCanExecuteChanged();
+        IntersectSelectionCommand.NotifyCanExecuteChanged();
+        ExcludeSelectionCommand.NotifyCanExecuteChanged();
         TraceSelectedRasterCommand.NotifyCanExecuteChanged();
         RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
         RestoreSelectedBackgroundCommand.NotifyCanExecuteChanged();
