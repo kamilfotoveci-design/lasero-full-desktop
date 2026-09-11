@@ -52,6 +52,14 @@ public partial class SceneViewModel : ObservableObject
     [ObservableProperty] private bool _lockAspectRatio = true;
     [ObservableProperty] private DesignerTool _activeTool = DesignerTool.Select;
 
+    /// <summary>
+    /// The shape the toolbar shape-tool button currently represents: whichever of the eight closed
+    /// shapes was last activated, defaulting to Rectangle. Unlike ActiveTool this never reverts to
+    /// Select - it is what a short click on the shape button activates, and what the shape picker
+    /// shows as selected.
+    /// </summary>
+    [ObservableProperty] private DesignerTool _currentShapeTool = DesignerTool.Rectangle;
+
     /// <summary>Drives the OBRÁZEK section's inline spinner in DesignerInspectorView — set by
     /// MainWindow around its model-download/inference calls, which is where the actual work happens
     /// (see BackgroundRemovalRequested). Kept as plain observable state, not a dialog, per the "feels
@@ -684,6 +692,13 @@ public partial class SceneViewModel : ObservableObject
 
     [RelayCommand]
     private void ActivateTool(DesignerTool tool) => ActiveTool = tool;
+
+    /// <summary>ActiveTool is set both through ActivateToolCommand and directly (keyboard shortcuts in
+    /// MainWindow), so the shape-tool memory has to hook the property rather than the command.</summary>
+    partial void OnActiveToolChanged(DesignerTool value)
+    {
+        if (ShapeToolCatalog.IsShapeTool(value)) CurrentShapeTool = value;
+    }
 
     [RelayCommand(CanExecute = nameof(CanUndoExecute))]
     private void Undo() => _commandStack.Undo();
