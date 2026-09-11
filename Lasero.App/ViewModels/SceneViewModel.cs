@@ -324,6 +324,48 @@ public partial class SceneViewModel : ObservableObject
             [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Fill, "Text")]);
     }
 
+    /// <summary>Adds a finished vector path (from the "Čára" multi-click path tool) as one new
+    /// SceneObject/AddObjectCommand -- the whole draw-this-path gesture is one undo step, matching
+    /// AddText/DrawPrimitive's precedent for every other drawing tool.</summary>
+    public void AddVectorPath(VectorPath path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var color = new Lasero.Core.Layers.RgbColor(18, 18, 18);
+        var obj = VectorPathSceneFactory.Create(path, color, "Křivka");
+        AddDrawingObject(
+            obj,
+            [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Cut, "Vektor")]);
+    }
+
+    /// <summary>Commits one Node Edit mode edit (move/add/delete/convert node, drag handle, close path)
+    /// as one ReplaceObjectsCommand -- the same "this object's geometry changed" contract CommitTextEdit
+    /// already uses for text, so both share one undo history and one command shape.</summary>
+    public void CommitVectorPathEdit(SceneObject item, VectorPath path)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(path);
+        if (item.VectorPath is null || !Objects.Contains(item)) return;
+
+        SceneObject replacement;
+        try
+        {
+            replacement = VectorPathSceneFactory.Rebuild(item, path);
+        }
+        catch (InvalidOperationException ex)
+        {
+            VectorOperationRejected?.Invoke(ex.Message);
+            return;
+        }
+
+        var wasSelected = SelectedObjects.Contains(item);
+        Execute(new ReplaceObjectsCommand(Scene, [item], [replacement]));
+        if (wasSelected)
+        {
+            SelectedObjects.Clear();
+            SelectedObjects.Add(replacement);
+        }
+    }
+
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
     /// their own kind of content edit, so Ctrl+Z restores the original file and Ctrl+Y reapplies the
@@ -377,12 +419,14 @@ public partial class SceneViewModel : ObservableObject
         RasterOptions = item.RasterOptions,
         OriginalRasterFilePath = originalRasterFilePath,
         Text = item.Text,
+        VectorPath = item.VectorPath,
         Name = item.Name,
         Transform = item.Transform,
         IsVisible = item.IsVisible,
         IsLocked = item.IsLocked,
         IncludeInOutput = item.IncludeInOutput,
     };
+
     private void PlaceAndAdd(SceneObject obj, IReadOnlyList<Lasero.Core.Layers.LayerSettings> candidateLayers)
     {
         var (offsetX, offsetY) = NextCascadeOffset();
@@ -1335,6 +1379,7 @@ public partial class SceneViewModel : ObservableObject
                 RasterOptions = obj.RasterOptions,
                 OriginalRasterFilePath = obj.OriginalRasterFilePath,
                 Text = obj.Text,
+                VectorPath = obj.VectorPath,
             }).ToList(),
             Layers = Layers.Select(layer => new ProjectLayer
             {
@@ -1419,6 +1464,7 @@ public partial class SceneViewModel : ObservableObject
                     RasterOptions = item.RasterOptions,
                     OriginalRasterFilePath = item.OriginalRasterFilePath,
                     Text = item.Text,
+                    VectorPath = item.VectorPath,
                     Name = item.Name,
                     Transform = item.Transform,
                     IsVisible = item.IsVisible,

@@ -80,6 +80,32 @@ public class SceneViewModelTests
     }
 
     [Fact]
+    public void EditableVectorPathSurvivesProjectRoundTrip()
+    {
+        var viewModel = new SceneViewModel();
+        var originalPath = VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(0, 0, 0)),
+            new VectorNode(
+                new Position(10, 0, 0),
+                new Position(7, 4, 0),
+                new Position(13, -4, 0),
+                VectorNodeType.Smooth),
+        ]);
+        viewModel.AddVectorPath(originalPath);
+
+        var saved = ProjectFileSerializer.Deserialize(ProjectFileSerializer.Serialize(viewModel.CreateProject()));
+        var reloaded = new SceneViewModel();
+        reloaded.LoadProject(saved);
+
+        var restored = Assert.Single(reloaded.Objects);
+        var restoredSubpath = Assert.Single(Assert.IsType<VectorPath>(restored.VectorPath).Subpaths);
+        Assert.Equal(originalPath.Subpaths[0].IsClosed, restoredSubpath.IsClosed);
+        Assert.Equal(originalPath.Subpaths[0].Nodes, restoredSubpath.Nodes);
+        Assert.True(restored.IsVectorPath);
+    }
+
+    [Fact]
     public void DrawingRectangleAddsASelectedUndoableVectorObject()
     {
         var viewModel = new SceneViewModel();

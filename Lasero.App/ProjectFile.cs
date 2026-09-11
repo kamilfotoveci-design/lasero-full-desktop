@@ -56,6 +56,11 @@ public sealed class ProjectObject
     /// text became editable, and absent for every other kind of object, so the field is a plain
     /// addition: an older reader ignores it and an older project simply has no text to restore.</summary>
     public TextSource? Text { get; set; }
+
+    /// <summary>Curve-preserving source for paths created by the pen tool. Older projects omit this
+    /// and continue to load their flattened Shapes; keeping both mirrors editable Text plus its
+    /// cached outlines and lets rendering/toolpath consumers retain the existing shape contract.</summary>
+    public VectorPath? VectorPath { get; set; }
 }
 
 public sealed class ProjectShape

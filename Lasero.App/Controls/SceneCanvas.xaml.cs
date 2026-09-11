@@ -82,7 +82,7 @@ public partial class SceneCanvas : UserControl
 
     private bool _antsRunning;
 
-    private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw }
+    private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw, PathTool, NodeEdit, NodeMarquee }
 
     private double _scale = DefaultScale;
     private double _offsetXMm;
@@ -200,7 +200,15 @@ public partial class SceneCanvas : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SceneViewModel.ActiveTool)) UpdateToolCursor();
+        if (e.PropertyName != nameof(SceneViewModel.ActiveTool)) return;
+        UpdateToolCursor();
+
+        // VECTOR PATH TOOL HOOK: switching tools any other way than the layered-Escape/double-click/
+        // Enter paths above (clicking a different toolbar button, a keyboard shortcut, ...) must still
+        // discard an abandoned in-progress path and its dashed preview, and drop out of Node Edit mode,
+        // rather than leaving stale state/visuals behind for the next time either tool is used.
+        if (ViewModel?.ActiveTool != DesignerTool.Line && _pathToolDrawing) ResetVectorPathToolState();
+        if (ViewModel?.ActiveTool != DesignerTool.Select && _nodeEditObject is not null) ExitNodeEditMode();
     }
 
     private void UpdateToolCursor()
@@ -720,8 +728,23 @@ public partial class SceneCanvas : UserControl
 
     private void RedrawSelectionOverlay()
     {
+        // VECTOR PATH TOOL HOOK: every node-edit state change in SceneCanvas.VectorPathTool.cs ends
+        // by calling this method already, so NodeEditToolbar's bindable view-state (IsNodeEditActive,
+        // SelectedNodeCount, etc.) is kept current from this one call site rather than repeated at
+        // each individual state change.
+        UpdateNodeEditToolbarState();
+
         foreach (var el in _selectionVisuals) DrawCanvas.Children.Remove(el);
         _selectionVisuals.Clear();
+
+        // VECTOR PATH TOOL HOOK: Node Edit mode replaces the normal resize/rotate handles with node
+        // and Bezier-handle dots for the one object being edited.
+        if (_nodeEditObject is not null)
+        {
+            StopMarchingAnts();
+            DrawNodeEditOverlay(_nodeEditObject);
+            return;
+        }
 
         if (ViewModel is null || ViewModel.SelectedObjects.Count == 0)
         {
@@ -1095,6 +1118,7 @@ public partial class SceneCanvas : UserControl
     {
         Rectangle { Tag: ValueTuple<SceneObject, ResizeHandle> } => true,
         Ellipse { Tag: SceneObject } => true,
+        Ellipse { Tag: NodeHitTag } => true,
         _ => false,
     };
 
@@ -1173,10 +1197,51 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        // VECTOR PATH TOOL HOOK: Line is a multi-click path tool (see SceneCanvas.VectorPathTool.cs),
+        // not a one-shot drag primitive, so it is intercepted here before DesignerPrimitiveFactory ever
+        // sees it. IsPrimitive(Line) still reports true elsewhere (cursor selection etc.), which is
+        // harmless since every real drag path for Line now returns before reaching that check.
+        if (ViewModel.ActiveTool == DesignerTool.Line)
+        {
+            Focus();
+            if (e.ClickCount >= 2 && _pathToolDrawing)
+                FinishVectorPath();
+            else
+                BeginVectorPathClick(screen);
+            e.Handled = true;
+            return;
+        }
+
         if (DesignerPrimitiveFactory.IsPrimitive(ViewModel.ActiveTool))
         {
             Focus();
             BeginDraw(ViewModel.ActiveTool, screen);
+            e.Handled = true;
+            return;
+        }
+
+        // VECTOR PATH TOOL HOOK: double-click a selected vector path enters Node Edit mode; while that mode
+        // is active every further Select-tool click on the canvas (that a node/handle hit target did not
+        // already claim -- those route away via IsSelectionHandle above) belongs to
+        // HandleNodeEditCanvasMouseDown, not the generic move/rubber-band logic below.
+        if (e.ClickCount >= 2 && ViewModel.ActiveTool == DesignerTool.Select && _nodeEditObject is null)
+        {
+            var doubleClickedPath = HitTestScene(screen)
+                .Select(candidate => candidate.Object)
+                .FirstOrDefault(candidate => candidate.IsVectorPath && !candidate.IsLocked);
+            if (doubleClickedPath is not null)
+            {
+                Focus();
+                EnterNodeEditMode(doubleClickedPath);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (ViewModel.ActiveTool == DesignerTool.Select && _nodeEditObject is not null)
+        {
+            Focus();
+            HandleNodeEditCanvasMouseDown(screen, e.ClickCount);
             e.Handled = true;
             return;
         }
@@ -1234,6 +1299,9 @@ public partial class SceneCanvas : UserControl
                 ViewModel.LayerModeFor(shape.LayerId, shape.LayerColor) is LayerMode.Fill or LayerMode.FillAndCut,
             (obj, shape) => obj.IsVisible && ViewModel.IsLayerVisible(shape.LayerId, shape.LayerColor));
     }
+
+    private static double Distance(Point a, Point b) =>
+        Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
 
     private void OnDrawCanvasPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -1330,6 +1398,11 @@ public partial class SceneCanvas : UserControl
 
         var screen = e.GetPosition(DrawCanvas);
 
+        // VECTOR PATH TOOL HOOK: the path preview (dashed line-so-far + tentative segment to the
+        // cursor) needs to track the pointer on every move, not just while a mouse button is held --
+        // between clicks _dragMode is None, which the switch below does not otherwise cover.
+        if (ViewModel?.ActiveTool == DesignerTool.Line) UpdateVectorPathPreview(screen);
+
         switch (_dragMode)
         {
             case DragMode.Move:
@@ -1351,6 +1424,15 @@ public partial class SceneCanvas : UserControl
             case DragMode.Draw:
                 UpdateToolPreview(screen);
                 break;
+            case DragMode.PathTool:
+                UpdateVectorPathPreview(screen);
+                break;
+            case DragMode.NodeEdit:
+                UpdateNodeEditDrag(screen);
+                break;
+            case DragMode.NodeMarquee:
+                UpdateRubberBand(screen);
+                break;
         }
     }
 
@@ -1364,6 +1446,9 @@ public partial class SceneCanvas : UserControl
             case DragMode.Rotate: FinishRotate(); break;
             case DragMode.Select: FinishRubberBand(); break;
             case DragMode.Draw: FinishDraw(e.GetPosition(DrawCanvas)); break;
+            case DragMode.PathTool: EndVectorPathClick(e.GetPosition(DrawCanvas)); break;
+            case DragMode.NodeEdit: FinishNodeEditDrag(); break;
+            case DragMode.NodeMarquee: FinishNodeMarquee(); break;
         }
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
@@ -1625,6 +1710,43 @@ public partial class SceneCanvas : UserControl
 
         if (ViewModel is null) return;
 
+        // VECTOR PATH TOOL HOOK: Delete removes selected nodes while Node Edit mode is active, instead
+        // of the whole-object Delete bound at the Window level (MainWindow.xaml) -- marking Handled here
+        // stops that binding from also firing on the same key press.
+        if (e.Key == Key.Delete && _nodeEditObject is not null)
+        {
+            DeleteSelectedNodes();
+            e.Handled = true;
+            return;
+        }
+
+        // VECTOR PATH TOOL HOOK: Enter finishes the in-progress open path, mirroring double-click.
+        if (e.Key == Key.Enter && _pathToolDrawing)
+        {
+            FinishVectorPath();
+            e.Handled = true;
+            return;
+        }
+
+        // VECTOR PATH TOOL HOOK: layered Escape, both cases only between clicks/drags (_dragMode ==
+        // None) -- while an actual drag is in progress the generic CancelActiveInteraction block below
+        // already owns Escape via its own DragMode.PathTool/NodeEdit cases.
+        if (e.Key == Key.Escape && _dragMode == DragMode.None)
+        {
+            if (_nodeEditObject is not null)
+            {
+                ExitNodeEditMode();
+                e.Handled = true;
+                return;
+            }
+            if (_pathToolDrawing)
+            {
+                CancelLastVectorPathNode();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.Key == Key.Escape)
         {
             if (_dragMode != DragMode.None)
@@ -1704,6 +1826,17 @@ public partial class SceneCanvas : UserControl
                 break;
             case DragMode.Draw when _toolPreviewVisual is not null:
                 _toolPreviewVisual.Visibility = Visibility.Collapsed;
+                break;
+            case DragMode.PathTool:
+                // Cancels only the node currently being pressed/dragged, not the whole in-progress
+                // path -- CancelLastVectorPathNode (wired from OnCanvasKeyDown) owns the "undo the
+                // last committed node, then exit the tool" layering for Escape between clicks.
+                break;
+            case DragMode.NodeEdit:
+                CancelNodeEditDrag();
+                break;
+            case DragMode.NodeMarquee when _rubberBandVisual is not null:
+                _rubberBandVisual.Visibility = Visibility.Collapsed;
                 break;
         }
 

@@ -49,6 +49,14 @@ public sealed partial class SceneObject : ObservableObject
     public TextSource? Text { get; init; }
     public bool IsText => Text is not null;
 
+    /// <summary>Set only for objects created/edited with the vector path (node edit) tool. LocalShapes
+    /// is a cached flattening of this curve-preserving model (see the boundary comment at the top of
+    /// VectorPath.cs) — editing a node re-flattens instead of trying to recover control points from a
+    /// polyline. Objects without a VectorPath (rectangles, ellipses, imported SVGs, ...) stay plain
+    /// curves and are not eligible for Node Edit mode this pass.</summary>
+    public VectorPath? VectorPath { get; init; }
+    public bool IsVectorPath => VectorPath is not null;
+
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private ObjectTransform _transform = ObjectTransform.Identity;
     [ObservableProperty] private bool _isVisible = true;
@@ -217,6 +225,7 @@ public sealed partial class SceneObject : ObservableObject
         RasterOptions = RasterOptions,
         OriginalRasterFilePath = OriginalRasterFilePath,
         Text = Text,
+        VectorPath = VectorPath,
         Name = Name,
         Transform = Transform,
         IsVisible = IsVisible,

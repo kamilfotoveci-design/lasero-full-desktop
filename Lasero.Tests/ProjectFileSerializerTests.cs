@@ -3,6 +3,8 @@ using System.IO.Compression;
 using Lasero.App;
 using Lasero.Core.Jobs;
 using Lasero.Core.Layers;
+using Lasero.Core.Grbl;
+using Lasero.Core.Scene;
 
 namespace Lasero.Tests;
 
@@ -43,6 +45,26 @@ public sealed class ProjectFileSerializerTests : IDisposable
         var loaded = ProjectFileSerializer.Load(path);
 
         Assert.Equal("Starší", loaded.Name);
+    }
+
+    [Fact]
+    public void Serialize_PreservesEditableVectorPathData()
+    {
+        var path = VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(1, 2, 0)),
+            new VectorNode(new Position(8, 9, 0), new Position(6, 8, 0), null, VectorNodeType.Smooth),
+        ]);
+        var project = new LaseroProjectFile
+        {
+            Objects = [new ProjectObject { Name = "Křivka", VectorPath = path }],
+        };
+
+        var restored = ProjectFileSerializer.Deserialize(ProjectFileSerializer.Serialize(project));
+
+        var restoredSubpath = Assert.Single(Assert.IsType<VectorPath>(Assert.Single(restored.Objects).VectorPath).Subpaths);
+        Assert.Equal(path.Subpaths[0].IsClosed, restoredSubpath.IsClosed);
+        Assert.Equal(path.Subpaths[0].Nodes, restoredSubpath.Nodes);
     }
 
     [Fact]
