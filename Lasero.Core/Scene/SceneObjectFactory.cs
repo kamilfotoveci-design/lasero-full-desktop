@@ -25,6 +25,11 @@ public static class SceneObjectFactory
             LocalShapes = document.Shapes,
             LocalPivot = pivot,
             LocalBounds = bounds,
+            // Deliberately NOT re-derived from VectorPath here -- document.Shapes already carries the
+            // per-shape layer/color classification Walk() worked out, which the geometry-only
+            // VectorPath does not. VectorPathSceneFactory.Rebuild (already used for hand-drawn paths)
+            // takes over correctly the first time this object is actually node-edited.
+            VectorPath = document.VectorPath,
         };
     }
 
