@@ -1,0 +1,105 @@
+<Window x:Class="Lasero.App.OffsetPathWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Lasero.App.Converters"
+        xmlns:components="clr-namespace:Lasero.App.Components"
+        Title="Offset křivky" Width="960" Height="660" MinWidth="820" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:EnumToBooleanConverter x:Key="EnumToBool" />
+        <conv:EnumEqualsVisibilityConverter x:Key="EnumEqualsVisibility" />
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="72" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="64" />
+        </Grid.RowDefinitions>
+
+        <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Offset křivky" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
+                <TextBlock Text="Zvětšete nebo zmenšete vybrané tvary o zadanou vzdálenost." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="320" />
+            </Grid.ColumnDefinitions>
+
+            <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="20">
+                <Grid>
+                    <Viewbox Stretch="Uniform">
+                        <Grid Width="{Binding PreviewWidthMm, Mode=OneWay}" Height="{Binding PreviewHeightMm, Mode=OneWay}">
+                            <Path Data="{Binding SourceOutlineGeometry}" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="0.3" Opacity="0.5" Fill="Transparent" />
+                            <Path Data="{Binding PreviewGeometry}" Stroke="{StaticResource Brush.Accent}" StrokeThickness="0.5" Fill="Transparent" />
+                        </Grid>
+                    </Viewbox>
+                    <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
+                            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
+                            Visibility="{Binding IsComputing, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <ProgressBar Width="72" Height="4" IsIndeterminate="True" Margin="0,0,10,0" />
+                            <TextBlock Text="Počítám offset…" VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Meta}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,20">
+                    <StackPanel>
+                        <Border Style="{StaticResource InspectorSection}">
+                            <StackPanel>
+                                <TextBlock Text="Nastavení offsetu" Style="{StaticResource PanelTitle}" />
+
+                                <TextBlock Text="Vzdálenost (mm)" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
+                                <TextBlock Text="Kladná hodnota zvětší tvar, záporná ho zmenší." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding DistanceMm, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.###}}" Margin="0,0,0,14" />
+
+                                <TextBlock Text="Typ spoje" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
+                                <ComboBox ItemsSource="{Binding JoinTypeOptions}" DisplayMemberPath="Label"
+                                          SelectedValuePath="Value" SelectedValue="{Binding JoinType}" Margin="0,0,0,14" />
+
+                                <TextBlock Text="Limit ostrého spoje" Style="{StaticResource Text.Muted}" Margin="0,0,0,4"
+                                           Visibility="{Binding JoinType, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Miter}" />
+                                <TextBox Text="{Binding MiterLimit, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.##}}"
+                                         IsEnabled="{Binding JoinType, Converter={StaticResource EnumToBool}, ConverterParameter=Miter}"
+                                         Visibility="{Binding JoinType, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Miter}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,14,0,0">
+                            <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children
+                                 with infinite width, so TextWrapping never engages. -->
+                            <DockPanel>
+                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.AccentText}" Margin="0,1,9,0" />
+                                <TextBlock Text="Každý vybraný tvar se nahradí vlastní upravitelnou křivkou. Původní stav lze obnovit pomocí Ctrl+Z."
+                                           TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
+                            </DockPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="2,12,2,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="20,12">
+            <Grid>
+                <TextBlock Text="Modrá čára je výsledek offsetu, šedá je původní tvar." Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Click="OnCancelClick" Padding="16,0" Margin="0,0,8,0">Zrušit</Button>
+                    <Button IsDefault="True" Style="{StaticResource PrimaryBlue}" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Padding="18,0">
+                        <components:IconLabel IconData="{StaticResource Glyph.Vector}" Text="Použít offset" Foreground="White" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

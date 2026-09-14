@@ -27,6 +27,7 @@ public partial class SceneViewModel : ObservableObject
     private const double MinimumUnitedAreaSquareMm = 0.00000001;
 
     private static readonly IVectorBooleanService BooleanService = Clipper2VectorBooleanService.Default;
+    private static readonly IVectorOffsetService OffsetService = Clipper2VectorOffsetService.Default;
 
     private readonly SceneCommandStack _commandStack = new();
     private int _importCount;
@@ -91,6 +92,13 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.SelectMany(item => item.LocalShapes).Count() >= 2 &&
         SelectedObjects.SelectMany(item => item.LocalShapes).All(shape => shape.IsClosed && shape.Points.Count >= 3);
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
+
+    /// <summary>Unlike CanUniteSelection, offset does not require two-or-more closed shapes: a single
+    /// object, or a selection that includes open paths, is still a valid offset input (an open path
+    /// offsets into a butt-capped buffer region — see IVectorOffsetService.OffsetOpenPath).</summary>
+    public bool CanOffsetSelection => SelectedObjects.Count > 0 &&
+        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked) &&
+        SelectedObjects.SelectMany(item => item.GetWorldShapes()).Any(shape => shape.Points.Count >= 2);
     public bool CanRemoveSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false };
     public bool CanRestoreSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: true };
 
@@ -132,6 +140,10 @@ public partial class SceneViewModel : ObservableObject
     public event Action<SceneObject>? TraceRasterRequested;
     public event Action<SceneObject>? BackgroundRemovalRequested;
     public event Action<string>? VectorOperationRejected;
+    /// <summary>Raised by OffsetSelectionCommand — MainWindow owns opening OffsetPathWindow and
+    /// calling ApplyOffset back with its result, the same hand-off shape TraceRasterRequested already
+    /// uses for BitmapTraceWindow.</summary>
+    public event Action<IReadOnlyList<SceneObject>>? OffsetRequested;
 
     public SceneViewModel()
     {
@@ -1089,6 +1101,74 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
     private void ExcludeSelection() => CombineSelection(BooleanService.Xor, "Vyloučený vektor");
 
+    // -------------------------------------------------------------------------------------------
+    // Offset Path — vector inset/outset. Unlike the boolean ops above, offset never merges sources
+    // together: every selected object gets its own independent offset result, and only sources whose
+    // result survives (did not fully collapse at the chosen distance) replace their original. See
+    // VectorOffsetPlanner for the ring math shared with OffsetPathViewModel's live preview.
+    // -------------------------------------------------------------------------------------------
+
+    [RelayCommand(CanExecute = nameof(CanOffsetSelection))]
+    private void OffsetSelection()
+    {
+        if (SelectedObjects.Count == 0) return;
+        OffsetRequested?.Invoke(SelectedObjects.ToList());
+    }
+
+    /// <summary>Commits the Offset Path dialog's result as one undo step covering every selected
+    /// source that produced a surviving result. A source whose offset vanished entirely at the chosen
+    /// distance (see IVectorOffsetService) is simply left out of the replacement — the same
+    /// "shapes below the disappearance point are omitted, not an error" contract the geometry service
+    /// itself follows.</summary>
+    public void ApplyOffset(
+        IReadOnlyList<SceneObject> sources,
+        IReadOnlyDictionary<SceneObject, VectorPath> resultsBySource)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        ArgumentNullException.ThrowIfNull(resultsBySource);
+
+        var removed = new List<SceneObject>();
+        var added = new List<SceneObject>();
+        foreach (var source in sources)
+        {
+            if (!Objects.Contains(source)) continue;
+            if (!resultsBySource.TryGetValue(source, out var path) || path.Subpaths.Count == 0) continue;
+
+            removed.Add(source);
+            added.Add(BuildOffsetObject(source, path));
+        }
+
+        if (removed.Count == 0) return;
+
+        Execute(new ReplaceObjectsCommand(Scene, removed, added));
+        SelectedObjects.Clear();
+        foreach (var item in added) SelectedObjects.Add(item);
+    }
+
+    /// <summary>Wraps one source's offset VectorPath into a new node-editable SceneObject, preserving
+    /// that source's own representative shape metadata (layer, color, preferred mode) and its
+    /// visibility flags — the per-object equivalent of FindUnionTargetShape/targetShape, applied here
+    /// per source since offset (unlike the boolean ops) never merges multiple sources into one result.
+    /// World-space geometry is baked into an Identity transform / zero pivot, the same convention
+    /// ReplaceRasterWithTrace/VectorPathSceneFactory.Create already use.</summary>
+    private static SceneObject BuildOffsetObject(SceneObject source, VectorPath path)
+    {
+        var representative = source.LocalShapes.FirstOrDefault();
+        var color = representative?.LayerColor ?? RgbColor.Black;
+        var result = VectorPathSceneFactory.Create(path, color, $"Offset · {source.Name}");
+        if (representative is not null)
+        {
+            result.LocalShapes = result.LocalShapes.Select(shape => shape with
+            {
+                LayerId = representative.LayerId,
+                PreferredMode = representative.PreferredMode,
+            }).ToList();
+        }
+        result.IsVisible = source.IsVisible;
+        result.IncludeInOutput = source.IncludeInOutput;
+        return result;
+    }
+
     /// <summary>One source's complete world geometry as ring sets, ready to fold into another source
     /// via a plain set operation (Union/Subtract/Intersect/Xor) — or null if the source contributed no
     /// closed shapes at all. Each GeometrySetId group is resolved on its own first (EvenOdd: an outer
@@ -1540,6 +1620,7 @@ public partial class SceneViewModel : ObservableObject
         SubtractSelectionCommand.NotifyCanExecuteChanged();
         IntersectSelectionCommand.NotifyCanExecuteChanged();
         ExcludeSelectionCommand.NotifyCanExecuteChanged();
+        OffsetSelectionCommand.NotifyCanExecuteChanged();
         TraceSelectedRasterCommand.NotifyCanExecuteChanged();
         RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
         RestoreSelectedBackgroundCommand.NotifyCanExecuteChanged();
@@ -1830,6 +1911,7 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGroupSelection));
         OnPropertyChanged(nameof(CanUngroupSelection));
         OnPropertyChanged(nameof(CanUniteSelection));
+        OnPropertyChanged(nameof(CanOffsetSelection));
         OnPropertyChanged(nameof(CanTraceSelectedRaster));
         OnPropertyChanged(nameof(CanRemoveSelectedBackground));
         OnPropertyChanged(nameof(CanRestoreSelectedBackground));

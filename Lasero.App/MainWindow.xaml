@@ -139,6 +139,7 @@
         <KeyBinding Modifiers="Control" Key="A" Command="{Binding Scene.SelectAllCommand}" />
         <KeyBinding Modifiers="Alt" Key="T" Command="{Binding Scene.TraceSelectedRasterCommand}" />
         <KeyBinding Modifiers="Control+Shift" Key="U" Command="{Binding Scene.UniteSelectionCommand}" />
+        <KeyBinding Modifiers="Control+Shift" Key="O" Command="{Binding Scene.OffsetSelectionCommand}" />
     </Window.InputBindings>
     <!-- "F" for fit-to-view is deliberately NOT a KeyBinding here — an unmodified single-letter
          binding fires even while a TextBox has focus. See OnPreviewKeyDown in the code-behind. -->

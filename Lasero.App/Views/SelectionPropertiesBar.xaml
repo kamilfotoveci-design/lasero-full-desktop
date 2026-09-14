@@ -333,6 +333,10 @@
                         <MenuItem Header="Vyloučit tvary" ToolTip="Zůstane plocha pokrytá právě jedním tvarem"
                                   Command="{Binding Scene.ExcludeSelectionCommand}"
                                   Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Offset křivky…" InputGestureText="Ctrl+Shift+O"
+                                  ToolTip="Zvětší nebo zmenší vybrané tvary o zadanou vzdálenost"
+                                  Command="{Binding Scene.OffsetSelectionCommand}"
+                                  Visibility="{Binding Scene.CanOffsetSelection, Converter={StaticResource BoolToVisibility}}" />
                         <MenuItem Header="Rozdělit skupinu" InputGestureText="Ctrl+Shift+G"
                                   Command="{Binding Scene.UngroupSelectionCommand}"
                                   Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}" />

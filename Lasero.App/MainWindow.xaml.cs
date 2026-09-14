@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         _viewModel.GCode.SimulationStarted += OnSimulationStarted;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
         _viewModel.Scene.BackgroundRemovalRequested += OnBackgroundRemovalRequested;
+        _viewModel.Scene.OffsetRequested += OnOffsetRequested;
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
         _viewModel.DeviceWizardRequested += OpenDeviceWizard;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -371,6 +372,23 @@ public partial class MainWindow : Window
             "Rozumím",
             CancelText: null,
             Tone: LaseroDialogTone.Warning));
+
+    /// <summary>Opens OffsetPathWindow for the selection SceneViewModel.OffsetSelectionCommand
+    /// captured, and — on OK — hands the dialog's computed result back to Scene.ApplyOffset. Mirrors
+    /// OnTraceRasterRequested's open/result-handling shape.</summary>
+    private void OnOffsetRequested(IReadOnlyList<SceneObject> sources)
+    {
+        if (sources.Count == 0) return;
+
+        var offsetViewModel = new OffsetPathViewModel(sources);
+        var window = new OffsetPathWindow(offsetViewModel) { Owner = this };
+        if (window.ShowDialog() != true) return;
+
+        _viewModel.Scene.ApplyOffset(sources, offsetViewModel.ResultsBySource);
+        if (_viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
+            _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
+        _viewModel.GCode.LastMessage = "Offset byl použit. Změnu lze vrátit pomocí Ctrl+Z.";
+    }
 
     private void OnMaterialsClick(object sender, RoutedEventArgs e)
         => OpenMaterials();

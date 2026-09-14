@@ -3,6 +3,7 @@ using System.IO;
 using Lasero.App;
 using Lasero.App.ViewModels;
 using Lasero.Core.GCode;
+using Lasero.Core.Geometry;
 using Lasero.Core.Grbl;
 using Lasero.Core.Import;
 using Lasero.Core.Layers;
@@ -1149,5 +1150,94 @@ public class SceneViewModelTests
 
         Assert.False(obj.IsLocked);
         Assert.True(viewModel.RotateRightCommand.CanExecute(null));
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Offset Path (SceneViewModel.ApplyOffset) — the dialog itself (OffsetPathViewModel) computes
+    // its own result via VectorOffsetPlanner and is exercised separately; these tests call
+    // ApplyOffset directly with a planner-computed result, matching what MainWindow's
+    // OnOffsetRequested handler does after the dialog closes with OK.
+    // -------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void ApplyOffsetOnASingleRectangleProducesAVectorPathResultAtTheExpectedSizeAndPlacement()
+    {
+        var viewModel = new SceneViewModel();
+        var rectangle = MakeSquareObject();
+        viewModel.Objects.Add(rectangle);
+        viewModel.SelectedObjects.Add(rectangle);
+
+        var path = VectorOffsetPlanner.ComputeOffset(
+            rectangle, Clipper2VectorOffsetService.Default, 2, VectorJoinType.Miter, 4);
+        Assert.NotNull(path);
+
+        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! });
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.True(result.IsVectorPath);
+        var bounds = result.WorldBounds();
+        Assert.Equal(-2, bounds.MinX, precision: 3);
+        Assert.Equal(-2, bounds.MinY, precision: 3);
+        Assert.Equal(22, bounds.MaxX, precision: 3);
+        Assert.Equal(12, bounds.MaxY, precision: 3);
+        Assert.Same(result, Assert.Single(viewModel.SelectedObjects));
+    }
+
+    [Fact]
+    public void ApplyOffsetOnTwoSelectedObjectsReplacesBothInOneUndoStep()
+    {
+        var viewModel = new SceneViewModel();
+        var first = MakeSquareObject();
+        var second = MakeSquareObject(x: 40);
+        viewModel.Objects.Add(first);
+        viewModel.Objects.Add(second);
+        viewModel.SelectedObjects.Add(first);
+        viewModel.SelectedObjects.Add(second);
+        Assert.False(viewModel.CanUndo);
+
+        var service = Clipper2VectorOffsetService.Default;
+        var results = new Dictionary<SceneObject, VectorPath>
+        {
+            [first] = VectorOffsetPlanner.ComputeOffset(first, service, 2, VectorJoinType.Round, 2)!,
+            [second] = VectorOffsetPlanner.ComputeOffset(second, service, 2, VectorJoinType.Round, 2)!,
+        };
+
+        viewModel.ApplyOffset([first, second], results);
+
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.DoesNotContain(first, viewModel.Objects);
+        Assert.DoesNotContain(second, viewModel.Objects);
+        Assert.True(viewModel.CanUndo);
+
+        // One ReplaceObjectsCommand covering both sources means exactly one Undo restores both.
+        viewModel.UndoCommand.Execute(null);
+
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.Contains(first, viewModel.Objects);
+        Assert.Contains(second, viewModel.Objects);
+        Assert.False(viewModel.CanUndo);
+    }
+
+    [Fact]
+    public void UndoAfterOffsetRestoresTheOriginalObjectExactly()
+    {
+        var viewModel = new SceneViewModel();
+        var rectangle = MakeSquareObject();
+        viewModel.Objects.Add(rectangle);
+        viewModel.SelectedObjects.Add(rectangle);
+        var originalBounds = rectangle.WorldBounds();
+
+        var path = VectorOffsetPlanner.ComputeOffset(
+            rectangle, Clipper2VectorOffsetService.Default, -2, VectorJoinType.Round, 2);
+        Assert.NotNull(path);
+        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! });
+        Assert.NotSame(rectangle, Assert.Single(viewModel.Objects));
+
+        viewModel.UndoCommand.Execute(null);
+
+        var restored = Assert.Single(viewModel.Objects);
+        Assert.Same(rectangle, restored);
+        Assert.Equal(originalBounds, restored.WorldBounds());
+        Assert.False(restored.IsVectorPath);
     }
 }
