@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -1114,6 +1115,69 @@ public partial class SceneCanvas : UserControl
             ViewModel.SelectedObjects.Clear();
             ViewModel.SelectedObjects.Add(obj);
         }
+        e.Handled = true;
+        ShowSelectionContextMenu((UIElement)sender);
+    }
+
+    /// <summary>Right-click on a selected object — the LightBurn-style entry point for everything the
+    /// "Další úpravy výběru" overflow menu in SelectionPropertiesBar.xaml already offers, previously
+    /// only reachable through that bar's small "..." button. Built in code rather than shared XAML: a
+    /// ContextMenu is its own visual tree and does not inherit this control's DataContext the way an
+    /// inline Menu does, so a plain "{Binding Scene.XxxCommand}" here would silently bind to nothing.
+    /// Always-relevant edits (cut/copy/paste/duplicate/delete/select-all/group/lock/z-order) are added
+    /// unconditionally and rely on each RelayCommand's own CanExecute to grey them out, exactly like
+    /// SelectionPropertiesBar does for the same items; context-specific ones (boolean ops, offset,
+    /// trace, background removal) are only added when relevant, matching that bar's Visibility
+    /// bindings, so a right-click on ordinary text doesn't show nine greyed-out shape operations.</summary>
+    private void ShowSelectionContextMenu(UIElement placementTarget)
+    {
+        if (ViewModel is null) return;
+        var scene = ViewModel;
+        var menu = new ContextMenu { PlacementTarget = placementTarget, Placement = PlacementMode.MousePoint };
+
+        menu.Items.Add(new MenuItem { Header = "Vyjmout", InputGestureText = "Ctrl+X", Command = scene.CutCommand });
+        menu.Items.Add(new MenuItem { Header = "Kopírovat", InputGestureText = "Ctrl+C", Command = scene.CopyCommand });
+        menu.Items.Add(new MenuItem { Header = "Vložit", InputGestureText = "Ctrl+V", Command = scene.PasteCommand });
+        menu.Items.Add(new MenuItem { Header = "Duplikovat", InputGestureText = "Ctrl+D", Command = scene.DuplicateCommand });
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem { Header = "Odstranit", InputGestureText = "Delete", Command = scene.DeleteCommand });
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem { Header = "Vybrat vše", InputGestureText = "Ctrl+A", Command = scene.SelectAllCommand });
+        menu.Items.Add(new MenuItem { Header = "Seskupit výběr", InputGestureText = "Ctrl+G", Command = scene.GroupSelectionCommand });
+        menu.Items.Add(new MenuItem { Header = "Rozdělit skupinu", InputGestureText = "Ctrl+Shift+G", Command = scene.UngroupSelectionCommand });
+        menu.Items.Add(new MenuItem
+        {
+            Header = scene.IsSelectedLocked ? "Odemknout výběr" : "Zamknout výběr",
+            Command = scene.ToggleLockCommand,
+        });
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem { Header = "Přenést dopředu", Command = scene.BringToFrontCommand });
+        menu.Items.Add(new MenuItem { Header = "Přenést dozadu", Command = scene.SendToBackCommand });
+
+        if (scene.CanUniteSelection || scene.CanOffsetSelection || scene.CanTraceSelectedRaster ||
+            scene.CanRemoveSelectedBackground || scene.CanRestoreSelectedBackground)
+        {
+            menu.Items.Add(new Separator());
+            var more = new MenuItem { Header = "Další úpravy výběru" };
+            if (scene.CanUniteSelection)
+            {
+                more.Items.Add(new MenuItem { Header = "Sjednotit tvary", InputGestureText = "Ctrl+Shift+U", Command = scene.UniteSelectionCommand });
+                more.Items.Add(new MenuItem { Header = "Odečíst tvary", Command = scene.SubtractSelectionCommand });
+                more.Items.Add(new MenuItem { Header = "Průnik tvarů", Command = scene.IntersectSelectionCommand });
+                more.Items.Add(new MenuItem { Header = "Vyloučit tvary", Command = scene.ExcludeSelectionCommand });
+            }
+            if (scene.CanOffsetSelection)
+                more.Items.Add(new MenuItem { Header = "Offset křivky…", InputGestureText = "Ctrl+Shift+O", Command = scene.OffsetSelectionCommand });
+            if (scene.CanTraceSelectedRaster)
+                more.Items.Add(new MenuItem { Header = "Trasovat bitmapu", InputGestureText = "Alt+T", Command = scene.TraceSelectedRasterCommand });
+            if (scene.CanRemoveSelectedBackground)
+                more.Items.Add(new MenuItem { Header = "Odstranit pozadí", Command = scene.RemoveSelectedBackgroundCommand });
+            if (scene.CanRestoreSelectedBackground)
+                more.Items.Add(new MenuItem { Header = "Obnovit pozadí", Command = scene.RestoreSelectedBackgroundCommand });
+            menu.Items.Add(more);
+        }
+
+        menu.IsOpen = true;
     }
 
     private void BeginMove(MouseButtonEventArgs e)
