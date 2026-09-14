@@ -398,6 +398,166 @@ public class SceneViewModelTests
         AssertBoundsApproximately(new BoundingBox2D(0, 0, 30, 10), result.WorldBounds());
     }
 
+    private static double SignedArea(IReadOnlyList<Position> points)
+    {
+        if (points.Count < 3) return 0;
+        double twiceArea = 0;
+        for (var index = 0; index < points.Count; index++)
+        {
+            var current = points[index];
+            var next = points[(index + 1) % points.Count];
+            twiceArea += current.X * next.Y - next.X * current.Y;
+        }
+        return twiceArea / 2;
+    }
+
+    private static ImportedShape Rectangle(Guid geometrySetId, LayerSettings layer, double minX, double minY, double maxX, double maxY) => new()
+    {
+        GeometrySetId = geometrySetId,
+        LayerId = layer.Id,
+        LayerColor = layer.Color,
+        PreferredMode = LayerMode.Cut,
+        IsClosed = true,
+        Points =
+        [
+            new Position(minX, minY, 0), new Position(maxX, minY, 0),
+            new Position(maxX, maxY, 0), new Position(minX, maxY, 0),
+        ],
+    };
+
+    [Fact]
+    public void UniteSelectionPreservesAnExistingHoleInOneOfTheSources()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+
+        // A 20x20 square with a 4x4 hole punched in its centre — one GeometrySetId, two rings.
+        var donutGroupId = Guid.NewGuid();
+        var donut = new SceneObject
+        {
+            Name = "Mezikruží",
+            LocalShapes =
+            [
+                Rectangle(donutGroupId, layer, 0, 0, 20, 20),
+                Rectangle(donutGroupId, layer, 8, 8, 12, 12),
+            ],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 0, 20, 20),
+            Transform = ObjectTransform.Identity,
+        };
+        // A separate, non-overlapping square far to the right.
+        var square = new SceneObject
+        {
+            Name = "Čtverec",
+            LocalShapes = [Rectangle(Guid.NewGuid(), layer, 30, 0, 50, 20)],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(30, 0, 50, 20),
+            Transform = ObjectTransform.Identity,
+        };
+        viewModel.Objects.Add(donut);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(donut);
+        viewModel.SelectedObjects.Add(square);
+
+        viewModel.UniteSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal(3, result.LocalShapes.Count);
+        // Summed as individual ring magnitudes (the same convention IsSafeUnionResult/
+        // IsSafeBooleanResult already use elsewhere in SceneViewModel.cs — a hole ring's area adds
+        // to this total rather than netting out of it): outer 400 + hole 16 + untouched square 400 =
+        // 816. If the hole had silently been filled in instead of preserved, only 2 shapes would come
+        // back at all (800, and Assert.Equal(3, ...) above would already have failed).
+        var totalArea = result.LocalShapes.Sum(shape => Math.Abs(SignedArea(shape.Points)));
+        Assert.Equal(816, totalArea, precision: 2);
+        // The hole ring and its parent must wind in opposite directions — that is the only signal
+        // (besides nesting) that tells a consumer which ring is a hole.
+        var areas = result.LocalShapes.Select(shape => SignedArea(shape.Points)).OrderBy(area => Math.Abs(area)).ToList();
+        Assert.True(Math.Sign(areas[0]) != Math.Sign(areas[1]), "The hole ring must wind opposite its parent ring.");
+    }
+
+    [Fact]
+    public void SubtractSelectionCreatesAHoleWhenTheFrontShapeIsFullyInsideTheBackShape()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+
+        var back = new SceneObject
+        {
+            Name = "Pozadí",
+            LocalShapes = [Rectangle(Guid.NewGuid(), layer, 0, 0, 20, 20)],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 0, 20, 20),
+            Transform = ObjectTransform.Identity,
+        };
+        var front = new SceneObject
+        {
+            Name = "Popředí",
+            LocalShapes = [Rectangle(Guid.NewGuid(), layer, 8, 8, 12, 12)],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(8, 8, 12, 12),
+            Transform = ObjectTransform.Identity,
+        };
+        viewModel.Objects.Add(back);
+        viewModel.Objects.Add(front);
+        viewModel.SelectedObjects.Add(back);
+        viewModel.SelectedObjects.Add(front);
+
+        viewModel.SubtractSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        // The inner square never touches the outer square's boundary, so subtracting it must punch
+        // a hole (two rings) rather than merely shrinking one contour (one ring) or being ignored.
+        Assert.Equal(2, result.LocalShapes.Count);
+        var totalArea = result.LocalShapes.Sum(shape => Math.Abs(SignedArea(shape.Points)));
+        Assert.Equal(400 + 16, totalArea, precision: 2);
+        var areas = result.LocalShapes.Select(shape => SignedArea(shape.Points)).OrderBy(area => Math.Abs(area)).ToList();
+        Assert.True(Math.Sign(areas[0]) != Math.Sign(areas[1]), "The hole ring must wind opposite its parent ring.");
+        AssertBoundsApproximately(new BoundingBox2D(0, 0, 20, 20), result.WorldBounds());
+    }
+
+    [Fact]
+    public void UniteSelectionMergesTwoUnrelatedOverlappingGroupsWithinOneSourceInsteadOfCancellingViaEvenOdd()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+
+        // Two 20x20 squares overlapping in a 10x10 corner, each its own GeometrySetId and neither
+        // containing the other — NormalizeNestedCompoundPaths must not (and does not) link them, so
+        // they reach the boolean pipeline as two independent, unrelated rings that merely happen to
+        // overlap on the canvas. If they were folded together as one flat EvenOdd set instead of each
+        // being resolved on its own first and then explicitly unioned, the overlap would read as
+        // "covered twice" and get treated as uncovered (EvenOdd parity), silently punching a
+        // fake hole where the two shapes overlap even though nothing asked for a hole there.
+        var source = new SceneObject
+        {
+            Name = "Dva čtverce",
+            LocalShapes =
+            [
+                Rectangle(Guid.NewGuid(), layer, 0, 0, 20, 20),
+                Rectangle(Guid.NewGuid(), layer, 10, 10, 30, 30),
+            ],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 0, 30, 30),
+            Transform = ObjectTransform.Identity,
+        };
+        viewModel.Objects.Add(source);
+        viewModel.SelectedObjects.Add(source);
+
+        viewModel.UniteSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        AssertBoundsApproximately(new BoundingBox2D(0, 0, 30, 30), result.WorldBounds());
+        // Correct union: 20*20 + 20*20 - 10*10 (the shared corner counted once) = 700. The wrong,
+        // flat-EvenOdd behaviour this test guards against would instead read 600 (the overlap
+        // excluded from both squares rather than merged).
+        var totalArea = result.LocalShapes.Sum(shape => Math.Abs(SignedArea(shape.Points)));
+        Assert.Equal(700, totalArea, precision: 2);
+    }
+
     [Fact]
     public void DrawingEllipseCreatesAClosedCurveInsideTheDraggedBounds()
     {

@@ -1,11 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
-using System.Windows;
-using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lasero.Core.GCode;
+using Lasero.Core.Geometry;
 using Lasero.Core.Grbl;
 using Lasero.Core.Import;
 using Lasero.Core.Layers;
@@ -26,6 +25,8 @@ public partial class SceneViewModel : ObservableObject
     private const double CascadeOffsetMm = 10;
     private const double BooleanGeometryToleranceMm = 0.002;
     private const double MinimumUnitedAreaSquareMm = 0.00000001;
+
+    private static readonly IVectorBooleanService BooleanService = Clipper2VectorBooleanService.Default;
 
     private readonly SceneCommandStack _commandStack = new();
     private int _importCount;
@@ -964,26 +965,17 @@ public partial class SceneViewModel : ObservableObject
 
         try
         {
-            Geometry? united = null;
+            IReadOnlyList<IReadOnlyList<Position>>? united = null;
             foreach (var source in sources)
             {
-                var normalizedShapes = NormalizeNestedCompoundPaths(source.GetWorldShapes());
-                foreach (var geometrySet in normalizedShapes.GroupBy(shape => shape.GeometrySetId))
-                {
-                    var sourceGeometry = BuildFilledGeometry(geometrySet);
-                    united = united is null
-                        ? sourceGeometry
-                        : Geometry.Combine(
-                            united,
-                            sourceGeometry,
-                            GeometryCombineMode.Union,
-                            null,
-                            BooleanGeometryToleranceMm,
-                            ToleranceType.Absolute);
-                }
+                var sourceRings = BuildSourceRings(source);
+                if (sourceRings is null) continue;
+                united = united is null
+                    ? sourceRings
+                    : BooleanService.Union(united, sourceRings, VectorFillRule.EvenOdd);
             }
 
-            if (united is null || united.GetArea(BooleanGeometryToleranceMm, ToleranceType.Absolute) <= MinimumUnitedAreaSquareMm)
+            if (united is null || TotalArea(united) <= MinimumUnitedAreaSquareMm)
             {
                 RejectVectorUnion("Vybrané křivky nevytvářejí platnou uzavřenou plochu.");
                 return;
@@ -1020,18 +1012,21 @@ public partial class SceneViewModel : ObservableObject
     /// <summary>Subtract, intersect and exclude (XOR) — the other three of the four standard boolean
     /// modes, sharing UniteSelection's CanExecute (CanUniteSelection: same "closed shapes only, at
     /// least two" requirement applies to any of the four) and its geometry/rejection plumbing
-    /// (BuildFilledGeometry, ToImportedShapes, IsSafeUnionResult, NormalizeNestedCompoundPaths,
+    /// (BuildSourceRings, ToImportedShapes, IsSafeUnionResult, NormalizeNestedCompoundPaths,
     /// FindUnionTargetShape, RejectVectorUnion). Their names say "union", but the logic underneath is
-    /// identical for every mode — only Geometry.Combine's own mode argument changes, which is exactly
-    /// what this method threads through. Kept as a copy of UniteSelection's shape rather than a shared
-    /// refactor of it, so this addition cannot regress the existing, already-tested union path.
+    /// identical for every mode — only which IVectorBooleanService method combine calls changes,
+    /// which is exactly what this method threads through. Kept as a copy of UniteSelection's shape
+    /// rather than a shared refactor of it, so this addition cannot regress the existing,
+    /// already-tested union path.
     ///
     /// Source order matters for Subtract (it does not, mathematically, for Intersect/Xor, but folding
     /// left-to-right is deterministic either way): sources are processed back-to-front by scene
     /// z-order, so Subtract reads as "shapes in front cut a hole in the shape behind them" — Minus
     /// Front in Illustrator, Subtract in Figma — rather than an order the user cannot predict from
     /// selection order alone.</summary>
-    private void CombineSelection(GeometryCombineMode mode, string resultName)
+    private void CombineSelection(
+        Func<IReadOnlyList<IReadOnlyList<Position>>, IReadOnlyList<IReadOnlyList<Position>>, VectorFillRule, IReadOnlyList<IReadOnlyList<Position>>> combine,
+        string resultName)
     {
         var sources = SelectedObjects.OrderBy(item => Scene.Objects.IndexOf(item)).ToList();
         if (sources.Count == 0) return;
@@ -1041,38 +1036,17 @@ public partial class SceneViewModel : ObservableObject
 
         try
         {
-            Geometry? combined = null;
+            IReadOnlyList<IReadOnlyList<Position>>? combined = null;
             foreach (var source in sources)
             {
-                var normalizedShapes = NormalizeNestedCompoundPaths(source.GetWorldShapes());
-                Geometry? sourceGeometry = null;
-                foreach (var geometrySet in normalizedShapes.GroupBy(shape => shape.GeometrySetId))
-                {
-                    var figureGeometry = BuildFilledGeometry(geometrySet);
-                    sourceGeometry = sourceGeometry is null
-                        ? figureGeometry
-                        : Geometry.Combine(
-                            sourceGeometry,
-                            figureGeometry,
-                            GeometryCombineMode.Union,
-                            null,
-                            BooleanGeometryToleranceMm,
-                            ToleranceType.Absolute);
-                }
-
-                if (sourceGeometry is null) continue;
+                var sourceRings = BuildSourceRings(source);
+                if (sourceRings is null) continue;
                 combined = combined is null
-                    ? sourceGeometry
-                    : Geometry.Combine(
-                        combined,
-                        sourceGeometry,
-                        mode,
-                        null,
-                        BooleanGeometryToleranceMm,
-                        ToleranceType.Absolute);
+                    ? sourceRings
+                    : combine(combined, sourceRings, VectorFillRule.EvenOdd);
             }
 
-            if (combined is null || combined.GetArea(BooleanGeometryToleranceMm, ToleranceType.Absolute) <= MinimumUnitedAreaSquareMm)
+            if (combined is null || TotalArea(combined) <= MinimumUnitedAreaSquareMm)
             {
                 RejectVectorUnion("Výsledkem operace by byla prázdná plocha.");
                 return;
@@ -1107,13 +1081,45 @@ public partial class SceneViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void SubtractSelection() => CombineSelection(GeometryCombineMode.Exclude, "Odečtený vektor");
+    private void SubtractSelection() => CombineSelection(BooleanService.Subtract, "Odečtený vektor");
 
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void IntersectSelection() => CombineSelection(GeometryCombineMode.Intersect, "Průnik vektorů");
+    private void IntersectSelection() => CombineSelection(BooleanService.Intersect, "Průnik vektorů");
 
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void ExcludeSelection() => CombineSelection(GeometryCombineMode.Xor, "Vyloučený vektor");
+    private void ExcludeSelection() => CombineSelection(BooleanService.Xor, "Vyloučený vektor");
+
+    /// <summary>One source's complete world geometry as ring sets, ready to fold into another source
+    /// via a plain set operation (Union/Subtract/Intersect/Xor) — or null if the source contributed no
+    /// closed shapes at all. Each GeometrySetId group is resolved on its own first (EvenOdd: an outer
+    /// contour together with its holes collapses to one clean filled region) before the groups are
+    /// unioned together, rather than treating every ring in the source as one flat EvenOdd set —
+    /// otherwise two unrelated (non-nested) groups that happen to overlap on the canvas would cancel
+    /// each other out by EvenOdd parity instead of merging, which is not what "select two objects and
+    /// combine them" means when either object happens to already contain a hole.</summary>
+    private static IReadOnlyList<IReadOnlyList<Position>>? BuildSourceRings(SceneObject source)
+    {
+        var normalizedShapes = NormalizeNestedCompoundPaths(source.GetWorldShapes());
+        IReadOnlyList<IReadOnlyList<Position>>? sourceRings = null;
+        foreach (var geometrySet in normalizedShapes.GroupBy(shape => shape.GeometrySetId))
+        {
+            var groupRings = geometrySet
+                .Where(shape => shape.IsClosed && shape.Points.Count >= 3)
+                .Select(shape => shape.Points)
+                .ToList();
+            if (groupRings.Count == 0) continue;
+
+            var resolved = BooleanService.Resolve(groupRings, VectorFillRule.EvenOdd);
+            sourceRings = sourceRings is null
+                ? resolved
+                : BooleanService.Union(sourceRings, resolved, VectorFillRule.EvenOdd);
+        }
+
+        return sourceRings;
+    }
+
+    private static double TotalArea(IReadOnlyList<IReadOnlyList<Position>> rings) =>
+        rings.Sum(ring => Math.Abs(SignedArea(ring)));
 
     private static IReadOnlyList<ImportedShape> NormalizeNestedCompoundPaths(
         IReadOnlyList<ImportedShape> shapes)
@@ -1207,50 +1213,19 @@ public partial class SceneViewModel : ObservableObject
     private void RejectVectorUnion(string reason) => VectorOperationRejected?.Invoke(
         $"Vektory nebyly změněny. {reason} Zkontrolujte překrývající se nebo velmi tenké části a zkuste výběr znovu.");
 
-    private static Geometry BuildFilledGeometry(IEnumerable<ImportedShape> shapes)
-    {
-        var geometry = new StreamGeometry { FillRule = FillRule.EvenOdd };
-        using (var context = geometry.Open())
-        {
-            foreach (var shape in shapes.Where(item => item.IsClosed && item.Points.Count >= 3))
-            {
-                var points = shape.Points;
-                context.BeginFigure(new Point(points[0].X, points[0].Y), isFilled: true, isClosed: true);
-                context.PolyLineTo(points.Skip(1).Select(point => new Point(point.X, point.Y)).ToList(), true, false);
-            }
-        }
-        geometry.Freeze();
-        return geometry;
-    }
-
     private static List<ImportedShape> ToImportedShapes(
-        Geometry geometry,
+        IReadOnlyList<IReadOnlyList<Position>> rings,
         Guid geometrySetId,
         Guid layerId,
         RgbColor color,
         LayerMode mode)
     {
-        var flattened = geometry.GetFlattenedPathGeometry(BooleanGeometryToleranceMm, ToleranceType.Absolute);
         var result = new List<ImportedShape>();
-
-        foreach (var figure in flattened.Figures.Where(figure => figure.IsClosed))
+        foreach (var ring in rings)
         {
-            var points = new List<Position> { new(figure.StartPoint.X, figure.StartPoint.Y, 0) };
-            foreach (var segment in figure.Segments)
-            {
-                switch (segment)
-                {
-                    case LineSegment line:
-                        points.Add(new Position(line.Point.X, line.Point.Y, 0));
-                        break;
-                    case PolyLineSegment polyLine:
-                        points.AddRange(polyLine.Points.Select(point => new Position(point.X, point.Y, 0)));
-                        break;
-                }
-            }
-
+            var points = ring;
             if (points.Count > 1 && DistanceSquared(points[0], points[^1]) < 0.000001)
-                points.RemoveAt(points.Count - 1);
+                points = points.Take(points.Count - 1).ToList();
             if (points.Count < 3) continue;
 
             result.Add(new ImportedShape
