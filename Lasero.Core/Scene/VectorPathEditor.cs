@@ -148,6 +148,172 @@ public static class VectorPathEditor
         return isOutHandle ? moved with { HandleIn = newOpposite } : moved with { HandleOut = newOpposite };
     }
 
+    /// <summary>Turns a straight segment into an equivalent cubic Bézier by placing handles at the 1/3
+    /// and 2/3 points of the chord — a cubic with control points on the line between its endpoints
+    /// draws exactly that line, so the visible geometry is unchanged until a handle is subsequently
+    /// moved (LIGHTBURN_VECTOR_PARITY.md §16). Idempotent: a segment that already has a handle on
+    /// either side is returned unchanged rather than flattening an existing curve back to this
+    /// baseline.</summary>
+    public static VectorSubpath ConvertSegmentToCurve(VectorSubpath subpath, int segmentIndex)
+    {
+        ArgumentNullException.ThrowIfNull(subpath);
+        var (a, b) = subpath.Segment(segmentIndex);
+        if (!VectorSubpath.IsStraightSegment(a, b)) return subpath;
+
+        var aIndex = segmentIndex;
+        var bIndex = (segmentIndex + 1) % subpath.Nodes.Count;
+        var c1 = CubicBezier.Lerp(a.Anchor, b.Anchor, 1.0 / 3);
+        var c2 = CubicBezier.Lerp(a.Anchor, b.Anchor, 2.0 / 3);
+
+        var nodes = subpath.Nodes.ToList();
+        nodes[aIndex] = a with { HandleOut = c1 };
+        nodes[bIndex] = b with { HandleIn = c2 };
+        return subpath with { Nodes = nodes };
+    }
+
+    /// <summary>Removes the handles on either side of one segment, turning a curve back into a straight
+    /// line. Anchors are untouched, so both endpoints stay exactly where they were
+    /// (LIGHTBURN_VECTOR_PARITY.md §17) — only the segment between them changes.</summary>
+    public static VectorSubpath ConvertSegmentToLine(VectorSubpath subpath, int segmentIndex)
+    {
+        ArgumentNullException.ThrowIfNull(subpath);
+        var (a, b) = subpath.Segment(segmentIndex);
+        var aIndex = segmentIndex;
+        var bIndex = (segmentIndex + 1) % subpath.Nodes.Count;
+
+        var nodes = subpath.Nodes.ToList();
+        nodes[aIndex] = a with { HandleOut = null };
+        nodes[bIndex] = b with { HandleIn = null };
+        return subpath with { Nodes = nodes };
+    }
+
+    /// <summary>Reshapes one segment so the curve point at parameter <paramref name="t"/> moves to
+    /// <paramref name="pointerLocal"/> — the "grab the middle of a line/curve and drag it" gesture
+    /// (LIGHTBURN_VECTOR_PARITY.md §15). Always computed from the segment's ORIGINAL (pre-drag) node
+    /// pair, never from a previously-dragged result, matching the "preview = original + delta, never
+    /// cumulative" contract (§7/§74) — the caller re-derives every preview frame from one immutable
+    /// snapshot and a fixed <paramref name="t"/> captured once at drag-start.
+    ///
+    /// A straight segment is first baselined to the equivalent curve (ConvertSegmentToCurve) so the
+    /// starting shape is visually identical to the line, then the same handle math applies uniformly.
+    /// The two control points move by a minimal-movement least-squares split of the desired delta,
+    /// weighted by each control's actual influence on the point at t (dB/dP1 = 3(1-t)²t, dB/dP2 =
+    /// 3(1-t)t²) — the standard exact technique for "drag a point on a cubic Bézier", not an
+    /// approximation: solving k1, k2 in w1·k1 + w2·k2 = 1 (minimizing k1²+k2² for a unique answer) and
+    /// moving each control by k·delta reproduces the requested point exactly at t.</summary>
+    public static VectorSubpath DragSegmentPoint(VectorSubpath subpath, int segmentIndex, double t, Position pointerLocal)
+    {
+        ArgumentNullException.ThrowIfNull(subpath);
+        if (t is <= 0 or >= 1) throw new ArgumentOutOfRangeException(nameof(t));
+
+        var (originalA, originalB) = subpath.Segment(segmentIndex);
+        var baseline = VectorSubpath.IsStraightSegment(originalA, originalB)
+            ? ConvertSegmentToCurve(subpath, segmentIndex)
+            : subpath;
+        var (a, b) = baseline.Segment(segmentIndex);
+        var aIndex = segmentIndex;
+        var bIndex = (segmentIndex + 1) % baseline.Nodes.Count;
+        var c1 = a.HandleOut ?? a.Anchor;
+        var c2 = b.HandleIn ?? b.Anchor;
+
+        var originalPoint = CubicBezier.Evaluate(a.Anchor, c1, c2, b.Anchor, t);
+        var deltaX = pointerLocal.X - originalPoint.X;
+        var deltaY = pointerLocal.Y - originalPoint.Y;
+
+        var w1 = 3 * (1 - t) * (1 - t) * t;
+        var w2 = 3 * (1 - t) * t * t;
+        var denom = w1 * w1 + w2 * w2;
+        if (denom < 1e-9) return baseline; // t too close to an endpoint to solve stably
+
+        var k1 = w1 / denom;
+        var k2 = w2 / denom;
+        var newC1 = new Position(c1.X + deltaX * k1, c1.Y + deltaY * k1, c1.Z);
+        var newC2 = new Position(c2.X + deltaX * k2, c2.Y + deltaY * k2, c2.Z);
+
+        var nodes = baseline.Nodes.ToList();
+        nodes[aIndex] = a with { HandleOut = newC1 };
+        nodes[bIndex] = b with { HandleIn = newC2 };
+        return baseline with { Nodes = nodes };
+    }
+
+    /// <summary>Breaks a path at one node, per LIGHTBURN_VECTOR_PARITY.md §22. A closed subpath opens,
+    /// with the break node duplicated as the path's two new endpoints ("two endpoints at the break
+    /// location") — the first copy keeps the node's original HandleOut (continuing forward) with
+    /// HandleIn cleared, the second copy keeps the original HandleIn with HandleOut cleared. An
+    /// internal node of an OPEN subpath is defined identically but splits the subpath into two
+    /// separate subpaths within the same compound VectorPath, rather than producing one subpath with
+    /// duplicated nodes at both ends — there is nothing to "loop back" to. Breaking at an endpoint of
+    /// an already-open subpath is a no-op target (nothing to break) and rejected.</summary>
+    public static VectorPath BreakAtNode(VectorPath path, int subpathIndex, int nodeIndex)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var subpath = path.Subpaths[subpathIndex];
+        var nodes = subpath.Nodes;
+        var n = nodes.Count;
+        if (nodeIndex < 0 || nodeIndex >= n) throw new ArgumentOutOfRangeException(nameof(nodeIndex));
+
+        if (subpath.IsClosed)
+        {
+            var start = nodes[nodeIndex] with { HandleIn = null };
+            var end = nodes[nodeIndex] with { HandleOut = null };
+            var reordered = new List<VectorNode> { start };
+            for (var i = 1; i < n; i++) reordered.Add(nodes[(nodeIndex + i) % n]);
+            reordered.Add(end);
+            return path.ReplaceSubpath(subpathIndex, subpath with { Nodes = reordered, IsClosed = false });
+        }
+
+        if (nodeIndex == 0 || nodeIndex == n - 1)
+            throw new ArgumentException("Cannot break an open path at an endpoint — it is already open there.", nameof(nodeIndex));
+
+        var first = nodes.Take(nodeIndex + 1).ToList();
+        first[^1] = first[^1] with { HandleOut = null };
+        var second = nodes.Skip(nodeIndex).ToList();
+        second[0] = second[0] with { HandleIn = null };
+
+        return path.ReplaceSubpathWithMany(subpathIndex,
+        [
+            subpath with { Nodes = first, IsClosed = false },
+            subpath with { Nodes = second, IsClosed = false },
+        ]);
+    }
+
+    /// <summary>Deletes one segment, per LIGHTBURN_VECTOR_PARITY.md §21 ("deleting a line/curve opens
+    /// or splits the path"). A closed subpath opens, rotated so the two nodes that bounded the removed
+    /// segment become the new end/start (their handles facing the removed segment are cleared). An
+    /// open subpath splits into (up to) two subpaths at the cut; a resulting side with fewer than 2
+    /// nodes is degenerate (a lone point is not a usable path) and is dropped rather than kept as
+    /// corrupt geometry — deleting the first or last segment of a short open path can therefore leave
+    /// just one subpath, or in the extreme (a 2-node open path) none at all, which callers must be
+    /// prepared to see as a shrunken or empty VectorPath.Subpaths.</summary>
+    public static VectorPath DeleteSegment(VectorPath path, int subpathIndex, int segmentIndex)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var subpath = path.Subpaths[subpathIndex];
+        var nodes = subpath.Nodes;
+        var n = nodes.Count;
+        var aIndex = segmentIndex;
+        var bIndex = (segmentIndex + 1) % n;
+
+        if (subpath.IsClosed)
+        {
+            var reordered = new List<VectorNode>(n);
+            for (var i = 0; i < n; i++) reordered.Add(nodes[(bIndex + i) % n]);
+            reordered[0] = reordered[0] with { HandleIn = null };
+            reordered[^1] = reordered[^1] with { HandleOut = null };
+            return path.ReplaceSubpath(subpathIndex, subpath with { Nodes = reordered, IsClosed = false });
+        }
+
+        var first = nodes.Take(aIndex + 1).ToList();
+        first[^1] = first[^1] with { HandleOut = null };
+        var second = nodes.Skip(bIndex).ToList();
+        second[0] = second[0] with { HandleIn = null };
+
+        var survivors = new List<VectorSubpath>();
+        if (first.Count >= 2) survivors.Add(subpath with { Nodes = first, IsClosed = false });
+        if (second.Count >= 2) survivors.Add(subpath with { Nodes = second, IsClosed = false });
+        return path.ReplaceSubpathWithMany(subpathIndex, survivors);
+    }
+
     private static VectorNode BuildNode(Position anchor, Position? dragOffset)
     {
         if (!HasMagnitude(dragOffset, out var offset)) return VectorNode.CornerAt(anchor);

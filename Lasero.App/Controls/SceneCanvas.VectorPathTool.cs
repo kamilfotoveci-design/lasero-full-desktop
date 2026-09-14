@@ -64,9 +64,20 @@ public partial class SceneCanvas
     private VectorPath? _nodeEditWorkingPath;
     private readonly HashSet<(int Subpath, int Node)> _selectedNodeKeys = [];
     private (int Subpath, int Node, bool IsOutHandle)? _draggedHandle;
+    private SegmentHit? _draggedSegment;
     private VectorPath? _nodeDragOriginalPath;
+    private VectorPathDragSession? _nodeDragSession;
     private Position _nodeDragStartWorld;
     private bool _nodeMarqueeHitObject;
+
+    // --- node/handle/segment hover state (presentation only — see LIGHTBURN_VECTOR_PARITY.md §63) ---
+    // Node/handle hover is driven by WPF MouseEnter/Leave on their own hit-test elements (cheap: only
+    // fires on element-boundary crossings, not per pointer-move sample). Segment hover has no
+    // dedicated per-segment element, so it is polled from OnCanvasMouseMove, but only while idle
+    // (_dragMode == None) and only triggers a redraw when the hovered segment actually changes.
+    private (int Subpath, int Node)? _hoveredNodeKey;
+    private (int Subpath, int Node, bool IsOutHandle)? _hoveredHandleKey;
+    private SegmentHit? _hoveredSegment;
 
     // ------------------------------------------------------------------
     // Drawing — one click stream builds one VectorSubpath, committed as a single SceneObject only
@@ -269,11 +280,21 @@ public partial class SceneCanvas
 
     private void ExitNodeEditMode()
     {
+        // In case this fires mid-drag (e.g. a tool-switch shortcut while a node is captured), restore
+        // the object's LocalShapes to their pre-drag snapshot first — same guarantee CancelNodeEditDrag
+        // gives an explicit Escape.
+        if (_nodeEditObject is not null && _nodeDragSession is not null)
+            _nodeEditObject.LocalShapes = _nodeDragSession.OriginalShapes;
         _nodeEditObject = null;
         _nodeEditWorkingPath = null;
         _selectedNodeKeys.Clear();
         _draggedHandle = null;
+        _draggedSegment = null;
         _nodeDragOriginalPath = null;
+        _nodeDragSession = null;
+        _hoveredNodeKey = null;
+        _hoveredHandleKey = null;
+        _hoveredSegment = null;
         RedrawSelectionOverlay();
     }
 
@@ -297,6 +318,19 @@ public partial class SceneCanvas
                 var subpath = _nodeEditWorkingPath.Subpaths[segmentHit.SubpathIndex];
                 var updatedSubpath = VectorPathEditor.InsertNode(subpath, segmentHit.SegmentIndex, segmentHit.T);
                 CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(segmentHit.SubpathIndex, updatedSubpath));
+                return;
+            }
+        }
+        else
+        {
+            // LIGHTBURN_VECTOR_PARITY.md §4/§15: node/handle hits have already routed themselves away
+            // via their own WPF elements before this dispatch runs, so a plain single click that lands
+            // on a segment body (next in the hit-test priority) grabs and reshapes that segment,
+            // clamping t away from the endpoints so this never fights with node/handle hit targets.
+            var segmentHit = HitTestNearestSegment(obj, _nodeEditWorkingPath, screen, SegmentInsertTolerancePx);
+            if (segmentHit is { } hit && hit.T is > 0.08 and < 0.92)
+            {
+                BeginSegmentDrag(hit);
                 return;
             }
         }
@@ -340,7 +374,9 @@ public partial class SceneCanvas
         var worldMinY = ToWorldY(top + h);
         var worldMaxY = ToWorldY(top);
 
-        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _selectedNodeKeys.Clear();
+        // LIGHTBURN_VECTOR_PARITY.md §6: none = replace, Shift = add, Ctrl = subtract.
+        var subtract = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && !subtract) _selectedNodeKeys.Clear();
 
         var path = _nodeEditWorkingPath;
         for (var s = 0; s < path.Subpaths.Count; s++)
@@ -349,8 +385,9 @@ public partial class SceneCanvas
             for (var n = 0; n < nodes.Count; n++)
             {
                 var world = obj.Transform.Apply(nodes[n].Anchor, obj.LocalPivot);
-                if (world.X >= worldMinX && world.X <= worldMaxX && world.Y >= worldMinY && world.Y <= worldMaxY)
-                    _selectedNodeKeys.Add((s, n));
+                if (world.X < worldMinX || world.X > worldMaxX || world.Y < worldMinY || world.Y > worldMaxY) continue;
+                if (subtract) _selectedNodeKeys.Remove((s, n));
+                else _selectedNodeKeys.Add((s, n));
             }
         }
 
@@ -400,6 +437,11 @@ public partial class SceneCanvas
         var path = _nodeEditWorkingPath ?? obj.VectorPath;
         if (path is null) return;
 
+        // Hover feedback only makes sense while idle -- mid-drag, the dragged item's own live motion
+        // already is the feedback, and a stale hover from before the drag started would be misleading.
+        var showHover = _dragMode is DragMode.None or DragMode.NodeMarquee;
+        if (showHover && _hoveredSegment is { } hoveredSeg) DrawSegmentHoverHighlight(obj, path, hoveredSeg);
+
         for (var s = 0; s < path.Subpaths.Count; s++)
         {
             var subpath = path.Subpaths[s];
@@ -410,20 +452,61 @@ public partial class SceneCanvas
                 var screenAnchor = new Point(ToCanvasX(worldAnchor.X), ToCanvasY(worldAnchor.Y));
                 var isSelected = _selectedNodeKeys.Contains((s, n));
 
-                if (node.HandleIn is { } handleIn) DrawHandle(obj, s, n, handleIn, screenAnchor, isOutHandle: false);
-                if (node.HandleOut is { } handleOut) DrawHandle(obj, s, n, handleOut, screenAnchor, isOutHandle: true);
+                if (node.HandleIn is { } handleIn)
+                    DrawHandle(obj, s, n, handleIn, screenAnchor, isOutHandle: false, isHovered: showHover && _hoveredHandleKey == (s, n, false));
+                if (node.HandleOut is { } handleOut)
+                    DrawHandle(obj, s, n, handleOut, screenAnchor, isOutHandle: true, isHovered: showHover && _hoveredHandleKey == (s, n, true));
 
-                DrawNodeDot(s, n, screenAnchor, isSelected, node.Type);
+                DrawNodeDot(s, n, screenAnchor, isSelected, node.Type, isHovered: showHover && _hoveredNodeKey == (s, n));
             }
         }
+    }
+
+    /// <summary>A translucent, thickened overlay stroke tracing the hovered segment's own flattened
+    /// points (not a generic straight line) — drawn UNDERNEATH the node dots (added to the overlay
+    /// before the node loop below) so the dots themselves stay on top, matching LIGHTBURN_VECTOR_
+    /// PARITY.md §63's "highlight the target before a contextual operation" (here: before Delete).</summary>
+    private void DrawSegmentHoverHighlight(SceneObject obj, VectorPath path, SegmentHit hit)
+    {
+        var subpath = path.Subpaths[hit.SubpathIndex];
+        var (a, b) = subpath.Segment(hit.SegmentIndex);
+        var localPoints = new List<Position> { a.Anchor };
+        if (VectorSubpath.IsStraightSegment(a, b))
+        {
+            localPoints.Add(b.Anchor);
+        }
+        else
+        {
+            CubicBezier.Flatten(a.Anchor, a.HandleOut ?? a.Anchor, b.HandleIn ?? b.Anchor, b.Anchor, VectorPath.DefaultFlattenToleranceMm, localPoints);
+        }
+
+        var poly = new Polyline
+        {
+            Stroke = SelectionBrush,
+            StrokeThickness = 4,
+            Opacity = 0.35,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+        };
+        foreach (var local in localPoints)
+        {
+            var world = obj.Transform.Apply(local, obj.LocalPivot);
+            poly.Points.Add(new Point(ToCanvasX(world.X), ToCanvasY(world.Y)));
+        }
+        DrawCanvas.Children.Add(poly);
+        _selectionVisuals.Add(poly);
     }
 
     /// <summary>Corner nodes draw as a small square, smooth nodes as a circle — the same
     /// square-corner/round-smooth convention Illustrator and Figma both use, so the node's type is
     /// legible on the canvas itself instead of only through the right-click toggle that sets it. The
     /// hit target underneath is always the same transparent circle regardless of type; only the
-    /// visible dot's shape changes.</summary>
-    private void DrawNodeDot(int subpathIndex, int nodeIndex, Point screen, bool isSelected, VectorNodeType type)
+    /// visible dot's shape changes. Hover grows the dot by 2px and thickens its stroke (the same
+    /// "grow + thicken, don't recolor" treatment AddPathToolDot already uses for the draw-tool's own
+    /// close-hover highlight) — kept deliberately distinct from Selected (solid fill) so hover and
+    /// selection never read as the same state, per UI_DESIGN_PRINCIPLES.md.</summary>
+    private void DrawNodeDot(int subpathIndex, int nodeIndex, Point screen, bool isSelected, VectorNodeType type, bool isHovered = false)
     {
         var target = new Ellipse
         {
@@ -435,26 +518,42 @@ public partial class SceneCanvas
         };
         target.MouseLeftButtonDown += OnNodeOrHandleMouseLeftButtonDown;
         target.MouseRightButtonDown += OnNodeRightButtonDown;
+        target.MouseEnter += (_, _) => SetHoveredNode(subpathIndex, nodeIndex);
+        target.MouseLeave += (_, _) => ClearHoveredNode(subpathIndex, nodeIndex);
         Canvas.SetLeft(target, screen.X - NodeHitSizePx / 2);
         Canvas.SetTop(target, screen.Y - NodeHitSizePx / 2);
         DrawCanvas.Children.Add(target);
         _selectionVisuals.Add(target);
 
+        var size = isHovered ? NodeVisibleSizePx + 2 : NodeVisibleSizePx;
         var fill = isSelected ? SelectionBrush : SelectionHandleFill;
         Shape dot = type == VectorNodeType.Corner
-            ? new Rectangle { Width = NodeVisibleSizePx, Height = NodeVisibleSizePx }
-            : new Ellipse { Width = NodeVisibleSizePx, Height = NodeVisibleSizePx };
+            ? new Rectangle { Width = size, Height = size }
+            : new Ellipse { Width = size, Height = size };
         dot.Fill = fill;
         dot.Stroke = SelectionBrush;
-        dot.StrokeThickness = 1.2;
+        dot.StrokeThickness = isHovered ? 1.8 : 1.2;
         dot.IsHitTestVisible = false;
-        Canvas.SetLeft(dot, screen.X - NodeVisibleSizePx / 2);
-        Canvas.SetTop(dot, screen.Y - NodeVisibleSizePx / 2);
+        Canvas.SetLeft(dot, screen.X - size / 2);
+        Canvas.SetTop(dot, screen.Y - size / 2);
         DrawCanvas.Children.Add(dot);
         _selectionVisuals.Add(dot);
     }
 
-    private void DrawHandle(SceneObject obj, int subpathIndex, int nodeIndex, Position localHandle, Point anchorScreen, bool isOutHandle)
+    private void SetHoveredNode(int subpathIndex, int nodeIndex)
+    {
+        _hoveredNodeKey = (subpathIndex, nodeIndex);
+        RedrawSelectionOverlay();
+    }
+
+    private void ClearHoveredNode(int subpathIndex, int nodeIndex)
+    {
+        if (_hoveredNodeKey != (subpathIndex, nodeIndex)) return; // a newer hover already replaced it
+        _hoveredNodeKey = null;
+        RedrawSelectionOverlay();
+    }
+
+    private void DrawHandle(SceneObject obj, int subpathIndex, int nodeIndex, Position localHandle, Point anchorScreen, bool isOutHandle, bool isHovered = false)
     {
         var world = obj.Transform.Apply(localHandle, obj.LocalPivot);
         var screen = new Point(ToCanvasX(world.X), ToCanvasY(world.Y));
@@ -476,24 +575,40 @@ public partial class SceneCanvas
             Cursor = Cursors.Hand,
         };
         target.MouseLeftButtonDown += OnNodeOrHandleMouseLeftButtonDown;
+        target.MouseEnter += (_, _) => SetHoveredHandle(subpathIndex, nodeIndex, isOutHandle);
+        target.MouseLeave += (_, _) => ClearHoveredHandle(subpathIndex, nodeIndex, isOutHandle);
         Canvas.SetLeft(target, screen.X - HandleDotHitSizePx / 2);
         Canvas.SetTop(target, screen.Y - HandleDotHitSizePx / 2);
         DrawCanvas.Children.Add(target);
         _selectionVisuals.Add(target);
 
+        var handleSize = isHovered ? HandleVisibleSizePx + 2 : HandleVisibleSizePx;
         var dot = new Ellipse
         {
-            Width = HandleVisibleSizePx,
-            Height = HandleVisibleSizePx,
+            Width = handleSize,
+            Height = handleSize,
             Fill = SelectionHandleFill,
             Stroke = SelectionBrush,
-            StrokeThickness = 1,
+            StrokeThickness = isHovered ? 1.6 : 1,
             IsHitTestVisible = false,
         };
-        Canvas.SetLeft(dot, screen.X - HandleVisibleSizePx / 2);
-        Canvas.SetTop(dot, screen.Y - HandleVisibleSizePx / 2);
+        Canvas.SetLeft(dot, screen.X - handleSize / 2);
+        Canvas.SetTop(dot, screen.Y - handleSize / 2);
         DrawCanvas.Children.Add(dot);
         _selectionVisuals.Add(dot);
+    }
+
+    private void SetHoveredHandle(int subpathIndex, int nodeIndex, bool isOutHandle)
+    {
+        _hoveredHandleKey = (subpathIndex, nodeIndex, isOutHandle);
+        RedrawSelectionOverlay();
+    }
+
+    private void ClearHoveredHandle(int subpathIndex, int nodeIndex, bool isOutHandle)
+    {
+        if (_hoveredHandleKey != (subpathIndex, nodeIndex, isOutHandle)) return;
+        _hoveredHandleKey = null;
+        RedrawSelectionOverlay();
     }
 
     private void OnNodeOrHandleMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -503,6 +618,7 @@ public partial class SceneCanvas
         e.Handled = true;
         Focus();
 
+        _draggedSegment = null;
         if (tag.IsHandle)
         {
             _draggedHandle = (tag.Subpath, tag.Node, tag.IsOutHandle);
@@ -529,6 +645,10 @@ public partial class SceneCanvas
         var screen = e.GetPosition(DrawCanvas);
         _nodeDragStartWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
         _nodeDragOriginalPath = _nodeEditWorkingPath;
+        // Captured BEFORE any live-preview frame runs, so this reference (immutable ImportedShape
+        // records) is the true pre-drag state even after RenderVectorPathLive starts reassigning
+        // obj.LocalShapes on every pointer move — see VectorPathDragSession's own comment.
+        _nodeDragSession = new VectorPathDragSession(_nodeEditObject.LocalShapes);
         _dragMode = DragMode.NodeEdit;
         DrawCanvas.CaptureMouse();
         RedrawSelectionOverlay();
@@ -549,6 +669,60 @@ public partial class SceneCanvas
         var nodes = subpath.Nodes.ToList();
         nodes[tag.Node] = VectorPathEditor.ConvertNodeType(node, newType);
         CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(tag.Subpath, subpath with { Nodes = nodes }));
+    }
+
+    /// <summary>Starts a segment-body drag (LIGHTBURN_VECTOR_PARITY.md §15): captures the pre-drag
+    /// snapshot exactly like a node/handle drag (same VectorPathDragSession, same
+    /// FinishNodeEditDrag/CancelNodeEditDrag commit/cancel contract) so this is just a third kind of
+    /// drag sharing all the transactional machinery, not a parallel implementation of it.</summary>
+    private void BeginSegmentDrag(SegmentHit hit)
+    {
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
+        _draggedHandle = null;
+        _draggedSegment = hit;
+        _selectedNodeKeys.Clear();
+        _nodeDragOriginalPath = _nodeEditWorkingPath;
+        _nodeDragSession = new VectorPathDragSession(_nodeEditObject.LocalShapes);
+        _dragMode = DragMode.NodeSegmentDrag;
+        DrawCanvas.CaptureMouse();
+        RedrawSelectionOverlay();
+    }
+
+    /// <summary>Polled from the canvas's general mouse-move (only while idle, see the call site) to
+    /// track segment hover — unlike node/handle hover, no dedicated per-segment WPF element exists to
+    /// raise MouseEnter/Leave on, so this re-runs the same distance-based hit-test BeginSegmentDrag/
+    /// DeleteHoveredSegment already use. A node or handle hover always wins (LIGHTBURN_VECTOR_PARITY.md
+    /// §4 priority: node/handle above segment) since their own hit-test elements sit on top and are
+    /// larger than the segment tolerance, so this suppresses itself whenever either is active. Redraws
+    /// only when the hovered segment actually changes, not on every sampled pointer position.</summary>
+    private void UpdateNodeEditHover(Point screen)
+    {
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
+
+        SegmentHit? next = _hoveredNodeKey is not null || _hoveredHandleKey is not null
+            ? null
+            : HitTestNearestSegment(_nodeEditObject, _nodeEditWorkingPath, screen, SegmentInsertTolerancePx);
+
+        if (_hoveredSegment?.SubpathIndex == next?.SubpathIndex && _hoveredSegment?.SegmentIndex == next?.SegmentIndex)
+            return; // same segment (or still nothing) -- t drifting slightly within it is not a change worth a redraw
+        _hoveredSegment = next;
+        RedrawSelectionOverlay();
+    }
+
+    private void UpdateNodeSegmentDrag(Point screen)
+    {
+        if (_nodeEditObject is null || _nodeDragOriginalPath is null || _draggedSegment is not { } segment) return;
+        var obj = _nodeEditObject;
+        var currentWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        var currentLocal = obj.Transform.Inverse(currentWorld, obj.LocalPivot);
+
+        var subpath = _nodeDragOriginalPath.Subpaths[segment.SubpathIndex];
+        var updatedSubpath = VectorPathEditor.DragSegmentPoint(subpath, segment.SegmentIndex, segment.T, currentLocal);
+        var updated = _nodeDragOriginalPath.ReplaceSubpath(segment.SubpathIndex, updatedSubpath);
+
+        _nodeEditWorkingPath = updated;
+        RenderVectorPathLive(obj, updated);
+        RedrawSelectionOverlay();
     }
 
     private void UpdateNodeEditDrag(Point screen)
@@ -573,6 +747,8 @@ public partial class SceneCanvas
             var startLocal = obj.Transform.Inverse(_nodeDragStartWorld, obj.LocalPivot);
             var dx = currentLocal.X - startLocal.X;
             var dy = currentLocal.Y - startLocal.Y;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                (dx, dy) = ConstrainToNearestEighthTurn(dx, dy);
             var subpaths = _nodeDragOriginalPath.Subpaths.ToList();
             for (var s = 0; s < subpaths.Count; s++)
             {
@@ -594,41 +770,130 @@ public partial class SceneCanvas
         RedrawSelectionOverlay();
     }
 
+    /// <summary>Structural (not reference) equality between two VectorPaths — VectorSubpath.Nodes is a
+    /// plain IReadOnlyList, so the record's own generated Equals compares list references, not
+    /// contents, and would treat two paths rebuilt with identical node values as different. Used only
+    /// for the §59 "drag back to exactly where it started" no-op guard.</summary>
+    private static bool VectorPathsStructurallyEqual(VectorPath a, VectorPath b)
+    {
+        if (a.Subpaths.Count != b.Subpaths.Count) return false;
+        for (var i = 0; i < a.Subpaths.Count; i++)
+        {
+            var sa = a.Subpaths[i];
+            var sb = b.Subpaths[i];
+            if (sa.IsClosed != sb.IsClosed) return false;
+            if (!sa.Nodes.SequenceEqual(sb.Nodes)) return false;
+        }
+        return true;
+    }
+
+    /// <summary>Shift-constrains a node-drag delta to the nearest 0/45/90/135/180/225/270/315° from
+    /// the drag's own starting point (LIGHTBURN_VECTOR_PARITY.md §8) — snaps the direction, keeps the
+    /// dragged distance (magnitude) unchanged, so the constrained point still tracks the pointer's
+    /// distance from the anchor, just locked to an eighth-turn.</summary>
+    private static (double X, double Y) ConstrainToNearestEighthTurn(double dx, double dy)
+    {
+        var magnitude = Math.Sqrt(dx * dx + dy * dy);
+        if (magnitude < 1e-9) return (dx, dy);
+        var angle = Math.Atan2(dy, dx);
+        const double step = Math.PI / 4;
+        var snapped = Math.Round(angle / step) * step;
+        return (magnitude * Math.Cos(snapped), magnitude * Math.Sin(snapped));
+    }
+
     /// <summary>Live preview during a node/handle drag — mutates the object's own LocalShapes directly
     /// (geometry tracks the pointer with no lag/easing, per the spec's hard requirement) and repaints
     /// through the existing UpdateObjectGeometry pipeline. Nothing here touches the command stack; only
-    /// FinishNodeEditDrag/CommitNodeEdit does, once, on mouse-up.</summary>
+    /// FinishNodeEditDrag/CommitNodeEdit does, once, on mouse-up. Shapes are built via
+    /// VectorPathDragSession so every preview frame keeps the pre-drag LayerId/GeometrySetId instead of
+    /// losing them the moment a live frame is rendered.</summary>
     private void RenderVectorPathLive(SceneObject obj, VectorPath path)
     {
-        var color = obj.LocalShapes.FirstOrDefault()?.LayerColor ?? VectorPathDefaultColor;
-        obj.LocalShapes = path.Subpaths.Select(subpath => new ImportedShape
-        {
-            Points = subpath.Flatten(),
-            IsClosed = subpath.IsClosed,
-            LayerColor = color,
-            PreferredMode = subpath.IsClosed ? LayerMode.Fill : LayerMode.Cut,
-        }).ToList();
+        var session = _nodeDragSession ??= new VectorPathDragSession(obj.LocalShapes);
+        obj.LocalShapes = session.BuildPreviewShapes(path, VectorPathDefaultColor);
         UpdateObjectGeometry(obj);
     }
 
+    /// <summary>Mouse-up: restores the object's LocalShapes to the exact pre-drag snapshot BEFORE
+    /// anything touches the command stack, so CommitNodeEdit/VectorPathSceneFactory.Rebuild always
+    /// reads the true original metadata rather than the last live-preview frame, and so the object
+    /// ReplaceObjectsCommand stores as "removed" (and restores verbatim on Undo) is pristine, not the
+    /// dragged-to position. A gesture that never actually moved anything (a plain node click/select)
+    /// leaves _nodeEditWorkingPath unchanged and is not committed at all — no spurious undo step.</summary>
     private void FinishNodeEditDrag()
     {
-        if (_nodeEditObject is not null && _nodeEditWorkingPath is not null)
-            CommitNodeEdit(_nodeEditWorkingPath);
+        if (_nodeEditObject is not null)
+        {
+            if (_nodeDragSession is not null) _nodeEditObject.LocalShapes = _nodeDragSession.OriginalShapes;
+
+            if (TryCloseByEndpointJoin(out var closedPath))
+            {
+                CommitNodeEdit(closedPath);
+            }
+            // §59: neither a plain click (reference-equal, UpdateNodeEditDrag never ran) nor a drag
+            // that ends up back exactly where it started (structurally equal despite being rebuilt
+            // through new VectorPath/VectorSubpath instances every frame) may create an undo entry.
+            else if (_nodeEditWorkingPath is not null
+                && !ReferenceEquals(_nodeEditWorkingPath, _nodeDragOriginalPath)
+                && (_nodeDragOriginalPath is null || !VectorPathsStructurallyEqual(_nodeEditWorkingPath, _nodeDragOriginalPath)))
+            {
+                CommitNodeEdit(_nodeEditWorkingPath);
+            }
+        }
         _draggedHandle = null;
+        _draggedSegment = null;
         _nodeDragOriginalPath = null;
+        _nodeDragSession = null;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
     }
 
+    /// <summary>LIGHTBURN_VECTOR_PARITY.md §23, same-path case: dragging an open subpath's endpoint
+    /// onto its OTHER endpoint closes the path instead of leaving the node sitting on top of it.
+    /// Closing always connects the subpath's last node back to its first regardless of which endpoint
+    /// was physically dragged, so the ORIGINAL (pre-drag) subpath is closed as-is — the gesture snaps
+    /// exactly onto the existing far endpoint, it does not keep the dragged one's slightly-off
+    /// position. Screen-space tolerance, matching the path tool's own close-hover threshold.</summary>
+    private bool TryCloseByEndpointJoin(out VectorPath closedPath)
+    {
+        closedPath = VectorPath.Empty;
+        if (_nodeEditObject is null || _nodeDragOriginalPath is null || _nodeEditWorkingPath is null) return false;
+        if (_draggedHandle is not null || _draggedSegment is not null || _selectedNodeKeys.Count != 1) return false;
+
+        var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
+        var originalSubpath = _nodeDragOriginalPath.Subpaths[subpathIndex];
+        if (originalSubpath.IsClosed || originalSubpath.Nodes.Count < 2) return false;
+        var lastIndex = originalSubpath.Nodes.Count - 1;
+        if (nodeIndex != 0 && nodeIndex != lastIndex) return false; // must be an endpoint
+        var otherIndex = nodeIndex == 0 ? lastIndex : 0;
+
+        var draggedWorkingSubpath = _nodeEditWorkingPath.Subpaths[subpathIndex];
+        var obj = _nodeEditObject;
+        var draggedWorld = obj.Transform.Apply(draggedWorkingSubpath.Nodes[nodeIndex].Anchor, obj.LocalPivot);
+        var otherWorld = obj.Transform.Apply(originalSubpath.Nodes[otherIndex].Anchor, obj.LocalPivot);
+        var draggedScreen = new Point(ToCanvasX(draggedWorld.X), ToCanvasY(draggedWorld.Y));
+        var otherScreen = new Point(ToCanvasX(otherWorld.X), ToCanvasY(otherWorld.Y));
+        if (Distance(draggedScreen, otherScreen) > CloseHoverThresholdPx) return false;
+
+        closedPath = _nodeDragOriginalPath.ReplaceSubpath(subpathIndex, VectorPathEditor.Close(originalSubpath));
+        return true;
+    }
+
+    /// <summary>Escape/right-click-cancel: restores both the working path and the object's LocalShapes
+    /// to the exact pre-drag snapshot (not a re-flatten of the original path, which would risk drift
+    /// from the live-mutated geometry) — the object is left exactly as it was before the gesture
+    /// started, per the "cancel must restore the exact pre-drag object" requirement.</summary>
     private void CancelNodeEditDrag()
     {
         if (_nodeEditObject is not null && _nodeDragOriginalPath is not null)
         {
             _nodeEditWorkingPath = _nodeDragOriginalPath;
-            RenderVectorPathLive(_nodeEditObject, _nodeDragOriginalPath);
+            if (_nodeDragSession is not null) _nodeEditObject.LocalShapes = _nodeDragSession.OriginalShapes;
+            UpdateObjectGeometry(_nodeEditObject);
         }
         _draggedHandle = null;
+        _draggedSegment = null;
         _nodeDragOriginalPath = null;
+        _nodeDragSession = null;
         RedrawSelectionOverlay();
     }
 
@@ -668,6 +933,32 @@ public partial class SceneCanvas
         CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
     }
 
+    /// <summary>Arrow-key nudge for the current node selection (LIGHTBURN_VECTOR_PARITY.md §9) — moves
+    /// only the selected nodes by (dx, dy) in the object's LOCAL space and commits one
+    /// ReplaceObjectsCommand per key press, the same one-gesture-one-undo-step contract every other
+    /// committed node edit already uses. Each press is its own undo step (matching the existing
+    /// whole-object Nudge()'s convention below; coalescing a held key into one transaction is
+    /// explicitly optional per spec and not implemented here).</summary>
+    private void NudgeSelectedNodes(Key arrowKey, double stepMm)
+    {
+        if (_nodeEditWorkingPath is null || _selectedNodeKeys.Count == 0) return;
+        var dx = arrowKey switch { Key.Left => -stepMm, Key.Right => stepMm, _ => 0 };
+        var dy = arrowKey switch { Key.Up => stepMm, Key.Down => -stepMm, _ => 0 };
+        if (dx == 0 && dy == 0) return;
+
+        var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
+        foreach (var group in _selectedNodeKeys.GroupBy(nodeKey => nodeKey.Subpath))
+        {
+            var subpath = subpaths[group.Key];
+            var nodes = subpath.Nodes.ToList();
+            foreach (var nodeKey in group)
+                nodes[nodeKey.Node] = nodes[nodeKey.Node].Translated(dx, dy);
+            subpaths[group.Key] = subpath with { Nodes = nodes };
+        }
+
+        CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+    }
+
     /// <summary>Sets every selected node to the same Corner/Smooth type in one gesture — the toolbar's
     /// two-button equivalent of OnNodeRightButtonDown's single-node toggle.</summary>
     public void ConvertSelectedNodes(VectorNodeType type)
@@ -698,6 +989,36 @@ public partial class SceneCanvas
         var subpath = subpaths[index];
         subpaths[index] = subpath.IsClosed ? VectorPathEditor.Open(subpath) : VectorPathEditor.Close(subpath);
         CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+    }
+
+    /// <summary>Delete-key path when nothing is selected (LIGHTBURN_VECTOR_PARITY.md §21/§64):
+    /// whatever segment the pointer currently sits over is deleted, opening a closed subpath or
+    /// splitting/shrinking an open one (see VectorPathEditor.DeleteSegment). Silently does nothing if
+    /// the pointer is not within tolerance of any segment of the edited path.</summary>
+    private void DeleteHoveredSegment(Point screen)
+    {
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
+        var hit = HitTestNearestSegment(_nodeEditObject, _nodeEditWorkingPath, screen, SegmentInsertTolerancePx);
+        if (hit is not { } segmentHit) return;
+
+        _selectedNodeKeys.Clear();
+        CommitNodeEdit(VectorPathEditor.DeleteSegment(_nodeEditWorkingPath, segmentHit.SubpathIndex, segmentHit.SegmentIndex));
+    }
+
+    /// <summary>Public — NodeEditToolbar's "Rozdělit v uzlu" button (LIGHTBURN_VECTOR_PARITY.md §22).
+    /// Only meaningful for exactly one selected node (the break location); a multi-node or empty
+    /// selection is a no-op, matching the button's own IsEnabled binding.</summary>
+    public void BreakSelectedNode()
+    {
+        if (_nodeEditWorkingPath is null || _selectedNodeKeys.Count != 1) return;
+        var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
+        var subpath = _nodeEditWorkingPath.Subpaths[subpathIndex];
+        // BreakAtNode throws for an endpoint of an already-open subpath (nothing to break there) --
+        // guard here rather than let a stray click on an end node fault the UI thread.
+        if (!subpath.IsClosed && (nodeIndex == 0 || nodeIndex == subpath.Nodes.Count - 1)) return;
+
+        _selectedNodeKeys.Clear();
+        CommitNodeEdit(VectorPathEditor.BreakAtNode(_nodeEditWorkingPath, subpathIndex, nodeIndex));
     }
 
     private int? ResolveContextSubpathIndex()

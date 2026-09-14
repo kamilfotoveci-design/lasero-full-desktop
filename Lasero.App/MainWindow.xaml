@@ -500,9 +500,18 @@
                 -->
                 <!-- The wrapper is what bounds the bar. Binding the bar's MaxWidth to the workspace's
                      ActualWidth measured 0 on the first pass and the bar never appeared; a stretched
-                     host gives the same limit through ordinary layout, with nothing to resolve. -->
+                     host gives the same limit through ordinary layout, with nothing to resolve.
+
+                     NodeEditToolbar swaps in for SelectionPropertiesBar while node-edit is active —
+                     editing individual nodes and editing the whole object's X/Y/W/H are different
+                     concerns, and the edited object stays in SceneViewModel.SelectedObjects the whole
+                     time (EnterNodeEditMode adds it), so without this the two bars would show at once. -->
                 <Grid VerticalAlignment="Top" Margin="12,30,12,0" Panel.ZIndex="20">
-                    <views:SelectionPropertiesBar HorizontalAlignment="Center" VerticalAlignment="Top" />
+                    <views:SelectionPropertiesBar HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                  Visibility="{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource InverseBoolToVisibility}}" />
+                    <views:NodeEditToolbar HorizontalAlignment="Center" VerticalAlignment="Top"
+                                           TargetCanvas="{Binding ElementName=DesignerCanvas}"
+                                           Visibility="{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
 
                 <!-- Undo, redo, pan and zoom. Always present, because none of them depend on a

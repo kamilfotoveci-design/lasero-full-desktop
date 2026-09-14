@@ -156,6 +156,21 @@ public sealed record VectorPath
         updated[index] = replacement;
         return this with { Subpaths = updated };
     }
+
+    /// <summary>Replaces one subpath with zero or more subpaths in its place — the "split into two
+    /// contours" shape VectorPathEditor.BreakAtNode/DeleteSegment need for an internal-node break or
+    /// segment deletion on an open subpath, where the operation can change the object's subpath count
+    /// without turning each result into a separate SceneObject (see LIGHTBURN_VECTOR_PARITY.md §40:
+    /// a compound object may hold multiple subpaths).</summary>
+    public VectorPath ReplaceSubpathWithMany(int index, IReadOnlyList<VectorSubpath> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(replacements);
+        if (index < 0 || index >= Subpaths.Count) throw new ArgumentOutOfRangeException(nameof(index));
+        var updated = Subpaths.ToList();
+        updated.RemoveAt(index);
+        updated.InsertRange(index, replacements);
+        return this with { Subpaths = updated };
+    }
 }
 
 /// <summary>Cubic Bezier math shared by flattening and node-editing (De Casteljau subdivision).</summary>

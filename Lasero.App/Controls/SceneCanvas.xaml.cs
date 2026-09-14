@@ -83,7 +83,7 @@ public partial class SceneCanvas : UserControl
 
     private bool _antsRunning;
 
-    private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw, PathTool, NodeEdit, NodeMarquee }
+    private enum DragMode { None, Select, Move, Resize, Rotate, Pan, Draw, PathTool, NodeEdit, NodeSegmentDrag, NodeMarquee }
 
     private double _scale = DefaultScale;
     private double _offsetXMm;
@@ -437,7 +437,7 @@ public partial class SceneCanvas : UserControl
                 StrokeThickness = 1.4,
                 Tag = obj,
                 Cursor = obj.IsLocked ? Cursors.Arrow : Cursors.SizeAll,
-                ToolTip = $"{obj.Name} · kliknutím vybrat",
+                ToolTip = $"{obj.Name} — kliknutím vybrat",
             };
             path.MouseLeftButtonDown += OnObjectMouseLeftButtonDown;
             path.MouseRightButtonDown += OnObjectMouseRightButtonDown;
@@ -1697,6 +1697,10 @@ public partial class SceneCanvas : UserControl
         // between clicks _dragMode is None, which the switch below does not otherwise cover.
         if (ViewModel?.ActiveTool == DesignerTool.Line) UpdateVectorPathPreview(screen);
 
+        // VECTOR PATH TOOL HOOK: segment hover tracking needs every idle pointer move too (node/handle
+        // hover is driven by their own MouseEnter/Leave, not this) -- see UpdateNodeEditHover.
+        if (_dragMode == DragMode.None && _nodeEditObject is not null) UpdateNodeEditHover(screen);
+
         switch (_dragMode)
         {
             case DragMode.Move:
@@ -1724,6 +1728,9 @@ public partial class SceneCanvas : UserControl
             case DragMode.NodeEdit:
                 UpdateNodeEditDrag(screen);
                 break;
+            case DragMode.NodeSegmentDrag:
+                UpdateNodeSegmentDrag(screen);
+                break;
             case DragMode.NodeMarquee:
                 UpdateRubberBand(screen);
                 break;
@@ -1742,6 +1749,7 @@ public partial class SceneCanvas : UserControl
             case DragMode.Draw: FinishDraw(e.GetPosition(DrawCanvas)); break;
             case DragMode.PathTool: EndVectorPathClick(e.GetPosition(DrawCanvas)); break;
             case DragMode.NodeEdit: FinishNodeEditDrag(); break;
+            case DragMode.NodeSegmentDrag: FinishNodeEditDrag(); break;
             case DragMode.NodeMarquee: FinishNodeMarquee(); break;
         }
         _dragMode = DragMode.None;
@@ -1844,7 +1852,10 @@ public partial class SceneCanvas : UserControl
                     _activeSingleObject.LocalBounds,
                     _activeResizeHandle,
                     world,
-                    lockAspectRatio: ViewModel?.LockAspectRatio == true,
+                    // Shift is the transient, predictable desktop-editor override; the persistent
+                    // inspector toggle remains supported, while a resize gesture can still opt in
+                    // without changing global state.
+                    lockAspectRatio: ViewModel?.LockAspectRatio == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift),
                     allowFlip: !_activeSingleObject.IsRaster);
                 break;
             }
@@ -2009,7 +2020,11 @@ public partial class SceneCanvas : UserControl
         // stops that binding from also firing on the same key press.
         if (e.Key == Key.Delete && _nodeEditObject is not null)
         {
-            DeleteSelectedNodes();
+            // LIGHTBURN_VECTOR_PARITY.md §21/§64: context-sensitive Delete -- a node selection deletes
+            // those nodes; with nothing selected, whatever segment the pointer is currently over is
+            // deleted instead (opening/splitting the path), rather than Delete doing nothing.
+            if (_selectedNodeKeys.Count > 0) DeleteSelectedNodes();
+            else DeleteHoveredSegment(Mouse.GetPosition(DrawCanvas));
             e.Handled = true;
             return;
         }
@@ -2055,8 +2070,16 @@ public partial class SceneCanvas : UserControl
 
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
-            var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 5.0 : 0.5;
-            Nudge(e.Key, step);
+            var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 5.0
+                : Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? 0.05
+                : 0.5;
+            // VECTOR PATH TOOL HOOK: while Node Edit has a node selection, arrows must nudge those
+            // nodes (LIGHTBURN_VECTOR_PARITY.md §9) -- falling through to the whole-object Nudge()
+            // below would move the entire path (every node, not just the selected ones) instead.
+            if (_nodeEditObject is not null && _selectedNodeKeys.Count > 0)
+                NudgeSelectedNodes(e.Key, step);
+            else
+                Nudge(e.Key, step);
             e.Handled = true;
         }
         else if (e.Key == Key.F)
@@ -2127,6 +2150,7 @@ public partial class SceneCanvas : UserControl
                 // last committed node, then exit the tool" layering for Escape between clicks.
                 break;
             case DragMode.NodeEdit:
+            case DragMode.NodeSegmentDrag:
                 CancelNodeEditDrag();
                 break;
             case DragMode.NodeMarquee when _rubberBandVisual is not null:
