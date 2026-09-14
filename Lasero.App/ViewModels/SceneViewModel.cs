@@ -270,24 +270,59 @@ public partial class SceneViewModel : ObservableObject
             BackgroundRemovalRequested?.Invoke(source);
     }
 
+    /// <summary>Replaces a traced raster with one node-editable SceneObject per BitmapTraceResult.
+    /// VectorPaths entry (several when the source bitmap held several disconnected shapes — see
+    /// CompoundPathBuilder). Each traced VectorPath comes back in the trace's own local frame (its
+    /// pixel grid scaled to mm, origin at the bitmap's corner — see BitmapTracer/CompoundPathBuilder),
+    /// so ToWorldSpace bakes the source raster's placement (position, and its scale if it was ever
+    /// resized) into the node/handle coordinates themselves before handing off to
+    /// VectorPathSceneFactory.Create, which always builds with Transform.Identity and a zero pivot —
+    /// carrying the source's ObjectTransform over unchanged would rotate/scale the result around the
+    /// wrong pivot (VectorPathSceneFactory always uses Position.Zero, not the source's bounds-center),
+    /// which is exactly the same reason ScenePrimitiveFactory's other object types don't pair a
+    /// borrowed Transform with newly built local geometry either.</summary>
     public void ReplaceRasterWithTrace(SceneObject source, BitmapTraceResult result)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(result);
         if (!source.IsRaster || !Objects.Contains(source))
             throw new InvalidOperationException("The bitmap is no longer available in the scene.");
-        if (result.Document.Shapes.Count == 0)
+        if (result.VectorPaths.Count == 0)
             throw new InvalidOperationException("Tracing did not produce any vector contours.");
 
-        var traced = SceneObjectFactory.FromImportedDocument(result.Document, $"Trasování · {source.Name}");
-        traced.Transform = source.Transform;
-        traced.IsVisible = source.IsVisible;
-        traced.IncludeInOutput = source.IncludeInOutput;
+        var multipleObjects = result.VectorPaths.Count > 1;
+        var tracedObjects = new List<SceneObject>(result.VectorPaths.Count);
+        for (var index = 0; index < result.VectorPaths.Count; index++)
+        {
+            var traced = result.VectorPaths[index];
+            var worldPath = ToWorldSpace(traced.Path, source.Transform, source.LocalPivot);
+            var name = multipleObjects ? $"Trasování · {source.Name} ({index + 1})" : $"Trasování · {source.Name}";
+            var tracedObject = VectorPathSceneFactory.Create(worldPath, traced.Color, name);
+            tracedObject.IsVisible = source.IsVisible;
+            tracedObject.IncludeInOutput = source.IncludeInOutput;
+            tracedObjects.Add(tracedObject);
+        }
 
-        Execute(new ReplaceObjectsCommand(Scene, [source], [traced], result.Document.Layers));
+        Execute(new ReplaceObjectsCommand(Scene, [source], tracedObjects, result.Document.Layers));
         SelectedObjects.Clear();
-        SelectedObjects.Add(traced);
+        foreach (var tracedObject in tracedObjects) SelectedObjects.Add(tracedObject);
         ActiveTool = DesignerTool.Select;
+    }
+
+    /// <summary>Maps every anchor/handle of a locally-framed VectorPath into world mm space through
+    /// one ObjectTransform — affine, so applying it to all of a cubic Bezier's control points yields
+    /// exactly the correctly transformed curve.</summary>
+    private static VectorPath ToWorldSpace(VectorPath localPath, ObjectTransform transform, Position pivot)
+    {
+        var subpaths = localPath.Subpaths.Select(subpath => subpath with
+        {
+            Nodes = subpath.Nodes.Select(node => new VectorNode(
+                transform.Apply(node.Anchor, pivot),
+                node.HandleIn is { } handleIn ? transform.Apply(handleIn, pivot) : null,
+                node.HandleOut is { } handleOut ? transform.Apply(handleOut, pivot) : null,
+                node.Type)).ToList(),
+        }).ToList();
+        return new VectorPath { Subpaths = subpaths };
     }
 
     public void DrawPrimitive(DesignerTool tool, Position start, Position end)
