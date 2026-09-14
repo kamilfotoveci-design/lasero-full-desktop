@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lasero.Core\Lasero.Core.csproj" />
+    <ProjectReference Include="..\Lasero.Persistence\Lasero.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>
