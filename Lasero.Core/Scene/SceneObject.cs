@@ -159,6 +159,31 @@ public sealed partial class SceneObject : ObservableObject
         .Select(shape => shape with { Points = shape.Points.Select(p => Transform.Apply(p, LocalPivot)).ToList() })
         .ToList();
 
+    /// <summary>This object's VectorPath with Transform applied to every node's anchor AND both
+    /// handles — the curve-preserving counterpart to GetWorldShapes, used when an operation (Group)
+    /// needs to combine several objects' editable geometry into one shared coordinate space rather
+    /// than just their already-flattened polylines. Handles are stored as absolute local positions,
+    /// the same convention Anchor uses (see VectorNode's own doc comment and DrawHandle in
+    /// SceneCanvas.VectorPathTool.cs), so the identical Transform.Apply call already used for anchors
+    /// applies to them unchanged — no separate vector/direction transform is needed. Null when this
+    /// object has no VectorPath (not node-editable).</summary>
+    public VectorPath? GetWorldVectorPath()
+    {
+        if (VectorPath is null) return null;
+        Position ToWorld(Position local) => Transform.Apply(local, LocalPivot);
+
+        var subpaths = VectorPath.Subpaths.Select(subpath => subpath with
+        {
+            Nodes = subpath.Nodes.Select(node => new VectorNode(
+                ToWorld(node.Anchor),
+                node.HandleIn is { } hi ? ToWorld(hi) : null,
+                node.HandleOut is { } ho ? ToWorld(ho) : null,
+                node.Type)).ToList(),
+        }).ToList();
+
+        return VectorPath with { Subpaths = subpaths };
+    }
+
     /// <summary>Axis-aligned world-space bounding box — recomputed from LocalBounds' 4 corners since
     /// rotation means it generally isn't just LocalBounds shifted by Transform's translation.</summary>
     public BoundingBox2D WorldBounds()

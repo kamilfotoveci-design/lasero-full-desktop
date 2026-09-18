@@ -198,6 +198,573 @@ public class SceneViewModelTests
         Assert.Contains("Vektory nebyly změněny", explanation, StringComparison.Ordinal);
     }
 
+    /// <summary>Flattening the object's VectorPath must reproduce exactly the polygon(s) already in
+    /// its LocalShapes — the one-directional "VectorPath is authoritative, LocalShapes is a cached
+    /// render of it" contract every other vector-producing path in the codebase (VectorPathSceneFactory,
+    /// BuildOffsetObject) already follows. A closed shape's LocalShapes repeats its first point as its
+    /// last (see ScenePrimitiveFactory); the VectorPath's flattened output does too, since
+    /// VectorSubpath.Flatten always re-closes a closed subpath by wrapping back to Nodes[0].</summary>
+    private static void AssertVectorPathMatchesLocalShapes(SceneObject result)
+    {
+        Assert.True(result.IsVectorPath);
+        var path = Assert.IsType<VectorPath>(result.VectorPath);
+        var flattened = path.FlattenAll();
+        Assert.Equal(result.LocalShapes.Count, flattened.Count);
+        for (var index = 0; index < flattened.Count; index++)
+        {
+            Assert.Equal(result.LocalShapes[index].IsClosed, path.Subpaths[index].IsClosed);
+            Assert.Equal(result.LocalShapes[index].Points, flattened[index]);
+        }
+    }
+
+    [Fact]
+    public void GroupSelectionProducesANodeEditableVectorPath()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var back = MakeClosedObject(layer);
+        var front = MakeClosedObject(layer, 30);
+        viewModel.Objects.Add(back);
+        viewModel.Objects.Add(front);
+        viewModel.SelectedObjects.Add(back);
+        viewModel.SelectedObjects.Add(front);
+
+        viewModel.GroupSelectionCommand.Execute(null);
+
+        var group = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(group);
+    }
+
+    [Fact]
+    public void UngroupSelectionProducesNodeEditableVectorPathParts()
+    {
+        var viewModel = new SceneViewModel();
+        var text = VectorTextFactory.Create("e", Position.Zero, 40, new RgbColor(52, 52, 52));
+        viewModel.Objects.Add(text);
+        viewModel.SelectedObjects.Add(text);
+
+        viewModel.UngroupSelectionCommand.Execute(null);
+
+        Assert.Equal(2, viewModel.Objects.Count);
+        foreach (var part in viewModel.Objects)
+            AssertVectorPathMatchesLocalShapes(part);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Curve-preserving Group/Ungroup (docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md
+    // addendum's proposal) — Group must carry each source's REAL Bezier geometry into the
+    // combined VectorPath (not flatten it to straight segments the way the plain VectorPath-
+    // editability fix above does for sources that have no curve data), and Ungroup must recover
+    // each part's exact original subpath.
+    // -----------------------------------------------------------------------------------------
+
+    private static SceneObject MakeCurvedVectorObject(double x = 0, double y = 0, Guid? layerId = null)
+    {
+        var path = VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(0, 0, 0)),
+            new VectorNode(
+                new Position(20, 0, 0),
+                new Position(15, 8, 0),
+                new Position(25, -8, 0),
+                VectorNodeType.Smooth),
+        ]);
+        var obj = VectorPathSceneFactory.Create(path, RgbColor.Black, "Křivka");
+        if (layerId is { } id)
+            obj.LocalShapes = obj.LocalShapes.Select(shape => shape with { LayerId = id }).ToList();
+        obj.Transform = obj.Transform with { X = x, Y = y };
+        return obj;
+    }
+
+    [Fact]
+    public void GroupThenUngroupPreservesTheOriginalCurveExactlyNotFlattenedToStraightSegments()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject();
+        var straight = MakeSquareObject(40);
+        viewModel.Objects.Add(curve);
+        viewModel.Objects.Add(straight);
+        viewModel.SelectedObjects.Add(curve);
+        viewModel.SelectedObjects.Add(straight);
+        var originalWorldCurveSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
+
+        viewModel.GroupSelectionCommand.Execute(null);
+        var group = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(group);
+
+        viewModel.SelectedObjects.Clear();
+        viewModel.SelectedObjects.Add(group);
+        viewModel.UngroupSelectionCommand.Execute(null);
+
+        var parts = viewModel.Objects.ToList();
+        Assert.Equal(2, parts.Count);
+        foreach (var part in parts) AssertVectorPathMatchesLocalShapes(part);
+
+        var recoveredCurve = Assert.Single(parts, part => part.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
+        var recoveredWorldSubpath = recoveredCurve.GetWorldVectorPath()!.Subpaths[0];
+        Assert.Equal(originalWorldCurveSubpath.Nodes.Count, recoveredWorldSubpath.Nodes.Count);
+        for (var i = 0; i < originalWorldCurveSubpath.Nodes.Count; i++)
+        {
+            var expected = originalWorldCurveSubpath.Nodes[i];
+            var actual = recoveredWorldSubpath.Nodes[i];
+            Assert.Equal(expected.Type, actual.Type);
+            AssertPositionApproximately(expected.Anchor, actual.Anchor);
+            Assert.Equal(expected.HandleIn is not null, actual.HandleIn is not null);
+            Assert.Equal(expected.HandleOut is not null, actual.HandleOut is not null);
+            if (expected.HandleIn is { } hi) AssertPositionApproximately(hi, actual.HandleIn!.Value);
+            if (expected.HandleOut is { } ho) AssertPositionApproximately(ho, actual.HandleOut!.Value);
+        }
+    }
+
+    private static void AssertPositionApproximately(Position expected, Position actual)
+    {
+        Assert.Equal(expected.X, actual.X, precision: 6);
+        Assert.Equal(expected.Y, actual.Y, precision: 6);
+    }
+
+    [Fact]
+    public void GroupThenUngroupSurvivesACompoundPathWithAHole()
+    {
+        var viewModel = new SceneViewModel();
+        var text = VectorTextFactory.Create("e", Position.Zero, 40, new RgbColor(52, 52, 52));
+        var compoundId = text.LocalShapes.Select(shape => shape.GeometrySetId).Distinct().Single();
+        viewModel.Objects.Add(text);
+        viewModel.SelectedObjects.Add(text);
+
+        // Ungroup first to get two standalone parts (outer glyph contour + counter hole), matching
+        // UngroupGroupAndUnitePreservesTextCounter's own precedent, then re-group and ungroup again
+        // to exercise THIS fix's own round trip.
+        viewModel.UngroupSelectionCommand.Execute(null);
+        var initialParts = viewModel.Objects.ToList();
+        Assert.Equal(2, initialParts.Count);
+
+        viewModel.SelectedObjects.Clear();
+        foreach (var part in initialParts) viewModel.SelectedObjects.Add(part);
+        viewModel.GroupSelectionCommand.Execute(null);
+        var group = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(group);
+        Assert.Equal(2, group.VectorPath!.Subpaths.Count);
+
+        viewModel.SelectedObjects.Clear();
+        viewModel.SelectedObjects.Add(group);
+        viewModel.UngroupSelectionCommand.Execute(null);
+
+        var finalParts = viewModel.Objects.ToList();
+        Assert.Equal(2, finalParts.Count);
+        foreach (var part in finalParts) AssertVectorPathMatchesLocalShapes(part);
+        // Both parts still share one GeometrySetId, so a later Union recombines the outer contour
+        // with its counter instead of treating them as unrelated overlapping shapes.
+        Assert.Equal(compoundId,
+            Assert.Single(finalParts.SelectMany(part => part.LocalShapes).Select(s => s.GeometrySetId).Distinct()));
+    }
+
+    [Fact]
+    public void GroupThenUngroupPreservesATransformedSourcesWorldGeometry()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject(x: 50, y: -30);
+        curve.Transform = curve.Transform with { RotationDeg = 40, ScaleX = 1.5, ScaleY = 1.5 };
+        var expectedWorldSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
+        var square = MakeSquareObject(x: -20);
+        viewModel.Objects.Add(curve);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(curve);
+        viewModel.SelectedObjects.Add(square);
+
+        viewModel.GroupSelectionCommand.Execute(null);
+        viewModel.SelectedObjects.Clear();
+        viewModel.SelectedObjects.Add(Assert.Single(viewModel.Objects));
+        viewModel.UngroupSelectionCommand.Execute(null);
+
+        var recoveredCurve = Assert.Single(viewModel.Objects,
+            part => part.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
+        var actualWorldSubpath = recoveredCurve.GetWorldVectorPath()!.Subpaths[0];
+        for (var i = 0; i < expectedWorldSubpath.Nodes.Count; i++)
+            AssertPositionApproximately(expectedWorldSubpath.Nodes[i].Anchor, actualWorldSubpath.Nodes[i].Anchor);
+    }
+
+    [Fact]
+    public void UndoGroupRestoresBothOriginalObjectsWithTheirExactVectorPaths()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject();
+        var originalPath = curve.VectorPath;
+        var square = MakeSquareObject(40);
+        viewModel.Objects.Add(curve);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(curve);
+        viewModel.SelectedObjects.Add(square);
+
+        viewModel.GroupSelectionCommand.Execute(null);
+        Assert.Single(viewModel.Objects);
+
+        viewModel.UndoCommand.Execute(null);
+
+        var restored = viewModel.Objects.ToList();
+        Assert.Equal(2, restored.Count);
+        var restoredCurve = Assert.Single(restored, o => o.IsVectorPath && o.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
+        Assert.Equal(originalPath, restoredCurve.VectorPath);
+    }
+
+    [Fact]
+    public void RedoGroupReappliesTheCurvePreservingGroupResult()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject();
+        var square = MakeSquareObject(40);
+        viewModel.Objects.Add(curve);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(curve);
+        viewModel.SelectedObjects.Add(square);
+        viewModel.GroupSelectionCommand.Execute(null);
+        var subpathsBefore = Assert.Single(viewModel.Objects).VectorPath!.Subpaths.Count;
+
+        viewModel.UndoCommand.Execute(null);
+        viewModel.RedoCommand.Execute(null);
+
+        var group = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(group);
+        Assert.Equal(subpathsBefore, group.VectorPath!.Subpaths.Count);
+        Assert.Contains(group.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
+    }
+
+    [Fact]
+    public void UndoUngroupRestoresTheExactPreUngroupGroupObject()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject();
+        var square = MakeSquareObject(40);
+        viewModel.Objects.Add(curve);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(curve);
+        viewModel.SelectedObjects.Add(square);
+        viewModel.GroupSelectionCommand.Execute(null);
+        var group = Assert.Single(viewModel.Objects);
+        var groupPath = group.VectorPath;
+
+        viewModel.SelectedObjects.Clear();
+        viewModel.SelectedObjects.Add(group);
+        viewModel.UngroupSelectionCommand.Execute(null);
+        Assert.Equal(2, viewModel.Objects.Count);
+
+        viewModel.UndoCommand.Execute(null);
+
+        var restoredGroup = Assert.Single(viewModel.Objects);
+        Assert.Equal(groupPath, restoredGroup.VectorPath);
+    }
+
+    [Fact]
+    public void GroupPreservesLayerIdFromEachSource()
+    {
+        var viewModel = new SceneViewModel();
+        var layerA = Guid.NewGuid();
+        var layerB = Guid.NewGuid();
+        var curveA = MakeCurvedVectorObject(layerId: layerA);
+        var curveB = MakeCurvedVectorObject(x: 100, layerId: layerB);
+        viewModel.Objects.Add(curveA);
+        viewModel.Objects.Add(curveB);
+        viewModel.SelectedObjects.Add(curveA);
+        viewModel.SelectedObjects.Add(curveB);
+
+        viewModel.GroupSelectionCommand.Execute(null);
+
+        var group = Assert.Single(viewModel.Objects);
+        Assert.Contains(group.LocalShapes, shape => shape.LayerId == layerA);
+        Assert.Contains(group.LocalShapes, shape => shape.LayerId == layerB);
+    }
+
+    [Fact]
+    public void GroupGivesEachSourceItsOwnGeometrySetIdWhenSourcesHadNone()
+    {
+        var viewModel = new SceneViewModel();
+        var curveA = MakeCurvedVectorObject();
+        var curveB = MakeCurvedVectorObject(x: 100);
+        viewModel.Objects.Add(curveA);
+        viewModel.Objects.Add(curveB);
+        viewModel.SelectedObjects.Add(curveA);
+        viewModel.SelectedObjects.Add(curveB);
+
+        viewModel.GroupSelectionCommand.Execute(null);
+
+        var group = Assert.Single(viewModel.Objects);
+        Assert.Equal(2, group.LocalShapes.Select(shape => shape.GeometrySetId).Distinct().Count());
+        Assert.All(group.LocalShapes, shape => Assert.NotEqual(Guid.Empty, shape.GeometrySetId));
+    }
+
+    /// <summary>Duplicating (SceneObject.Clone, shares LocalShapes/VectorPath by reference per its own
+    /// doc comment — both are immutable record types so sharing is intentional and safe) and then
+    /// Grouping must never let an edit to one object's VectorPath reach back and mutate another's.
+    /// VectorPath/VectorSubpath/VectorNode are all immutable records, so this is really asserting the
+    /// group/duplicate code paths never mutate a node in place — RecenterVectorPath/BuildCombinedWorld
+    /// VectorPath both build new lists rather than mutating shared ones, which this pins down.</summary>
+    [Fact]
+    public void DuplicateThenGroupDoesNotShareMutableVectorPathStateBetweenObjects()
+    {
+        var viewModel = new SceneViewModel();
+        var curve = MakeCurvedVectorObject();
+        viewModel.Objects.Add(curve);
+        viewModel.SelectedObjects.Add(curve);
+
+        viewModel.DuplicateCommand.Execute(null);
+        var duplicate = Assert.Single(viewModel.SelectedObjects);
+        Assert.NotSame(curve, duplicate);
+
+        var square = MakeSquareObject(60);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(square);
+        viewModel.GroupSelectionCommand.Execute(null);
+        var group = Assert.Single(viewModel.SelectedObjects);
+
+        // The original (never grouped) and the duplicate-turned-group-member must each still report
+        // their own independent, correct anchors — proving no shared mutable list/array was reused.
+        Assert.Equal(new Position(0, 0, 0), curve.VectorPath!.Subpaths[0].Nodes[0].Anchor);
+        Assert.Contains(group.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Cross-object endpoint join (SceneViewModel.JoinObjectEndpoints) — Lasero.Core's own
+    // VectorPathEditor.JoinAtEndpoints/ReverseSubpath are covered directly in
+    // VectorPathJoinTests.cs; these pin the world-space/metadata/undo wiring on top of it.
+    // -----------------------------------------------------------------------------------------
+
+    private static SceneObject MakeOpenLineObject(Position start, Position end, double x = 0, double y = 0, Guid? layerId = null)
+    {
+        var path = VectorPath.SingleOpen([VectorNode.CornerAt(start), VectorNode.CornerAt(end)]);
+        var obj = VectorPathSceneFactory.Create(path, RgbColor.Black, "Čára");
+        if (layerId is { } id)
+            obj.LocalShapes = obj.LocalShapes.Select(shape => shape with { LayerId = id }).ToList();
+        obj.Transform = obj.Transform with { X = x, Y = y };
+        return obj;
+    }
+
+    [Theory]
+    [InlineData(false, true)]  // A.end -> B.start
+    [InlineData(false, false)] // A.end -> B.end
+    [InlineData(true, true)]   // A.start -> B.start
+    [InlineData(true, false)]  // A.start -> B.end
+    public void JoinObjectEndpointsMergesTwoObjectsIntoOneEditablePathForEveryEndpointCombination(
+        bool draggedAtStart, bool targetAtStart)
+    {
+        var viewModel = new SceneViewModel();
+        // Place each object's join-side endpoint at world (10,0,0) regardless of which combination
+        // is under test, so every case is asserting the same geometric outcome.
+        var a = draggedAtStart
+            ? MakeOpenLineObject(new Position(10, 0, 0), new Position(0, 0, 0))
+            : MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        var b = targetAtStart
+            ? MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 5, 0))
+            : MakeOpenLineObject(new Position(20, 5, 0), new Position(10, 0, 0));
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        var joined = viewModel.JoinObjectEndpoints(a, draggedAtStart, b, targetAtStart);
+
+        Assert.True(joined);
+        var result = Assert.Single(viewModel.Objects);
+        Assert.True(result.IsVectorPath);
+        AssertVectorPathMatchesLocalShapes(result);
+        var worldSubpath = result.GetWorldVectorPath()!.Subpaths[0];
+        Assert.Equal(3, worldSubpath.Nodes.Count);
+        Assert.False(worldSubpath.IsClosed);
+        var anchors = worldSubpath.Nodes.Select(n => n.Anchor).ToList();
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(0, 0, 0)));
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(10, 0, 0)));
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(20, 5, 0)));
+        Assert.Same(result, Assert.Single(viewModel.SelectedObjects));
+    }
+
+    private static bool PositionsApproximatelyEqual(Position a, Position b) =>
+        Math.Abs(a.X - b.X) < 1e-6 && Math.Abs(a.Y - b.Y) < 1e-6;
+
+    [Fact]
+    public void JoinObjectEndpointsAdoptsTheDraggedObjectsLayerIdNotTheTargets()
+    {
+        var viewModel = new SceneViewModel();
+        var draggedLayer = Guid.NewGuid();
+        var targetLayer = Guid.NewGuid();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0), layerId: draggedLayer);
+        var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0), layerId: targetLayer);
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.All(result.LocalShapes, shape => Assert.Equal(draggedLayer, shape.LayerId));
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsIsUndoableAndRestoresBothOriginalObjectsExactly()
+    {
+        var viewModel = new SceneViewModel();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0));
+        var originalPathA = a.VectorPath;
+        var originalPathB = b.VectorPath;
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+        Assert.Single(viewModel.Objects);
+
+        viewModel.UndoCommand.Execute(null);
+
+        var restored = viewModel.Objects.ToList();
+        Assert.Equal(2, restored.Count);
+        Assert.Contains(restored, o => Equals(o.VectorPath, originalPathA));
+        Assert.Contains(restored, o => Equals(o.VectorPath, originalPathB));
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsRefusesAClosedSubpath()
+    {
+        var viewModel = new SceneViewModel();
+        var closedPath = new VectorPath
+        {
+            Subpaths = [new VectorSubpath
+            {
+                Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(10, 0, 0)), VectorNode.CornerAt(new Position(10, 10, 0))],
+                IsClosed = true,
+            }],
+        };
+        var a = VectorPathSceneFactory.Create(closedPath, RgbColor.Black, "Uzavřená");
+        var b = MakeOpenLineObject(new Position(20, 0, 0), new Position(30, 0, 0));
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        var joined = viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+
+        Assert.False(joined);
+        Assert.Equal(2, viewModel.Objects.Count);
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsWorksWhenTheDraggedObjectIsRotatedAndScaled()
+    {
+        var viewModel = new SceneViewModel();
+        // A's own local endpoint is NOT at world (10,0,0) -- its Transform is what puts it there, so
+        // this only passes if JoinObjectEndpoints truly works in world space (GetWorldVectorPath)
+        // rather than naively joining local-space nodes.
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(1, 0, 0));
+        a.Transform = a.Transform with { RotationDeg = 0, ScaleX = 10, ScaleY = 10 };
+        Assert.Equal(new Position(10, 0, 0), a.GetWorldVectorPath()!.Subpaths[0].Nodes[1].Anchor);
+        var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0));
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        var joined = viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+
+        Assert.True(joined);
+        var result = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(result);
+        var anchors = result.GetWorldVectorPath()!.Subpaths[0].Nodes.Select(n => n.Anchor).ToList();
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(0, 0, 0)));
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(10, 0, 0)));
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(20, 0, 0)));
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsWorksWhenTheTargetObjectIsRotated()
+    {
+        var viewModel = new SceneViewModel();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        // B's local geometry runs straight up the Y axis; a 90 degree rotation puts its own start at
+        // world (10,0,0), matching A's end, without the test needing to hand-compute rotated points.
+        var b = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        b.Transform = b.Transform with { RotationDeg = 90 };
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+        var bWorldStart = b.GetWorldVectorPath()!.Subpaths[0].Nodes[0].Anchor;
+        // Re-anchor B so its rotated world start lands exactly on A's end (10,0,0) — isolates
+        // "does rotation carry through the join" from "did the test line up the fixture by hand".
+        b.Transform = b.Transform with { X = b.Transform.X + (10 - bWorldStart.X), Y = b.Transform.Y + (0 - bWorldStart.Y) };
+
+        var joined = viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+
+        Assert.True(joined);
+        var result = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(result);
+        var anchors = result.GetWorldVectorPath()!.Subpaths[0].Nodes.Select(n => n.Anchor).ToList();
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(0, 0, 0)));
+        Assert.Contains(anchors, p => PositionsApproximatelyEqual(p, new Position(10, 0, 0)));
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsAdoptsTheDraggedObjectsGeometrySetIdOverTheTargets()
+    {
+        var viewModel = new SceneViewModel();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        var draggedGeometrySetId = Guid.NewGuid();
+        a.LocalShapes = a.LocalShapes.Select(shape => shape with { GeometrySetId = draggedGeometrySetId }).ToList();
+        var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0));
+        b.LocalShapes = b.LocalShapes.Select(shape => shape with { GeometrySetId = Guid.NewGuid() }).ToList();
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.All(result.LocalShapes, shape => Assert.Equal(draggedGeometrySetId, shape.GeometrySetId));
+    }
+
+    [Fact]
+    public void RedoJoinObjectEndpointsReappliesTheMerge()
+    {
+        var viewModel = new SceneViewModel();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0));
+        viewModel.Objects.Add(a);
+        viewModel.Objects.Add(b);
+
+        viewModel.JoinObjectEndpoints(a, draggedAtStart: false, b, targetAtStart: true);
+        Assert.Single(viewModel.Objects);
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Equal(2, viewModel.Objects.Count);
+
+        viewModel.RedoCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(result);
+        Assert.Equal(3, result.VectorPath!.Subpaths[0].Nodes.Count);
+    }
+
+    [Fact]
+    public void JoinObjectEndpointsIsANoOpWhenTheSameObjectIsPassedForBothSides()
+    {
+        var viewModel = new SceneViewModel();
+        var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(10, 0, 0));
+        viewModel.Objects.Add(a);
+
+        var joined = viewModel.JoinObjectEndpoints(a, draggedAtStart: false, a, targetAtStart: true);
+
+        Assert.False(joined);
+        Assert.Single(viewModel.Objects);
+    }
+
+    [Fact]
+    public void UniteSelectionProducesANodeEditableVectorPathResult()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        viewModel.UniteSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(result);
+    }
+
+    [Fact]
+    public void SubtractSelectionProducesANodeEditableVectorPathResult()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        viewModel.SubtractSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        AssertVectorPathMatchesLocalShapes(result);
+    }
+
     [Fact]
     public void GroupThenUniteDoesNotCancelOverlappingObjects()
     {

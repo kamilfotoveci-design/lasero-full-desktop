@@ -314,6 +314,59 @@ public static class VectorPathEditor
         return path.ReplaceSubpathWithMany(subpathIndex, survivors);
     }
 
+    /// <summary>Reverses node order and swaps each node's HandleIn/HandleOut — the path still draws
+    /// identically (same anchors, same curve shapes), only its direction of travel (which endpoint is
+    /// "start" vs "end") is flipped. Used standalone as the "Reverse Path" command, and internally by
+    /// JoinAtEndpoints to re-orient whichever side of a cross-object join needs its start and end
+    /// swapped so the two subpaths can be concatenated head-to-tail.</summary>
+    public static VectorSubpath ReverseSubpath(VectorSubpath subpath)
+    {
+        ArgumentNullException.ThrowIfNull(subpath);
+        var nodes = subpath.Nodes
+            .Select(n => new VectorNode(n.Anchor, n.HandleOut, n.HandleIn, n.Type))
+            .Reverse()
+            .ToList();
+        return subpath with { Nodes = nodes };
+    }
+
+    /// <summary>Joins two OPEN subpaths end-to-end at the requested endpoints (LIGHTBURN_VECTOR_
+    /// PARITY.md §23's cross-object case — the same-object case is TryCloseByEndpointJoin in
+    /// SceneCanvas.VectorPathTool.cs). Both subpaths must already be expressed in the SAME coordinate
+    /// space — the caller (SceneViewModel.JoinObjectEndpoints) is responsible for bringing two
+    /// different objects' local geometry into one shared world space first, the same way Group's own
+    /// BuildCombinedWorldVectorPath does.
+    ///
+    /// Reverses whichever side needs it (via ReverseSubpath) so the user never has to reverse a path
+    /// manually before joining — dragging A's start onto B's start, or A's end onto B's end, works
+    /// exactly like dragging A's end onto B's start. The join point keeps side A's own anchor and
+    /// incoming handle (the endpoint the user actually dragged there) and side B's own outgoing
+    /// handle (the curve leaving into the rest of B) — matching TryCloseByEndpointJoin's own "snap
+    /// exactly onto the far endpoint, keep the dragged side's own data" convention. The merged node's
+    /// type is always Corner: A and B may disagree on Smooth/Corner, and forcing either choice would
+    /// silently move a handle the user did not touch — Corner is the only type that changes
+    /// nothing else about either side's geometry, and can be toggled to Smooth afterward like any
+    /// other node.</summary>
+    public static VectorSubpath JoinAtEndpoints(VectorSubpath a, bool aJoinAtStart, VectorSubpath b, bool bJoinAtStart)
+    {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+        if (a.IsClosed || b.IsClosed)
+            throw new ArgumentException("Only open subpaths can be joined at an endpoint.");
+        if (a.Nodes.Count == 0 || b.Nodes.Count == 0)
+            throw new ArgumentException("Cannot join an empty subpath.");
+
+        var orientedA = aJoinAtStart ? ReverseSubpath(a) : a;
+        var orientedB = bJoinAtStart ? b : ReverseSubpath(b);
+
+        var joinNode = orientedA.Nodes[^1] with { HandleOut = orientedB.Nodes[0].HandleOut, Type = VectorNodeType.Corner };
+        var nodes = new List<VectorNode>(orientedA.Nodes.Count + orientedB.Nodes.Count - 1);
+        nodes.AddRange(orientedA.Nodes.Take(orientedA.Nodes.Count - 1));
+        nodes.Add(joinNode);
+        nodes.AddRange(orientedB.Nodes.Skip(1));
+
+        return new VectorSubpath { Nodes = nodes, IsClosed = false };
+    }
+
     private static VectorNode BuildNode(Position anchor, Position? dragOffset)
     {
         if (!HasMagnitude(dragOffset, out var offset)) return VectorNode.CornerAt(anchor);

@@ -933,11 +933,35 @@ public partial class SceneViewModel : ObservableObject
             worldShapes,
             sources.Count == 2 ? "Skupina · 2 objekty" : $"Skupina · {sources.Count} objektů",
             sources.All(item => item.IsVisible),
-            sources.All(item => item.IncludeInOutput));
+            sources.All(item => item.IncludeInOutput),
+            BuildCombinedWorldVectorPath(sources));
 
         Execute(new ReplaceObjectsCommand(Scene, sources, [group]));
         SelectedObjects.Clear();
         SelectedObjects.Add(group);
+    }
+
+    /// <summary>Every source's own editable curve geometry, transformed into one shared world-space
+    /// VectorPath, subpath-per-shape in the exact same order GroupSelection's own worldShapes
+    /// collection already iterates (source-by-source, GetWorldShapes()'s own per-shape order within
+    /// each source) — the two lists MUST stay index-aligned, since CreateVectorObject zips this
+    /// path's flattened output back onto worldShapes' per-shape metadata (LayerId, GeometrySetId,
+    /// PreferredMode). A source with no VectorPath (an old flattened import, or a boolean/union
+    /// result predating this fix) falls back to a straight-segment subpath per shape — the same
+    /// BuildStraightVectorPath logic CreateVectorObject already uses when no curve data exists at
+    /// all, just applied per-source here so ONE non-vector source in a mixed selection does not force
+    /// every other source's real curves to flatten too.</summary>
+    private static VectorPath BuildCombinedWorldVectorPath(IReadOnlyList<SceneObject> sources)
+    {
+        var subpaths = new List<VectorSubpath>();
+        foreach (var source in sources)
+        {
+            var worldPath = source.GetWorldVectorPath();
+            subpaths.AddRange(worldPath is not null
+                ? worldPath.Subpaths
+                : BuildStraightVectorPath(source.GetWorldShapes()).Subpaths);
+        }
+        return new VectorPath { Subpaths = subpaths };
     }
 
     [RelayCommand(CanExecute = nameof(CanUngroupSelection))]
@@ -949,6 +973,12 @@ public partial class SceneViewModel : ObservableObject
         // identity before splitting so an outer glyph contour and its counter (for example the
         // opening inside "e") can be put back together without the counter becoming a filled shape.
         var legacyGeometrySetId = Guid.NewGuid();
+        // Mirrors GroupSelection's own source: the source's world VectorPath, subpath-per-shape in
+        // the same order GetWorldShapes() below iterates (see GetWorldVectorPath's own guarantee that
+        // Subpaths.Count/order matches LocalShapes exactly) — so Ungroup recovers the exact editable
+        // curve each part had before it was grouped, rather than flattening it to straight segments
+        // the way the pre-fix CreateVectorObject always did.
+        var sourceWorldPath = source.GetWorldVectorPath();
         var parts = source.GetWorldShapes()
             .Select(shape => shape.GeometrySetId == Guid.Empty
                 ? shape with { GeometrySetId = legacyGeometrySetId }
@@ -957,7 +987,10 @@ public partial class SceneViewModel : ObservableObject
                 [shape],
                 $"{source.Name} · část {index + 1}",
                 source.IsVisible,
-                source.IncludeInOutput))
+                source.IncludeInOutput,
+                sourceWorldPath is not null && index < sourceWorldPath.Subpaths.Count
+                    ? new VectorPath { Subpaths = [sourceWorldPath.Subpaths[index]] }
+                    : null))
             .ToList();
 
         Execute(new ReplaceObjectsCommand(Scene, [source], parts));
@@ -1120,6 +1153,75 @@ public partial class SceneViewModel : ObservableObject
     /// distance (see IVectorOffsetService) is simply left out of the replacement — the same
     /// "shapes below the disappearance point are omitted, not an error" contract the geometry service
     /// itself follows.</summary>
+    // -------------------------------------------------------------------------------------------
+    // Cross-object endpoint join (LIGHTBURN_VECTOR_PARITY.md §23's cross-object case — the
+    // same-object case, dragging one open endpoint onto the OTHER end of the SAME subpath to close
+    // it, is TryCloseByEndpointJoin in SceneCanvas.VectorPathTool.cs and does not go through here).
+    // Called from SceneCanvas when a dragged endpoint lands within snap tolerance of a DIFFERENT
+    // node-editable object's own open endpoint.
+    // -------------------------------------------------------------------------------------------
+
+    /// <summary>Merges two SceneObjects into one by joining ONE subpath from each end-to-end
+    /// (VectorPathEditor.JoinAtEndpoints — reverses either side internally as needed, so the caller
+    /// never has to pre-reverse a path). Scoped to single-subpath objects only: a compound object
+    /// (multiple contours, e.g. text with a counter) has no single well-defined "the other contours
+    /// come along for the ride" behavior worth guessing at, so this is a documented no-op for that
+    /// case rather than silently dropping or mismerging the extra contours — see
+    /// docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md for the scope note.
+    ///
+    /// Metadata policy: the merged result adopts <paramref name="dragged"/>'s own representative
+    /// shape metadata (LayerId, color, PreferredMode, GeometrySetId) and Name — "dragged" is always
+    /// the object whose endpoint the user was actively moving (SceneCanvas passes it positionally),
+    /// so the path being worked on keeps carrying its own identity onto whatever it touches, the same
+    /// direction TryCloseByEndpointJoin's own same-object case implicitly takes (the object never
+    /// becomes "some other object"). IsVisible/IncludeInOutput combine with OR (visible/included if
+    /// either source was), matching BuildCombinedWorldVectorPath's sibling operations (Group).</summary>
+    public bool JoinObjectEndpoints(
+        SceneObject dragged, bool draggedAtStart,
+        SceneObject target, bool targetAtStart)
+    {
+        ArgumentNullException.ThrowIfNull(dragged);
+        ArgumentNullException.ThrowIfNull(target);
+        if (!Objects.Contains(dragged) || !Objects.Contains(target) || ReferenceEquals(dragged, target))
+            return false;
+        if (dragged.VectorPath is not { Subpaths.Count: 1 } || target.VectorPath is not { Subpaths.Count: 1 })
+            return false;
+
+        var draggedWorld = dragged.GetWorldVectorPath()!.Subpaths[0];
+        var targetWorld = target.GetWorldVectorPath()!.Subpaths[0];
+        if (draggedWorld.IsClosed || targetWorld.IsClosed) return false;
+
+        VectorSubpath joined;
+        try
+        {
+            joined = VectorPathEditor.JoinAtEndpoints(draggedWorld, draggedAtStart, targetWorld, targetAtStart);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+
+        var representative = dragged.LocalShapes.FirstOrDefault();
+        var color = representative?.LayerColor ?? RgbColor.Black;
+        var result = VectorPathSceneFactory.Create(new VectorPath { Subpaths = [joined] }, color, dragged.Name);
+        if (representative is not null)
+        {
+            result.LocalShapes = result.LocalShapes.Select(shape => shape with
+            {
+                LayerId = representative.LayerId,
+                PreferredMode = representative.PreferredMode,
+                GeometrySetId = representative.GeometrySetId == Guid.Empty ? Guid.NewGuid() : representative.GeometrySetId,
+            }).ToList();
+        }
+        result.IsVisible = dragged.IsVisible || target.IsVisible;
+        result.IncludeInOutput = dragged.IncludeInOutput || target.IncludeInOutput;
+
+        Execute(new ReplaceObjectsCommand(Scene, [dragged, target], [result]));
+        SelectedObjects.Clear();
+        SelectedObjects.Add(result);
+        return true;
+    }
+
     public void ApplyOffset(
         IReadOnlyList<SceneObject> sources,
         IReadOnlyDictionary<SceneObject, VectorPath> resultsBySource)
@@ -1417,7 +1519,8 @@ public partial class SceneViewModel : ObservableObject
         IReadOnlyList<ImportedShape> worldShapes,
         string name,
         bool isVisible,
-        bool includeInOutput)
+        bool includeInOutput,
+        VectorPath? worldVectorPath = null)
     {
         var bounds = BoundingBox2D.Empty;
         foreach (var point in worldShapes.SelectMany(shape => shape.Points))
@@ -1425,12 +1528,31 @@ public partial class SceneViewModel : ObservableObject
 
         var centerX = (bounds.MinX + bounds.MaxX) / 2;
         var centerY = (bounds.MinY + bounds.MaxY) / 2;
-        var localShapes = worldShapes.Select(shape => shape with
+        var recentered = worldShapes.Select(shape => shape with
         {
             Points = shape.Points
                 .Select(point => new Position(point.X - centerX, point.Y - centerY, point.Z))
                 .ToList(),
         }).ToList();
+
+        // worldVectorPath (Group's curve-preserving path, or Ungroup's recovered single subpath) is
+        // already real editable geometry in world space — just recenter it the same way the shapes
+        // above were. Only fall back to a fabricated straight-segment path when the caller has no
+        // curve data at all (Union/Subtract/Intersect/Exclude, which fold through Clipper2's polygon
+        // rings and never had curves to begin with).
+        var vectorPath = worldVectorPath is not null
+            ? RecenterVectorPath(worldVectorPath, centerX, centerY)
+            : BuildStraightVectorPath(recentered);
+        // Re-flatten LocalShapes from the VectorPath itself, the same one-directional
+        // "VectorPath authoritative, LocalShapes a cached render of it" contract
+        // VectorPathSceneFactory follows — rather than keep recentered's own point lists, which
+        // may carry a closed shape's duplicate closing point that BuildStraightVectorPath strips
+        // (VectorSubpath.Flatten() already re-adds it when re-closing). Keeping both in lockstep
+        // here avoids that mismatch surfacing later as a spurious extra node on first node-edit.
+        var flattened = vectorPath.FlattenAll();
+        var localShapes = recentered
+            .Zip(flattened, (shape, points) => shape with { Points = points })
+            .ToList();
 
         return new SceneObject
         {
@@ -1445,7 +1567,63 @@ public partial class SceneViewModel : ObservableObject
             Transform = ObjectTransform.Identity with { X = centerX, Y = centerY },
             IsVisible = isVisible,
             IncludeInOutput = includeInOutput,
+            VectorPath = vectorPath,
         };
+    }
+
+    /// <summary>Wraps a set of already-flat, recentered ImportedShapes (Group/Ungroup/boolean
+    /// results — none of which have curve data available: booleans fold through Clipper2's polygon
+    /// rings, and Group merely re-centers existing polylines) into a node-editable VectorPath with
+    /// one Corner-only, straight-segment VectorSubpath per shape, in the same order. Without this,
+    /// every result of Group/Ungroup/Union/Subtract/Intersect/Exclude was a dead end for node
+    /// editing — see docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md, "Group/Ungroup destroys
+    /// VectorPath" / "Boolean ops destroy VectorPath". This does not recover the Bezier curves a
+    /// source object may have had (that would require merging each source's own VectorPath
+    /// subpaths, which the boolean services do not operate on at all); it guarantees the result is
+    /// at least as editable as any other polyline-based node-edit path (SVG import, bitmap trace)
+    /// rather than not editable at all.</summary>
+    /// <summary>Translates every node's anchor and both handles by (-centerX, -centerY) — the
+    /// VectorPath counterpart of the plain-point recentering already applied to worldShapes above.
+    /// A pure translation (Group/Ungroup never rotate or scale geometry, only recenter it around the
+    /// result object's own new pivot), so this is exact, not an approximation.</summary>
+    private static VectorPath RecenterVectorPath(VectorPath path, double centerX, double centerY)
+    {
+        Position Shift(Position p) => new(p.X - centerX, p.Y - centerY, p.Z);
+        var subpaths = path.Subpaths.Select(subpath => subpath with
+        {
+            Nodes = subpath.Nodes.Select(node => new VectorNode(
+                Shift(node.Anchor),
+                node.HandleIn is { } hi ? Shift(hi) : null,
+                node.HandleOut is { } ho ? Shift(ho) : null,
+                node.Type)).ToList(),
+        }).ToList();
+        return path with { Subpaths = subpaths };
+    }
+
+    private static VectorPath BuildStraightVectorPath(IReadOnlyList<ImportedShape> shapes)
+    {
+        var subpaths = shapes
+            .Select(shape =>
+            {
+                // A closed ImportedShape conventionally repeats its first point as its last
+                // (ScenePrimitiveFactory.CreateRectangle/CreateEllipse, ToImportedShapes) — but
+                // VectorSubpath.Flatten already re-closes a closed subpath by wrapping its last
+                // segment back to Nodes[0], so keeping that duplicate would add a coincident,
+                // zero-length node the node-edit tool would show as a spurious extra corner.
+                var points = shape.Points;
+                if (shape.IsClosed && points.Count > 1 &&
+                    DistanceSquared(points[0], points[^1]) < 0.000001)
+                    points = points.Take(points.Count - 1).ToList();
+
+                return new VectorSubpath
+                {
+                    Nodes = points.Select(VectorNode.CornerAt).ToList(),
+                    IsClosed = shape.IsClosed,
+                };
+            })
+            .ToList();
+
+        return new VectorPath { Subpaths = subpaths };
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
