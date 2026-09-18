@@ -744,6 +744,115 @@ public class SceneViewModelTests
     }
 
     [Fact]
+    public void UniteSelectionDisabledReasonIsNullWhenTwoClosedVectorsAreSelected()
+    {
+        var (viewModel, _, _) = MakeOverlappingSquaresFixture();
+
+        Assert.Null(viewModel.UniteSelectionDisabledReason);
+        Assert.True(viewModel.CanUniteSelection);
+    }
+
+    [Fact]
+    public void UniteSelectionDisabledReasonExplainsEmptySelection()
+    {
+        var viewModel = new SceneViewModel();
+
+        Assert.Equal("Nic není vybráno.", viewModel.UniteSelectionDisabledReason);
+        Assert.False(viewModel.CanUniteSelection);
+    }
+
+    [Fact]
+    public void UniteSelectionDisabledReasonExplainsASingleShape()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var single = MakeClosedObject(layer);
+        viewModel.Objects.Add(single);
+        viewModel.SelectedObjects.Add(single);
+
+        Assert.Equal("Vyberte alespoň dva tvary.", viewModel.UniteSelectionDisabledReason);
+    }
+
+    [Fact]
+    public void UniteSelectionDisabledReasonExplainsARasterSelection()
+    {
+        var viewModel = new SceneViewModel();
+        var raster = MakeRasterObject();
+        viewModel.Objects.Add(raster);
+        viewModel.SelectedObjects.Add(raster);
+
+        Assert.Equal("Bitmapu nelze sjednotit ani kombinovat — vyberte pouze vektory.", viewModel.UniteSelectionDisabledReason);
+    }
+
+    [Fact]
+    public void UniteSelectionDisabledReasonExplainsALockedSelection()
+    {
+        var (viewModel, back, _) = MakeOverlappingSquaresFixture();
+        back.IsLocked = true;
+
+        Assert.Equal("Zamknuté objekty nelze sjednotit ani kombinovat — nejprve je odemkněte.", viewModel.UniteSelectionDisabledReason);
+    }
+
+    [Fact]
+    public void UniteSelectionDisabledReasonExplainsAnOpenSubpath()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var closed = MakeClosedObject(layer);
+        var open = MakeClosedObject(layer, 30);
+        open.LocalShapes = open.LocalShapes.Select(shape => shape with { IsClosed = false }).ToList();
+        viewModel.Objects.Add(closed);
+        viewModel.Objects.Add(open);
+        viewModel.SelectedObjects.Add(closed);
+        viewModel.SelectedObjects.Add(open);
+
+        Assert.Equal(
+            "Výběr obsahuje otevřenou dráhu — booleovské operace vyžadují uzavřené tvary.",
+            viewModel.UniteSelectionDisabledReason);
+    }
+
+    [Fact]
+    public void OffsetSelectionDisabledReasonIsNullForASingleClosedVector()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var single = MakeClosedObject(layer);
+        viewModel.Objects.Add(single);
+        viewModel.SelectedObjects.Add(single);
+
+        Assert.Null(viewModel.OffsetSelectionDisabledReason);
+        Assert.True(viewModel.CanOffsetSelection);
+    }
+
+    [Fact]
+    public void OffsetSelectionDisabledReasonExplainsARasterSelection()
+    {
+        var viewModel = new SceneViewModel();
+        var raster = MakeRasterObject();
+        viewModel.Objects.Add(raster);
+        viewModel.SelectedObjects.Add(raster);
+
+        Assert.Equal("Bitmapu nelze posunout offsetem — vyberte vektor.", viewModel.OffsetSelectionDisabledReason);
+    }
+
+    [Fact]
+    public void OffsetSelectionDisabledReasonExplainsALockedSelection()
+    {
+        var viewModel = new SceneViewModel();
+        var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var single = MakeClosedObject(layer);
+        single.IsLocked = true;
+        viewModel.Objects.Add(single);
+        viewModel.SelectedObjects.Add(single);
+
+        Assert.Equal("Zamknuté objekty nelze upravit offsetem — nejprve je odemkněte.", viewModel.OffsetSelectionDisabledReason);
+    }
+
+    [Fact]
     public void UniteSelectionProducesANodeEditableVectorPathResult()
     {
         var (viewModel, _, _) = MakeOverlappingSquaresFixture();

@@ -1154,20 +1154,20 @@ public partial class SceneCanvas : UserControl
         menu.Items.Add(new MenuItem { Header = "Přenést dopředu", Command = scene.BringToFrontCommand });
         menu.Items.Add(new MenuItem { Header = "Přenést dozadu", Command = scene.SendToBackCommand });
 
-        if (scene.CanUniteSelection || scene.CanOffsetSelection || scene.CanTraceSelectedRaster ||
-            scene.CanRemoveSelectedBackground || scene.CanRestoreSelectedBackground)
         {
             menu.Items.Add(new Separator());
             var more = new MenuItem { Header = "Další úpravy výběru" };
-            if (scene.CanUniteSelection)
-            {
-                more.Items.Add(new MenuItem { Header = "Sjednotit tvary", InputGestureText = "Ctrl+Shift+U", Command = scene.UniteSelectionCommand });
-                more.Items.Add(new MenuItem { Header = "Odečíst tvary", Command = scene.SubtractSelectionCommand });
-                more.Items.Add(new MenuItem { Header = "Průnik tvarů", Command = scene.IntersectSelectionCommand });
-                more.Items.Add(new MenuItem { Header = "Vyloučit tvary", Command = scene.ExcludeSelectionCommand });
-            }
-            if (scene.CanOffsetSelection)
-                more.Items.Add(new MenuItem { Header = "Offset křivky…", InputGestureText = "Ctrl+Shift+O", Command = scene.OffsetSelectionCommand });
+            // Union/Subtract/Intersect/Exclude/Offset are always added — shown disabled with a
+            // ToolTip explaining why, mirroring SelectionPropertiesBar.xaml, instead of disappearing
+            // outright when their preconditions fail. Fixes the "Sjednotit nefunguje" discoverability
+            // bug class (HANDOFF.md 2026-09-14 / docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md):
+            // this menu is only ever built for a non-empty selection (see OnObjectMouseRightButtonDown),
+            // so there is always something meaningful to explain.
+            more.Items.Add(new MenuItem { Header = "Sjednotit tvary", InputGestureText = "Ctrl+Shift+U", Command = scene.UniteSelectionCommand, ToolTip = scene.UniteSelectionDisabledReason });
+            more.Items.Add(new MenuItem { Header = "Odečíst tvary", Command = scene.SubtractSelectionCommand, ToolTip = scene.UniteSelectionDisabledReason ?? "Tvary vpředu odečtou plochu od tvaru vzadu" });
+            more.Items.Add(new MenuItem { Header = "Průnik tvarů", Command = scene.IntersectSelectionCommand, ToolTip = scene.UniteSelectionDisabledReason ?? "Zůstane jen plocha, kde se všechny tvary překrývají" });
+            more.Items.Add(new MenuItem { Header = "Vyloučit tvary", Command = scene.ExcludeSelectionCommand, ToolTip = scene.UniteSelectionDisabledReason ?? "Zůstane plocha pokrytá právě jedním tvarem" });
+            more.Items.Add(new MenuItem { Header = "Offset křivky…", InputGestureText = "Ctrl+Shift+O", Command = scene.OffsetSelectionCommand, ToolTip = scene.OffsetSelectionDisabledReason ?? "Zvětší nebo zmenší vybrané tvary o zadanou vzdálenost" });
             if (scene.CanTraceSelectedRaster)
                 more.Items.Add(new MenuItem { Header = "Trasovat bitmapu", InputGestureText = "Alt+T", Command = scene.TraceSelectedRasterCommand });
             if (scene.CanRemoveSelectedBackground)

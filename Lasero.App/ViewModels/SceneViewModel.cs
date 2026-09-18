@@ -87,18 +87,48 @@ public partial class SceneViewModel : ObservableObject
     public bool IsSelectedLocked => Selected?.IsLocked == true;
     public bool CanGroupSelection => SelectedObjects.Count >= 2 && SelectedObjects.All(item => !item.IsRaster && !item.IsLocked);
     public bool CanUngroupSelection => SelectedObjects.Count == 1 && Selected is { IsRaster: false, IsLocked: false } item && item.LocalShapes.Count > 1;
-    public bool CanUniteSelection => SelectedObjects.Count > 0 &&
-        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked) &&
-        SelectedObjects.SelectMany(item => item.LocalShapes).Count() >= 2 &&
-        SelectedObjects.SelectMany(item => item.LocalShapes).All(shape => shape.IsClosed && shape.Points.Count >= 3);
+    /// <summary>Null when Union/Subtract/Intersect/Exclude are available; otherwise a specific Czech
+    /// explanation of whichever precondition actually fails. CanUniteSelection derives from this so
+    /// there is one source of truth — the menu items that used to bind straight to CanUniteSelection's
+    /// Visibility now bind to this being null/non-null for IsEnabled and show the text as a ToolTip,
+    /// instead of disappearing outright with no way to tell why (the "Sjednotit nefunguje" bug class —
+    /// see HANDOFF.md's 2026-09-14 entry and docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md).
+    /// Checks are ordered most-general-first so a selection failing several checks at once reports the
+    /// first, most actionable one rather than the most specific.</summary>
+    public string? UniteSelectionDisabledReason
+    {
+        get
+        {
+            if (SelectedObjects.Count == 0) return "Nic není vybráno.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze sjednotit ani kombinovat — vyberte pouze vektory.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze sjednotit ani kombinovat — nejprve je odemkněte.";
+            if (SelectedObjects.SelectMany(item => item.LocalShapes).Count() < 2) return "Vyberte alespoň dva tvary.";
+            if (SelectedObjects.SelectMany(item => item.LocalShapes).Any(shape => !shape.IsClosed || shape.Points.Count < 3))
+                return "Výběr obsahuje otevřenou dráhu — booleovské operace vyžadují uzavřené tvary.";
+            return null;
+        }
+    }
+    public bool CanUniteSelection => UniteSelectionDisabledReason is null;
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
 
-    /// <summary>Unlike CanUniteSelection, offset does not require two-or-more closed shapes: a single
+    /// <summary>Null when Offset Path is available; otherwise a specific Czech explanation of whichever
+    /// precondition fails. CanOffsetSelection derives from this — see UniteSelectionDisabledReason for
+    /// why this exists. Unlike Unite, offset does not require two-or-more closed shapes: a single
     /// object, or a selection that includes open paths, is still a valid offset input (an open path
     /// offsets into a butt-capped buffer region — see IVectorOffsetService.OffsetOpenPath).</summary>
-    public bool CanOffsetSelection => SelectedObjects.Count > 0 &&
-        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked) &&
-        SelectedObjects.SelectMany(item => item.GetWorldShapes()).Any(shape => shape.Points.Count >= 2);
+    public string? OffsetSelectionDisabledReason
+    {
+        get
+        {
+            if (SelectedObjects.Count == 0) return "Nic není vybráno.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze posunout offsetem — vyberte vektor.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze upravit offsetem — nejprve je odemkněte.";
+            if (!SelectedObjects.SelectMany(item => item.GetWorldShapes()).Any(shape => shape.Points.Count >= 2))
+                return "Vybraný tvar neobsahuje žádnou dráhu k posunutí.";
+            return null;
+        }
+    }
+    public bool CanOffsetSelection => OffsetSelectionDisabledReason is null;
     public bool CanRemoveSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false };
     public bool CanRestoreSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: true };
 
@@ -2089,7 +2119,9 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGroupSelection));
         OnPropertyChanged(nameof(CanUngroupSelection));
         OnPropertyChanged(nameof(CanUniteSelection));
+        OnPropertyChanged(nameof(UniteSelectionDisabledReason));
         OnPropertyChanged(nameof(CanOffsetSelection));
+        OnPropertyChanged(nameof(OffsetSelectionDisabledReason));
         OnPropertyChanged(nameof(CanTraceSelectedRaster));
         OnPropertyChanged(nameof(CanRemoveSelectedBackground));
         OnPropertyChanged(nameof(CanRestoreSelectedBackground));

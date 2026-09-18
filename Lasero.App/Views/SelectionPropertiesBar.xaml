@@ -21,6 +21,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:DisabledReasonOrFallbackConverter x:Key="DisabledReasonOrFallback" />
 
         <Style x:Key="BarLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -319,24 +320,25 @@
                         <MenuItem Header="Seskupit výběr" InputGestureText="Ctrl+G"
                                   Command="{Binding Scene.GroupSelectionCommand}"
                                   Visibility="{Binding Scene.CanGroupSelection, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- Always visible while the bar itself is (it only shows with a selection at
+                             all) — shown disabled with a specific reason via ToolTip when unavailable,
+                             instead of disappearing outright. Fixes the "Sjednotit nefunguh" bug class:
+                             see SceneViewModel.UniteSelectionDisabledReason / HANDOFF.md 2026-09-14. -->
                         <MenuItem Header="Sjednotit tvary" InputGestureText="Ctrl+Shift+U"
                                   Command="{Binding Scene.UniteSelectionCommand}"
-                                  Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
-                        <!-- Same visibility rule as Sjednotit — all four boolean modes take the same
-                             input (closed shapes, at least two), so whenever one is offered all are. -->
-                        <MenuItem Header="Odečíst tvary" ToolTip="Tvary vpředu odečtou plochu od tvaru vzadu"
+                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason}" />
+                        <MenuItem Header="Odečíst tvary"
                                   Command="{Binding Scene.SubtractSelectionCommand}"
-                                  Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
-                        <MenuItem Header="Průnik tvarů" ToolTip="Zůstane jen plocha, kde se všechny tvary překrývají"
+                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Tvary vpředu odečtou plochu od tvaru vzadu'}" />
+                        <MenuItem Header="Průnik tvarů"
                                   Command="{Binding Scene.IntersectSelectionCommand}"
-                                  Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
-                        <MenuItem Header="Vyloučit tvary" ToolTip="Zůstane plocha pokrytá právě jedním tvarem"
+                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zůstane jen plocha, kde se všechny tvary překrývají'}" />
+                        <MenuItem Header="Vyloučit tvary"
                                   Command="{Binding Scene.ExcludeSelectionCommand}"
-                                  Visibility="{Binding Scene.CanUniteSelection, Converter={StaticResource BoolToVisibility}}" />
+                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zůstane plocha pokrytá právě jedním tvarem'}" />
                         <MenuItem Header="Offset křivky…" InputGestureText="Ctrl+Shift+O"
-                                  ToolTip="Zvětší nebo zmenší vybrané tvary o zadanou vzdálenost"
                                   Command="{Binding Scene.OffsetSelectionCommand}"
-                                  Visibility="{Binding Scene.CanOffsetSelection, Converter={StaticResource BoolToVisibility}}" />
+                                  ToolTip="{Binding Scene.OffsetSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zvětší nebo zmenší vybrané tvary o zadanou vzdálenost'}" />
                         <MenuItem Header="Rozdělit skupinu" InputGestureText="Ctrl+Shift+G"
                                   Command="{Binding Scene.UngroupSelectionCommand}"
                                   Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}" />
