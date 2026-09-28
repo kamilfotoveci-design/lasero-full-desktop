@@ -2379,3 +2379,114 @@ neboli — strávil som s tým zbytočne čas. Appku po teste **zabi bez uložen
 - Necommituj `.uiqa/*.png` screenshoty (sú to scratch artefakty, nie sú v `.gitignore`, ale nemajú
   čo robiť v histórii) ani `docs/stitch-*`/`.agents/` bez opýtania sa používateľa — tie boli pridané
   v samostatnej úlohe (setup agentov v Antigravite), nie sú súčasť kódu appky.
+
+---
+
+## PHASE 1 AUDITS — RESUMING ON OTHER PC (Performance & UI-QA)
+
+Two background audits were started but incomplete at handoff. They can be re-run fresh on the other PC.
+
+### Setup on other PC
+
+After cloning the repo:
+
+```bash
+git clone -b design-system-tokens https://github.com/kamilfotoveci-design/lasero-full-desktop
+cd lasero-full-desktop
+```
+
+### Performance/Stability Audit (should write `docs/performance-stability-audit.md`)
+
+Spawn a `general-purpose` agent with this prompt:
+
+```
+You are performing a PERFORMANCE, STABILITY, CRASH-RESILIENCE and RELIABILITY audit of LASERO Desktop, a C#/.NET 8 WPF laser engraving application at E:\lasero-desktop (or your repo path). This is production-hardening work for software that drives physical laser hardware.
+
+## Critical constraints
+- AUDIT + MEASUREMENT ONLY. Do NOT optimize, refactor, or fix anything.
+- Do NOT modify any source file. Create deliverable only.
+- Build/test in isolated git worktree at HEAD to avoid collision with other sessions.
+- Read `CLAUDE.md` first (project rules, Safety section on machine semantics).
+- Read `docs/vector-and-machine-architecture-audit.md` §2/§3 for subsystem map.
+
+## What to do (in order)
+1. Build the application (in worktree). 
+2. Run existing tests; record pass count and duration.
+3. Identify global exception handling.
+4. Identify async/threading risks.
+5. Identify machine-disconnect crash paths.
+6. Identify obvious UI-thread blockers.
+7. Profile startup.
+8. Profile one normal vector document.
+9. Profile one deliberately large vector document.
+10. Test repeated open/close for memory leakage.
+
+## Deliverable
+Write to `E:\lasero-desktop\docs\performance-stability-audit.md` with these 11 sections:
+1. Stability architecture overview
+2. Top crash risks
+3. Top freeze risks
+4. Top memory risks
+5. Machine safety failure modes
+6. Current exception handling
+7. Current logging
+8. Measurements collected (with benchmark-hardware note)
+9. Exact hotspots
+10. P0/P1/P2/P3 roadmap
+11. Recommended Phase 2 implementation plan
+
+Severity: **P0** = crash / corrupt / unsafe state. **P1** = freeze / unrecoverable. **P2** = degradation / memory / perf. **P3** = cleanup.
+
+For every significant finding: exact file, class, method, trigger, measurement (or "not measured"), current behaviour, root cause, severity, fix, regression risk.
+
+When done, return SHORT summary (under 300 words): 3 most serious P0 findings, whether any machine-safety failure mode is unhandled, what you could not measure.
+```
+
+### Strict Visual UI QA Audit (should write `docs/UI_AUDIT_STRICT.md`)
+
+Spawn a `general-purpose` agent with this prompt:
+
+```
+You are performing a ZERO-TOLERANCE pre-release visual UI/UX quality audit of LASERO Desktop at E:\lasero-desktop (or your repo path). Output is a complete defect inventory. Be extremely strict: treat small inconsistencies as defects unless clearly, provably intentional.
+
+## Hard constraints
+- DO NOT SCREENSHOT. DO NOT LAUNCH THE APPLICATION. Your entire audit must be derived from reading XAML markup, code-behind, and theme definitions.
+- DO NOT modify any code. Only create deliverable report.
+- Read `CLAUDE.md` first (UI principles section).
+- Read `DESIGN.md` + `Lasero.App/Theme/LaseroTheme.xaml` for tokens.
+
+## Audit surfaces (every one gets its own screen-by-screen entry)
+- `Lasero.App/MainWindow.xaml` (shell, toolbar, status)
+- `LoginWindow.xaml`, `OnboardingWindow.xaml`, `SettingsWindow.xaml`, `BitmapTraceWindow.xaml`, `RasterImportWindow.xaml`, `OffsetPathWindow.xaml`, `MaterialsWindow.xaml`, `LaseroDialogWindow`
+- Everything under `Lasero.App/Views/` and `Lasero.App/Components/`
+- `Lasero.App/Controls/SceneCanvas.xaml(.cs)` (canvas overlays, handles, snapping indicators)
+
+## Defect classes you CAN prove from source
+1. **Token deviations** — hardcoded `Height=`, `Width=`, `Margin=`, `Padding=`, `FontSize=`, `CornerRadius=`, color hex that duplicates or contradicts an existing token.
+2. **Spacing-scale violations** — collect every Margin/Padding value, build histogram, identify values off-scale (random 3/5/6/7/9/11px).
+3. **Inconsistent row/field layouts** — inspector/property rows with differing column definitions, label widths, field widths, unit-suffix placement.
+4. **Clipping/overflow risk** — fixed-size containers with variable text, controls lacking MinWidth/MinHeight, TextTrimming/TextWrapping absence.
+5. **Missing tooltips on icon-only buttons** — enumerate buttons with only icon content and check for ToolTip binding.
+6. **State coverage gaps** — for each control style, check hover/pressed/disabled/focus/checked visual states in triggers.
+7. **Button/dialog consistency** — compare button order, alignment, sizing, Esc/Enter/default-button across all dialogs.
+8. **Copy/terminology consistency** — build term map. Check Czech/English consistency. Use `DESIGN.md` canonical terms.
+9. **DPI/scaling risk** — hardcoded pixels, non-integer sizes, fixed window sizes, manual positioning.
+10. **"AI slop" patterns** — nested Borders, CornerRadius variants, cards-within-cards, decorative containers. `CLAUDE.md` forbids decorative gradients/shadows, excessive pills/badges, text below 12px.
+
+## Deliverable
+Write to `E:\lasero-desktop\docs\UI_AUDIT_STRICT.md` with these 26 sections:
+1. Executive verdict · 2. P0 defects · 3. P1 defects · 4. P2 defects · 5. P3 defects · 6. Screen-by-screen review · 7. Alignment problems · 8. Cropping/overflow problems · 9. Button problems · 10. Spacing problems · 11. Typography problems · 12. Icon problems · 13. Inspector problems · 14. Toolbar problems · 15. Canvas overlay problems · 16. Dialog problems · 17. DPI/scaling problems · 18. Window resize problems · 19. Keyboard/focus problems · 20. Comfort/ergonomic problems · 21. Misclick risks · 22. Consistency matrix · 23. AI-slop patterns · 24. Recommended canonical UI rules · 25. Exact implementation roadmap · 26. Requires rendered verification
+
+**Every defect needs**: exact file path, XAML element/x:Name, current value, expected value, why it's wrong, severity, fix.
+
+When done, return SHORT summary (under 300 words): total defect count by severity, single worst finding, top 3 systemic patterns.
+```
+
+### After agents finish
+
+Push both audit files to the repo:
+```bash
+git add docs/performance-stability-audit.md docs/UI_AUDIT_STRICT.md
+git commit -m "docs(audit): performance/stability and strict UI-QA audit reports"
+git push origin design-system-tokens
+```
