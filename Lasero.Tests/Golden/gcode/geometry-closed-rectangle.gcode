@@ -1,0 +1,13 @@
+G90
+G21
+M5
+; --- Vrstva Řez (Cut) ---
+; Operace: Čára
+G0 X5 Y5
+M4 S950
+G1 X35 Y5 F350
+G1 X35 Y20 F350
+G1 X5 Y20 F350
+G1 X5 Y5 F350
+M5
+M5

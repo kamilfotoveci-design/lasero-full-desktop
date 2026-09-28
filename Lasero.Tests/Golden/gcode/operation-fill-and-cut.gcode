@@ -1,0 +1,22 @@
+G90
+G21
+M5
+; --- Vrstva Výplň (FillAndCut) ---
+; Operace: Výplň
+G0 X0 Y2
+M4 S300
+G1 X20 Y2 F3000
+M5
+G0 X20 Y6
+M4 S300
+G1 X0 Y6 F3000
+M5
+; Operace: Čára
+G0 X0 Y0
+M4 S300
+G1 X20 Y0 F3000
+G1 X20 Y10 F3000
+G1 X0 Y10 F3000
+G1 X0 Y0 F3000
+M5
+M5

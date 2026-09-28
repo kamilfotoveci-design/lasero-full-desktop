@@ -1,0 +1,48 @@
+G90
+G21
+M5
+; --- Vrstva Řez (Cut) ---
+; Operace: Čára
+G0 X0 Y0
+M4 S950
+G1 X30 Y0 F350
+G1 X30 Y20 F350
+G1 X0 Y20 F350
+G1 X0 Y0 F350
+M5
+M5
+G90
+G21
+M5
+; --- Vrstva Rytí (Cut) ---
+; Operace: Čára
+G0 X5 Y5
+M4 S250
+G1 X25 Y5 F1200
+G1 X25 Y15 F1200
+G1 X5 Y15 F1200
+G1 X5 Y5 F1200
+M5
+M5
+G90
+G21
+M5
+; --- Vrstva Výplň (Fill) ---
+; Operace: Výplň
+G0 X0 Y2.5
+M4 S300
+G1 X30 Y2.5 F3000
+M5
+G0 X30 Y7.5
+M4 S300
+G1 X0 Y7.5 F3000
+M5
+G0 X0 Y12.5
+M4 S300
+G1 X30 Y12.5 F3000
+M5
+G0 X30 Y17.5
+M4 S300
+G1 X0 Y17.5 F3000
+M5
+M5
