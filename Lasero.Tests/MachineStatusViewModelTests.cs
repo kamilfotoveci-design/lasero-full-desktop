@@ -67,6 +67,46 @@ public sealed class MachineStatusViewModelTests
         Assert.Equal(0, vm.MachineX);
     }
 
+    [Fact]
+    public void TelemetryDisplay_ShowsDashesUntilALiveStatusArrivesAndAgainAfterDisconnect()
+    {
+        var machine = new StubMachine();
+        var vm = new MachineStatusViewModel(machine);
+        var dash = MachineStatusViewModel.NoValue;
+
+        Assert.Equal(dash, vm.WorkXDisplay);
+        Assert.Equal(dash, vm.WorkYDisplay);
+        Assert.Equal(dash, vm.WorkZDisplay);
+        Assert.Equal(dash, vm.FeedRateDisplay);
+        Assert.Equal(dash, vm.SpindleSpeedDisplay);
+
+        machine.State = GrblConnectionState.Connected;
+        machine.RaiseStatus(new MachineStatus
+        {
+            Mode = GrblMachineMode.Idle,
+            WorkPosition = new Position(1.5, 2, 0),
+            FeedRate = 500,
+            SpindleSpeed = 0,
+        });
+
+        // A live zero is real data and must stay a number.
+        Assert.Equal(1.5.ToString("0.00", System.Globalization.CultureInfo.CurrentCulture), vm.WorkXDisplay);
+        Assert.Equal(0.0.ToString("0.00", System.Globalization.CultureInfo.CurrentCulture), vm.WorkZDisplay);
+        Assert.Equal("500", vm.FeedRateDisplay);
+        Assert.Equal("0", vm.SpindleSpeedDisplay);
+
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        machine.State = GrblConnectionState.Disconnected;
+        machine.RaiseConnectionState(GrblConnectionState.Disconnected);
+
+        Assert.Equal(dash, vm.WorkXDisplay);
+        Assert.Equal(dash, vm.FeedRateDisplay);
+        Assert.Equal(dash, vm.SpindleSpeedDisplay);
+        Assert.Contains(nameof(MachineStatusViewModel.WorkXDisplay), changed);
+        Assert.Contains(nameof(MachineStatusViewModel.SpindleSpeedDisplay), changed);
+    }
+
     private sealed class StubMachine : ILaserMachine
     {
         public GrblConnectionState State { get; set; } = GrblConnectionState.Disconnected;

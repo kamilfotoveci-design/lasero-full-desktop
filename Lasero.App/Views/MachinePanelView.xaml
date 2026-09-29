@@ -97,11 +97,11 @@
                         <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel><TextBlock Text="X mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkX, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
-                    <StackPanel Grid.Column="1"><TextBlock Text="Y mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkY, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
-                    <StackPanel Grid.Column="2"><TextBlock Text="Z mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkZ, StringFormat={}{0:0.00}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
-                    <StackPanel Grid.Column="3"><TextBlock Text="F" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.FeedRate, StringFormat={}{0:0}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
-                    <StackPanel Grid.Column="4"><TextBlock Text="S" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.SpindleSpeed, StringFormat={}{0:0}}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel><TextBlock Text="X mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkXDisplay}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="Y mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkYDisplay}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="Z mm" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.WorkZDisplay}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="3"><TextBlock Text="F" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.FeedRateDisplay}" Style="{StaticResource TelemetryValue}" /></StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="S" Style="{StaticResource Text.Muted}" /><TextBlock Text="{Binding MachineStatus.SpindleSpeedDisplay}" Style="{StaticResource TelemetryValue}" /></StackPanel>
                 </Grid>
             </StackPanel>
         </Border>
@@ -156,7 +156,7 @@
                                  sentence was simply cut off at the panel edge. -->
                             <DockPanel>
                                 <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                      Foreground="{StaticResource Brush.AccentText}" Margin="0,1,8,0" VerticalAlignment="Top" />
+                                                      Foreground="{StaticResource Brush.Info}" Margin="0,1,8,0" VerticalAlignment="Top" />
                                 <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                             </DockPanel>
@@ -276,14 +276,14 @@
                             <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Resetovat řídicí jednotku" />
                         </Button>
                     </Expander>
-                    <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
+                    <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,10,0,0">
                         <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->
 <DockPanel>
-                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.AccentText}" />
-                            <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Přejít na nulu XY."
+                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Info}" />
+                            <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </DockPanel>
                     </Border>

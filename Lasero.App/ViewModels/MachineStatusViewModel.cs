@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +26,24 @@ public partial class MachineStatusViewModel : ObservableObject
     [ObservableProperty] private LaserMachineDisplayState _displayState = LaserMachineDisplayState.Disconnected;
 
     public bool HasActiveAlert => ActiveAlert is not null;
+
+    // Telemetry read-outs. Without a live status report (disconnected, or nothing received yet) a
+    // zero is indistinguishable from "at work origin", so the panel shows an em dash instead.
+    public const string NoValue = "—";
+    public string WorkXDisplay => Current is null ? NoValue : WorkX.ToString("0.00", CultureInfo.CurrentCulture);
+    public string WorkYDisplay => Current is null ? NoValue : WorkY.ToString("0.00", CultureInfo.CurrentCulture);
+    public string WorkZDisplay => Current is null ? NoValue : WorkZ.ToString("0.00", CultureInfo.CurrentCulture);
+    public string FeedRateDisplay => Current is null ? NoValue : FeedRate.ToString("0", CultureInfo.CurrentCulture);
+    public string SpindleSpeedDisplay => Current is null ? NoValue : SpindleSpeed.ToString("0", CultureInfo.CurrentCulture);
+
+    private void NotifyTelemetryDisplay()
+    {
+        OnPropertyChanged(nameof(WorkXDisplay));
+        OnPropertyChanged(nameof(WorkYDisplay));
+        OnPropertyChanged(nameof(WorkZDisplay));
+        OnPropertyChanged(nameof(FeedRateDisplay));
+        OnPropertyChanged(nameof(SpindleSpeedDisplay));
+    }
 
     public MachineStatusViewModel(ILaserMachine connection)
     {
@@ -78,6 +97,7 @@ public partial class MachineStatusViewModel : ObservableObject
         FeedRate = 0;
         SpindleSpeed = 0;
         TriggeredPins = null;
+        NotifyTelemetryDisplay();
     }
 
     private void Apply(MachineStatus status)
@@ -95,6 +115,7 @@ public partial class MachineStatusViewModel : ObservableObject
         FeedRate = status.FeedRate;
         SpindleSpeed = status.SpindleSpeed;
         TriggeredPins = status.TriggeredPins;
+        NotifyTelemetryDisplay();
         DisplayState = _connection.DisplayState;
     }
 }
