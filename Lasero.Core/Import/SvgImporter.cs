@@ -44,12 +44,20 @@ public static class SvgImporter
             LayerId = layers.First(layer => layer.Color.IsApproximately(shape.LayerColor)).Id,
         }).ToList();
 
+        var firstShape = shapes.FirstOrDefault();
+        var hasUniformEditableMetadata = firstShape is not null
+            && shapes.Count == vectorSubpaths.Count
+            && shapes.All(shape => shape.LayerId == firstShape.LayerId
+                && shape.LayerColor == firstShape.LayerColor
+                && shape.PreferredMode == firstShape.PreferredMode
+                && shape.GeometrySetId == firstShape.GeometrySetId);
+
         // "All or nothing" on purpose: a VectorPath must be a fully faithful editable stand-in for
         // the whole imported document, per the "authoritative representation" rule (docs/engineering/
         // ENGINEERING_WORKFLOW.md #5) — one subpath the curve-preserving parser couldn't represent
         // would mean Node Edit mode shows nodes that don't match what's actually rendered for that
         // part of the artwork. Never blocks the import itself; the object just isn't node-editable.
-        var vectorPath = vectorPathValid.Value && vectorSubpaths.Count > 0
+        var vectorPath = vectorPathValid.Value && hasUniformEditableMetadata
             ? new VectorPath { Subpaths = vectorSubpaths }
             : null;
 
@@ -127,11 +135,13 @@ public static class SvgImporter
 
             foreach (var sub in subpaths)
             {
+                var (layerColor, mode) = Classify(elFill, elStroke);
+                if (sub.Points.Count < 2 || layerColor is null)
+                    vectorPathValid.Value = false;
                 if (sub.Points.Count < 2) continue;
 
                 var mmPoints = sub.Points.Select(p => ToMm(p.X, p.Y)).ToList();
 
-                var (layerColor, mode) = Classify(elFill, elStroke);
                 if (layerColor is null) continue;
 
                 output.Add(new ImportedShape
@@ -163,7 +173,11 @@ public static class SvgImporter
                     {
                         foreach (var sub in curveSubpaths)
                         {
-                            if (sub.Nodes.Count < 2) continue;
+                            if (sub.Nodes.Count < 2)
+                            {
+                                vectorPathValid.Value = false;
+                                continue;
+                            }
                             var mmNodes = sub.Nodes.Select(n => new VectorNode(
                                 ToMm(n.Anchor.X, n.Anchor.Y),
                                 n.HandleIn is { } hi ? ToMm(hi.X, hi.Y) : null,
@@ -177,7 +191,11 @@ public static class SvgImporter
                 {
                     foreach (var sub in subpaths)
                     {
-                        if (sub.Points.Count < 2) continue;
+                        if (sub.Points.Count < 2)
+                        {
+                            vectorPathValid.Value = false;
+                            continue;
+                        }
                         var points = sub.Points;
                         // A closed primitive's flattened points already repeat the first point at the
                         // end (SvgShapeFlattener's own convention, matching every other closed shape in
