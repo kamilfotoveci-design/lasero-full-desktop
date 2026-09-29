@@ -207,9 +207,9 @@
                         <Button Grid.Column="1" Style="{StaticResource Kamil.HeaderButton}"
                                 Width="28" Height="28" Margin="8,0,0,0"
                                 Command="{Binding MinimizeCommand}"
-                                ToolTip="Skrýt asistenta — konverzace zůstane uložená"
-                                automation:AutomationProperties.Name="Skrýt asistenta">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Close}"
+                                ToolTip="Zmenšit na odznak · Esc"
+                                automation:AutomationProperties.Name="Zmenšit asistenta">
+                            <components:IconGlyph IconData="{StaticResource Glyph.Minimize}"
                                                   Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                         </Button>
                     </Grid>
@@ -280,8 +280,8 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                <!-- New Chat and Minimize stay grouped, ghost until hovered: neither
-                                     one is destructive, and Minimize keeps the whole conversation. -->
+                                <!-- Minimize is the only way out of the panel: there is deliberately no Close,
+                                     the avatar is the permanent anchor. It keeps the conversation. -->
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
                                         Command="{Binding Chat.NewChatCommand}"
                                         ToolTip="Nová konverzace"
@@ -294,21 +294,6 @@
                                         ToolTip="Zmenšit na odznak · Esc"
                                         automation:AutomationProperties.Name="Zmenšit asistenta">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Minimize}"
-                                                          Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
-                                </Button>
-
-                                <!-- Set apart from the grouped New Chat/Minimize pair by an explicit
-                                     8px gap. Uses the quiet Kamil.HeaderButton ghost style, not
-                                     Button.ChromeClose — that style is the window's own title-bar
-                                     Close button (red destructive hover), which misrepresented this
-                                     action: it only minimizes (conversation is kept), never closes
-                                     anything, so it should not look destructive. -->
-                                <Button Style="{StaticResource Kamil.HeaderButton}"
-                                        Width="28" Height="28" Margin="8,0,0,0"
-                                        Command="{Binding MinimizeCommand}"
-                                        ToolTip="Skrýt asistenta — konverzace zůstane uložená"
-                                        automation:AutomationProperties.Name="Skrýt asistenta">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Close}"
                                                           Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                                 </Button>
                             </StackPanel>
