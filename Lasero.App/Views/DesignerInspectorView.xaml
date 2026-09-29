@@ -359,7 +359,7 @@
                                             VerticalAlignment="Center" Margin="0,0,10,0"
                                             Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                             BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
-                                            ToolTip="Barva operace" />
+                                            ToolTip="Barva operace. Objekty stejné barvy se zpracují stejným nastavením" />
 
                                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
@@ -450,7 +450,7 @@
                             </Style>
                         </StackPanel.Style>
                         <TextBlock Text="Zatím žádné operace" FontWeight="Medium" />
-                        <TextBlock Text="Nakreslete tvar nebo importujte grafiku. Operace se vytvoří automaticky."
+                        <TextBlock Text="Operace určuje, jak laser objekty zpracuje: výkon, rychlost a počet průchodů. Vytvoří se sama, jakmile do návrhu přidáte tvar, text nebo obrázek."
                                    Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,0" />
                         <Button Style="{StaticResource Button.Regular}" Command="{Binding GCode.LoadFileCommand}"
                                 HorizontalAlignment="Left" Margin="0,12,0,0" Padding="12,0">
@@ -500,14 +500,14 @@
                             <Button Grid.Column="1" Style="{StaticResource Button.Link}" Padding="0"
                                     Tag="{Binding}" Click="OnApplyMaterialClick"
                                     Content="Změnit →"
-                                    ToolTip="Vybrat ověřené parametry materiálu"
+                                    ToolTip="Nabídne ověřený výkon a rychlost pro zvolený materiál, poté je lze dál upravit"
                                     automation:AutomationProperties.Name="Změnit materiál a doporučené parametry" />
                         </Grid>
                         <Button Style="{StaticResource Field.Select}" HorizontalAlignment="Stretch" Margin="0,0,0,16"
                                 HorizontalContentAlignment="Left"
                                 Content="{Binding MaterialDisplayLabel}"
                                 Tag="{Binding}" Click="OnApplyMaterialClick"
-                                ToolTip="Vybrat ověřené parametry materiálu"
+                                ToolTip="Nabídne ověřený výkon a rychlost pro zvolený materiál, poté je lze dál upravit"
                                 automation:AutomationProperties.Name="Materiál a doporučené parametry" />
 
                         <!-- Režim -->
@@ -517,11 +517,11 @@
                             <Border Style="{StaticResource SegmentedTrack}">
                                 <UniformGrid Columns="3">
                                     <RadioButton Style="{StaticResource Segment.Compact}" GroupName="LayerModeSegments"
-                                                 Content="Čára" ToolTip="Laser projede po obrysu vektoru"
+                                                 Content="Čára" ToolTip="Laser projede jen po obrysu tvaru, vhodné pro řezání nebo obrys"
                                                  automation:AutomationProperties.Name="Režim čára"
                                                  IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Cut, Mode=TwoWay}" />
                                     <RadioButton Style="{StaticResource Segment.Compact}" GroupName="LayerModeSegments"
-                                                 Content="Výplň" ToolTip="Laser vyplní uzavřenou plochu řádky"
+                                                 Content="Výplň" ToolTip="Laser vyplní celou plochu tvaru řádky, vhodné pro gravírování ploch"
                                                  automation:AutomationProperties.Name="Režim výplň"
                                                  IsChecked="{Binding Mode, Converter={StaticResource EnumToBool}, ConverterParameter=Fill, Mode=TwoWay}" />
                                     <RadioButton Style="{StaticResource Segment.Compact}" GroupName="LayerModeSegments"
@@ -547,12 +547,14 @@
                         <!-- Parametry. Slider for reach, field for precision — the field is the value
                              a production job is set by, so it is never the slider alone. -->
                         <components:ParameterSlider Label="Výkon" Unit="%" Margin="0,0,0,16"
+                                                    ToolTip="Jak silně laser pálí. Vyšší výkon vypálí hlouběji a tmavěji, u řezání prořízne materiál. Začněte nízkou hodnotou a ověřte ji na odřezku"
                                                     Minimum="0" Maximum="100"
                                                     TickFrequency="1" SmallChange="1" LargeChange="5"
                                                     FieldWidth="88"
                                                     Value="{Binding Power, Mode=TwoWay}" />
 
                         <components:ParameterSlider Label="Rychlost" Unit="mm/min" Margin="0,0,0,16"
+                                                    ToolTip="Jak rychle se hlava pohybuje. Pomalejší pohyb předá materiálu víc energie, takže pálí hlouběji, rychlejší je světlejší a kratší"
                                                     Minimum="10" Maximum="12000"
                                                     TickFrequency="10" SmallChange="10" LargeChange="100"
                                                     FieldWidth="112"
@@ -571,7 +573,7 @@
                                 </Button>
                                 <Border Style="{StaticResource UnitField.Shell}" Width="64"
                                         Height="{StaticResource Size.Control.Compact}"
-                                        ToolTip="Kolikrát laser projede stejnou dráhu">
+                                        ToolTip="Kolikrát laser projede stejnou dráhu. Další průchod prohloubí řez nebo gravuru, ale prodlouží čas">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="×" Style="{StaticResource UnitField.Suffix}" />
                                         <TextBox Style="{StaticResource UnitField.Input}" Text="{Binding Passes, StringFormat=0}"

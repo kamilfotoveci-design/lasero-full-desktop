@@ -1,0 +1,55 @@
+<UserControl x:Class="Lasero.App.Views.CanvasHintOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:Lasero.App.Components">
+    <!--
+        Progressive disclosure over the canvas. Two things can appear here and never both:
+
+          - an empty-canvas explanation while the design has nothing in it and the Select tool is
+            active (with a drawing tool active the operator has plainly worked out what to do);
+          - one short hint for the situation the operator is in right now (nothing selected, a tool
+            armed, nodes selected).
+
+        Nothing is permanent: the hint has a dismiss button and stays dismissed for the session, and
+        the empty state disappears with the first object. The wrapper does not intercept the pointer
+        outside the two cards, so drawing and selecting on the canvas underneath is unaffected.
+        The wording lives in GuidanceText, not here.
+    -->
+    <Grid>
+        <!-- Empty canvas -->
+        <Border x:Name="EmptyCard" Visibility="Collapsed" IsHitTestVisible="True"
+                HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="360"
+                Background="{DynamicResource Brush.Panel}"
+                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                CornerRadius="{StaticResource Radius.Lg}" Padding="24,20"
+                Effect="{StaticResource Shadow.Tooltip}">
+            <components:EmptyState x:Name="EmptyContent"
+                                   IconPrimaryData="{StaticResource Glyph.Import}"
+                                   CtaText="Importovat grafiku" />
+        </Border>
+
+        <!-- One contextual hint -->
+        <Border x:Name="HintChip" Visibility="Collapsed" IsHitTestVisible="True"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom" MaxWidth="440"
+                Margin="44,0,0,20"
+                Background="{DynamicResource Brush.Panel}"
+                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                CornerRadius="{StaticResource Radius.Md}" Padding="12,6,4,6"
+                Effect="{StaticResource Shadow.Tooltip}">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.GhostIcon}"
+                        Width="24" Height="24" MinHeight="24" Margin="6,0,0,0"
+                        Click="OnDismissClick" VerticalAlignment="Center"
+                        ToolTip="Skrýt tuto nápovědu do konce práce s aplikací"
+                        AutomationProperties.Name="Skrýt nápovědu">
+                    <components:IconGlyph IconData="{StaticResource Glyph.Close}"
+                                          Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
+                </Button>
+                <TextBlock x:Name="HintText" TextWrapping="Wrap" VerticalAlignment="Center"
+                           FontSize="{StaticResource Size.Text.Meta}"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           AutomationProperties.Name="Nápověda k plátnu" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -124,6 +124,10 @@ public partial class MainViewModel : ObservableObject
         // Questions now carry the workspace with them: selected material, operation and the connected
         // machine, instead of the nulls the send path used to hardcode.
         Chat.ContextProvider = Kamil.BuildContext;
+        GCode.MachineIdentity = () => (
+            Connection.ActiveMachineName,
+            Connection.SelectedPort,
+            Lasero.Core.Grbl.VirtualGrblTransport.IsVirtualPort(Connection.SelectedPort));
         Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
         _recoveryStore = recoveryStore;
         _settingsStore = settingsStore;
@@ -314,9 +318,10 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "Saving the project failed");
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
                 "Projekt se nepodařilo uložit",
-                ex.Message,
+                UserFacingErrors.ProjectSaveFailed(ex),
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
@@ -370,9 +375,10 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "Opening the project failed");
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
                 "Projekt se nepodařilo otevřít",
-                ex.Message,
+                UserFacingErrors.ProjectOpenFailed(ex),
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
@@ -396,9 +402,10 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "Restoring the autosave failed");
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
                 "Zálohu se nepodařilo obnovit",
-                ex.Message,
+                UserFacingErrors.RecoveryFailed(ex),
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));

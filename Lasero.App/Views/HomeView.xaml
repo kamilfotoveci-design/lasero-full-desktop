@@ -380,9 +380,9 @@
 
                             <Button Style="{StaticResource RailStackedAction}" Command="{Binding Jog.HomeCommand}"
                                     ToolTipService.ShowOnDisabled="True"
-                                    ToolTip="Najet do výchozí polohy stroje ($H). Vyžaduje připojenou gravírku v klidu."
+                                    ToolTip="Hlava se přesune do výchozí polohy (příkaz $H). Uvolněte pracovní prostor. Vyžaduje připojenou gravírku v klidu"
                                     automation:AutomationProperties.Name="Najet do výchozí polohy">
-                                <components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Domů" Stacked="True"
+                                <components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Výchozí poloha" Stacked="True"
                                                       IconSize="{StaticResource Size.Icon.Md}" />
                             </Button>
 

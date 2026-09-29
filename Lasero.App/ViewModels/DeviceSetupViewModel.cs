@@ -72,8 +72,8 @@ public partial class DeviceSetupViewModel : ObservableObject
 
     public string Title => Status switch
     {
-        ProcessStatus.Progress when !_connection.IsConnected => "Hledám gravírku",
-        ProcessStatus.Progress => "Nastavuji gravírku",
+        ProcessStatus.Progress when !_connection.IsConnected => "Hledání gravírky",
+        ProcessStatus.Progress => "Nastavení gravírky",
         ProcessStatus.Success => "Gravírka je připravena",
         ProcessStatus.Error => "Gravírku se nepodařilo připojit",
         _ => "Připojte gravírku",
@@ -82,14 +82,14 @@ public partial class DeviceSetupViewModel : ObservableObject
     public string Description => Status switch
     {
         ProcessStatus.Progress when !_connection.IsConnected =>
-            $"Otevírám port {_connection.SelectedPort} rychlostí {_connection.BaudRate} Bd.",
+            $"Otevírání portu {_connection.SelectedPort} rychlostí {_connection.BaudRate} Bd.",
         ProcessStatus.Progress =>
-            "Načítám nastavení stroje a rozměry pracovní plochy z GRBL ($130 a $131).",
+            "Načítání nastavení stroje a rozměrů pracovní plochy z GRBL ($130 a $131).",
         ProcessStatus.Success =>
             _connection.IdentificationMessage ?? "Lasero rozpoznalo zařízení a načetlo jeho parametry.",
         ProcessStatus.Error =>
-            $"{_connection.ConnectionError} Zkontrolujte USB kabel, napájení a jestli port nedrží jiný program.",
-        _ => "Vyberte model a konkrétní sériový port v panelu Ovládání stroje. Průvodce nabízí bezpečný simulátor; fyzické porty nezkouší.",
+            _connection.ConnectionError ?? "LASERO se nepodařilo připojit ke stroji. Zkontrolujte USB kabel a zkuste to znovu.",
+        _ => "Zapněte laser a připojte jej datovým USB kabelem. LASERO žádný port neotevře samo, port vyberete v průvodci pod Připojit laser USB kabelem. Návrh lze upravovat i bez laseru.",
     };
 
     /// <summary>A bar only while something is genuinely running, and indeterminate throughout: GRBL

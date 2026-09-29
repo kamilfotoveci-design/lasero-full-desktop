@@ -184,15 +184,15 @@
                             </Grid>
 
                             <TextBlock Text="Přidat zařízení" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
-                            <TextBlock Text="Vyzkoušejte simulátor nebo ručně vyberte model a port. Fyzické porty automaticky neotevíráme." Style="{StaticResource StepSubtext}" />
+                            <TextBlock Text="Máte-li laser připojený USB kabelem, rozbalte Připojit laser USB kabelem a vyberte jeho model a port. LASERO žádný port neotevře samo. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
 
                             <!-- Progressive disclosure: manual port/baud entry, for the rare machine
                                  the automatic scan cannot see. Reuses ConnectionViewModel's own
                                  existing manual controls — no second connection path. -->
                             <ToggleButton x:Name="ManualToggle" Style="{StaticResource ToggleButton.Link}"
                                           HorizontalAlignment="Center" Margin="0,22,0,0"
-                                          automation:AutomationProperties.Name="Jiný způsob připojení">
-                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Jiný způsob připojení" IconSize="{StaticResource Size.Icon.Sm}" />
+                                          automation:AutomationProperties.Name="Připojit laser USB kabelem">
+                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Připojit laser USB kabelem" IconSize="{StaticResource Size.Icon.Sm}" />
                             </ToggleButton>
                             <Border Style="{StaticResource InspectorSection}" Margin="0,14,0,0"
                                     Visibility="{Binding IsChecked, ElementName=ManualToggle, Converter={StaticResource BoolToVisibility}}">
@@ -201,7 +201,7 @@
                                     <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
                                               SelectedItem="{Binding Connection.SelectedCompatibility}" DisplayMemberPath="DisplayName" Margin="0,8,0,0" />
                                     <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,8" />
-                                    <TextBlock Text="Vyberte přesný model, port a rychlost. Připojení otevře pouze vybraný port."
+                                    <TextBlock Text="Vyberte přesný model, port a rychlost. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,12" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -256,7 +256,7 @@
                                 </Grid.Triggers>
                             </Grid>
 
-                            <TextBlock Text="Hledám zařízení…" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
+                            <TextBlock Text="Hledání zařízení…" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
                             <TextBlock Text="{Binding ScanStatus}" Style="{StaticResource StepSubtext}" />
                         </StackPanel>
 
@@ -362,7 +362,7 @@
                                                                           Margin="0,0,12,0" Foreground="{StaticResource Brush.AccentText}" />
                                                     <StackPanel>
                                                         <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                                        <TextBlock Text="Připojuji…" Style="{StaticResource Text.Muted}" Margin="0,3,0,6" />
+                                                        <TextBlock Text="Připojování…" Style="{StaticResource Text.Muted}" Margin="0,3,0,6" />
                                                         <ProgressBar IsIndeterminate="True" Height="3" Width="220" HorizontalAlignment="Left" />
                                                     </StackPanel>
                                                 </StackPanel>
@@ -384,8 +384,8 @@
                                                                               Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                                                               Foreground="{StaticResource Brush.Warning}" Margin="0,0,10,0" />
                                                         <StackPanel>
-                                                            <TextBlock Text="Nepodařilo se připojit" FontWeight="SemiBold" />
-                                                            <TextBlock Text="Zkontrolujte, že je zařízení zapnuté a kabel pevně zapojený."
+                                                            <TextBlock Text="Připojení se nezdařilo" FontWeight="SemiBold" />
+                                                            <TextBlock Text="Zkontrolujte, zda je zařízení zapnuté a datový USB kabel pevně zapojený, potom zkuste připojení znovu."
                                                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="320" Margin="0,3,0,10" />
                                                         </StackPanel>
                                                     </StackPanel>
@@ -407,7 +407,7 @@
                                                       Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                       HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" />
                                 <TextBlock Text="Zařízení se nepodařilo najít" Style="{StaticResource StepHeadline}" Margin="0,14,0,0" />
-                                <TextBlock Text="Zkontrolujte USB kabel a že gravírka je zapnutá, pak zkuste hledání znovu."
+                                <TextBlock Text="Zkontrolujte USB kabel a zapnutí gravírky, potom zkuste hledání znovu."
                                            Style="{StaticResource StepSubtext}" />
 
                                 <ToggleButton x:Name="TipsToggle" Style="{StaticResource ToggleButton.Link}"
@@ -425,7 +425,7 @@
                                     <Border Style="{StaticResource InspectorSection}">
                                         <StackPanel>
                                             <TextBlock Text="Port drží jiný program" FontWeight="SemiBold" />
-                                            <TextBlock Text="Zavřete LightBurn, LaserGRBL nebo sériový monitor — port smí být otevřený jen v jednom programu."
+                                            <TextBlock Text="Zavřete LightBurn, LaserGRBL nebo sériový monitor. Port smí být otevřený jen v jednom programu."
                                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,0" />
                                         </StackPanel>
                                     </Border>
@@ -490,7 +490,7 @@
                             <TextBox Text="{Binding MachineName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14"
                                      automation:AutomationProperties.Name="Název zařízení" />
 
-                            <TextBlock Text="Pracovní plocha se nesedí?" Style="{StaticResource FieldLabel}" />
+                            <TextBlock Text="Pracovní plocha neodpovídá" Style="{StaticResource FieldLabel}" />
                             <TextBlock Text="Načteno ze zařízení ($130 a $131). Přepište, pokud rozměry neodpovídají skutečnému stroji."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,16">

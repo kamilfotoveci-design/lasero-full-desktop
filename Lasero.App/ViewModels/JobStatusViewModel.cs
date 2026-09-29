@@ -73,10 +73,12 @@ public partial class JobStatusViewModel : ObservableObject
 
     public string Title => _job.JobState switch
     {
-        JobRunState.Preparing => "Připravuji úlohu",
-        JobRunState.Framing => "Rámuji pracovní oblast",
+        JobRunState.Preparing => "Příprava úlohy",
+        JobRunState.Framing => "Rámování pracovní oblasti",
         JobRunState.Running => "Gravírování probíhá",
-        JobRunState.Ready => "Připraveno ke gravírování",
+        // Ready only means the job has been prepared; whether the laser can take it is the
+        // start gate's call. Claiming readiness while it is blocked would contradict the machine badge.
+        JobRunState.Ready => _job.StartBlockedReason is null ? "Připraveno ke gravírování" : "Úloha je připravená",
         JobRunState.Paused => "Úloha je pozastavená",
         JobRunState.Completed => "Hotovo",
         JobRunState.Cancelled => "Úloha byla zrušena",
@@ -87,11 +89,12 @@ public partial class JobStatusViewModel : ObservableObject
 
     public string Description => _job.JobState switch
     {
-        JobRunState.Preparing => "Generuji příkazy pro gravírku a připravuji přenos.",
+        JobRunState.Preparing => "Příkazy pro gravírku se generují a připravuje se přenos.",
         JobRunState.Framing => "Gravírka projíždí obrys návrhu. Zkontrolujte jeho polohu na materiálu.",
         JobRunState.Running => _job.JobSourceLabel,
-        JobRunState.Ready => "Návrh je uvnitř pracovní plochy a parametry vrstev jsou platné.",
-        JobRunState.Paused => "Laser je zhasnutý a osy stojí. Pokračovat můžete, až budete chtít.",
+        JobRunState.Ready => _job.StartBlockedReason
+            ?? "Návrh je uvnitř pracovní plochy a nastavení operací je platné. Spuštění se ještě potvrdí souhrnem.",
+        JobRunState.Paused => "Laser je zhasnutý a osy stojí. Pokračovat lze, až bude vše v pořádku.",
         JobRunState.Completed => "Gravírování bylo dokončeno.",
         JobRunState.Cancelled or JobRunState.Aborted =>
             _job.LastMessage ?? "Úloha byla přerušena před dokončením.",

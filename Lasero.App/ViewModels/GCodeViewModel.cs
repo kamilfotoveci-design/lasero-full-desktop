@@ -172,9 +172,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             RefreshCommands();
             if (JobState is JobRunState.Running or JobRunState.Paused or JobRunState.Framing)
-                LastMessage = reason is null
-                    ? "Spojení se zařízením bylo přerušeno. Úloha nebude automaticky obnovena."
-                    : $"Spojení se zařízením bylo přerušeno: {reason.Message}. Úloha nebude automaticky obnovena.";
+                LastMessage = UserFacingErrors.ConnectionLostDuringJob();
         });
         _scene.Objects.CollectionChanged += (_, _) =>
         {
@@ -182,6 +180,7 @@ public partial class GCodeViewModel : ObservableObject
             PreviewSimulationCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HasJobContent));
             OnPropertyChanged(nameof(JobSourceLabel));
+            OnPropertyChanged(nameof(StatusStripMessage));
         };
         _scene.Changed += OnSceneChanged;
 
@@ -239,9 +238,10 @@ public partial class GCodeViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Log.Warning(ex, "Failed to import a design file");
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
                 "Soubor se nepodařilo načíst",
-                ex.Message,
+                UserFacingErrors.FileImportFailed(ex),
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
@@ -459,8 +459,25 @@ public partial class GCodeViewModel : ObservableObject
     public bool IsJobActive => JobState is JobRunState.Preparing or JobRunState.Framing
         or JobRunState.Running or JobRunState.Paused;
 
-    public string StartActionTooltip => StartBlockedReason ?? "Spustit připravenou úlohu";
-    public string FrameActionTooltip => FrameBlockedReason ?? "Ověřit obrys a umístění úlohy před spuštěním";
+    /// <summary>Which machine a job started now would run on. The shell supplies it because the
+    /// connection view model owns the name and port of the machine; this class only needs the words
+    /// for the Start confirmation. Null falls back to a generic name.</summary>
+    public Func<(string Name, string? Port, bool IsSimulator)>? MachineIdentity { get; set; }
+
+    /// <summary>
+    /// The one line the status strip shows next to the badges: the latest message when there is one,
+    /// otherwise the next step toward a job that can run (currently: connect a laser). Messages win
+    /// because they may be errors, and an error must never be hidden behind a suggestion.
+    /// </summary>
+    public string? StatusStripMessage => LastMessage ?? GuidanceText.MachineNextStep(
+        HasJobContent,
+        _connection.State == GrblConnectionState.Connected,
+        _connection.State == GrblConnectionState.Connecting);
+
+    partial void OnLastMessageChanged(string? value) => OnPropertyChanged(nameof(StatusStripMessage));
+
+    public string StartActionTooltip => StartBlockedReason ?? "Zobrazí souhrn úlohy ke schválení. Laser se rozjede až po potvrzení";
+    public string FrameActionTooltip => FrameBlockedReason ?? "Hlava projede obrys úlohy se slabým viditelným paprskem, abyste ověřili umístění na materiálu";
 
     partial void OnJobStateChanged(JobRunState value) => OnPropertyChanged(nameof(IsJobActive));
 
@@ -769,12 +786,20 @@ public partial class GCodeViewModel : ObservableObject
                  $"Průchody: {enabledLayers[0].Passes}",
             _ => $"Aktivní vrstvy: {enabledLayers.Count} (parametry se liší podle vrstvy)",
         };
+        var identity = MachineIdentity?.Invoke() ?? ("Laserové zařízení", null, false);
         var confirmed = LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
             "Spustit gravírování",
-            $"Úloha: {FileLabel}\n" +
-            $"Rozměr: {Document.BoundingBox.Width:0.#} × {Document.BoundingBox.Height:0.#} mm\n" +
-            $"{settingsSummary}\nOdhadovaný čas: {EstimatedTimeLabel}\n\n" +
-            "Před spuštěním zkontrolujte materiál, odsávání a ochranný kryt.",
+            StartSummary.Build(new StartSummaryInput(
+                FileLabel,
+                Document.BoundingBox.Width,
+                Document.BoundingBox.Height,
+                identity.Item1,
+                identity.Item2,
+                identity.Item3,
+                PlacementLabel,
+                settingsSummary,
+                EstimatedTimeLabel,
+                IsCurrentDocumentFramed)),
             "Spustit úlohu",
             CancelText: "Ještě zkontrolovat",
             Tone: LaseroDialogTone.Warning)) == LaseroDialogChoice.Primary;
@@ -820,7 +845,7 @@ public partial class GCodeViewModel : ObservableObject
             ProgressPercent = 100;
             RemainingDuration = TimeSpan.Zero;
             RemainingTimeLabel = FormatDuration(RemainingDuration);
-            LastMessage = $"Gravírování bylo dokončeno.\nSkutečný čas: {FormatDuration(ElapsedDuration)}\n{settingsSummary}";
+            LastMessage = $"Gravírování bylo dokončeno za {FormatDuration(ElapsedDuration)}. Zkontrolujte výsledek na materiálu.";
             JobCompleted?.Invoke(this, new JobCompletedEventArgs
             {
                 Name = label,
@@ -900,7 +925,7 @@ public partial class GCodeViewModel : ObservableObject
             UpdateRunTiming();
         });
         runner.LineFailed += (line, message) => Application.Current.Dispatcher.Invoke(() =>
-            LastMessage = $"Řádek {line + 1}: {message}");
+            LastMessage = $"Laser odmítl řádek {line + 1} úlohy: {message}");
 
         await runner.RunAsync(lines, abortOnError);
     }
@@ -929,6 +954,7 @@ public partial class GCodeViewModel : ObservableObject
         RestartSimulationCommand.NotifyCanExecuteChanged();
         CloseSimulationCommand.NotifyCanExecuteChanged();
         RefreshBlockedReasons();
+        OnPropertyChanged(nameof(StatusStripMessage));
     }
 
     partial void OnDocumentChanged(GCodeDocument? value)

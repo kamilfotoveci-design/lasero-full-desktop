@@ -36,6 +36,13 @@ public partial class ConnectionViewModel : ObservableObject
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private bool _isConnecting;
     [ObservableProperty] private string _statusText = "Nepřipojeno";
+
+    /// <summary>The full sentence behind <see cref="StatusText"/>: what went wrong and what to try, or
+    /// the status itself when nothing went wrong. StatusText stays short because it sits in a badge.</summary>
+    public string StatusDetail => ConnectionError ?? StatusText;
+
+    partial void OnStatusTextChanged(string value) => OnPropertyChanged(nameof(StatusDetail));
+    partial void OnConnectionErrorChanged(string? value) => OnPropertyChanged(nameof(StatusDetail));
     [ObservableProperty] private string? _firmwareBanner;
     [ObservableProperty] private GrblDeviceProfile? _detectedDevice;
     [ObservableProperty] private string? _identificationMessage;
@@ -68,8 +75,8 @@ public partial class ConnectionViewModel : ObservableObject
             IsConnecting = state == GrblConnectionState.Connecting;
             StatusText = state switch
             {
-                GrblConnectionState.Connecting => "Připojuji zařízení…",
-                GrblConnectionState.Connected => "Připojeno — čekám na identifikaci zařízení",
+                GrblConnectionState.Connecting => "Připojování zařízení…",
+                GrblConnectionState.Connected => "Připojeno - zjišťuje se typ zařízení",
                 _ => "Nepřipojeno",
             };
             if (state == GrblConnectionState.Connected)
@@ -90,14 +97,14 @@ public partial class ConnectionViewModel : ObservableObject
         {
             FirmwareBanner = banner;
             IsConnected = true;
-            StatusText = $"Připojeno — {banner}";
+            StatusText = $"Připojeno - {banner}";
         });
         _connection.Disconnected += error => RunOnUiThread(() =>
         {
             IsConnected = false;
             IsConnecting = false;
-            ConnectionError = error?.Message;
-            StatusText = error is null ? "Nepřipojeno" : $"Spojení bylo přerušeno: {error.Message}";
+            ConnectionError = error is null ? null : UserFacingErrors.ConnectionLost(error);
+            StatusText = error is null ? "Nepřipojeno" : "Spojení přerušeno";
         });
 
         RefreshPorts();
@@ -115,7 +122,7 @@ public partial class ConnectionViewModel : ObservableObject
                 if (cancellationToken.IsCancellationRequested || !IsConnected) return;
                 if (profile.NumericSettings.Count < 4)
                 {
-                    IdentificationMessage = "Odpověď neověřuje řadič GRBL. Zkontrolujte profil, port a firmware.";
+                    IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Zkontrolujte, zda je vybrán správný model a port, a zda zařízení používá firmware GRBL.";
                     return;
                 }
                 DetectedDevice = profile;
@@ -141,8 +148,8 @@ public partial class ConnectionViewModel : ObservableObject
                 }
 
                 IdentificationMessage = profile.LaserModeEnabled == false
-                    ? "Zařízení bylo nalezeno, ale GRBL laserový režim $32 není zapnutý."
-                    : $"Zařízení nalezeno — pracovní plocha {_settingsStore.Current.Machine.WorkAreaWidthMm:0.#} × {_settingsStore.Current.Machine.WorkAreaHeightMm:0.#} mm.";
+                    ? "Zařízení bylo nalezeno, ale laserový režim GRBL ($32) není zapnutý. Bez něj nelze úlohu spustit. Zapnout jej lze v průvodci zařízením."
+                    : $"Zařízení nalezeno - pracovní plocha {_settingsStore.Current.Machine.WorkAreaWidthMm:0.#} × {_settingsStore.Current.Machine.WorkAreaHeightMm:0.#} mm.";
                 SaveWorkspaceAsDefaultCommand.NotifyCanExecuteChanged();
             });
         }
@@ -153,7 +160,7 @@ public partial class ConnectionViewModel : ObservableObject
         {
             Log.Warning(ex, "GRBL device identification failed");
             RunOnUiThread(() =>
-                IdentificationMessage = "Připojeno, ale parametry zařízení se nepodařilo automaticky načíst.");
+                IdentificationMessage = "Laser je připojen, ale jeho nastavení se nepodařilo načíst. Odpojte jej, zkontrolujte USB kabel a připojte se znovu.");
         }
     }
 
@@ -195,7 +202,7 @@ public partial class ConnectionViewModel : ObservableObject
         {
             IsConnecting = true;
             ConnectionError = null;
-            StatusText = $"Připojuji se k {SelectedPort}…";
+            StatusText = $"Připojování k {SelectedPort}…";
             _connection.Connect(SelectedPort!, BaudRate);
             _connection.StartStatusPolling(TimeSpan.FromMilliseconds(200));
         }
@@ -203,8 +210,8 @@ public partial class ConnectionViewModel : ObservableObject
         {
             IsConnecting = false;
             Log.Warning(ex, "Failed to open GRBL connection on {Port}", SelectedPort);
-            ConnectionError = ex.Message;
-            StatusText = $"Připojení selhalo: {ex.Message}";
+            ConnectionError = UserFacingErrors.ConnectionFailed(ex, SelectedPort);
+            StatusText = "Připojení selhalo";
         }
     }
 

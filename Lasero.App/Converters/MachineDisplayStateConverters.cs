@@ -17,7 +17,7 @@ public sealed class MachineDisplayStateToLabelConverter : IValueConverter
             ? state switch
             {
                 LaserMachineDisplayState.Disconnected => "Nepřipojeno",
-                LaserMachineDisplayState.Connecting => "Připojuji",
+                LaserMachineDisplayState.Connecting => "Připojování",
                 LaserMachineDisplayState.Idle => "Připraveno",
                 LaserMachineDisplayState.Run => "Pracuje",
                 LaserMachineDisplayState.Hold => "Pozastaveno",

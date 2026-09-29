@@ -266,7 +266,8 @@
                       Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource InverseBoolToVisibility}}">
                     <MenuItem Style="{StaticResource BarMenuItem}"
                               IsEnabled="{Binding Scene.HasMultipleSelection}"
-                              ToolTip="Zarovnat vybrané objekty k sobě"
+                              ToolTipService.ShowOnDisabled="True"
+                              ToolTip="{Binding Scene.AlignDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zarovná vybrané objekty k sobě'}"
                               AutomationProperties.Name="Zarovnat">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal">

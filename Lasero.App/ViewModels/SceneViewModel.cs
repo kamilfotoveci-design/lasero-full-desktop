@@ -107,6 +107,15 @@ public partial class SceneViewModel : ObservableObject
             return null;
         }
     }
+    /// <summary>Why Align is unavailable, or null when it works. Alignment is relative to the other
+    /// selected objects, so a single object has nothing to align to.</summary>
+    public string? AlignDisabledReason => SelectedObjects.Count switch
+    {
+        0 => "Vyberte alespoň dva objekty, aby je šlo zarovnat",
+        1 => "Vyberte alespoň dva objekty, aby je šlo zarovnat. Jeden objekt nemá k čemu zarovnat",
+        _ => null,
+    };
+
     public bool CanUniteSelection => UniteSelectionDisabledReason is null;
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
 
@@ -2145,6 +2154,7 @@ public partial class SceneViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(HasMultipleSelection));
+        OnPropertyChanged(nameof(AlignDisabledReason));
         OnPropertyChanged(nameof(SelectionCount));
         OnPropertyChanged(nameof(SelectionSummary));
         OnPropertyChanged(nameof(CanEditSelectedPosition));

@@ -498,6 +498,11 @@
 
                 <!-- Undo, redo, pan and zoom. Always present, because none of them depend on a
                      selection. -->
+                <!-- What to do next, only when it helps: an empty-canvas explanation, or one dismissible
+                     hint for the state the operator is in. Never permanent instructional text. -->
+                <views:CanvasHintOverlay Panel.ZIndex="15"
+                                         TargetCanvas="{Binding ElementName=DesignerCanvas}" />
+
                 <views:CanvasViewControls x:Name="CanvasViewControls" VerticalAlignment="Bottom" HorizontalAlignment="Right"
                                           Margin="0,0,20,20" Panel.ZIndex="20"
                                           TargetCanvas="{Binding ElementName=DesignerCanvas}" />
@@ -600,7 +605,7 @@
                     <StackPanel Orientation="Horizontal">
                             <!-- State is told by glyph, word and semantic colour — never colour alone. -->
                             <components:StatusBadge StatusText="{Binding Connection.StatusText}"
-                                                    ToolTip="{Binding Connection.StatusText}"
+                                                    ToolTip="{Binding Connection.StatusDetail}"
                                                     MaxWidth="320">
                                 <components:StatusBadge.Style>
                                     <Style TargetType="components:StatusBadge">
@@ -624,7 +629,7 @@
                                     Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
                                     Foreground="{StaticResource Brush.AccentText}"
                                     Content="Připojit"
-                                    ToolTip="Připojit naposledy vybrané zařízení bez opuštění návrhu"
+                                    ToolTip="Připojí naposledy vybraný laser, aniž byste museli opustit návrh"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
                             <components:StatusBadge Margin="10,0,0,0"
@@ -661,14 +666,14 @@
                                 </StackPanel>
                             </Border>
 
-                            <TextBlock Text="{Binding GCode.LastMessage}"
+                            <TextBlock Text="{Binding GCode.StatusStripMessage}"
                                        Margin="10,0,0,0"
                                        FontSize="{StaticResource Size.Text.Meta}"
                                        Foreground="{StaticResource Brush.TextSecondary}"
                                        MaxWidth="340"
                                        TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding GCode.LastMessage}" VerticalAlignment="Center"
-                                       Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
+                                       ToolTip="{Binding GCode.StatusStripMessage}" VerticalAlignment="Center"
+                                       Visibility="{Binding GCode.StatusStripMessage, Converter={StaticResource NotNullToVisibility}}" />
                     </StackPanel>
                     <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,6,0,0"
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
@@ -681,7 +686,7 @@
                      selected layer is ringed. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                            ToolTip="Vyberte objekt a kliknutím mu přiřaďte výrobní barvu">
+                            ToolTip="Barva určuje, jak laser objekt zpracuje. Vyberte objekt a kliknutím na barvu mu ji přiřaďte">
                     <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -720,13 +725,13 @@
                     <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
-                            ToolTip="Pozastavit úlohu">
+                            ToolTip="Pozastaví úlohu a zhasne laser. Pokračovat lze tlačítkem Pokračovat">
                         <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
-                            ToolTip="Pokračovat v pozastavené úloze">
+                            ToolTip="Naváže od místa pozastavení. Nejprve zkontrolujte, že nic nebrání pohybu hlavy">
                         <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobActiveStopButton}"
@@ -734,7 +739,7 @@
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
-                            ToolTip="Okamžitě zastavit pohyb i laser">
+                            ToolTip="Okamžitě zastaví pohyb a vypne laser. Úlohu pak lze jen spustit znovu od začátku">
                         <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobStartActionButton}"

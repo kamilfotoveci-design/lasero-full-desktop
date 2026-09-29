@@ -40,6 +40,10 @@ public sealed record JobPreflightResult(IReadOnlyList<PreflightIssue> Issues)
 
 public static class JobPreflight
 {
+    /// <summary>The reason Start is unavailable while no laser is connected. Public so the UI can show
+    /// the very same sentence in its own surfaces instead of a second, drifting copy.</summary>
+    public const string DisconnectedMessage = "Připojte laser, aby bylo možné úlohu připravit a odeslat.";
+
     private static readonly Regex GCodeWordPattern = new(@"([A-Za-z])\s*(-?\d+\.?\d*)", RegexOptions.Compiled);
 
     public static JobPreflightResult Evaluate(JobPreflightContext context)
@@ -48,12 +52,12 @@ public static class JobPreflight
         var issues = new List<PreflightIssue>();
 
         if (!context.IsConnected)
-            issues.Add(Block("device.disconnected", "Gravírovací zařízení není připojeno."));
+            issues.Add(Block("device.disconnected", DisconnectedMessage));
 
         if (context.Document is null || context.Document.RawLines.Count == 0)
-            issues.Add(Block("job.empty", "Projekt neobsahuje žádnou úlohu ke spuštění."));
+            issues.Add(Block("job.empty", "Návrh je prázdný. Přidejte text nebo tvar, případně importujte grafiku."));
         else if (context.Document.BoundingBox.IsEmpty)
-            issues.Add(Block("job.no-motion", "Úloha neobsahuje žádnou vykreslitelnou dráhu."));
+            issues.Add(Block("job.no-motion", "Úloha neobsahuje žádnou dráhu pro laser. Zkontrolujte, zda jsou operace zapnuté a objekty zahrnuté do úlohy."));
         else
             ValidateBounds(context, issues);
 
@@ -64,7 +68,7 @@ public static class JobPreflight
             issues.Add(Block("machine.power-range-unknown", "Rozsah výkonu zařízení není známý. Načtěte nastavení GRBL včetně $30 a úlohu připravte znovu."));
         if ((context.Layers?.Any(layer => layer.IsEnabled) == true || context.RasterOptions?.Count > 0)
             && context.LaserModeEnabled != true)
-            issues.Add(Block("machine.laser-mode-disabled", "Laserový režim GRBL ($32=1) není potvrzen. Zkontrolujte nastavení zařízení a znovu načtěte profil."));
+            issues.Add(Block("machine.laser-mode-disabled", "Laserový režim GRBL ($32=1) není potvrzen. Zapněte jej v průvodci zařízením a znovu načtěte profil."));
         if (context.IsRawGCode && context.Document is { } rawDocument)
             ValidateRawGCodePower(context, rawDocument, issues);
 
@@ -72,12 +76,12 @@ public static class JobPreflight
         {
             if (context.MachineStatus is null)
             {
-                issues.Add(Block("machine.no-status", "Čekám na aktuální stav zařízení."));
+                issues.Add(Block("machine.no-status", "Čeká se na první odpověď laseru. Chvíli počkejte, případně zkontrolujte USB kabel."));
             }
             else
             {
                 if (context.MachineStatusAge is { } age && age > TimeSpan.FromSeconds(2))
-                    issues.Add(Block("machine.stale-status", "Stav zařízení není aktuální. Zkontrolujte připojení."));
+                    issues.Add(Block("machine.stale-status", "Laser přestal posílat stav. Zkontrolujte USB kabel a napájení, případně se znovu připojte."));
                 ValidateMachineState(context.MachineStatus, issues);
             }
         }
@@ -85,7 +89,7 @@ public static class JobPreflight
         if (context.RequireFraming && !context.HasFramedCurrentDocument)
             // Short enough to be read where it actually appears: the status strip gives a block
             // reason about 260px, and the previous wording was cut off mid-sentence there.
-            issues.Add(Block("job.framing-required", "Nejprve ověřte umístění rámováním."));
+            issues.Add(Block("job.framing-required", "Nejprve ověřte umístění tlačítkem Rámovat."));
 
         return new JobPreflightResult(issues);
     }
@@ -169,7 +173,7 @@ public static class JobPreflight
         {
             issues.Add(Block(
                 "job.outside-work-area",
-                $"Dráha přesahuje pracovní plochu {context.WorkAreaWidthMm:0.#} × {context.WorkAreaHeightMm:0.#} mm."));
+                $"Návrh přesahuje pracovní plochu {context.WorkAreaWidthMm:0.#} × {context.WorkAreaHeightMm:0.#} mm. Přesuňte jej dovnitř plochy nebo zmenšete."));
         }
     }
 
@@ -179,20 +183,20 @@ public static class JobPreflight
         {
             var message = status.Mode switch
             {
-                GrblMachineMode.Alarm => "Zařízení je v alarmu. Nejprve odstraňte příčinu a zařízení odemkněte.",
-                GrblMachineMode.Door => "Bezpečnostní kryt nebo dveře jsou otevřené.",
-                GrblMachineMode.Hold => "Zařízení je pozastavené.",
-                GrblMachineMode.Run or GrblMachineMode.Jog or GrblMachineMode.Home => "Zařízení se právě pohybuje.",
-                _ => $"Zařízení není připravené (stav {status.Mode}).",
+                GrblMachineMode.Alarm => "Laser je v alarmu. Zkontrolujte prostor stroje, odstraňte příčinu a laser odemkněte v ručním ovládání.",
+                GrblMachineMode.Door => "Bezpečnostní kryt nebo dveře jsou otevřené. Zavřete je a zkuste to znovu.",
+                GrblMachineMode.Hold => "Laser je pozastavený. Pokračujte v úloze, nebo ji zastavte.",
+                GrblMachineMode.Run or GrblMachineMode.Jog or GrblMachineMode.Home => "Laser se právě pohybuje. Počkejte, až pohyb skončí.",
+                _ => $"Laser zatím není připraven (stav {status.Mode}). Počkejte na stav Připraveno.",
             };
             issues.Add(Block("machine.not-idle", message));
         }
 
         var pins = status.TriggeredPins ?? string.Empty;
         if (pins.IndexOfAny(['X', 'Y', 'Z']) >= 0)
-            issues.Add(Block("machine.limit-triggered", "Je aktivní koncový spínač některé osy."));
+            issues.Add(Block("machine.limit-triggered", "Některá osa stojí na koncovém spínači. Odsuňte hlavu ručně a zkontrolujte, zda nic nebrání pohybu."));
         if (pins.Contains('D'))
-            issues.Add(Block("machine.door-triggered", "Je aktivní vstup bezpečnostních dveří."));
+            issues.Add(Block("machine.door-triggered", "Je aktivní vstup bezpečnostních dveří. Zavřete dveře a zkontrolujte kabel dveřního spínače."));
         if (pins.Contains('P'))
             issues.Add(new PreflightIssue("machine.probe-triggered", "Je aktivní vstup sondy.", PreflightSeverity.Warning));
     }
@@ -203,11 +207,11 @@ public static class JobPreflight
 
         foreach (var layer in layers.Where(item => item.IsEnabled))
         {
-            var prefix = string.IsNullOrWhiteSpace(layer.Name) ? "Vrstva" : $"Vrstva „{layer.Name}“";
+            var prefix = string.IsNullOrWhiteSpace(layer.Name) ? "Operace" : $"Operace „{layer.Name}“";
             if (!double.IsFinite(layer.Power) || layer.Power is <= 0 or > 100)
-                issues.Add(Block("settings.invalid-power", $"{prefix}: výkon musí být v rozsahu 1–100 %."));
+                issues.Add(Block("settings.invalid-power", $"{prefix}: výkon musí být v rozsahu 1 až 100 %. Upravte jej v nastavení operace."));
             if (!double.IsFinite(layer.Speed) || layer.Speed <= 0)
-                issues.Add(Block("settings.invalid-speed", $"{prefix}: rychlost musí být kladné číslo v mm/min."));
+                issues.Add(Block("settings.invalid-speed", $"{prefix}: rychlost musí být větší než nula (mm/min). Upravte ji v nastavení operace."));
             if (layer.Passes < 1)
                 issues.Add(Block("settings.invalid-passes", $"{prefix}: počet průchodů musí být alespoň 1."));
             if (layer.Mode is LayerMode.Fill or LayerMode.FillAndCut &&
@@ -222,7 +226,7 @@ public static class JobPreflight
         foreach (var item in options)
         {
             if (!double.IsFinite(item.MaxPower) || item.MaxPower is <= 0 or > 100)
-                issues.Add(Block("settings.invalid-power", "Rastrový obrázek: výkon musí být v rozsahu 1–100 %."));
+                issues.Add(Block("settings.invalid-power", "Rastrový obrázek: výkon musí být v rozsahu 1 až 100 %."));
             if (!double.IsFinite(item.FeedRatePerMinute) || item.FeedRatePerMinute <= 0)
                 issues.Add(Block("settings.invalid-speed", "Rastrový obrázek: rychlost musí být kladné číslo v mm/min."));
             if (!double.IsFinite(item.LineIntervalMm) || item.LineIntervalMm <= 0)

@@ -113,11 +113,11 @@ public partial class DeviceWizardViewModel : ObservableObject
         SelectedMachine = null;
         ConnectFailed = false;
         Step = DeviceWizardStep.Scanning;
-        ScanStatus = "Hledám připojená zařízení…";
+        ScanStatus = "Hledání připojených zařízení…";
 
         var progress = new Progress<DeviceScanProgress>(report => ScanStatus = report.PortCount == 0
-            ? "Hledám připojená zařízení…"
-            : $"Zkouším {report.PortName} rychlostí {report.BaudRate} Bd ({report.PortIndex + 1} z {report.PortCount})…");
+            ? "Hledání připojených zařízení…"
+            : $"Zkoušení {report.PortName} rychlostí {report.BaudRate} Bd ({report.PortIndex + 1} z {report.PortCount})…");
 
         try
         {
@@ -134,7 +134,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         catch (Exception exception)
         {
             Log.Warning(exception, "Device scan failed");
-            ScanStatus = "Hledání se nezdařilo. Zkuste to prosím znovu.";
+            ScanStatus = "Hledání se nezdařilo. Zkontrolujte USB kabel a zkuste to znovu.";
         }
 
         Step = DeviceWizardStep.Results;
@@ -190,7 +190,7 @@ public partial class DeviceWizardViewModel : ObservableObject
 
         SetupMessage = identified
             ? _connection.IdentificationMessage
-            : "Zařízení je připojené, ale parametry se nepodařilo načíst. Rozměry zadejte ručně.";
+            : "Zařízení je připojené, ale jeho nastavení se nepodařilo načíst. Rozměry pracovní plochy zadejte ručně.";
         Step = DeviceWizardStep.Setup;
         OnPropertyChanged(nameof(CanFinish));
     }
@@ -233,7 +233,7 @@ public partial class DeviceWizardViewModel : ObservableObject
             var result = await _machine.SendCommandAsync("$32=1").ConfigureAwait(true);
             if (!result.IsOk)
             {
-                SetupMessage = $"Laserový režim se nepodařilo zapnout: {result.Message}";
+                SetupMessage = $"Laserový režim se nepodařilo zapnout. Zpráva zařízení: {result.Message}";
                 return;
             }
 
@@ -247,7 +247,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         catch (Exception exception)
         {
             Log.Warning(exception, "Enabling GRBL laser mode failed");
-            SetupMessage = "Laserový režim se nepodařilo zapnout.";
+            SetupMessage = "Laserový režim se nepodařilo zapnout. Zkontrolujte, zda je zařízení v klidu, a zkuste to znovu.";
         }
         finally
         {
