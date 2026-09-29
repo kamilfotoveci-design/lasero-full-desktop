@@ -23,7 +23,7 @@ public static class MachineCompatibilityCatalog
     public const string ExistingGrblId = "existing-grbl";
     public static IReadOnlyList<MachineCompatibility> All { get; } = Array.AsReadOnly(new[]
     {
-        new MachineCompatibility(ExistingGrblId, "Stávající GRBL / simulátor", "Stávající ruční připojení GRBL. Identita modelu ani ověření na hardwaru se neodvozují z rozměrů."),
+        new MachineCompatibility(ExistingGrblId, "Obecný GRBL - zjištěno automaticky", "Model není nutné vybírat. Rozměry pracovní plochy ($130, $131) a maximální výkon ($30) se čtou přímo z řadiče."),
         new MachineCompatibility("algolaser-alpha-mk2-20w", "AlgoLaser MK2 / Alpha MK2", "Nejprve potvrďte přesný model a modul (20 W / 40 W). Firmware, identifikace a výkon nejsou ověřeny; přímé připojení není dostupné."),
         new MachineCompatibility("algolaser-pixi", "AlgoLaser PIXI", "Moduly 3 W / 5 W / 10 W. Je nutné ověřit firmware, identifikaci a nastavení konkrétního modulu; přímé připojení není dostupné."),
         new MachineCompatibility("xtool-f2", "xTool F2 (standard)", "Přímé rozhraní není ověřeno. SVG/DXF nebo obrázek lze importovat do xTool Studio; rozměry a parametry ověřte ve Studiu. Nejde o ovládání stroje z LASERO."),

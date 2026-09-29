@@ -20,6 +20,32 @@ public sealed record DiscoveredMachine(
 {
     public bool IsSimulator => VirtualGrblTransport.IsVirtualPort(PortName);
 
+    /// <summary>True when the automatic port scan found this controller (no model was chosen). Such a
+    /// machine is always connected as a generic GRBL profile.</summary>
+    public bool IsAutoDetected { get; init; }
+
+    /// <summary>GRBL's own state word from the probe (Idle, Alarm, Run ...), when the scan saw one.</summary>
+    public string? StateLabel { get; init; }
+
+    /// <summary>The second line of a result card: port and controller state for a scanned controller.</summary>
+    public string Summary => !IsAutoDetected
+        ? "Připraveno k připojení"
+        : string.IsNullOrWhiteSpace(StateLabel) ? PortName : $"{PortName} · {DescribeState(StateLabel)}";
+
+    private static string DescribeState(string state) => state switch
+    {
+        "Idle" => "v klidu",
+        "Alarm" => "alarm, je nutné odemknout",
+        "Run" => "právě běží úloha",
+        "Hold" => "pozastaveno",
+        "Jog" => "posun",
+        "Door" => "otevřený kryt",
+        "Home" => "domů",
+        "Check" => "kontrola G-code",
+        "Sleep" => "spánek",
+        _ => state,
+    };
+
     /// <summary>What the controller calls itself, falling back to the port when it stayed quiet.
     /// Some boards send no banner at all until they are reset, so a missing one is not a failure.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(FirmwareBanner) ? PortName : FirmwareBanner.Trim();

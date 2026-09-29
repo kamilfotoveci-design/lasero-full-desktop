@@ -57,6 +57,8 @@ public sealed class WorkspacePreferences
 public sealed class DevicePreferences
 {
     public string? Port { get; set; }
+    /// <summary>The last physical port a connection was actually established on. Unlike Port (which always mirrors the combo box), this is only set by a real connect, so "no port chosen before" is answerable.</summary>
+    public string? LastConnectedPort { get; set; }
     public int BaudRate { get; set; } = 115200;
 }
 

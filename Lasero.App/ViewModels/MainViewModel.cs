@@ -77,7 +77,17 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>A fresh wizard per run — it holds scan results and a step position, and reopening it
     /// should start over rather than resume wherever the operator abandoned it last time.</summary>
-    public DeviceWizardViewModel CreateDeviceWizard() => _deviceWizardFactory();
+    public DeviceWizardViewModel CreateDeviceWizard()
+    {
+        var wizard = _deviceWizardFactory();
+        // The status-strip Připojit hands over here when it could not choose a controller alone; the
+        // wizard then starts the search itself so the operator does not have to click twice.
+        wizard.AutoStartRequested = _autoStartNextWizard;
+        _autoStartNextWizard = false;
+        return wizard;
+    }
+
+    private bool _autoStartNextWizard;
 
     /// <summary>The assistant's context follows the shell. Switching screens updates what Kamil is
     /// told, and never touches the conversation.</summary>
@@ -131,6 +141,11 @@ public partial class MainViewModel : ObservableObject
     {
         Connection = connection;
         DeviceSetup = new DeviceSetupViewModel(connection, () => DeviceWizardRequested?.Invoke());
+        connection.AutoConnectNeedsWizard += () =>
+        {
+            _autoStartNextWizard = true;
+            DeviceWizardRequested?.Invoke();
+        };
         MachineStatus = machineStatus;
         Jog = jog;
         Console = console;

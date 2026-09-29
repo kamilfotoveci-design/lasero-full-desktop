@@ -115,6 +115,9 @@ public partial class App : Application
                 services.AddSingleton(sp => new DeviceScanner(
                     sp.GetRequiredService<ILaserMachineFactory>(),
                     () => GrblConnection.GetAvailablePortNames()));
+                services.AddSingleton<ISerialPortEnumerator, WindowsSerialPortEnumerator>();
+                services.AddSingleton<IGrblTransportFactory, SerialGrblTransportFactory>();
+                services.AddSingleton<IGrblPortScanner, GrblPortScanner>();
                 services.AddTransient<DeviceWizardViewModel>();
                 services.AddSingleton<Func<DeviceWizardViewModel>>(sp => sp.GetRequiredService<DeviceWizardViewModel>);
                 services.AddSingleton<ConnectionViewModel>();
