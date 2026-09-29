@@ -1,7 +1,8 @@
 param(
   [string]$Out = "shot.png",
   [string]$WindowTitle = "",
-  [int]$Index = 0
+  [int]$Index = 0,
+  [string]$ProcessName = "Lasero.App"
 )
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -22,7 +23,7 @@ public class Win {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 }
 "@
-$procs = Get-Process Lasero.App -ErrorAction SilentlyContinue
+$procs = Get-Process $ProcessName -ErrorAction SilentlyContinue
 if (-not $procs) { Write-Output "NO_PROCESS"; exit 2 }
 $pids = @($procs.Id)
 $found = New-Object System.Collections.ArrayList
