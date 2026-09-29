@@ -273,24 +273,62 @@ public sealed class FillWindingContractCharacterizationTests
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><path fill='black' {0} " +
         "d='M0 0 H40 V40 H0 Z M10 10 H30 V30 H10 Z'/></svg>";
 
-    /// <summary>SvgImporter never reads fill-rule (no occurrence in Lasero.Core): evenodd, nonzero and
-    /// absent give byte-identical shapes. Every imported contour has GeometrySetId == Guid.Empty.</summary>
+    /// <summary>fill-rule="nonzero" and an absent fill-rule import identically (SVG default); every
+    /// contour keeps GeometrySetId == Guid.Empty (one compound group per imported object).</summary>
     [Fact]
-    public void Current_SvgImporterIgnoresFillRuleAndLeavesGeometrySetEmpty()
+    public void Contract_SvgNonZeroAndDefaultImportIdentically()
     {
         var none = SvgImporter.Import(string.Format(NestedSameWoundPath, ""), 40);
-        var evenOdd = SvgImporter.Import(string.Format(NestedSameWoundPath, "fill-rule='evenodd'"), 40);
         var nonZero = SvgImporter.Import(string.Format(NestedSameWoundPath, "fill-rule='nonzero'"), 40);
 
         Assert.Equal(2, none.Shapes.Count);
         Assert.All(none.Shapes, shape => Assert.Equal(Guid.Empty, shape.GeometrySetId));
-        Assert.Equal(none.Shapes.Select(s => s.Points), evenOdd.Shapes.Select(s => s.Points));
         Assert.Equal(none.Shapes.Select(s => s.Points), nonZero.Shapes.Select(s => s.Points));
     }
 
+    /// <summary>fill-rule="evenodd" on a same-wound nested pair is re-wound by nesting depth on import
+    /// (inner ring reversed), so the SVG author's hole survives the NonZero fill contract. Flattened
+    /// shapes and the editable VectorPath stay consistent.</summary>
+    [Fact]
+    public void Agreement_SvgEvenOddSameWoundNestedPath_BecomesHollowInToolpathAndCanvas()
+    {
+        var document = SvgImporter.Import(string.Format(NestedSameWoundPath, "fill-rule='evenodd'"), 40);
+        document.Layers[0].FillLineIntervalMm = Interval;
+
+        var spans = Spans(ToolpathBuilder.BuildGCode(document, ControllerMaximumS));
+
+        Assert.False(Burns(spans, 20, 17.5));
+        Assert.True(Burns(spans, 5, 17.5));
+        Assert.False(CanvasFills(document.Shapes, 20, 17.5));
+
+        var areas = document.Shapes.Select(shape => SignedArea(shape.Points)).ToList();
+        Assert.True(areas[0] > 0 && areas[1] < 0);
+        var path = Assert.IsType<VectorPath>(document.VectorPath);
+        var pathAreas = path.FlattenAll().Select(SignedArea).ToList();
+        Assert.True(pathAreas[0] > 0 && pathAreas[1] < 0);
+    }
+
+    /// <summary>fill-rule is inherited (group style) and alternates with depth: island inside a hole
+    /// is filled again.</summary>
+    [Fact]
+    public void Agreement_SvgEvenOddInheritedFromGroup_AlternatesWithNestingDepth()
+    {
+        var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'><g style='fill-rule:evenodd'>" +
+                  "<path fill='black' d='M0 0 H60 V60 H0 Z M10 10 H50 V50 H10 Z M20 20 H40 V40 H20 Z'/></g></svg>";
+        var document = SvgImporter.Import(svg, 60);
+        document.Layers[0].FillLineIntervalMm = Interval;
+
+        var spans = Spans(ToolpathBuilder.BuildGCode(document, ControllerMaximumS));
+
+        Assert.True(Burns(spans, 5, 32.5));   // ring
+        Assert.False(Burns(spans, 15, 32.5)); // hole
+        Assert.True(Burns(spans, 30, 32.5));  // island
+        Assert.False(CanvasFills(document.Shapes, 15, 32.5));
+        Assert.True(CanvasFills(document.Shapes, 30, 32.5));
+    }
+
     /// <summary>A same-wound nested pair in one &lt;path&gt; is SOLID in SVG's default nonzero rule and on
-    /// Lasero's canvas; the toolpath now agrees. (An explicit fill-rule="evenodd" is still not
-    /// honoured on import -- migration step 3.)</summary>
+    /// Lasero's canvas; the toolpath now agrees. (fill-rule="evenodd" is handled separately.)</summary>
     [Fact]
     public void Agreement_SvgSameWoundNestedPath_SolidInToolpathAndCanvas()
     {

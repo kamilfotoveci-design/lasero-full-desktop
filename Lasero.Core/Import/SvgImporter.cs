@@ -31,7 +31,7 @@ public static class SvgImporter
         var shapes = new List<ImportedShape>();
         var vectorSubpaths = new List<VectorSubpath>();
         var vectorPathValid = new VectorPathValidity();
-        Walk(svg, SvgTransform.Identity, fill: "black", stroke: "none", shapes, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
+        Walk(svg, SvgTransform.Identity, fill: "black", stroke: "none", evenOdd: false, shapes, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
 
         var bbox = BoundingBox2D.Empty;
         foreach (var shape in shapes)
@@ -106,7 +106,7 @@ public static class SvgImporter
     private static readonly HashSet<string> ShapeElements = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon"];
 
     private static void Walk(
-        XElement el, SvgTransform parentTransform, string fill, string stroke,
+        XElement el, SvgTransform parentTransform, string fill, string stroke, bool evenOdd,
         List<ImportedShape> output, double viewBoxX, double viewBoxY, double scale, double heightMm,
         List<VectorSubpath> vectorSubpaths, VectorPathValidity vectorPathValid)
     {
@@ -117,6 +117,7 @@ public static class SvgImporter
         var worldTransform = parentTransform.Multiply(localTransform);
 
         var (elFill, elStroke) = ReadPaint(el, fill, stroke);
+        var elEvenOdd = ReadEvenOdd(el, evenOdd);
 
         Position ToMm(double x, double y)
         {
@@ -132,6 +133,15 @@ public static class SvgImporter
             var subpaths = name == "path"
                 ? SvgPathParser.Flatten(d!)
                 : (SvgShapeFlattener.Flatten(el) is { } single ? [single] : []);
+
+            // fill-rule="evenodd" is mapped onto the winding convention the rest of Lasero uses
+            // (NonZero per compound group, docs/fill-winding-contract.md): rings are re-wound by
+            // nesting depth so the hole/island structure the author drew is preserved. A nonzero
+            // (default) element keeps its source winding untouched.
+            var reverseFlags = elEvenOdd ? EvenOddReverseFlags(subpaths, ToMm) : null;
+            if (reverseFlags is not null)
+                for (var index = 0; index < subpaths.Count; index++)
+                    if (reverseFlags[index]) subpaths[index].Points.Reverse();
 
             foreach (var sub in subpaths)
             {
@@ -164,6 +174,8 @@ public static class SvgImporter
                     List<VectorSubpath> curveSubpaths;
                     try { curveSubpaths = SvgPathParser.ParseToVectorSubpaths(d!); }
                     catch { curveSubpaths = []; }
+                    if (reverseFlags is not null && curveSubpaths.Count == subpaths.Count)
+                        curveSubpaths = curveSubpaths.Select((sub, index) => reverseFlags[index] ? ReverseSubpath(sub) : sub).ToList();
 
                     if (curveSubpaths.Count != subpaths.Count)
                     {
@@ -212,8 +224,77 @@ public static class SvgImporter
         }
 
         foreach (var child in el.Elements())
-            Walk(child, worldTransform, elFill, elStroke, output, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
+            Walk(child, worldTransform, elFill, elStroke, elEvenOdd, output, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
     }
+
+    /// <summary>fill-rule is an inherited SVG property; only "evenodd" changes anything (nonzero is the
+    /// SVG default and Lasero's own rule).</summary>
+    private static bool ReadEvenOdd(XElement el, bool inherited)
+    {
+        var result = inherited;
+        void Apply(string? value)
+        {
+            if (string.Equals(value?.Trim(), "evenodd", StringComparison.OrdinalIgnoreCase)) result = true;
+            else if (string.Equals(value?.Trim(), "nonzero", StringComparison.OrdinalIgnoreCase)) result = false;
+        }
+        Apply((string?)el.Attribute("fill-rule"));
+        var style = (string?)el.Attribute("style");
+        if (!string.IsNullOrWhiteSpace(style))
+            foreach (var decl in style.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kv = decl.Split(':', 2, StringSplitOptions.TrimEntries);
+                if (kv.Length == 2 && kv[0] == "fill-rule") Apply(kv[1]);
+            }
+        return result;
+    }
+
+    /// <summary>For one element's subpaths: which closed rings must be reversed so that even nesting
+    /// depth is wound positive (fill) and odd depth negative (hole) in mm space. Open or degenerate
+    /// subpaths are never reversed. Depth = number of other closed rings containing the ring.</summary>
+    private static bool[] EvenOddReverseFlags(IReadOnlyList<SvgSubpath> subpaths, Func<double, double, Position> toMm)
+    {
+        var rings = subpaths
+            .Select(sub => sub.Closed && sub.Points.Count >= 3
+                ? sub.Points.Select(p => toMm(p.X, p.Y)).ToList()
+                : null)
+            .ToList();
+        var flags = new bool[subpaths.Count];
+        for (var i = 0; i < rings.Count; i++)
+        {
+            if (rings[i] is not { } ring) continue;
+            var depth = 0;
+            for (var j = 0; j < rings.Count; j++)
+                if (j != i && rings[j] is { } other && Contains(other, ring[0])) depth++;
+            var area = 0d;
+            for (var k = 0; k < ring.Count; k++)
+            {
+                var a = ring[k];
+                var b = ring[(k + 1) % ring.Count];
+                area += a.X * b.Y - b.X * a.Y;
+            }
+            var wantPositive = depth % 2 == 0;
+            flags[i] = area != 0 && (area > 0) != wantPositive;
+        }
+        return flags;
+    }
+
+    private static bool Contains(IReadOnlyList<Position> ring, Position point)
+    {
+        var inside = false;
+        for (int current = 0, previous = ring.Count - 1; current < ring.Count; previous = current++)
+        {
+            var c = ring[current];
+            var p = ring[previous];
+            if ((c.Y > point.Y) == (p.Y > point.Y)) continue;
+            if (point.X < (p.X - c.X) * (point.Y - c.Y) / (p.Y - c.Y) + c.X) inside = !inside;
+        }
+        return inside;
+    }
+
+    private static VectorSubpath ReverseSubpath(VectorSubpath subpath) => subpath with
+    {
+        Nodes = subpath.Nodes.Reverse().Select(node => node with { HandleIn = node.HandleOut, HandleOut = node.HandleIn }).ToList(),
+    };
 
     private static (string Fill, string Stroke) ReadPaint(XElement el, string inheritedFill, string inheritedStroke)
     {
