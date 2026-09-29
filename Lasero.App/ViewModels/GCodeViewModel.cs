@@ -181,6 +181,7 @@ public partial class GCodeViewModel : ObservableObject
             OnPropertyChanged(nameof(HasJobContent));
             OnPropertyChanged(nameof(JobSourceLabel));
             OnPropertyChanged(nameof(StatusStripMessage));
+            OnPropertyChanged(nameof(JobBadgeLabel));
         };
         _scene.Changed += OnSceneChanged;
 
@@ -469,17 +470,55 @@ public partial class GCodeViewModel : ObservableObject
     /// otherwise the next step toward a job that can run (currently: connect a laser). Messages win
     /// because they may be errors, and an error must never be hidden behind a suggestion.
     /// </summary>
-    public string? StatusStripMessage => LastMessage ?? GuidanceText.MachineNextStep(
-        HasJobContent,
-        _connection.State == GrblConnectionState.Connected,
-        _connection.State == GrblConnectionState.Connecting);
+    public string? StatusStripMessage => LastMessage
+        ?? GuidanceText.MachineNextStep(
+            HasJobContent,
+            _connection.State == GrblConnectionState.Connected,
+            _connection.State == GrblConnectionState.Connecting)
+        ?? GuidanceText.FramingStep(CanRun(), NeedsFramingBeforeStart);
 
     partial void OnLastMessageChanged(string? value) => OnPropertyChanged(nameof(StatusStripMessage));
 
-    public string StartActionTooltip => StartBlockedReason ?? "Zobrazí souhrn úlohy ke schválení. Laser se rozjede až po potvrzení";
-    public string FrameActionTooltip => FrameBlockedReason ?? "Hlava projede obrys úlohy se slabým viditelným paprskem, abyste ověřili umístění na materiálu";
+    /// <summary>
+    /// What the job badge says. "Bez úlohy" is true for an empty project, but next to artwork on the
+    /// canvas it read as a contradiction (the G-code is only generated when framing or Start asks for
+    /// it), so with a design present and nothing generated yet it says the design has not been sent.
+    /// </summary>
+    public string JobBadgeLabel => JobState == JobRunState.Idle && HasJobContent
+        ? "Návrh neodeslán"
+        : Converters.JobRunStateToLabelConverter.Label(JobState);
 
-    partial void OnJobStateChanged(JobRunState value) => OnPropertyChanged(nameof(IsJobActive));
+    /// <summary>
+    /// The Start tooltip. When Start is available but the placement has not been checked yet, the
+    /// tooltip says so up front: preflight would refuse the click anyway, and learning that only after
+    /// pressing Start looked like the button was broken. This only words what the gate already does.
+    /// </summary>
+    public string StartActionTooltip => CanRun()
+        ? (NeedsFramingBeforeStart
+            ? "Nejprve ověřte umístění tlačítkem Rámovat, bez toho se úloha nespustí"
+            : "Zobrazí souhrn úlohy ke schválení. Laser se rozjede až po potvrzení")
+        // The cached reason is only refreshed by machine events, so a tooltip asked for before the first
+        // one (right after launch) would otherwise be empty. Ask the gate directly in that case.
+        : StartBlockedReason ?? DescribeBlockedAction(EvaluatePreflight());
+
+    public bool NeedsFramingBeforeStart =>
+        _settingsStore.Current.Safety.RequireFramingBeforeStart && !IsCurrentDocumentFramed;
+
+    partial void OnIsCurrentDocumentFramedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NeedsFramingBeforeStart));
+        OnPropertyChanged(nameof(StartActionTooltip));
+        OnPropertyChanged(nameof(StatusStripMessage));
+    }
+    public string FrameActionTooltip => CanFrame()
+        ? "Hlava projede obrys úlohy se slabým viditelným paprskem, abyste ověřili umístění na materiálu"
+        : FrameBlockedReason ?? DescribeBlockedAction(EvaluatePreflight(includeFramingRequirement: false));
+
+    partial void OnJobStateChanged(JobRunState value)
+    {
+        OnPropertyChanged(nameof(IsJobActive));
+        OnPropertyChanged(nameof(JobBadgeLabel));
+    }
 
     partial void OnStartBlockedReasonChanged(string? value) => OnPropertyChanged(nameof(StartActionTooltip));
     partial void OnFrameBlockedReasonChanged(string? value) => OnPropertyChanged(nameof(FrameActionTooltip));

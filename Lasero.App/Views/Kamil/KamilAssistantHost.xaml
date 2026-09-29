@@ -215,7 +215,7 @@
                     </Grid>
 
                     <kamil:KamilComposer x:Name="QuickComposer" Grid.Row="1"
-                                         Placeholder="Napiš dotaz nebo přilož fotku…" />
+                                         Placeholder="Napsat dotaz nebo přiložit fotku…" />
 
                     <ItemsControl Grid.Row="2" Margin="0,4,0,0" ItemsSource="{Binding QuickPrompts}">
                         <ItemsControl.ItemsPanel>
@@ -353,7 +353,7 @@
                         <!-- Empty state: compact and immediately useful, not a welcome screen. -->
                         <StackPanel VerticalAlignment="Center" Margin="20,0"
                                     Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibilityShared}}">
-                            <TextBlock Text="S čím ti můžu pomoct?" FontWeight="SemiBold"
+                            <TextBlock Text="Kamil pomůže s návrhem a nastavením" FontWeight="SemiBold"
                                        HorizontalAlignment="Center" />
                             <TextBlock Text="Doporučení vždy ověřte na odřezku, než pustíte ostrou úlohu."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap"

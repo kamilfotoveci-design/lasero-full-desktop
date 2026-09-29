@@ -1,10 +1,14 @@
 using System.ComponentModel;
 using System.IO;
+using System.Text.RegularExpressions;
 using Lasero.App;
+using Lasero.App.Components;
+using Lasero.App.Converters;
 using Lasero.App.ViewModels;
 using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
 using Lasero.Core.Jobs;
+using Lasero.Core.Machines;
 using Lasero.Core.Scene;
 using Lasero.Core.Scene.Commands;
 
@@ -149,6 +153,15 @@ public sealed class FirstRunGuidanceTests : IDisposable
     }
 
     [Fact]
+    public void FramingIsTheNextStepOnlyWhenStartIsOtherwiseAvailable()
+    {
+        Assert.Equal(GuidanceText.FramingNextStep, GuidanceText.FramingStep(startAvailable: true, needsFraming: true));
+        Assert.Null(GuidanceText.FramingStep(startAvailable: true, needsFraming: false));
+        Assert.Null(GuidanceText.FramingStep(startAvailable: false, needsFraming: true));
+        Assert.Contains("Rámovat", GuidanceText.FramingNextStep, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MachineHintAndPreflightReasonAreTheSameSentence()
     {
         var result = JobPreflight.Evaluate(new JobPreflightContext
@@ -191,6 +204,17 @@ public sealed class FirstRunGuidanceTests : IDisposable
     }
 
     [Fact]
+    public void DisabledStartAndFrameExplainThemselvesFromTheFirstHoverAfterLaunch()
+    {
+        using var machine = new GrblConnection(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
+        var gcode = new GCodeViewModel(machine, new SceneViewModel(), new AppSettingsStore(Path.Combine(_directory, "tooltip.json")));
+
+        // No machine event has fired yet, so the cached reasons are still empty; the tooltip must not be.
+        Assert.Equal(GuidanceText.NoMachine, gcode.StartActionTooltip);
+        Assert.Equal(GuidanceText.NoMachine, gcode.FrameActionTooltip);
+    }
+
+    [Fact]
     public void AnErrorMessageAlwaysOutranksTheConnectSuggestion()
     {
         using var machine = new GrblConnection(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
@@ -226,6 +250,77 @@ public sealed class FirstRunGuidanceTests : IDisposable
 
         scene.SelectedObjects.Add(second);
         Assert.Null(scene.AlignDisabledReason);
+    }
+
+    // ------------------------------------------------------------------ machine and job badges
+
+    [Fact]
+    public void EveryMachineStateHasItsOwnWordAndOnlyIdleIsGreen()
+    {
+        var states = Enum.GetValues<LaserMachineDisplayState>();
+        var labels = states.Select(MachineStateText.Label).ToList();
+
+        Assert.Equal(labels.Count, labels.Distinct().Count());
+        foreach (var state in states)
+            Assert.Equal(state == LaserMachineDisplayState.Idle, MachineStateText.Kind(state) == StatePillKind.Ready);
+
+        Assert.Equal(StatePillKind.Error, MachineStateText.Kind(LaserMachineDisplayState.Alarm));
+        Assert.Equal(StatePillKind.Warning, MachineStateText.Kind(LaserMachineDisplayState.Hold));
+        Assert.Equal(StatePillKind.Busy, MachineStateText.Kind(LaserMachineDisplayState.Run));
+        Assert.Equal(StatePillKind.Neutral, MachineStateText.Kind(LaserMachineDisplayState.Disconnected));
+    }
+
+    [Fact]
+    public void StripBadgeNeverCallsAnUnansweredOrAlarmedMachineReady()
+    {
+        // Link open but no status report yet resolves to Connecting, never to Ready.
+        var waiting = MachineBadge.For(LaserMachineDisplayState.Connecting, null, isSimulator: false);
+        Assert.Equal("Připojování", waiting.Label);
+        Assert.NotEqual(StatePillKind.Ready, waiting.Kind);
+
+        var alarm = MachineBadge.For(LaserMachineDisplayState.Alarm, null, isSimulator: false);
+        Assert.Equal("Alarm", alarm.Label);
+        Assert.Equal(StatePillKind.Error, alarm.Kind);
+
+        var ready = MachineBadge.For(LaserMachineDisplayState.Idle, null, isSimulator: false);
+        Assert.Equal("Připraveno", ready.Label);
+        Assert.Equal(StatePillKind.Ready, ready.Kind);
+    }
+
+    [Fact]
+    public void StripBadgeNamesAFailedConnectionAndTheSimulator()
+    {
+        var failed = MachineBadge.For(LaserMachineDisplayState.Disconnected, "Port COM3 právě používá jiný program.", isSimulator: false);
+        Assert.Equal(MachineBadge.ConnectionFailedLabel, failed.Label);
+        Assert.Equal(StatePillKind.Error, failed.Kind);
+
+        var simulated = MachineBadge.For(LaserMachineDisplayState.Idle, null, isSimulator: true);
+        Assert.EndsWith(MachineBadge.SimulatorSuffix, simulated.Label, StringComparison.Ordinal);
+
+        var plain = MachineBadge.For(LaserMachineDisplayState.Disconnected, null, isSimulator: true);
+        Assert.Equal("Nepřipojeno", plain.Label);
+    }
+
+    [Fact]
+    public void JobBadgeDoesNotSayNoJobNextToArtworkAndKeepsTheReadyWordForTheMachine()
+    {
+        using var machine = new GrblConnection(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
+        var scene = new SceneViewModel();
+        var gcode = new GCodeViewModel(machine, scene, new AppSettingsStore(Path.Combine(_directory, "badge.json")));
+
+        Assert.Equal("Bez úlohy", gcode.JobBadgeLabel);
+
+        scene.Execute(new AddObjectCommand(scene.Scene, new SceneObject
+        {
+            LocalShapes = [],
+            LocalPivot = Position.Zero,
+            LocalBounds = BoundingBox2D.Empty,
+            Name = "Objekt",
+        }, []));
+
+        Assert.Equal("Návrh neodeslán", gcode.JobBadgeLabel);
+        Assert.NotEqual("Připraveno", JobRunStateToLabelConverter.Label(JobRunState.Ready));
+        Assert.Equal("Úloha připravena", JobRunStateToLabelConverter.Label(JobRunState.Ready));
     }
 
     // ------------------------------------------------------------------ start summary
@@ -361,7 +456,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         var texts = new List<string>
         {
             GuidanceText.NoSelection, GuidanceText.NoMachine, GuidanceText.EmptyCanvasTitle,
-            GuidanceText.EmptyCanvasDescription, StartSummary.SimulatorNote,
+            GuidanceText.EmptyCanvasDescription, GuidanceText.FramingNextStep, StartSummary.SimulatorNote,
             StartSummary.Build(Summary()), StartSummary.Build(Summary(simulator: true, framed: false)),
             UserFacingErrors.ConnectionLost(new IOException()), UserFacingErrors.ConnectionLostDuringJob(),
             UserFacingErrors.RecoveryFailed(new IOException()),
@@ -433,6 +528,31 @@ public sealed class FirstRunGuidanceTests : IDisposable
         Assert.Contains(messages, m => m.Contains("pohybuje", StringComparison.Ordinal));
         Assert.Contains(messages, m => m.Contains("Rámovat", StringComparison.Ordinal));
         Assert.Contains(messages, m => m.Contains("USB", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NoVisibleXamlTextUsesQuestionOrExclamationMarks()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "Lasero.App"))) root = root.Parent;
+        Assert.NotNull(root);
+
+        var separator = Path.DirectorySeparatorChar;
+        var attribute = new Regex(
+            @"\b(?:Text|Content|ToolTip|Header|Title|Description|Placeholder|CtaText|Label)=""([^""{}]*[?!][^""{}]*)""",
+            RegexOptions.Compiled);
+        var comment = new Regex("<!--.*?-->", RegexOptions.Compiled | RegexOptions.Singleline);
+
+        var offenders = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(root!.FullName, "Lasero.App"), "*.xaml", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{separator}obj{separator}", StringComparison.Ordinal)
+                || file.Contains($"{separator}bin{separator}", StringComparison.Ordinal)) continue;
+            foreach (Match match in attribute.Matches(comment.Replace(File.ReadAllText(file), string.Empty)))
+                offenders.Add($"{Path.GetFileName(file)}: {match.Groups[1].Value}");
+        }
+
+        Assert.True(offenders.Count == 0, "Brand rule: no question or exclamation marks in UI text. " + string.Join(" | ", offenders));
     }
 
     private sealed class ThrowingTransport : IGrblTransport

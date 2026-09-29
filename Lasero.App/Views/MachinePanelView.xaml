@@ -371,7 +371,7 @@
 
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,9">
                             <StackPanel>
-                                <TextBlock Text="Kde má gravírování začít?" FontWeight="SemiBold" Margin="0,0,0,7" />
+                                <TextBlock Text="Místo začátku gravírování" FontWeight="SemiBold" Margin="0,0,0,7" />
                                 <Border Style="{StaticResource SegmentedTrack}" IsEnabled="{Binding GCode.SupportsPlacementMode}">
                                     <UniformGrid Columns="2">
                                         <RadioButton Content="Tam, kde je laser"

@@ -61,6 +61,22 @@ public partial class MainViewModel : ObservableObject
     /// library yet, so this is the only source job history has for its material stat/list.</summary>
     [ObservableProperty] private string? _materialName;
 
+    /// <summary>The status strip's machine badge: resolved machine state, not just link state.</summary>
+    public MachineBadgeInfo StripMachineBadge => MachineBadge.For(
+        MachineStatus.DisplayState,
+        Connection.ConnectionError,
+        Connection.IsConnected && Lasero.Core.Grbl.VirtualGrblTransport.IsVirtualPort(Connection.SelectedPort));
+
+    public string MachineBadgeLabel => StripMachineBadge.Label;
+    public Components.StatePillKind MachineBadgeKind => StripMachineBadge.Kind;
+
+    private void NotifyMachineBadge()
+    {
+        OnPropertyChanged(nameof(StripMachineBadge));
+        OnPropertyChanged(nameof(MachineBadgeLabel));
+        OnPropertyChanged(nameof(MachineBadgeKind));
+    }
+
     public bool HasRecoverySnapshot => _recoveryStore.HasSnapshot;
     public DateTime? RecoveryTimestampUtc => _recoveryStore.LastWriteTimeUtc;
 
@@ -129,6 +145,16 @@ public partial class MainViewModel : ObservableObject
             Connection.SelectedPort,
             Lasero.Core.Grbl.VirtualGrblTransport.IsVirtualPort(Connection.SelectedPort));
         Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
+        MachineStatus.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MachineStatusViewModel.DisplayState)) NotifyMachineBadge();
+        };
+        Connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(ConnectionViewModel.ConnectionError)
+                or nameof(ConnectionViewModel.IsConnected) or nameof(ConnectionViewModel.SelectedPort))
+                NotifyMachineBadge();
+        };
         _recoveryStore = recoveryStore;
         _settingsStore = settingsStore;
         _recentProjectsStore = recentProjectsStore;

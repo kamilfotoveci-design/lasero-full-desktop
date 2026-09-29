@@ -96,22 +96,22 @@
             <StackPanel Margin="24">
 
                 <!-- Primary actions -->
-                <TextBlock Text="Co chcete vytvořit?" Style="{StaticResource PageTitle}" Margin="0,0,0,24" />
+                <TextBlock Text="Začněte novým návrhem" Style="{StaticResource PageTitle}" Margin="0,0,0,24" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,32">
                     <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,16,0"
-                            ToolTip="Založit prázdný projekt · Ctrl+N">
+                            ToolTip="Založit prázdný projekt · Ctrl+N" AutomationProperties.Name="Nový projekt">
                         <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt"
                                               Foreground="White" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                     </Button>
                     <!-- Deliberately generic: LoadFileCommand accepts SVG, bitmaps and G-code. Lasero
                          has no DXF importer, so the label must not promise one. -->
                     <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding GCode.LoadFileCommand}" Margin="0,0,16,0"
-                            ToolTip="Načíst SVG, obrázek nebo G-code do návrhu">
+                            ToolTip="Načíst SVG, obrázek nebo G-code do návrhu" AutomationProperties.Name="Importovat">
                         <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat"
                                               IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding OpenProjectCommand}"
-                            ToolTip="Otevřít uložený projekt · Ctrl+O">
+                            ToolTip="Otevřít uložený projekt · Ctrl+O" AutomationProperties.Name="Otevřít projekt">
                         <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt"
                                               IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                     </Button>

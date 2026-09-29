@@ -604,21 +604,25 @@
                     </Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal">
                             <!-- State is told by glyph, word and semantic colour — never colour alone. -->
-                            <components:StatusBadge StatusText="{Binding Connection.StatusText}"
+                            <!-- The machine's resolved state (not merely "the port is open"): disconnected, connecting,
+                                 ready, working, paused, door open, alarm, error. The tooltip carries the full
+                                 sentence, including why a connection attempt failed and what to try. -->
+                            <components:StatusBadge StatusText="{Binding MachineBadgeLabel}"
+                                                    Kind="{Binding MachineBadgeKind}"
                                                     ToolTip="{Binding Connection.StatusDetail}"
                                                     MaxWidth="320">
                                 <components:StatusBadge.Style>
                                     <Style TargetType="components:StatusBadge">
-                                        <Setter Property="Kind" Value="Neutral" />
                                         <Setter Property="IconData" Value="{StaticResource Glyph.Disconnect}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Connection.IsConnecting}" Value="True">
-                                                <Setter Property="Kind" Value="Warning" />
                                                 <Setter Property="IconData" Value="{StaticResource Glyph.Refresh}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Connection.IsConnected}" Value="True">
-                                                <Setter Property="Kind" Value="Ready" />
                                                 <Setter Property="IconData" Value="{StaticResource Glyph.Connect}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding MachineBadgeKind}" Value="{x:Static components:StatePillKind.Error}">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.Warning}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -633,7 +637,7 @@
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
                             <components:StatusBadge Margin="10,0,0,0"
-                                                    StatusText="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}"
+                                                    StatusText="{Binding GCode.JobBadgeLabel}"
                                                     Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
                                 <components:StatusBadge.Style>
                                     <Style TargetType="components:StatusBadge">

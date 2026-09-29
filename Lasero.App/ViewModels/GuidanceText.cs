@@ -33,6 +33,10 @@ public static class GuidanceText
     /// the strip, the tooltip and the preflight can never disagree about it.</summary>
     public const string NoMachine = JobPreflight.DisconnectedMessage;
 
+    /// <summary>The last step before Start when the laser is ready and the placement has not been
+    /// checked yet. Preflight enforces it; this only says it before the operator presses Start.</summary>
+    public const string FramingNextStep = "Před spuštěním ověřte umístění tlačítkem Rámovat";
+
     public const string EmptyCanvasTitle = "Plátno je prázdné";
 
     public const string EmptyCanvasDescription =
@@ -89,4 +93,11 @@ public static class GuidanceText
         if (!hasDesign || isConnected || isConnecting) return null;
         return NoMachine;
     }
+
+    /// <summary>
+    /// The next step once everything else allows a start: check the placement with framing. Null when
+    /// Start is not available for another reason (then that reason speaks) or framing is not required.
+    /// </summary>
+    public static string? FramingStep(bool startAvailable, bool needsFraming) =>
+        startAvailable && needsFraming ? FramingNextStep : null;
 }

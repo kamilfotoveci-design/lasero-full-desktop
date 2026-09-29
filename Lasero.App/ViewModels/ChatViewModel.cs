@@ -21,9 +21,9 @@ public partial class ChatViewModel : ObservableObject
     public ObservableCollection<ChatSessionItem> Sessions { get; } = [];
     public IReadOnlyList<string> SuggestedQuestions { get; } =
     [
-        "Jaké parametry mám použít pro překližku?",
-        "Proč jsou okraje gravírování opálené?",
-        "Jak bezpečně otestovat nový materiál?",
+        "Parametry pro gravírování překližky",
+        "Příčiny opálených okrajů při gravírování",
+        "Bezpečné testování nového materiálu",
     ];
 
     [ObservableProperty] private string _input = string.Empty;
