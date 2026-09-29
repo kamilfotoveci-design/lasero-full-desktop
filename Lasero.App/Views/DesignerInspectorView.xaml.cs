@@ -13,6 +13,22 @@ public partial class DesignerInspectorView : UserControl
     /// of the laser over the same path.</summary>
     private const int MaxPasses = 50;
 
+    /// <summary>Which content the inspector's single content host shows — the operation editor or the
+    /// machine-control panel (previously a separate floating window; see OnMachineControlClick). A
+    /// DependencyProperty rather than ViewModel state: which of the two views is on screen is pure
+    /// inspector-navigation UI, not domain data, and toggling it never touches Scene/Connection/layer
+    /// state — both StackPanels stay alive and bound the whole time, so switching back to Operation
+    /// never re-measures or resets anything under it (selection, scroll position, expanded state all
+    /// survive because nothing was ever torn down).</summary>
+    public static readonly DependencyProperty IsMachineControlModeProperty = DependencyProperty.Register(
+        nameof(IsMachineControlMode), typeof(bool), typeof(DesignerInspectorView), new PropertyMetadata(false));
+
+    public bool IsMachineControlMode
+    {
+        get => (bool)GetValue(IsMachineControlModeProperty);
+        set => SetValue(IsMachineControlModeProperty, value);
+    }
+
     public DesignerInspectorView()
     {
         InitializeComponent();
@@ -32,15 +48,16 @@ public partial class DesignerInspectorView : UserControl
     }
 
     /// <summary>
-    /// Opens the manual machine panel beside the canvas. This is the Designer's route to everything
-    /// that used to sit behind the inspector's "Stroj" tab — jogging, homing, unlock, origin, the
+    /// Switches the inspector to the machine-control panel — jogging, homing, unlock, origin, the
     /// positioning beam, the job status card with its time estimate, and the framing and placement
-    /// settings. Dropping the tab without this left all of it reachable only from the Device screen.
+    /// settings, all via the same MachinePanelView/MainViewModel the Device screen uses (one source of
+    /// truth; nothing here is a copy). This used to open a separate floating window; it now swaps the
+    /// inspector's own content instead, so operating the machine never covers the canvas or loses the
+    /// operation editor underneath it.
     /// </summary>
-    private void OnMachineControlClick(object sender, RoutedEventArgs e)
-    {
-        if (Window.GetWindow(this) is MainWindow window) window.OpenMachineControl();
-    }
+    private void OnMachineControlClick(object sender, RoutedEventArgs e) => IsMachineControlMode = true;
+
+    private void OnMachineControlBackClick(object sender, RoutedEventArgs e) => IsMachineControlMode = false;
 
     private void OnPassesIncrementClick(object sender, RoutedEventArgs e) => StepPasses(sender, +1);
 

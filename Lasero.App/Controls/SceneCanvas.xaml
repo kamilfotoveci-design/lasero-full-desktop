@@ -5,6 +5,8 @@
              Focusable="True"
              KeyDown="OnCanvasKeyDown"
              KeyUp="OnCanvasKeyUp"
+             Loaded="OnSceneCanvasLoaded"
+             Unloaded="OnSceneCanvasUnloaded"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
     <!--
         No card. The canvas used to sit inside a rounded, bordered, drop-shadowed sheet, which framed
@@ -37,9 +39,11 @@
                         PreviewMouseLeftButtonUp="OnDrawCanvasPreviewMouseLeftButtonUp"
                         PreviewMouseDown="OnDrawCanvasMouseDown"
                         PreviewMouseUp="OnDrawCanvasMouseUp"
+                        LostMouseCapture="OnDrawCanvasLostMouseCapture"
                         PreviewMouseWheel="OnDrawCanvasMouseWheel"
                         MouseLeftButtonDown="OnDrawCanvasMouseLeftButtonDown"
                         MouseLeftButtonUp="OnDrawCanvasMouseLeftButtonUp"
+                        MouseRightButtonDown="OnDrawCanvasMouseRightButtonDown"
                         MouseMove="OnDrawCanvasMouseMove">
                     <Canvas.ContextMenu>
                         <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">

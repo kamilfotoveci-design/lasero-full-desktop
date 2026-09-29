@@ -6,15 +6,17 @@ namespace Lasero.Core.Import;
 
 /// <summary>
 /// Turns imported shapes + their layer settings into real G-code. Fill layers
-/// are scanline-filled (even-odd rule across all of a layer's shape edges
-/// combined, so holes in letters like "O"/"A" render correctly); Cut layers
+/// are scanline-filled (NonZero rule per compound group, groups unioned, so holes
+/// in letters like "O"/"A" render correctly and unrelated shapes never carve each
+/// other; see docs/fill-winding-contract.md); Cut layers
 /// trace the shape outline directly. Layers run in the explicit manufacturing
 /// order selected by the operator in the Layers panel.
 /// </summary>
 public static class ToolpathBuilder
 {
-    public static List<string> BuildGCode(ImportedDocument document)
+    public static List<string> BuildGCode(ImportedDocument document, double controllerMaximumS)
     {
+        ArgumentNullException.ThrowIfNull(document);
         var lines = new List<string> { "G90", "G21", "M5" };
 
         // Collection order is the explicit manufacturing order shown in the Layers panel.
@@ -26,6 +28,7 @@ public static class ToolpathBuilder
         {
             var shapes = document.Shapes.Where(shape => BelongsToLayer(shape, layer)).ToList();
             if (shapes.Count == 0) continue;
+            var powerS = GrblPowerScale.PercentToSValue(layer.Power, controllerMaximumS);
 
             lines.Add($"; --- Vrstva {layer.Name} ({layer.Mode}) ---");
 
@@ -33,18 +36,18 @@ public static class ToolpathBuilder
             {
                 case LayerMode.Cut:
                     lines.Add("; Operace: Čára");
-                    AppendCutLayer(lines, shapes, layer);
+                    AppendCutLayer(lines, shapes, layer, powerS);
                     break;
                 case LayerMode.Fill:
                     lines.Add("; Operace: Výplň");
-                    AppendFillLayer(lines, shapes, layer);
+                    AppendFillLayer(lines, shapes, layer, powerS);
                     break;
                 case LayerMode.FillAndCut:
                     // Engrave first so the final contour cannot shift an already cut-out part.
                     lines.Add("; Operace: Výplň");
-                    AppendFillLayer(lines, shapes, layer);
+                    AppendFillLayer(lines, shapes, layer, powerS);
                     lines.Add("; Operace: Čára");
-                    AppendCutLayer(lines, shapes, layer);
+                    AppendCutLayer(lines, shapes, layer, powerS);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layer.Mode), layer.Mode, "Neznámý režim vrstvy.");
@@ -60,7 +63,7 @@ public static class ToolpathBuilder
             ? shape.LayerId == layer.Id
             : shape.LayerColor.IsApproximately(layer.Color);
 
-    private static void AppendCutLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer)
+    private static void AppendCutLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer, double powerS)
     {
         var feed = Fmt(layer.Speed);
         for (int pass = 0; pass < layer.Passes; pass++)
@@ -70,7 +73,7 @@ public static class ToolpathBuilder
                 if (shape.Points.Count < 2) continue;
                 var first = shape.Points[0];
                 lines.Add($"G0 X{Fmt(first.X)} Y{Fmt(first.Y)}");
-                lines.Add($"M4 S{Fmt(layer.Power)}");
+                lines.Add($"M4 S{Fmt(powerS)}");
                 foreach (var p in shape.Points.Skip(1))
                     lines.Add($"G1 X{Fmt(p.X)} Y{Fmt(p.Y)} F{feed}");
                 if (shape.IsClosed && !SamePoint(shape.Points[^1], first))
@@ -80,7 +83,7 @@ public static class ToolpathBuilder
         }
     }
 
-    private static void AppendFillLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer)
+    private static void AppendFillLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer, double powerS)
     {
         var closedShapes = shapes.Where(s => s.IsClosed && s.Points.Count >= 3).ToList();
         if (closedShapes.Count == 0) return;
@@ -90,31 +93,60 @@ public static class ToolpathBuilder
         var interval = Math.Max(0.02, layer.FillLineIntervalMm);
         var feed = Fmt(layer.Speed);
 
+        // Compound groups: shapes sharing a GeometrySetId. SceneDocument.ToImportedDocument resolves
+        // the legacy Guid.Empty to a per-object id before shapes are pooled.
+        var groups = closedShapes.GroupBy(s => s.GeometrySetId).Select(g => g.ToList()).ToList();
+
         var leftToRight = true;
 
         for (int pass = 0; pass < layer.Passes; pass++)
         {
             for (var y = minY + interval / 2; y <= maxY; y += interval)
             {
-                var xs = new List<double>();
-                foreach (var shape in closedShapes)
+                // Fill contract (docs/fill-winding-contract.md): each compound group is filled by the
+                // NonZero rule, so a ring wound against its container is a hole and a same-wound ring
+                // merges. Groups are then UNIONED, never combined by parity. Runs that merely touch
+                // stay separate (laser off between them).
+                var runs = new List<(double From, double To)>();
+                foreach (var group in groups)
                 {
-                    var pts = shape.Points;
-                    for (int i = 0; i < pts.Count; i++)
+                    var crossings = new List<(double X, int Direction)>();
+                    foreach (var shape in group)
                     {
-                        var a = pts[i];
-                        var b = pts[(i + 1) % pts.Count];
-                        var crosses = (a.Y <= y && b.Y > y) || (b.Y <= y && a.Y > y);
-                        if (!crosses) continue;
-                        var t = (y - a.Y) / (b.Y - a.Y);
-                        xs.Add(a.X + t * (b.X - a.X));
+                        var pts = shape.Points;
+                        for (int i = 0; i < pts.Count; i++)
+                        {
+                            var a = pts[i];
+                            var b = pts[(i + 1) % pts.Count];
+                            var crosses = (a.Y <= y && b.Y > y) || (b.Y <= y && a.Y > y);
+                            if (!crosses) continue;
+                            var t = (y - a.Y) / (b.Y - a.Y);
+                            crossings.Add((a.X + t * (b.X - a.X), a.Y <= y ? 1 : -1));
+                        }
+                    }
+
+                    // Exits before entries at equal X, so edge-sharing rings inside a group stay two runs.
+                    crossings.Sort((l, r) => l.X != r.X ? l.X.CompareTo(r.X) : l.Direction.CompareTo(r.Direction));
+                    var winding = 0;
+                    var runStart = 0d;
+                    foreach (var (x, direction) in crossings)
+                    {
+                        var before = winding;
+                        winding += direction;
+                        if (before == 0 && winding != 0) runStart = x;
+                        else if (before != 0 && winding == 0) runs.Add((runStart, x));
                     }
                 }
 
-                // Even-odd rule across ALL of this layer's shape edges combined —
-                // pairs of consecutive crossings are "inside" runs. This is what
-                // makes holes in letters (O, A, ...) fill correctly.
-                xs.Sort();
+                runs.Sort((l, r) => l.From != r.From ? l.From.CompareTo(r.From) : l.To.CompareTo(r.To));
+                var merged = new List<(double From, double To)>();
+                foreach (var run in runs)
+                {
+                    if (merged.Count > 0 && run.From < merged[^1].To)
+                        merged[^1] = (merged[^1].From, Math.Max(merged[^1].To, run.To));
+                    else
+                        merged.Add(run);
+                }
 
                 // Serpentine: alternate scan direction line by line, so the head ends each pass
                 // where the next one begins. Every line used to be cut left-to-right with a full-width
@@ -126,14 +158,14 @@ public static class ToolpathBuilder
                 // after, the laser is still off for every G0, and the set of engraved spans is
                 // identical — this cannot burn anything the previous version did not.
                 var reverse = leftToRight is false;
-                for (int i = 0; i + 1 < xs.Count; i += 2)
+                for (int k = 0; k < merged.Count; k++)
                 {
-                    var pairIndex = reverse ? xs.Count - 2 - (i / 2) * 2 : i;
-                    var from = reverse ? xs[pairIndex + 1] : xs[pairIndex];
-                    var to = reverse ? xs[pairIndex] : xs[pairIndex + 1];
+                    var run = reverse ? merged[merged.Count - 1 - k] : merged[k];
+                    var from = reverse ? run.To : run.From;
+                    var to = reverse ? run.From : run.To;
 
                     lines.Add($"G0 X{Fmt(from)} Y{Fmt(y)}");
-                    lines.Add($"M4 S{Fmt(layer.Power)}");
+                    lines.Add($"M4 S{Fmt(powerS)}");
                     lines.Add($"G1 X{Fmt(to)} Y{Fmt(y)} F{feed}");
                     lines.Add("M5");
                 }

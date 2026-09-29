@@ -26,10 +26,10 @@ public partial class DeviceStatusCard : UserControl
         nameof(StatusLabel), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata(string.Empty));
 
     public static readonly DependencyProperty FirmwareLabelProperty = DependencyProperty.Register(
-        nameof(FirmwareLabel), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata("—"));
+        nameof(FirmwareLabel), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata("Neznámo"));
 
     public static readonly DependencyProperty StateLabelProperty = DependencyProperty.Register(
-        nameof(StateLabel), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata("—"));
+        nameof(StateLabel), typeof(string), typeof(DeviceStatusCard), new PropertyMetadata("Neznámo"));
 
     public static readonly DependencyProperty StateBrushProperty = DependencyProperty.Register(
         nameof(StateBrush), typeof(Brush), typeof(DeviceStatusCard), new PropertyMetadata(null));

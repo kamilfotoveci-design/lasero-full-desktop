@@ -1,5 +1,6 @@
 using System.Globalization;
 using Lasero.Core.GCode;
+using Lasero.Core.Grbl;
 
 namespace Lasero.Core.Jobs;
 
@@ -11,7 +12,7 @@ namespace Lasero.Core.Jobs;
 /// </summary>
 public static class FramingService
 {
-    public static IReadOnlyList<string> BuildFrameGCode(BoundingBox2D box, FramingOptions options)
+    public static IReadOnlyList<string> BuildFrameGCode(BoundingBox2D box, FramingOptions options, double? controllerMaximumS = null)
     {
         if (box.IsEmpty)
             throw new InvalidOperationException("Úlohu nelze orámovat, protože neobsahuje žádnou geometrii.");
@@ -25,10 +26,14 @@ public static class FramingService
 
         var f = options.FeedRatePerMinute.ToString("0.###", CultureInfo.InvariantCulture);
         var laserOn = options.LaserPower > 0;
+        var powerS = laserOn
+            ? GrblPowerScale.PercentToSValue(options.LaserPower, controllerMaximumS
+                ?? throw new InvalidOperationException("K výkonovému rámování je nutné načíst maximum $30 zařízení."))
+            : 0;
 
         if (options.Mode == FramingMode.FullOutline)
         {
-            if (laserOn) lines.Add($"M3 S{options.LaserPower.ToString("0.###", CultureInfo.InvariantCulture)}");
+            if (laserOn) lines.Add($"M3 S{powerS.ToString("0.###", CultureInfo.InvariantCulture)}");
             lines.Add(Format("G1", box.MaxX, box.MinY, f));
             lines.Add(Format("G1", box.MaxX, box.MaxY));
             lines.Add(Format("G1", box.MinX, box.MaxY));
@@ -49,11 +54,11 @@ public static class FramingService
             foreach (var (cx, cy, inX, inY) in corners)
             {
                 lines.Add(Format("G0", cx, cy)); // laser off — travel to this corner
-                if (laserOn) lines.Add($"M3 S{options.LaserPower.ToString("0.###", CultureInfo.InvariantCulture)}");
+                if (laserOn) lines.Add($"M3 S{powerS.ToString("0.###", CultureInfo.InvariantCulture)}");
                 lines.Add(Format("G1", inX, cy, f));   // horizontal stub
                 lines.Add("M5");                       // never rapid while the framing laser is enabled
                 lines.Add(Format("G0", cx, cy));       // laser off, back to corner
-                lines.Add(laserOn ? $"M3 S{options.LaserPower.ToString("0.###", CultureInfo.InvariantCulture)}" : "M5");
+                lines.Add(laserOn ? $"M3 S{powerS.ToString("0.###", CultureInfo.InvariantCulture)}" : "M5");
                 lines.Add(Format("G1", cx, inY, f));   // vertical stub
                 lines.Add("M5");
             }

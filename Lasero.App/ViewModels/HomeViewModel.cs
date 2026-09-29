@@ -43,7 +43,7 @@ public partial class HomeViewModel : ObservableObject
 
     /// <summary>The same fact as DeviceConnectionLabel, short enough for a half-width stat tile. The
     /// long form stays for places that have a full row to spend on it.</summary>
-    public string ConnectionSummaryLabel => Connection.IsConnected ? $"USB ({Connection.SelectedPort})" : "—";
+    public string ConnectionSummaryLabel => Connection.IsConnected ? $"USB ({Connection.SelectedPort})" : "Nepřipojeno";
 
     /// <summary>GRBL's banner is "Grbl 1.1h ['$' for help]" — the version is the useful half.</summary>
     public string FirmwareLabel
@@ -51,7 +51,7 @@ public partial class HomeViewModel : ObservableObject
         get
         {
             var banner = Connection.FirmwareBanner;
-            if (string.IsNullOrWhiteSpace(banner)) return "—";
+            if (string.IsNullOrWhiteSpace(banner)) return "Neznámo";
             var bracket = banner.IndexOf('[');
             return (bracket > 0 ? banner[..bracket] : banner).Trim();
         }
@@ -65,7 +65,7 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty] private string _totalEngravingTimeLabel = "0 h 0 min";
     [ObservableProperty] private int _completedJobsCount;
     [ObservableProperty] private int _materialsUsedCount;
-    [ObservableProperty] private string _mostUsedMaterialLabel = "—";
+    [ObservableProperty] private string _mostUsedMaterialLabel = "Zatím žádný";
 
     /// <summary>The most recently finished job, for Home's "poslední úloha" panel. Informational
     /// only: a history entry records a name, a material and a duration, not the file it came from,
@@ -160,7 +160,7 @@ public partial class HomeViewModel : ObservableObject
         TotalEngravingTimeLabel = FormatDuration(summary.TotalDurationSeconds);
         CompletedJobsCount = summary.CompletedCount;
         MaterialsUsedCount = summary.DistinctMaterialCount;
-        MostUsedMaterialLabel = summary.MostUsedMaterial ?? "—";
+        MostUsedMaterialLabel = summary.MostUsedMaterial ?? "Zatím žádný";
 
         TodayJobs.Clear();
         foreach (var entry in JobHistorySummary.Today(entries, DateTime.UtcNow).OrderByDescending(e => e.CompletedUtc))

@@ -13,8 +13,17 @@ public partial class JogViewModel : ObservableObject
     private readonly ILaserMachine _connection;
     private readonly AppSettingsStore _settingsStore;
     private long _positioningLaserRequest;
-    private double _positioningLaserMaximumSValue = 1000;
+    private double? _positioningLaserMaximumSValue;
     private bool _positioningLaserModeEnabled;
+    private Timer? _positioningLaserWatchdog;
+
+    /// <summary>Asks the operator to confirm a risky machine action. Defaults to the shared Lasero
+    /// dialog; tests replace it so no window is shown.</summary>
+    public Func<LaseroDialogOptions, bool> ConfirmAction { get; set; } = options =>
+        LaseroDialogWindow.Show(Application.Current?.MainWindow, options) == LaseroDialogChoice.Primary;
+
+    /// <summary>How often a lit positioning laser re-checks that the machine is still connected, idle and reporting fresh status.</summary>
+    public TimeSpan PositioningLaserWatchdogInterval { get; set; } = TimeSpan.FromMilliseconds(500);
 
     public double[] StepSizePresets { get; } = [0.1, 1, 5, 10, 50, 100];
 
@@ -30,6 +39,7 @@ public partial class JogViewModel : ObservableObject
 
     public bool CanUsePositioningLaser =>
         _positioningLaserModeEnabled &&
+        _positioningLaserMaximumSValue is > 0 && double.IsFinite(_positioningLaserMaximumSValue.Value) &&
         CanManualMotion() &&
         IsValidPositioningPower(PositioningLaserPowerPercent);
 
@@ -65,7 +75,7 @@ public partial class JogViewModel : ObservableObject
     {
         _positioningLaserMaximumSValue = maximumSValue is > 0 && double.IsFinite(maximumSValue.Value)
             ? maximumSValue.Value
-            : 1000;
+            : null;
         _positioningLaserModeEnabled = laserModeEnabled == true;
         OnPropertyChanged(nameof(CanUsePositioningLaser));
     }
@@ -80,7 +90,7 @@ public partial class JogViewModel : ObservableObject
         if (!CanUsePositioningLaser || IsPositioningLaserOn) return;
 
         var request = Interlocked.Increment(ref _positioningLaserRequest);
-        var sValue = _positioningLaserMaximumSValue * PositioningLaserPowerPercent / 100.0;
+        var sValue = _positioningLaserMaximumSValue!.Value * PositioningLaserPowerPercent / 100.0;
         var result = await _connection.SendCommandAsync(
             $"M3 S{sValue.ToString("0.###", CultureInfo.InvariantCulture)}");
 
@@ -100,9 +110,34 @@ public partial class JogViewModel : ObservableObject
         if (!IsConnected()) return;
 
         var result = await _connection.SendCommandAsync("M5");
-        LastActionMessage = result.IsOk
-            ? "Polohovací paprsek je vypnutý."
-            : result.Message ?? "Polohovací paprsek se nepodařilo vypnout.";
+        if (!result.IsOk)
+        {
+            // M5 is queued behind other line commands and can be rejected or lost; the realtime soft
+            // reset bypasses the queue and always stops the spindle/laser, so never leave it at that.
+            _connection.SoftReset();
+            LastActionMessage = "Vypnutí paprsku se nepodařilo potvrdit, zařízení bylo resetováno.";
+            return;
+        }
+        LastActionMessage = "Polohovací paprsek je vypnutý.";
+    }
+
+    // Dead-man's switch for a lit positioning laser. The view releases the beam on every input event
+    // it can observe, but a stalled status stream or a non-idle controller is only visible here.
+    private void UpdatePositioningLaserWatchdog(bool lit)
+    {
+        var previous = Interlocked.Exchange(ref _positioningLaserWatchdog, null);
+        previous?.Dispose();
+        if (!lit) return;
+        var interval = PositioningLaserWatchdogInterval > TimeSpan.Zero
+            ? PositioningLaserWatchdogInterval
+            : TimeSpan.FromMilliseconds(500);
+        _positioningLaserWatchdog = new Timer(_ => RunOnUiThread(CheckLitPositioningLaser), null, interval, interval);
+    }
+
+    private void CheckLitPositioningLaser()
+    {
+        if (!IsPositioningLaserOn || CanManualMotion()) return;
+        _ = StopPositioningLaserAsync();
     }
 
     [RelayCommand(CanExecute = nameof(CanJogXY))]
@@ -194,6 +229,15 @@ public partial class JogViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanManualMotionWithLaserOff))]
     private async Task SetOriginHere()
     {
+        if (!ConfirmAction(new LaseroDialogOptions(
+                "Nastavit pracovní nulu",
+                "Aktuální pracovní nula (G54) bude přepsána polohou, ve které se nyní nachází laserová hlava.",
+                "Nastavit nulu",
+                CancelText: "Zrušit",
+                Tone: LaseroDialogTone.Warning))) return;
+        // Machine state may have changed while the dialog was open.
+        if (!CanManualMotionWithLaserOff()) return;
+
         var result = await _connection.SetWorkOriginAsync(1, Position.Zero);
         LastActionMessage = result.IsOk ? "Pracovní nula byla nastavena na aktuální pozici (G54)." : result.Message;
     }
@@ -201,6 +245,15 @@ public partial class JogViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanManualMotionWithLaserOff))]
     private async Task GoToWorkZero()
     {
+        if (!ConfirmAction(new LaseroDialogOptions(
+                "Přesun na pracovní nulu",
+                "Hlava se přesune na pracovní nulu XY rychloposuvem (G0) plnou rychlostí. Před pokračováním zkontrolujte, že je dráha volná.",
+                "Přesunout",
+                CancelText: "Zrušit",
+                Tone: LaseroDialogTone.Warning))) return;
+        // Machine state may have changed while the dialog was open.
+        if (!CanManualMotionWithLaserOff()) return;
+
         var result = await _connection.SendCommandAsync("G90 G0 X0 Y0");
         LastActionMessage = result.IsOk ? "Přesun na pracovní nulu byl dokončen." : result.Message;
     }
@@ -232,7 +285,11 @@ public partial class JogViewModel : ObservableObject
     // The laser being lit must immediately re-gate every motion command (Jog/Home/SetOriginHere/
     // GoToWorkZero) — see CanManualMotionWithLaserOff. NotifyMachineStateChanged already resets
     // IsPositioningLaserOn to false on disconnect, which safely re-enters this once and settles.
-    partial void OnIsPositioningLaserOnChanged(bool value) => NotifyMachineStateChanged();
+    partial void OnIsPositioningLaserOnChanged(bool value)
+    {
+        UpdatePositioningLaserWatchdog(value);
+        NotifyMachineStateChanged();
+    }
 
     private void NotifyXyJogCommands()
     {

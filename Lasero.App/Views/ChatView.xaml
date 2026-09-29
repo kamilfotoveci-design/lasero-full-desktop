@@ -13,20 +13,22 @@
         <Style x:Key="ChatBubble" TargetType="Border">
             <Setter Property="Grid.Column" Value="1" />
             <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="12,12,12,4" />
-            <Setter Property="Padding" Value="14,11" />
-            <Setter Property="Margin" Value="0,0,56,12" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,56,18" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsUser}" Value="True">
                     <Setter Property="Grid.Column" Value="2" />
                     <Setter Property="HorizontalAlignment" Value="Right" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                    <Setter Property="BorderThickness" Value="1" />
                     <Setter Property="CornerRadius" Value="12,12,4,12" />
-                    <Setter Property="Margin" Value="56,0,0,12" />
+                    <Setter Property="Padding" Value="12,8" />
+                    <Setter Property="Margin" Value="56,0,0,14" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -140,9 +142,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Ellipse Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                        </Ellipse>
+                        <components:LaseroAvatar Size="40" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="Kamil" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                             <TextBlock Text="Asistent pro materiály, parametry a řešení problémů" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
@@ -155,13 +155,11 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="440" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}"
                                 Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
-                        <Ellipse Width="72" Height="72" HorizontalAlignment="Center">
-                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                        </Ellipse>
-                        <TextBlock Text="S čím vám Kamil pomůže?" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,7" />
-                        <TextBlock Text="Zeptejte se na bezpečné parametry, materiály nebo výsledek gravírování. Doporučení před ostrou úlohou vždy ověřte na odřezku."
+                        <components:LaseroAvatar Size="48" HorizontalAlignment="Center" />
+                        <TextBlock Text="Co chcete na tomto návrhu upravit" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,5" />
+                        <TextBlock Text="Kamil poradí s materiálem, parametry i bezpečným testem."
                                    TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" LineHeight="20" />
                         <ItemsControl ItemsSource="{Binding Chat.SuggestedQuestions}" Margin="0,20,0,0">
                             <ItemsControl.ItemTemplate>
@@ -175,6 +173,7 @@
                     </StackPanel>
 
                     <ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="OnMessageScrollChanged"
                                   Padding="22,20" Visibility="{Binding Chat.HasMessages, Converter={StaticResource BoolToVisibility}}">
                         <ItemsControl ItemsSource="{Binding Chat.Messages}">
                             <ItemsControl.ItemTemplate>
@@ -185,10 +184,8 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Ellipse Width="30" Height="30" Margin="0,3,10,0" VerticalAlignment="Top"
-                                                 Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}">
-                                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                                        </Ellipse>
+                                        <components:LaseroAvatar Size="30" Margin="0,3,10,0" VerticalAlignment="Top"
+                                                                  Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}" />
                                         <Border Style="{StaticResource ChatBubble}" MaxWidth="720">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
@@ -196,7 +193,16 @@
                                                     <TextBlock Text="  ·  " Foreground="{DynamicResource Brush.PanelBorder}" />
                                                     <TextBlock Text="{Binding TimeLabel}" Style="{StaticResource Text.Muted}" />
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="20" />
+                                                <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap" LineHeight="20" />
+                                                <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Padding="0" Margin="0,8,0,0"
+                                                        Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}"
+                                                        Tag="{Binding DisplayText}" Click="OnCopyMessage" ToolTip="Kopírovat odpověď"
+                                                        AutomationProperties.Name="Kopírovat odpověď">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <components:IconGlyph IconData="{StaticResource Glyph.Copy}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Margin="0,0,5,0" />
+                                                        <TextBlock Text="Kopírovat" />
+                                                    </StackPanel>
+                                                </Button>
                                             </StackPanel>
                                         </Border>
                                     </Grid>
@@ -205,22 +211,24 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <Border Grid.Row="1" Margin="22,0,22,14" Padding="12,9" CornerRadius="{StaticResource Radius.Md}"
-                            Background="{StaticResource Brush.Field}"
-                            Visibility="{Binding Chat.IsBusy, Converter={StaticResource BoolToVisibility}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Ellipse Width="28" Height="28" VerticalAlignment="Center">
-                                <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                            </Ellipse>
-                            <TextBlock Grid.Column="2" Text="Kamil připravuje odpověď…"
-                                       Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
+                    <Button x:Name="ScrollToBottomButton" Width="32" Height="32" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,34,18" Padding="8" Visibility="Collapsed" Style="{StaticResource Button.Icon}"
+                            Click="OnScrollToBottom" ToolTip="Přejít na nejnovější zprávu" AutomationProperties.Name="Přejít na nejnovější zprávu">
+                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                    </Button>
+
+                    <Expander Grid.Row="1" Margin="22,0,22,14" Padding="12,9" IsExpanded="False"
+                              Background="{StaticResource Brush.Field}"
+                              Visibility="{Binding Chat.IsBusy, Converter={StaticResource BoolToVisibility}}">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <components:LaseroAvatar Size="28" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Pracuji…" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Expander.Header>
+                        <TextBlock Text="Kamil zpracovává požadavek. Zobrazuji jen uživatelsky relevantní stav, ne interní uvažování."
+                                   TextWrapping="Wrap" Style="{StaticResource Text.Muted}" Margin="0,4,0,2" />
+                    </Expander>
                 </Grid>
 
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="18,14">

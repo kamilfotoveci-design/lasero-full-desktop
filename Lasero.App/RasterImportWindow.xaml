@@ -3,15 +3,24 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Připravit obrázek" Width="1080" Height="720" MinWidth="920" MinHeight="620"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" WindowStyle="None" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
         <conv:EnumEqualsVisibilityConverter x:Key="EnumEqualsVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
     </Window.Resources>
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
     <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <components:WindowTitleBar Title="Připravit obrázek" IconData="{StaticResource Glyph.Image}"
+                                    CloseButtonName="Zavřít přípravu obrázku" />
+    <Grid Grid.Row="1">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="390" /></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="72" /><RowDefinition Height="*" /><RowDefinition Height="64" /></Grid.RowDefinitions>
 
@@ -210,4 +219,6 @@
             </Grid>
         </Border>
     </Grid>
+    </Grid>
+    </Border>
 </Window>

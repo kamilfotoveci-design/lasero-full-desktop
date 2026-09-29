@@ -16,6 +16,14 @@ public partial class EmptyState : UserControl
     public static readonly DependencyProperty IconAccentDataProperty = DependencyProperty.Register(
         nameof(IconAccentData), typeof(Geometry), typeof(EmptyState), new PropertyMetadata(null));
 
+    /// <summary>Passthrough to the primary icon's own IsFilled/GridSize — needed for a filled
+    /// silhouette icon (e.g. Glyph.Fill.Materials) rather than the default hand-authored 24x24 stroke.</summary>
+    public static readonly DependencyProperty IsIconFilledProperty = DependencyProperty.Register(
+        nameof(IsIconFilled), typeof(bool), typeof(EmptyState), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IconGridSizeProperty = DependencyProperty.Register(
+        nameof(IconGridSize), typeof(double), typeof(EmptyState), new PropertyMetadata(24.0));
+
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
         nameof(Title), typeof(string), typeof(EmptyState), new PropertyMetadata(string.Empty));
 
@@ -46,6 +54,18 @@ public partial class EmptyState : UserControl
     {
         get => (Geometry?)GetValue(IconAccentDataProperty);
         set => SetValue(IconAccentDataProperty, value);
+    }
+
+    public bool IsIconFilled
+    {
+        get => (bool)GetValue(IsIconFilledProperty);
+        set => SetValue(IsIconFilledProperty, value);
+    }
+
+    public double IconGridSize
+    {
+        get => (double)GetValue(IconGridSizeProperty);
+        set => SetValue(IconGridSizeProperty, value);
     }
 
     public string Title

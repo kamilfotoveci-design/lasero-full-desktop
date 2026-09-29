@@ -54,7 +54,7 @@ public class FramingServiceTests
             Mode = FramingMode.CornersOnly,
             CornerStubLength = 10,
             LaserPower = 1,
-        });
+        }, 100);
 
         var laserEnabled = false;
         foreach (var line in lines)
@@ -64,5 +64,15 @@ public class FramingServiceTests
             if (line.StartsWith("G0", StringComparison.Ordinal))
                 Assert.False(laserEnabled, $"Rapid move must have the laser disabled: {line}");
         }
+    }
+
+    [Fact]
+    public void PoweredFramingRequiresKnownControllerRangeAndScalesPercent()
+    {
+        var box = new BoundingBox2D(0, 0, 100, 50);
+        var options = new FramingOptions { LaserPower = 25 };
+
+        Assert.Throws<InvalidOperationException>(() => FramingService.BuildFrameGCode(box, options));
+        Assert.Contains("M3 S250", FramingService.BuildFrameGCode(box, options, 1000));
     }
 }

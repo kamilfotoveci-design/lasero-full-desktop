@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lasero.App", "Lasero.App\La
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lasero.Tests", "Lasero.Tests\Lasero.Tests.csproj", "{A54674A9-E5F3-45D7-85FC-C9078CE97BAF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lasero.Persistence", "Lasero.Persistence\Lasero.Persistence.csproj", "{58D5A9C8-A455-4FCD-9882-BA94BEFA8331}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{A54674A9-E5F3-45D7-85FC-C9078CE97BAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A54674A9-E5F3-45D7-85FC-C9078CE97BAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A54674A9-E5F3-45D7-85FC-C9078CE97BAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58D5A9C8-A455-4FCD-9882-BA94BEFA8331}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58D5A9C8-A455-4FCD-9882-BA94BEFA8331}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58D5A9C8-A455-4FCD-9882-BA94BEFA8331}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58D5A9C8-A455-4FCD-9882-BA94BEFA8331}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

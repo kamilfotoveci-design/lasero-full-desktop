@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -23,6 +24,10 @@ namespace Lasero.App;
 /// </summary>
 internal static class WindowFrameHook
 {
+    private const int WmSysKeyDown = 0x0104;
+    private const int VkSpace = 0x20;
+    private const long AltContextMask = 0x20000000;
+    private static readonly ConditionalWeakTable<Window, object> AttachedWindows = new();
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaBorderColour = 34;
     private const int DwmwcpRound = 2;
@@ -30,9 +35,11 @@ internal static class WindowFrameHook
     public static void Attach(Window window, Brush? borderBrush = null)
     {
         ArgumentNullException.ThrowIfNull(window);
+        if (!TryMarkAttached(window)) return;
 
         if (PresentationSource.FromVisual(window) is HwndSource source)
         {
+            AttachNativeCommands(window, source);
             Apply(source.Handle, borderBrush);
             return;
         }
@@ -43,8 +50,37 @@ internal static class WindowFrameHook
         {
             window.SourceInitialized -= OnSourceInitialized;
             if (PresentationSource.FromVisual(window) is HwndSource initialised)
+            {
+                AttachNativeCommands(window, initialised);
                 Apply(initialised.Handle, borderBrush);
+            }
         }
+    }
+
+    private static bool TryMarkAttached(Window window)
+    {
+        lock (AttachedWindows)
+        {
+            if (AttachedWindows.TryGetValue(window, out _)) return false;
+            AttachedWindows.Add(window, new object());
+            return true;
+        }
+    }
+
+    private static void AttachNativeCommands(Window window, HwndSource source)
+    {
+        HwndSourceHook hook = (IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+        {
+            if (message != WmSysKeyDown || wParam.ToInt32() != VkSpace || (lParam.ToInt64() & AltContextMask) == 0)
+                return IntPtr.Zero;
+
+            var menuOrigin = window.PointToScreen(new Point(8, 8));
+            SystemCommands.ShowSystemMenu(window, menuOrigin);
+            handled = true;
+            return IntPtr.Zero;
+        };
+        source.AddHook(hook);
+        window.Closed += (_, _) => source.RemoveHook(hook);
     }
 
     private static void Apply(IntPtr handle, Brush? borderBrush)

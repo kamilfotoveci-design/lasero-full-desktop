@@ -17,7 +17,7 @@ public enum GrblConnectionState
 /// closes the session because continuing would shift GRBL responses onto the
 /// wrong commands and make machine state unsafe.
 /// </summary>
-public sealed class GrblConnection : ILaserMachine
+public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
 {
     private readonly IGrblTransport _transport;
     private readonly IGrblProtocolParser _protocolParser;
@@ -39,7 +39,12 @@ public sealed class GrblConnection : ILaserMachine
     private int _commandGeneration;
     private int _resetting;
     private int _settingsQueryCollecting;
+    // 1 from the moment an M3/M4 line is handed to the transport until an M5 is acknowledged or the
+    // controller is reset. Decides whether closing the session must first force the beam off.
+    private int _beamMayBeOn;
+    private int _powerProfileVersion;
     private MachineAlert? _activeAlert;
+    private GrblDeviceProfile? _deviceProfile;
 
     public GrblConnection() : this(new GrblSerialTransport()) { }
 
@@ -69,6 +74,7 @@ public sealed class GrblConnection : ILaserMachine
     public MachineStatus? LastStatus { get; private set; }
     public DateTime? LastStatusReceivedUtc { get; private set; }
     public string? FirmwareBanner { get; private set; }
+    public GrblDeviceProfile? DeviceProfile => Volatile.Read(ref _deviceProfile);
     public MachineAlert? ActiveAlert => Volatile.Read(ref _activeAlert);
     public LaserMachineDisplayState DisplayState => LaserMachineDisplayStateResolver.Resolve(State, LastStatus?.Mode, ActiveAlert);
 
@@ -81,6 +87,7 @@ public sealed class GrblConnection : ILaserMachine
     public event Action<string>? Connected;
     public event Action<Exception?>? Disconnected;
     public event Action<MachineAlert?>? AlertChanged;
+    public event Action<GrblDeviceProfile?>? DeviceProfileChanged;
 
     public static string[] GetAvailablePortNames() => GrblSerialTransport.GetAvailablePortNames();
 
@@ -101,8 +108,10 @@ public sealed class GrblConnection : ILaserMachine
             try
             {
                 Interlocked.Exchange(ref _resetting, 0);
+                Volatile.Write(ref _beamMayBeOn, 0);
                 Interlocked.Increment(ref _commandGeneration);
                 FirmwareBanner = null;
+                SetDeviceProfile(null);
                 InvalidateStatus();
                 lock (_alertLock) _activeAlert = null;
                 _transport.LineReceived += OnLineReceived;
@@ -154,9 +163,11 @@ public sealed class GrblConnection : ILaserMachine
             if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0) return;
             // Keep commands blocked until a fresh startup banner establishes a response boundary.
             Interlocked.Exchange(ref _resetting, 1);
+            Volatile.Write(ref _beamMayBeOn, 0);
             Interlocked.Increment(ref _commandGeneration);
             InvalidateStatus();
             FirmwareBanner = null;
+            SetDeviceProfile(null);
             FailAllPending("Zařízení bylo resetováno.");
             FailQueued(_queue, "Příkaz byl zrušen resetem zařízení.");
             FailSettingsQuery("Dotaz byl zrušen resetem zařízení.");
@@ -183,6 +194,7 @@ public sealed class GrblConnection : ILaserMachine
     {
         if (string.IsNullOrWhiteSpace(line))
             return Task.FromResult(GrblCommandResult.Failure("Prázdný příkaz nebyl odeslán."));
+        var changesPowerProfile = IsPowerProfileSettingWrite(line);
         lock (_commandDispatchLock)
         {
             if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0)
@@ -192,6 +204,11 @@ public sealed class GrblConnection : ILaserMachine
             var queue = _queue;
             if (queue is null || queue.IsAddingCompleted)
                 return Task.FromResult(GrblCommandResult.Failure("Spojení se právě ukončuje."));
+            if (changesPowerProfile)
+            {
+                Interlocked.Increment(ref _powerProfileVersion);
+                SetDeviceProfile(null);
+            }
             var completion = new TaskCompletionSource<GrblCommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (!queue.TryAdd(new QueuedCommand(line, completion, Volatile.Read(ref _commandGeneration))))
                 completion.TrySetResult(GrblCommandResult.Failure("Fronta příkazů je plná. Počkejte na dokončení probíhající operace."));
@@ -226,6 +243,8 @@ public sealed class GrblConnection : ILaserMachine
 
     public async Task<IReadOnlyList<string>> QuerySettingsAsync()
     {
+        var queryGeneration = Volatile.Read(ref _commandGeneration);
+        var powerProfileVersion = Volatile.Read(ref _powerProfileVersion);
         TaskCompletionSource<IReadOnlyList<string>> query;
         lock (_settingsLock)
         {
@@ -241,7 +260,16 @@ public sealed class GrblConnection : ILaserMachine
             var result = await SendCommandAsync("$$").ConfigureAwait(false);
             if (!result.IsOk)
                 throw new IOException(result.Message ?? "Nastavení zařízení se nepodařilo načíst.");
-            return await query.Task.WaitAsync(CommandTimeout).ConfigureAwait(false);
+            var settings = await query.Task.WaitAsync(CommandTimeout).ConfigureAwait(false);
+            lock (_commandDispatchLock)
+            {
+                if (State != GrblConnectionState.Connected || queryGeneration != Volatile.Read(ref _commandGeneration))
+                    throw new IOException("Nastavení zařízení pochází z ukončeného nebo resetovaného spojení.");
+                if (powerProfileVersion != Volatile.Read(ref _powerProfileVersion))
+                    throw new IOException("Nastavení výkonu se mezitím změnilo. Načtěte profil zariadenia znovu.");
+                SetDeviceProfile(GrblDeviceProfileParser.Parse(settings, FirmwareBanner));
+            }
+            return settings;
         }
         finally
         {
@@ -284,9 +312,13 @@ public sealed class GrblConnection : ILaserMachine
                             }
                         }
                         _pendingResponses.Enqueue(command.Completion);
+                        var spindle = ClassifySpindle(command.Text);
+                        if (spindle == SpindleWord.On) Volatile.Write(ref _beamMayBeOn, 1);
                         _transport.WriteLine(command.Text);
                     }
-                    command.Completion.Task.WaitAsync(CommandTimeout, cancellationToken).GetAwaiter().GetResult();
+                    var outcome = command.Completion.Task.WaitAsync(CommandTimeout, cancellationToken).GetAwaiter().GetResult();
+                    if (outcome.IsOk && ClassifySpindle(command.Text) == SpindleWord.Off)
+                        Volatile.Write(ref _beamMayBeOn, 0);
                 }
                 catch (TimeoutException ex)
                 {
@@ -352,6 +384,7 @@ public sealed class GrblConnection : ILaserMachine
             {
                 if (Volatile.Read(ref _disconnecting) != 0) return;
                 Interlocked.Increment(ref _commandGeneration);
+                Volatile.Write(ref _beamMayBeOn, 0);
                 InvalidateStatus();
                 FailAllPending("Řadič byl restartován.");
                 FailQueued(_queue, "Příkaz byl zrušen restartem řadiče.");
@@ -445,11 +478,13 @@ public sealed class GrblConnection : ILaserMachine
                 if (queue is not null && !queue.IsAddingCompleted) queue.CompleteAdding();
                 InvalidateStatus();
                 FirmwareBanner = null;
+                SetDeviceProfile(null);
                 FailAllPending(reason is TimeoutException
                     ? "Zařízení neodpovědělo v časovém limitu."
                     : "Spojení bylo ukončeno.");
                 FailQueued(queue, "Spojení bylo ukončeno.");
                 FailSettingsQuery("Spojení bylo ukončeno.");
+                ForceBeamOffBeforeClose();
             }
 
             CleanupTransportSubscriptions();
@@ -476,6 +511,37 @@ public sealed class GrblConnection : ILaserMachine
         }
     }
 
+    /// <summary>
+    /// Closing a serial port does not switch a GRBL laser off. If an M3/M4 was sent and never
+    /// followed by an acknowledged M5, send the realtime soft reset (which stops the spindle/laser
+    /// and flushes the planner) while the port can still be written. A port that is already dead
+    /// cannot be reached, so failures here are expected and ignored.
+    /// </summary>
+    private void ForceBeamOffBeforeClose()
+    {
+        if (Interlocked.Exchange(ref _beamMayBeOn, 0) == 0) return;
+        try { _transport.WriteRealtimeByte(GrblRealtimeCommand.SoftReset); }
+        catch { }
+    }
+
+    private enum SpindleWord { None, On, Off }
+
+    private static readonly System.Text.RegularExpressions.Regex SpindleWordPattern =
+        new(@"(?<![A-Za-z0-9.])M0*([345])(?![0-9.])", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex CommentPattern =
+        new(@"\([^)]*\)|;.*$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>Last spindle word (M3/M4 on, M5 off) on a G-code line, ignoring comments.</summary>
+    private static SpindleWord ClassifySpindle(string line)
+    {
+        var code = CommentPattern.Replace(line, " ");
+        var result = SpindleWord.None;
+        foreach (System.Text.RegularExpressions.Match match in SpindleWordPattern.Matches(code))
+            result = match.Groups[1].Value == "5" ? SpindleWord.Off : SpindleWord.On;
+        return result;
+    }
+
     private void InvalidateStatus()
     {
         lock (_statusLock)
@@ -483,6 +549,20 @@ public sealed class GrblConnection : ILaserMachine
             LastStatus = null;
             LastStatusReceivedUtc = null;
         }
+    }
+
+    private void SetDeviceProfile(GrblDeviceProfile? profile)
+    {
+        Volatile.Write(ref _deviceProfile, profile);
+        InvokeSafely(DeviceProfileChanged, profile, nameof(DeviceProfileChanged));
+    }
+
+    private static bool IsPowerProfileSettingWrite(string line)
+    {
+        var text = line.Trim();
+        if (!text.StartsWith('$') || !text.Contains('=')) return false;
+        return GrblDeviceProfileParser.TryParseSetting(text, out var setting, out _)
+            && setting is 30 or 32;
     }
 
     private void OnUnexpectedlyClosed(Exception exception) => DisconnectCore(exception, joinQueueThread: false);

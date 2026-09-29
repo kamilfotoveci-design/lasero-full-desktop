@@ -17,17 +17,17 @@
     <UserControl.Resources>
         <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
 
-        <Style x:Key="ClusterButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="MinHeight" Value="30" />
+        <Style x:Key="ClusterButton" TargetType="Button" BasedOn="{StaticResource Button.Tool}">
+            <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="1,0" />
         </Style>
 
         <Style x:Key="ClusterToggle" TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Icon}">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="30" />
+            <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
             <Setter Property="Margin" Value="1,0" />
         </Style>
 
@@ -84,7 +84,7 @@
             <!-- The readout is also the picker, so the fixed presets and "Přizpůsobit oknu" stay one
                  click away without a second control on the strip. -->
             <Button x:Name="ZoomPicker" Style="{StaticResource Button.Ghost}"
-                    Height="30" MinHeight="30" Padding="6,0" MinWidth="58"
+                    Height="{StaticResource Size.Control.Compact}" MinHeight="{StaticResource Size.Control.Compact}" Padding="6,0" MinWidth="58"
                     Click="OnZoomPickerClick"
                     ToolTip="Měřítko plátna" AutomationProperties.Name="Měřítko plátna">
                 <Button.ContextMenu>

@@ -58,7 +58,7 @@
                                           Foreground="{DynamicResource Brush.AccentText}"
                                           VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Text="DOPORUČENÉ PARAMETRY"
-                               FontSize="{StaticResource Size.Text.Meta}" FontWeight="Bold"
+                               FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
                                Foreground="{DynamicResource Brush.AccentText}"
                                VerticalAlignment="Center" />
                 </StackPanel>
@@ -80,7 +80,7 @@
                     <StackPanel>
                         <DockPanel>
                             <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Refresh}" />
+                                                  IconData="{StaticResource Glyph.Speed}" />
                             <TextBlock Text="Rychlost" Style="{StaticResource TileCaption}" />
                         </DockPanel>
                         <StackPanel Orientation="Horizontal">
@@ -108,7 +108,7 @@
                     <StackPanel>
                         <DockPanel>
                             <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Redo}" />
+                                                  IconData="{StaticResource Glyph.Layers}" />
                             <TextBlock Text="Průchody" Style="{StaticResource TileCaption}" />
                         </DockPanel>
                         <StackPanel Orientation="Horizontal">

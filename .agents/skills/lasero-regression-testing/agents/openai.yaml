@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero regression testing"
+  short_description: "Lasero regression and validation tests"
+  default_prompt: "Use $lasero-regression-testing for this Lasero task. Inspect the current implementation and follow its workflow."

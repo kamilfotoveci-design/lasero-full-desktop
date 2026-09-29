@@ -25,7 +25,7 @@ public class GrblRasterGeneratorTests
     [Fact]
     public void Generate_ProducesExpectedGCodeShape()
     {
-        var lines = GrblRasterGenerator.Generate(MakeJob());
+        var lines = GrblRasterGenerator.Generate(MakeJob(), 100);
 
         Assert.Equal(new[]
         {
@@ -48,10 +48,21 @@ public class GrblRasterGeneratorTests
     {
         var job = MakeJob();
 
-        var first = GrblRasterGenerator.Generate(job);
-        var second = GrblRasterGenerator.Generate(job);
+        var first = GrblRasterGenerator.Generate(job, 100);
+        var second = GrblRasterGenerator.Generate(job, 100);
 
         Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Generate_ScalesPercentPowerToReportedControllerMaximum()
+    {
+        var lines = GrblRasterGenerator.Generate(MakeJob(), 1000);
+
+        Assert.Contains("M4 S500", lines);
+        Assert.Contains("G1 X5 Y10 S500 F1000", lines);
+        Assert.Contains("M4 S800", lines);
+        Assert.Contains("G1 X5 Y5 S300", lines);
     }
 
     [Fact]
@@ -63,7 +74,7 @@ public class GrblRasterGeneratorTests
         // planner actually computed has to still be reachable by walking the generated G-code.
         var job = MakeJob();
 
-        var lines = GrblRasterGenerator.Generate(job);
+        var lines = GrblRasterGenerator.Generate(job, 100);
         var parsed = GCodeParser.Parse(lines);
 
         Assert.True(parsed.BoundingBox.MinX <= job.Bounds.MinX);

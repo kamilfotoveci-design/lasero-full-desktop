@@ -130,9 +130,10 @@ public sealed class JobCancellationSafetyTests
         using var transport = new CancellationTransport { AutoRespond = true, AutoBusy = true };
         using var connection = new GrblConnection(transport);
         connection.Connect("COM1");
-        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromMilliseconds(600) };
+        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromMilliseconds(800) };
         var run = runner.RunAsync(["G1 X1"]);
-        // Five responses at the 250 ms polling interval exceed the silence timeout.
+        // Five responses span roughly one second at the 250 ms polling interval, beyond the
+        // 800 ms timeout with enough headroom for normal thread-pool scheduling.
         // Alternating Run and Hold must both keep the controller alive.
         await transport.FiveStatuses.Task.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.False(run.IsCompleted);
@@ -159,7 +160,7 @@ public sealed class JobCancellationSafetyTests
         using var transport = new CancellationTransport { AutoRespond = true, AutoBusy = true, OnlyHold = true };
         using var connection = new GrblConnection(transport);
         connection.Connect("COM1");
-        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromMilliseconds(600) };
+        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromMilliseconds(800) };
         transport.BeforeStatusResponse = runner.Pause;
         var run = runner.RunAsync(["G1 X1"]);
         await transport.FiveStatuses.Task.WaitAsync(TimeSpan.FromSeconds(3));

@@ -1,8 +1,10 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Media;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
+using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Jobs;
 using Lasero.Core.LaseroApi;
 using Lasero.Core.Machines;
@@ -15,6 +17,23 @@ namespace Lasero.App;
 public partial class App : Application
 {
     private IHost? _host;
+
+    public App()
+    {
+        // WPF otherwise rounds layout only opportunistically. Enabling both at the Window
+        // metadata boundary keeps inherited text, 1px borders and vector icons on the same
+        // device-pixel grid at 100–200% PerMonitorV2 scaling, without scaling the UI with a transform.
+        FrameworkElement.UseLayoutRoundingProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(true));
+        UIElement.SnapsToDevicePixelsProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(true));
+        TextOptions.TextFormattingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextFormattingMode.Display, FrameworkPropertyMetadataOptions.Inherits));
+        TextOptions.TextRenderingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextRenderingMode.ClearType, FrameworkPropertyMetadataOptions.Inherits));
+        TextOptions.TextHintingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Fixed, FrameworkPropertyMetadataOptions.Inherits));
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -73,6 +92,15 @@ public partial class App : Application
                 services.AddSingleton<SceneViewModel>();
                 services.AddSingleton<GCodeViewModel>();
                 services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(15) });
+                // Cloud first (signed-in Lasero proxy, no key in the app), then the on-device model if it
+                // is already cached. Nothing here reads or stores a Gemini key.
+                services.AddSingleton(_ => BackgroundRemovalConsentStore.CreateDefault());
+                services.AddSingleton<IBackgroundRemovalService>(sp => new FallbackBackgroundRemovalService(
+                    new GeminiBackgroundRemovalService(
+                        new HttpClient { Timeout = GeminiBackgroundRemovalService.DefaultRequestTimeout },
+                        cancellationToken => sp.GetRequiredService<AccountViewModel>().GetIdTokenAsync(cancellationToken)),
+                    new BackgroundRemovalService()));
+                services.AddSingleton<BackgroundRemovalCoordinator>();
                 services.AddSingleton<LaseroAuthClient>();
                 services.AddSingleton<LaseroAccountClient>();
                 services.AddSingleton<LaseroChatClient>();
@@ -116,7 +144,7 @@ public partial class App : Application
         // constructed (and their AccountViewModel.PropertyChanged subscriptions wired) above, before
         // TryResumeSessionAsync/SignIn ever changed Account.UserId — so Chat/Materials/Home's
         // account-scoped caches have already reloaded for the now-current account automatically.
-        var window = new MainWindow(viewModel);
+        var window = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = window;
         window.Show();
 

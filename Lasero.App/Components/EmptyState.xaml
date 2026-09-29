@@ -8,7 +8,7 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
     </UserControl.Resources>
     <StackPanel HorizontalAlignment="Left">
-        <components:IconGlyph IconData="{Binding IconPrimaryData, ElementName=Root}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" Margin="0,0,0,10" HorizontalAlignment="Left" Foreground="{DynamicResource Brush.TextSecondary}" />
+        <components:IconGlyph IconData="{Binding IconPrimaryData, ElementName=Root}" IsFilled="{Binding IsIconFilled, ElementName=Root}" GridSize="{Binding IconGridSize, ElementName=Root}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" Margin="0,0,0,10" HorizontalAlignment="Left" Foreground="{DynamicResource Brush.TextSecondary}" />
         <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold" Margin="0,0,0,4" />
         <TextBlock Text="{Binding Description, ElementName=Root}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" FontSize="{StaticResource Size.Text.Meta}" />
         <Button Content="{Binding CtaText, ElementName=Root}"

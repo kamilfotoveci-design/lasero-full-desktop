@@ -161,7 +161,7 @@
                                 </Grid.RenderTransform>
                                 <Border Width="72" Height="72" CornerRadius="{StaticResource Radius.Lg}"
                                         Background="{StaticResource Brush.SelectedSurface}">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Fill.Device}" IsFilled="True" GridSize="244"
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
                                                           Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
                                                           Foreground="{StaticResource Brush.AccentText}" />
                                 </Border>
@@ -296,7 +296,7 @@
                                                         </Style>
                                                     </Grid.Style>
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                                    <components:IconGlyph IconData="{StaticResource Glyph.Fill.Device}" IsFilled="True" GridSize="244"
+                                                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
                                                                           Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                                                           Margin="0,2,12,0" VerticalAlignment="Top" />
                                                     <StackPanel Grid.Column="1">
@@ -357,7 +357,7 @@
                                                             </Style.Triggers>
                                                         </Style>
                                                     </StackPanel.Style>
-                                                    <components:IconGlyph IconData="{StaticResource Glyph.Fill.Device}" IsFilled="True" GridSize="244"
+                                                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
                                                                           Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                                                           Margin="0,0,12,0" Foreground="{StaticResource Brush.AccentText}" />
                                                     <StackPanel>

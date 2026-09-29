@@ -140,12 +140,11 @@ public sealed class KamilAssistantViewModelTests : IDisposable
         Assert.False(kamil.IsVisible);
         Assert.Equal(2, kamil.Chat.Messages.Count);
 
-        // F1 fix: ShowCommand existed but was never bound to anything in a view, so a user who
-        // clicked Close had no way back short of restarting the app.
+        // Reopening from navigation returns directly to the fixed expanded Designer panel.
         Assert.True(kamil.ShowCommand.CanExecute(null));
         kamil.ShowCommand.Execute(null);
 
-        Assert.Equal(KamilAssistantState.Minimized, kamil.State);
+        Assert.Equal(KamilAssistantState.Expanded, kamil.State);
         Assert.True(kamil.IsVisible);
         Assert.Equal(2, kamil.Chat.Messages.Count);
     }

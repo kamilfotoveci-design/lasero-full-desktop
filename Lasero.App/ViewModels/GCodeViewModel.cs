@@ -47,6 +47,8 @@ public partial class GCodeViewModel : ObservableObject
     private readonly System.Diagnostics.Stopwatch _runStopwatch = new();
     private DateTime _lastSimulationTickUtc;
     private bool _isFramingOperation;
+    private double? _controllerMaximumS;
+    private bool? _controllerLaserModeEnabled;
 
     [ObservableProperty] private GCodeDocument? _document;
     [ObservableProperty] private string _fileLabel = "Žádný soubor";
@@ -88,9 +90,9 @@ public partial class GCodeViewModel : ObservableObject
     [ObservableProperty] private TimeSpan _estimatedDuration;
     [ObservableProperty] private TimeSpan _elapsedDuration;
     [ObservableProperty] private TimeSpan _remainingDuration;
-    [ObservableProperty] private string _estimatedTimeLabel = "—";
+    [ObservableProperty] private string _estimatedTimeLabel = "Nevypočteno";
     [ObservableProperty] private string _elapsedTimeLabel = "00:00";
-    [ObservableProperty] private string _remainingTimeLabel = "—";
+    [ObservableProperty] private string _remainingTimeLabel = "Nevypočteno";
 
     [ObservableProperty] private bool _isSimulationActive;
     [ObservableProperty] private bool _isSimulationPlaying;
@@ -107,11 +109,11 @@ public partial class GCodeViewModel : ObservableObject
     /// total is inspectable rather than a bare number to be taken on faith.
     /// </summary>
     public string CutBreakdownLabel => _timeEstimate is null
-        ? "—"
+        ? "Nevypočteno"
         : $"{_timeEstimate.CutDistanceMm:N0} mm ({FormatDuration(_timeEstimate.CutDuration)})";
 
     public string RapidBreakdownLabel => _timeEstimate is null
-        ? "—"
+        ? "Nevypočteno"
         : $"{_timeEstimate.RapidDistanceMm:N0} mm ({FormatDuration(_timeEstimate.RapidDuration)})";
 
     /// <summary>
@@ -154,6 +156,12 @@ public partial class GCodeViewModel : ObservableObject
         _connection = connection;
         _scene = scene;
         _settingsStore = settingsStore;
+        if (_connection is IGrblDeviceProfileSource profileSource)
+        {
+            _controllerMaximumS = profileSource.DeviceProfile?.MaxSpindleSpeed;
+            _controllerLaserModeEnabled = profileSource.DeviceProfile?.LaserModeEnabled;
+            profileSource.DeviceProfileChanged += profile => DispatchProfileUpdate(profile);
+        }
         _connection.Connected += _ => Application.Current.Dispatcher.Invoke(RefreshCommands);
         _connection.StatusUpdated += status => Application.Current.Dispatcher.Invoke(() =>
         {
@@ -209,15 +217,19 @@ public partial class GCodeViewModel : ObservableObject
                     RegenerateFromScene();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
-                    var importViewModel = new RasterImportViewModel(_connection, _settingsStore, dialog.FileName,
-                        ImportWidthMm, feedRatePerMinute: 3000, RasterMaxPower, RasterDpi);
-                    var importWindow = new RasterImportWindow(importViewModel) { Owner = Application.Current.MainWindow };
-                    if (importWindow.ShowDialog() != true) break;
-
-                    _scene.ImportRasterFile(dialog.FileName, importViewModel.BuildOptions());
+                    // Put the photo on the canvas immediately. Image tone and engraving settings can
+                    // be changed later from its context menu, without blocking import on a dialog.
+                    var rasterOptions = new RasterImportOptions
+                    {
+                        TargetWidthMm = ImportWidthMm,
+                        Dpi = RasterDpi,
+                        FeedRatePerMinute = 3000,
+                        MaxPower = RasterMaxPower,
+                    };
+                    _scene.ImportRasterFile(dialog.FileName, rasterOptions);
                     ImportKind = ImportKind.Raster;
                     FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "Obrázek byl převeden do odstínů šedi. Velikost upravíte na plátně, výkon a rychlost v kartě Vrstvy.";
+                    LastMessage = "Obrázek byl přidán na plátno. Velikost upravíte přímo na plátně; nastavení obrázku otevřete pravým kliknutím.";
                     RegenerateFromScene();
                     break;
                 default:
@@ -254,9 +266,59 @@ public partial class GCodeViewModel : ObservableObject
 
     private bool CanRegenerate() => _scene.Objects.Count > 0;
 
+    private double? ReadControllerMaximumS() => _connection is IGrblDeviceProfileSource profileSource
+        ? profileSource.DeviceProfile?.MaxSpindleSpeed
+        : _controllerMaximumS;
+
+    private bool? ReadControllerLaserModeEnabled() => _connection is IGrblDeviceProfileSource profileSource
+        ? profileSource.DeviceProfile?.LaserModeEnabled
+        : _controllerLaserModeEnabled;
+
+    private void DispatchProfileUpdate(GrblDeviceProfile? profile)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        void Apply()
+        {
+            var previousMaximumS = _controllerMaximumS;
+            var previousLaserModeEnabled = _controllerLaserModeEnabled;
+            _controllerMaximumS = profile?.MaxSpindleSpeed;
+            _controllerLaserModeEnabled = profile?.LaserModeEnabled;
+            if ((previousMaximumS != _controllerMaximumS || previousLaserModeEnabled != _controllerLaserModeEnabled)
+                && _scene.Objects.Count > 0 && ImportKind != ImportKind.GCode)
+                RegenerateFromScene();
+            RefreshCommands();
+        }
+
+        if (dispatcher.CheckAccess()) Apply();
+        else dispatcher.BeginInvoke((Action)Apply);
+    }
+
     [RelayCommand(CanExecute = nameof(CanRegenerate))]
     private void RegenerateFromScene()
     {
+        _controllerMaximumS = ReadControllerMaximumS();
+        if (_controllerMaximumS is not { } maximumS || !double.IsFinite(maximumS) || maximumS <= 0)
+        {
+            Document = null;
+            FileLabel = SceneJobLabel;
+            CurrentLine = 0;
+            TotalLines = 0;
+            ProgressPercent = 0;
+            JobState = JobRunState.Idle;
+            _timeEstimate = null;
+            EstimatedDuration = TimeSpan.Zero;
+            RemainingDuration = TimeSpan.Zero;
+            EstimatedTimeLabel = "Nevypočteno";
+            RemainingTimeLabel = "Nevypočteno";
+            OnPropertyChanged(nameof(CutBreakdownLabel));
+            OnPropertyChanged(nameof(RapidBreakdownLabel));
+            _sceneDocumentDirty = true;
+            LastMessage = "Náhled G-code čeká na načtené maximum $30 zařízení.";
+            RefreshCommands();
+            return;
+        }
+
         RefreshEffectivePlacement();
         var baseLines = BuildSceneGCode(0, 0);
         var baseDocument = GCodeParser.Parse(baseLines, "Scéna");
@@ -287,7 +349,7 @@ public partial class GCodeViewModel : ObservableObject
                 {
                     var outputOptions = obj.BuildRasterOutputOptions(layer, offsetX, offsetY);
                     if (outputOptions is not null)
-                        lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions));
+                        lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions, _controllerMaximumS!.Value));
                 }
                 continue;
             }
@@ -303,7 +365,7 @@ public partial class GCodeViewModel : ObservableObject
                 Layers = [layer],
                 BoundingBox = document.BoundingBox,
                 SourceFileName = document.SourceFileName,
-            }));
+            }, _controllerMaximumS!.Value));
         }
 
         return lines;
@@ -346,9 +408,9 @@ public partial class GCodeViewModel : ObservableObject
         EstimatedDuration = _timeEstimate.Duration;
         // Keep the estimate private until the operator opens the simulation that explains what went
         // into it. A bare number in persistent chrome invites more trust than this model has earned.
-        EstimatedTimeLabel = "—";
+        EstimatedTimeLabel = "Nevypočteno";
         RemainingDuration = EstimatedDuration;
-        RemainingTimeLabel = "—";
+        RemainingTimeLabel = "Nevypočteno";
         OnPropertyChanged(nameof(SimulationDurationSeconds));
         StopSimulation(reset: true);
     }
@@ -364,7 +426,7 @@ public partial class GCodeViewModel : ObservableObject
         LastMessage = null;
         _timeEstimate = null;
         EstimatedDuration = TimeSpan.Zero;
-        EstimatedTimeLabel = "—";
+        EstimatedTimeLabel = "Nevypočteno";
         ClearPlacementOrigin();
         StopSimulation(reset: true);
         RefreshCommands();
@@ -438,6 +500,9 @@ public partial class GCodeViewModel : ObservableObject
         WorkAreaHeightMm = _settingsStore.Current.Machine.WorkAreaHeightMm,
         Layers = ImportKind == ImportKind.GCode ? null : Layers.ToList(),
         RasterOptions = BuildEffectiveRasterOptionsForPreflight(),
+        MaxSpindleSpeed = ReadControllerMaximumS(),
+        LaserModeEnabled = ReadControllerLaserModeEnabled(),
+        IsRawGCode = ImportKind == ImportKind.GCode,
     });
 
     private IReadOnlyList<RasterImportOptions>? BuildEffectiveRasterOptionsForPreflight()
@@ -791,9 +856,9 @@ public partial class GCodeViewModel : ObservableObject
         {
             FeedRatePerMinute = FramingFeedRate,
             Mode = FramingMode,
-            LaserPower = 0,
+            LaserPower = ReadControllerMaximumS() is > 0 ? FramingOptions.VisiblePowerPercent : 0,
         };
-        var frameLines = FramingService.BuildFrameGCode(Document.BoundingBox, options).ToList();
+        var frameLines = FramingService.BuildFrameGCode(Document.BoundingBox, options, ReadControllerMaximumS()).ToList();
         if (PlacementMode == JobPlacementMode.CurrentPosition)
         {
             frameLines.Add("M5");

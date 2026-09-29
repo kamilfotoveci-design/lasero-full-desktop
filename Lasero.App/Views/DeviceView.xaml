@@ -250,7 +250,7 @@
                                                    Visibility="{Binding Connection.IsConnecting, Converter={StaticResource BoolToVisibility}}" />
                                     </Grid>
                                 </Button>
-                                <Button Command="{Binding Connection.DisconnectCommand}"
+                                <Button Style="{StaticResource Button.Outline}" Command="{Binding Connection.DisconnectCommand}"
                                         Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                                     <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit" />
                                 </Button>
@@ -355,12 +355,12 @@
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <Button Command="{Binding Jog.HomeCommand}"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
-                                <Button Grid.Column="2" Command="{Binding Jog.UnlockCommand}"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout ($X)" /></Button>
+                                <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout ($X)" /></Button>
                             </Grid>
                             <Grid Margin="0,8,0,0">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Button Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nastavit nulu zde" /></Button>
-                                <Button Grid.Column="2" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Přejít na nulu XY" /></Button>
+                                <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nastavit nulu zde" /></Button>
+                                <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Přejít na nulu XY" /></Button>
                             </Grid>
                             <Expander Header="Pokročilé ovládání" Margin="0,10,0,0">
                                 <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
@@ -394,7 +394,7 @@
                                         <TextBlock Text="Návrh k výrobě" Style="{StaticResource Text.Muted}" />
                                         <TextBlock Text="{Binding GCode.FileLabel}" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.FileLabel}" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Command="{Binding GCode.LoadFileCommand}" Margin="12,0,0,0" Padding="12,0" ToolTip="Načíst SVG, obrázek nebo G-code">
+                                <Button Grid.Column="1" Style="{StaticResource Button.Secondary}" Command="{Binding GCode.LoadFileCommand}" Margin="12,0,0,0" Padding="12,0" ToolTip="Načíst SVG, obrázek nebo G-code">
                                         <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Vybrat návrh" />
                                     </Button>
                                 </Grid>
@@ -429,7 +429,7 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
-                            <Button Command="{Binding GCode.RunFramingCommand}" Margin="0,0,0,12" ToolTip="Projet obrys úlohy a ověřit její umístění">
+                            <Button Style="{StaticResource Button.Outline}" Command="{Binding GCode.RunFramingCommand}" Margin="0,0,0,12" ToolTip="Projet obrys úlohy a ověřit její umístění">
                                 <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Zkontrolovat oblast" />
                             </Button>
 

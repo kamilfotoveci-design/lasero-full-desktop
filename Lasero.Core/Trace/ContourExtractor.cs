@@ -27,6 +27,9 @@ public sealed record ContourTree
     public required IReadOnlyList<RawContour> Roots { get; init; }
     public required int Width { get; init; }
     public required int Height { get; init; }
+    /// <summary>Working contour coordinates per source pixel. A value above one means contours
+    /// were extracted from an interpolated raster to retain fractional-pixel edge positions.</summary>
+    public int SubpixelScale { get; init; } = 1;
 }
 
 /// <summary>The "bitmap -> hierarchy" boundary BitmapTracer's DI seam is built around — see
@@ -50,6 +53,8 @@ public sealed class OpenCvContourExtractionEngine : IContourExtractionEngine
 /// a using block; nothing here leaks native memory.</summary>
 public static class ContourExtractor
 {
+    public const int SubpixelScale = 2;
+
     public static ContourTree Extract(GrayscaleImage image, BitmapTraceOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(image);
@@ -67,14 +72,27 @@ public static class ContourExtractor
             contrasted.CopyTo(denoised);
 
         cancellationToken.ThrowIfCancellationRequested();
-        using var binary = Threshold(denoised, options);
+        // FindContours on a thresholded source can only return integer pixel coordinates. Upscale
+        // the softly denoised luminance first, then threshold it, so the boundary can move in
+        // half-pixel increments. This improves curve fidelity without relaxing Bezier fit error.
+        using var subpixel = new Mat();
+        Cv2.Resize(denoised, subpixel,
+            new Size(checked(image.Width * SubpixelScale), checked(image.Height * SubpixelScale)),
+            interpolation: InterpolationFlags.Linear);
+        using var binary = Threshold(subpixel, options);
         cancellationToken.ThrowIfCancellationRequested();
 
         Cv2.FindContours(binary, out var contours, out var hierarchy, RetrievalModes.Tree, ContourApproximationModes.ApproxNone);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var roots = BuildTree(contours, hierarchy, options.MinimumContourAreaPx);
-        return new ContourTree { Roots = roots, Width = image.Width, Height = image.Height };
+        var roots = BuildTree(contours, hierarchy, options.MinimumContourAreaPx * SubpixelScale * SubpixelScale);
+        return new ContourTree
+        {
+            Roots = roots,
+            Width = checked(image.Width * SubpixelScale),
+            Height = checked(image.Height * SubpixelScale),
+            SubpixelScale = SubpixelScale,
+        };
     }
 
     private static Mat ToMat(GrayscaleImage image)

@@ -24,6 +24,32 @@ public class SvgImporterTests
     }
 
     [Fact]
+    public void MixedLayerSvgKeepsImportedShapeMetadataAndDisablesUnsafeNodeEditing()
+    {
+        var doc = SvgImporter.Import(SampleSvg, targetWidthMm: 100);
+
+        Assert.Equal(2, doc.Shapes.Count);
+        Assert.NotEqual(doc.Shapes[0].LayerId, doc.Shapes[1].LayerId);
+        Assert.Null(doc.VectorPath);
+    }
+
+    [Fact]
+    public void HomogeneousMultiSubpathSvgRemainsNodeEditable()
+    {
+        const string svg = """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+              <path d="M5 5 L20 5 L20 20 Z M40 5 C45 0 55 0 60 5 L60 20 Z" fill="#000000" />
+            </svg>
+            """;
+
+        var doc = SvgImporter.Import(svg, targetWidthMm: 100);
+
+        Assert.NotNull(doc.VectorPath);
+        Assert.Equal(doc.Shapes.Count, doc.VectorPath!.Subpaths.Count);
+        Assert.All(doc.Shapes, shape => Assert.Equal(doc.Shapes[0].LayerId, shape.LayerId));
+    }
+
+    [Fact]
     public void ScalesViewBoxToRequestedWidthInMillimeters()
     {
         var doc = SvgImporter.Import(SampleSvg, targetWidthMm: 100);
@@ -46,7 +72,7 @@ public class SvgImporterTests
     public void GeneratesNonEmptyGCodeForBothLayers()
     {
         var doc = SvgImporter.Import(SampleSvg, targetWidthMm: 100);
-        var lines = ToolpathBuilder.BuildGCode(doc);
+        var lines = ToolpathBuilder.BuildGCode(doc, 100);
 
         Assert.Contains(lines, l => l.StartsWith("M4"));
         Assert.Contains(lines, l => l.StartsWith("G1"));
@@ -104,7 +130,7 @@ public class SvgImporterTests
         var cutLayer = doc.Layers.First(l => l.Mode == LayerMode.Cut);
         cutLayer.IsEnabled = false;
 
-        var lines = ToolpathBuilder.BuildGCode(doc);
+        var lines = ToolpathBuilder.BuildGCode(doc, 100);
 
         Assert.DoesNotContain(lines, l => l.Contains("Rez"));
     }

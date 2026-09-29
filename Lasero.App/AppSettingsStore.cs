@@ -23,8 +23,16 @@ public sealed class WorkspacePreferences
     /// the same bounds the splitter enforces, so a hand-edited or stale settings file cannot start
     /// the app with the workspace collapsed.</summary>
     public double InspectorWidth { get; set; } = DefaultInspectorWidth;
+    public double AssistantWidth { get; set; } = DefaultAssistantWidth;
+    public double AssistantHeight { get; set; } = DefaultAssistantHeight;
 
     public const double DefaultInspectorWidth = 320;
+    public const double DefaultAssistantWidth = 420;
+    public const double DefaultAssistantHeight = 560;
+    public const double MinAssistantWidth = 320;
+    public const double MinAssistantHeight = 360;
+    public const double MaxAssistantWidth = 720;
+    public const double MaxAssistantHeight = 760;
 
     /// <summary>The lower bound has to match DesignerInspectorView's own MinWidth. When it was
     /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than
@@ -33,28 +41,17 @@ public sealed class WorkspacePreferences
     public const double MinInspectorWidth = 320;
     public const double MaxInspectorWidth = 560;
 
-    /// <summary>Whether the navigation rail is showing icons only. Remembered because it is a
-    /// posture, not a per-task choice: someone working on a 1366 screen collapses it once and wants
-    /// it collapsed the next morning too.</summary>
-    public bool IsNavCollapsed { get; set; }
-
-    /// <summary>
-    /// Rail widths. The collapsed value is derived from the widest item in the strip, not the typical
-    /// one: rail padding 14 + button padding 10 + the 26px account avatar + 10 + 14 = 74. Sizing it to
-    /// the 18px navigation glyphs instead gave 66, which centred the glyphs perfectly and quietly cut
-    /// the right-hand third off the avatar — a Border does clip, and nothing in the layout complains.
-    /// Everything narrower than 26 simply centres in the space.
-    ///
-    /// While the rail is collapsed its column stays at the collapsed width even as the rail itself
-    /// peeks open over the canvas, so the two are not interchangeable: one is layout, the other is
-    /// what is drawn.
-    /// </summary>
-    public const double ExpandedNavWidth = 164;
-    public const double CollapsedNavWidth = 74;
-
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
         : DefaultInspectorWidth;
+
+    public double ClampedAssistantWidth => double.IsFinite(AssistantWidth)
+        ? Math.Clamp(AssistantWidth, MinAssistantWidth, MaxAssistantWidth)
+        : DefaultAssistantWidth;
+
+    public double ClampedAssistantHeight => double.IsFinite(AssistantHeight)
+        ? Math.Clamp(AssistantHeight, MinAssistantHeight, MaxAssistantHeight)
+        : DefaultAssistantHeight;
 }
 
 public sealed class DevicePreferences
@@ -172,6 +169,8 @@ public sealed class AppSettingsStore
         settings.Machine ??= new MachinePreferences();
         settings.Workspace ??= new WorkspacePreferences();
         settings.Workspace.InspectorWidth = settings.Workspace.ClampedInspectorWidth;
+        settings.Workspace.AssistantWidth = settings.Workspace.ClampedAssistantWidth;
+        settings.Workspace.AssistantHeight = settings.Workspace.ClampedAssistantHeight;
         settings.Machine.Profiles ??= new Dictionary<string, MachineProfilePreferences>(StringComparer.OrdinalIgnoreCase);
         if (settings.Device.BaudRate <= 0) settings.Device.BaudRate = 115200;
         if (settings.Machine.WorkAreaWidthMm <= 0) settings.Machine.WorkAreaWidthMm = 500;

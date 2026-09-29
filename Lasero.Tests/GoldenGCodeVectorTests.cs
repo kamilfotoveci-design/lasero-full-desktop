@@ -130,10 +130,10 @@ public sealed class GoldenGCodeVectorTests
             Rect(10, 10, 30, 30, Black, Guid.NewGuid()));
 
     /// <summary>
-    /// The same nested pair on a Fill layer. Documents the current layer-wide even-odd behaviour:
-    /// the inner rectangle carves a hole out of the outer one even though they are unrelated
-    /// objects. See <see cref="GCodeEmitterDifferenceTests"/> for the full write-up — this golden
-    /// exists so the Phase 2 fill-contract work has to consciously change it.
+    /// The same nested pair on a Fill layer. Under the Phase 2 fill contract (NonZero per compound
+    /// group, groups unioned; docs/fill-winding-contract.md) unrelated shapes never carve each other,
+    /// so the inner rectangle is engraved as part of a solid fill. This golden was deliberately
+    /// updated from the previous layer-wide even-odd output (D9 bug fix).
     /// </summary>
     [Fact]
     public void Golden_Geometry_NestedUnrelatedShapes_Fill() =>
@@ -141,14 +141,16 @@ public sealed class GoldenGCodeVectorTests
             Rect(0, 0, 40, 40, Black, Guid.NewGuid()),
             Rect(10, 10, 30, 30, Black, Guid.NewGuid()));
 
-    /// <summary>Outer contour plus a genuine hole — one compound path, one shared GeometrySetId.</summary>
+    /// <summary>Outer contour plus a genuine hole — one compound path, one shared GeometrySetId,
+    /// hole wound opposite to its outer (the NonZero fill contract's definition of a hole).</summary>
     [Fact]
     public void Golden_Geometry_CompoundPathWithHole_Fill()
     {
         var set = Guid.NewGuid();
+        var hole = Rect(10, 10, 30, 30, Black, set);
         VerifyShapes("geometry-compound-path-hole-fill", FillLayer(Black, intervalMm: 5),
             Rect(0, 0, 40, 40, Black, set),
-            Rect(10, 10, 30, 30, Black, set));
+            hole with { Points = hole.Points.Reverse().ToList() });
     }
 
     [Fact]

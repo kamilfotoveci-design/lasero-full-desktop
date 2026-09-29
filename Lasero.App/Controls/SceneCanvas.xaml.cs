@@ -126,6 +126,7 @@ public partial class SceneCanvas : UserControl
     private double _panStartOffsetX;
     private double _panStartOffsetY;
     private bool _isSpacePressed;
+    private Window? _ownerWindow;
     private DesignerTool _drawingTool;
     private Position _drawStartWorld;
 
@@ -204,7 +205,34 @@ public partial class SceneCanvas : UserControl
         canvas.UpdateToolCursor();
     }
 
-    private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildAll();
+    private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // A normal append/delete should touch only that object's visuals. Rebuilding the whole
+        // canvas also decodes every existing raster preview from disk and makes large designs feel
+        // slow. Keep the full path for reorders, resets, auto-fit and active inline text editing.
+        if (_autoFit || _inlineTextEditor is not null || ViewModel is null)
+        {
+            RebuildAll();
+            return;
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null &&
+            e.NewStartingIndex == ViewModel.Objects.Count - e.NewItems.Count)
+        {
+            foreach (SceneObject obj in e.NewItems) AddObjectVisuals(obj);
+            RedrawSelectionOverlay();
+            return;
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems is not null)
+        {
+            foreach (SceneObject obj in e.OldItems) RemoveObjectVisuals(obj);
+            RedrawSelectionOverlay();
+            return;
+        }
+
+        RebuildAll();
+    }
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
     private void OnViewModelContentChanged() => RepositionAll();
 
@@ -556,7 +584,14 @@ public partial class SceneCanvas : UserControl
             var fills = !obj.IsRaster &&
                 (ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut);
 
-            paths[i].Data = BuildCompoundGeometry(group);
+            // Node-editable objects retain their cubic Bezier source in VectorPath. Drawing their
+            // cached ImportedShape polylines here makes the curve visibly faceted after zooming,
+            // because that cache is flattened once at a fixed document-space tolerance. Keep the
+            // original cubic geometry for WPF rendering; the flattened cache remains for hit testing
+            // and machine output.
+            paths[i].Data = obj.VectorPath is { } vectorPath
+                ? BuildVectorPathGeometry(obj, vectorPath)
+                : BuildCompoundGeometry(group);
             paths[i].Stroke = new SolidColorBrush(color);
             paths[i].StrokeThickness = 1.4;
             paths[i].Fill = fills && group.Any(shape => shape.IsClosed)
@@ -602,6 +637,50 @@ public partial class SceneCanvas : UserControl
             };
             figure.Segments.Add(new PolyLineSegment(
                 shape.Points.Skip(1).Select(p => new Point(ToCanvasX(p.X), ToCanvasY(p.Y))), isStroked: true));
+            figures.Add(figure);
+        }
+
+        return new PathGeometry(figures) { FillRule = FillRule.Nonzero };
+    }
+
+    /// <summary>Builds screen-renderable WPF cubic geometry from the retained vector model. Unlike
+    /// ImportedShape.Points, cubic segments stay smooth at every canvas zoom level.</summary>
+    private PathGeometry BuildVectorPathGeometry(SceneObject obj, Lasero.Core.Scene.VectorPath vectorPath)
+    {
+        var figures = new PathFigureCollection();
+        foreach (var subpath in vectorPath.Subpaths)
+        {
+            if (subpath.Nodes.Count == 0) continue;
+
+            Point ToCanvas(Lasero.Core.Grbl.Position point)
+            {
+                var world = obj.Transform.Apply(point, obj.LocalPivot);
+                return new Point(ToCanvasX(world.X), ToCanvasY(world.Y));
+            }
+
+            var figure = new PathFigure
+            {
+                StartPoint = ToCanvas(subpath.Nodes[0].Anchor),
+                IsClosed = subpath.IsClosed,
+                IsFilled = subpath.IsClosed,
+            };
+
+            for (var segmentIndex = 0; segmentIndex < subpath.SegmentCount; segmentIndex++)
+            {
+                var (a, b) = subpath.Segment(segmentIndex);
+                if (Lasero.Core.Scene.VectorSubpath.IsStraightSegment(a, b))
+                {
+                    figure.Segments.Add(new LineSegment(ToCanvas(b.Anchor), isStroked: true));
+                    continue;
+                }
+
+                figure.Segments.Add(new BezierSegment(
+                    ToCanvas(a.HandleOut ?? a.Anchor),
+                    ToCanvas(b.HandleIn ?? b.Anchor),
+                    ToCanvas(b.Anchor),
+                    isStroked: true));
+            }
+
             figures.Add(figure);
         }
 
@@ -1134,6 +1213,18 @@ public partial class SceneCanvas : UserControl
         if (ViewModel is null) return;
         var scene = ViewModel;
         var menu = new ContextMenu { PlacementTarget = placementTarget, Placement = PlacementMode.MousePoint };
+
+        // Mouse-driven entry into Node Edit, at the very top since it's the single most likely reason
+        // to right-click a vector path — matches the equivalent button on SelectionPropertiesBar
+        // (this menu and that bar are the two places EnterNodeEditMode is reachable from the mouse,
+        // besides the double-click gesture the canvas already recognizes on its own).
+        if (scene.Selected is { IsVectorPath: true } selected)
+        {
+            var editNodes = new MenuItem { Header = "Upravit uzly" };
+            editNodes.Click += (_, _) => EnterNodeEditMode(selected);
+            menu.Items.Add(editNodes);
+            menu.Items.Add(new Separator());
+        }
 
         menu.Items.Add(new MenuItem { Header = "Vyjmout", InputGestureText = "Ctrl+X", Command = scene.CutCommand });
         menu.Items.Add(new MenuItem { Header = "Kopírovat", InputGestureText = "Ctrl+C", Command = scene.CopyCommand });
@@ -1726,10 +1817,11 @@ public partial class SceneCanvas : UserControl
                 UpdateVectorPathPreview(screen);
                 break;
             case DragMode.NodeEdit:
-                UpdateNodeEditDrag(screen);
-                break;
             case DragMode.NodeSegmentDrag:
-                UpdateNodeSegmentDrag(screen);
+                // Node edits rebuild rendered geometry and the editable overlay. Coalesce the
+                // higher-rate mouse stream to one update per render opportunity; mouse-up flushes
+                // the newest point before committing, so the final position is never dropped.
+                ScheduleExpensiveDragUpdate(screen);
                 break;
             case DragMode.NodeMarquee:
                 UpdateRubberBand(screen);
@@ -1870,6 +1962,12 @@ public partial class SceneCanvas : UserControl
                 _activeSingleObject.Transform = _rotateStartTransform with { RotationDeg = newRotation };
                 break;
             }
+            case DragMode.NodeEdit:
+                UpdateNodeEditDrag(screen);
+                break;
+            case DragMode.NodeSegmentDrag:
+                UpdateNodeSegmentDrag(screen);
+                break;
             case DragMode.Pan:
             {
                 var dxPx = screen.X - _dragStartScreen.X;
@@ -2029,6 +2127,22 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        // VECTOR PATH TOOL HOOK: segment-scoped shortcuts (Priority 1 exposure of already-implemented
+        // VectorPathEditor operations — see docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md).
+        // Shift+<letter>, not a bare letter: bare L/C/... would either collide with MainWindow's own
+        // unmodified-letter tool-switch shortcuts (V/H/R/E/L/T — see MainWindow.xaml.cs
+        // TryActivateDesignerTool, which runs at the PreviewKeyDown/tunnelling stage and would win the
+        // key before it ever reaches here) or invite a future collision as more tools claim letters.
+        // All three are no-ops (falling through, e.Handled stays false) unless node-edit is active
+        // AND a segment is currently hovered, so they never swallow Shift+L/C/M for anything else.
+        if (_nodeEditObject is not null && _hoveredSegment is not null &&
+            Keyboard.Modifiers == ModifierKeys.Shift)
+        {
+            if (e.Key == Key.L) { ConvertHoveredSegmentToLine(); e.Handled = true; return; }
+            if (e.Key == Key.C) { ConvertHoveredSegmentToCurve(); e.Handled = true; return; }
+            if (e.Key == Key.M) { InsertNodeAtHoveredSegmentMidpoint(); e.Handled = true; return; }
+        }
+
         // VECTOR PATH TOOL HOOK: Enter finishes the in-progress open path, mirroring double-click.
         if (e.Key == Key.Enter && _pathToolDrawing)
         {
@@ -2114,6 +2228,38 @@ public partial class SceneCanvas : UserControl
             EndPan();
         else if (_dragMode == DragMode.None)
             UpdateToolCursor();
+    }
+
+    private void OnSceneCanvasLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_ownerWindow is not null)
+            _ownerWindow.Deactivated -= OnOwnerWindowDeactivated;
+
+        _ownerWindow = Window.GetWindow(this);
+        if (_ownerWindow is not null)
+            _ownerWindow.Deactivated += OnOwnerWindowDeactivated;
+    }
+
+    private void OnSceneCanvasUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_ownerWindow is not null)
+            _ownerWindow.Deactivated -= OnOwnerWindowDeactivated;
+        _ownerWindow = null;
+    }
+
+    private void OnOwnerWindowDeactivated(object? sender, EventArgs e)
+    {
+        if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)
+            CancelActiveInteraction();
+    }
+
+    private void OnDrawCanvasLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        // A lost capture has no matching MouseUp guaranteed. Roll back live geometry and clear the
+        // drag state exactly as Escape does; the handler is scoped to node drags so other canvas
+        // interactions keep their existing cancellation behavior.
+        if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)
+            CancelActiveInteraction();
     }
 
     private void CancelActiveInteraction()

@@ -1,6 +1,24 @@
 {
   "version": 1,
   "skills": {
+    "avalonia": {
+      "source": "linuxdevel/avalonia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/avalonia/SKILL.md",
+      "computedHash": "ba48d438ea9d857d4b3e7063d9b7bbc052f55b356ee99969de3c2300f271402f"
+    },
+    "avalonia-layout-zafiro": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/avalonia-layout-zafiro/SKILL.md",
+      "computedHash": "2b8b8a6189fcddd951b78a72ad49c8d21649b29af4bca99280e23cbbf29e7ebc"
+    },
+    "avalonia-viewmodels-zafiro": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/avalonia-viewmodels-zafiro/SKILL.md",
+      "computedHash": "53e7ae2067a25493a6cce1713db47ccc8cd4fdada667b34cb30c19a79dc6ce75"
+    },
     "better-icons": {
       "source": "better-auth/better-icons",
       "sourceType": "github",

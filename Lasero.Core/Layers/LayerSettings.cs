@@ -45,6 +45,10 @@ public sealed partial class LayerSettings : ObservableObject
     };
     public string ProcessingSummary => $"{ModeLabel} · {Speed:0} mm/min · {Power:0.#} % · {Passes}×";
 
+    /// <summary>Whether the line-spacing interval means anything for this layer — a pure outline
+    /// cut never scans lines, so its interval field has nothing to control.</summary>
+    public bool UsesFillInterval => IsRaster || Mode is LayerMode.Fill or LayerMode.FillAndCut;
+
     /// <summary>What the material row shows when no recipe has been applied.</summary>
     public string MaterialDisplayLabel => MaterialLabel is { Length: > 0 } label ? label : "Vlastní nastavení";
 
@@ -70,12 +74,14 @@ public sealed partial class LayerSettings : ObservableObject
     {
         OnPropertyChanged(nameof(ModeLabel));
         OnPropertyChanged(nameof(ProcessingSummary));
+        OnPropertyChanged(nameof(UsesFillInterval));
     }
 
     partial void OnIsRasterChanged(bool value)
     {
         OnPropertyChanged(nameof(ModeLabel));
         OnPropertyChanged(nameof(ProcessingSummary));
+        OnPropertyChanged(nameof(UsesFillInterval));
     }
 
     private static (double Speed, double Power) DefaultsFor(LayerMode mode) => mode == LayerMode.Cut

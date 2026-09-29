@@ -15,22 +15,14 @@
             status — a whole card flooded with green or red is how a status surface stops being
             readable, and it is the one thing the palette rules out explicitly.
         -->
+        <!-- Background/foreground colour no longer lives in these triggers: ProcessStatusCard.xaml.cs
+             animates ChipSurface's and StatusGlyphIcon's Foreground/Background through a local,
+             per-instance SolidColorBrush on every Status change (Motion.Base/Ease.Out), which a shared
+             DynamicResource brush cannot do without leaking the animation onto every other consumer of
+             that brush (see the identical note on the Button template above). IconData is still a
+             per-status Setter here - swapping a Geometry has no meaningful "animated" form. -->
         <Style x:Key="StatusChip" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Progress}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.InfoMuted}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Success}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessMuted}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Warning}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.WarningMuted}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Error}">
-                    <Setter Property="Background" Value="{DynamicResource Brush.DangerMuted}" />
-                </DataTrigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="StatusGlyph" TargetType="components:IconGlyph">
@@ -41,19 +33,15 @@
                     <Setter Property="IconData" Value="{DynamicResource Glyph.Clock}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Progress}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                     <Setter Property="IconData" Value="{DynamicResource Glyph.Refresh}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Success}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
                     <Setter Property="IconData" Value="{DynamicResource Glyph.Check}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Warning}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
                     <Setter Property="IconData" Value="{DynamicResource Glyph.Warning}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Error}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
                     <Setter Property="IconData" Value="{DynamicResource Glyph.Close}" />
                 </DataTrigger>
                 <!-- An explicitly supplied glyph always wins: it usually says something the status
@@ -63,7 +51,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-
         <Style x:Key="ProgressFill" TargetType="ProgressBar">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
             <Style.Triggers>
@@ -106,14 +93,14 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Md}"
+                <Border x:Name="ChipSurface" Width="34" Height="34" CornerRadius="{StaticResource Radius.Md}"
                         VerticalAlignment="Top" Margin="0,0,12,0"
                         Style="{StaticResource StatusChip}">
-                    <components:IconGlyph Style="{StaticResource StatusGlyph}"
+                    <components:IconGlyph x:Name="StatusGlyphIcon" Style="{StaticResource StatusGlyph}"
                                           Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />
                 </Border>
 
-                <StackPanel Grid.Column="1">
+                <StackPanel x:Name="ContentStack" Grid.Column="1">
                     <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding Description, ElementName=Root}" Style="{StaticResource Text.Muted}"
                                TextWrapping="Wrap" Margin="0,3,0,0"
@@ -122,6 +109,7 @@
 
                 <Button Grid.Column="2" Style="{StaticResource Button.GhostIcon}" VerticalAlignment="Top"
                         Command="{Binding DismissCommand, ElementName=Root}"
+                        ToolTip="Skrýt"
                         automation:AutomationProperties.Name="Skrýt"
                         Visibility="{Binding DismissCommand, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
                     <components:IconGlyph IconData="{StaticResource Glyph.Close}"

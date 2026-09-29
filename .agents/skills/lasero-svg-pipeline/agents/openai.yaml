@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero SVG pipeline"
+  short_description: "Lasero SVG and vector interchange"
+  default_prompt: "Use $lasero-svg-pipeline for this Lasero task. Inspect the current implementation and follow its workflow."

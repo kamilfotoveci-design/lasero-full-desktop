@@ -1,10 +1,15 @@
 <Window x:Class="Lasero.App.KeyboardShortcutsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:components="clr-namespace:Lasero.App.Components"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Klávesové zkratky"
         Width="760" Height="620" MinWidth="680" MinHeight="520"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="CenterOwner" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <Style x:Key="ShortcutKey" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Brush.Field}" />
@@ -20,7 +25,12 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="28">
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <components:WindowTitleBar Title="Klávesové zkratky" IconData="{StaticResource Glyph.Help}"
+                                    CloseButtonName="Zavřít klávesové zkratky" />
+    <Grid Grid.Row="1" Margin="28">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -86,4 +96,6 @@
         <Button Grid.Row="2" Content="Zavřít" HorizontalAlignment="Right" Margin="0,22,0,0"
                 MinWidth="96" IsDefault="True" IsCancel="True" Click="OnCloseClick" />
     </Grid>
+    </Grid>
+    </Border>
 </Window>

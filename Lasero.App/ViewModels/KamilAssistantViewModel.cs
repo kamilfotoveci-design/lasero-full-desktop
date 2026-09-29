@@ -169,7 +169,7 @@ public partial class KamilAssistantViewModel : ObservableObject
         // whatever UI binds it -- so this guards itself too rather than trusting every future caller
         // to have asked first.
         if (State != KamilAssistantState.Hidden) return;
-        State = KamilAssistantState.Minimized;
+        State = KamilAssistantState.Expanded;
     }
 
     /// <summary>

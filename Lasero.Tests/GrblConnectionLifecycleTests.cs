@@ -189,10 +189,21 @@ public sealed class GrblConnectionLifecycleTests
         Assert.True((await normalCommand).IsOk);
         Assert.True(transport.WaitForLineCount(2));
         transport.RaiseLine("$130=500.000");
+        transport.RaiseLine("$30=1000");
         transport.RaiseLine("ok");
 
         var settings = await settingsQuery.WaitAsync(TimeSpan.FromSeconds(1));
-        Assert.Equal(["$130=500.000"], settings);
+        Assert.Equal(["$130=500.000", "$30=1000"], settings);
+        Assert.Equal(1000, connection.DeviceProfile?.MaxSpindleSpeed);
+
+        var settingWrite = connection.SendCommandAsync("$30=500");
+        Assert.True(transport.WaitForLineCount(3));
+        Assert.Null(connection.DeviceProfile);
+        transport.RaiseLine("ok");
+        Assert.True((await settingWrite).IsOk);
+
+        connection.Disconnect();
+        Assert.Null(connection.DeviceProfile);
     }
 
     [Fact]

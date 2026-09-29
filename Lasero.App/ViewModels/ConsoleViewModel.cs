@@ -14,6 +14,8 @@ public partial class ConsoleViewModel : ObservableObject
     private static readonly Regex PhysicalCommandPattern = new(
         @"(^|\s)(?:G0?0|G0?1|G0?2|G0?3|G28|G30|G53|G92|M0?3|M0?4|\$H|\$J(?:=|\s)|\$X)(?=\s|[XYZFIJPRSQ]|$)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex PowerProfileCommandPattern = new(
+        @"(^|\s)\$(?:30|32)\s*=", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private readonly ILaserMachine _connection;
 
     public ObservableCollection<string> Lines { get; } = new();
@@ -58,7 +60,7 @@ public partial class ConsoleViewModel : ObservableObject
             return;
         }
 
-        if (PhysicalCommandPattern.IsMatch(text))
+        if (PhysicalCommandPattern.IsMatch(text) || PowerProfileCommandPattern.IsMatch(text))
         {
             var app = Application.Current;
             if (app is null || LaseroDialogWindow.Show(app.MainWindow, new LaseroDialogOptions(

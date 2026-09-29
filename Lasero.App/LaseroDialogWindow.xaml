@@ -17,8 +17,15 @@
         <shell:WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="{StaticResource Radius.Lg}" GlassFrameThickness="0" />
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-            BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Effect="{StaticResource Shadow.Modal}">
+    <Border x:Name="DialogSurface" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
+            BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Effect="{StaticResource Shadow.Modal}"
+            RenderTransformOrigin="0.5,0.5" Opacity="0">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="DialogScale" ScaleX="0.985" ScaleY="0.985" />
+                    <TranslateTransform x:Name="DialogOffset" Y="4" />
+                </TransformGroup>
+            </Border.RenderTransform>
         <Grid>
             <Grid.RowDefinitions><RowDefinition Height="38" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
@@ -52,11 +59,11 @@
             <Border Grid.Row="2" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,1,0,0" Padding="16,12" CornerRadius="0,0,8,8">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="CancelButton" Click="OnCancelClick" MinWidth="88" Height="40" Margin="0,0,8,0"
+                    <Button x:Name="CancelButton" Style="{StaticResource Button.Outline}" Click="OnCancelClick" MinWidth="88" Height="{StaticResource Size.Control.Primary}" Margin="0,0,8,0"
                             ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
-                    <Button x:Name="SecondaryButton" Click="OnSecondaryClick" MinWidth="104" Height="40" Margin="0,0,8,0"
+                    <Button x:Name="SecondaryButton" Style="{StaticResource Button.Secondary}" Click="OnSecondaryClick" MinWidth="104" Height="{StaticResource Size.Control.Primary}" Margin="0,0,8,0"
                             ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
-                    <Button x:Name="PrimaryButton" Click="OnPrimaryClick" MinWidth="120" Height="40" IsDefault="True"
+                    <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Click="OnPrimaryClick" MinWidth="120" Height="{StaticResource Size.Control.Primary}" IsDefault="True"
                             ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
                 </StackPanel>
             </Border>

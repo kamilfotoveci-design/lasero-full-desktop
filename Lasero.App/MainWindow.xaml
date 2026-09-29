@@ -241,7 +241,7 @@
                     </Button>
                 </StackPanel>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="MinimizeButton" Style="{StaticResource Button.Chrome}" Click="OnMinimizeClick" AutomationProperties.Name="Minimalizovat">
                         <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
@@ -270,38 +270,17 @@
                 persisted width.
             -->
             <Grid.ColumnDefinitions>
-                <!--
-                    Set from code, never animated, and it holds the collapsed width for the whole time
-                    the rail is peeking open over the canvas. If the column tracked the rail, brushing
-                    past the left edge would reflow the workspace and re-fit the view - the canvas would
-                    twitch every time the pointer crossed it, which is exactly what an editor cannot do.
-                -->
                 <ColumnDefinition x:Name="NavColumn" Width="164" />
                 <ColumnDefinition Width="*" MinWidth="420" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="InspectorColumn" Width="320" MinWidth="320" MaxWidth="560" />
             </Grid.ColumnDefinitions>
 
-            <!-- Stable application navigation. Design tools live beside the canvas so this rail
-                 never changes meaning when the user switches screens. -->
-            <!--
-                ColumnSpan 2 with HorizontalAlignment Left is what lets the rail peek open at all. A Grid
-                child whose size exceeds the slot it was arranged in gets a layout clip - not a border,
-                not ClipToBounds, WPF's own - so a 164-wide rail sitting in a 74-wide column drew its
-                labels and then cut them off at 74. Spanning the canvas column gives it room to be wider
-                than its own column without the canvas giving up a pixel of layout; ZIndex puts it over
-                the canvas rather than under it.
-
-                The wrapper sizes itself to the rail, which is how the handle stays welded to the rail's
-                right border at every width, animation frames included, with no offset to keep in sync.
-                The handle hangs 11px outside it and is not clipped, because a child overflowing its
-                parent is only clipped when the parent asks for it.
-            -->
             <!--
                 Two rails share this slot and exactly one is ever visible. The full sidebar serves
-                Home, Device and Chat unchanged, including its collapse posture and peek animation;
-                Designer swaps in a 56px rail instead, because an editor wants the pixels and its
-                tools belong beside the canvas rather than in a strip above it.
+                Home, Device and Chat at a stable 164px width. Designer swaps in a 56px rail instead,
+                because an editor wants the pixels and its tools belong beside the canvas rather than
+                in a strip above it.
 
                 Swapping controls rather than morphing one is what keeps the other three screens
                 untouched — none of their behaviour runs through the Designer rail's code path.
@@ -312,27 +291,12 @@
             <!-- Visibility is driven from ApplyWorkspaceMode rather than a binding, because the same
                  place has to set the column width — and a column and a binding disagreeing about who
                  owns the rail is how the canvas ends up 108px short of the window. -->
-            <Grid x:Name="NavRailHost" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Left" Panel.ZIndex="10">
+            <Grid x:Name="NavRailHost" Grid.Column="0" HorizontalAlignment="Left" Panel.ZIndex="10">
             <Border x:Name="NavRail" Width="164"
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
-                    BorderThickness="0,0,1,0" CornerRadius="0">
-                <!--
-                    The extra padding when collapsed is what centres the glyphs. The rail is 74 wide to
-                    clear the 26px account avatar, but a nav button's content is left-aligned behind its
-                    own 10px padding, so at 14px rail padding every icon sat 8px left of centre and the
-                    strip read as leaning. 18 + 10 on each side of an 18px glyph fills 74 exactly.
-                -->
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Padding" Value="14,16" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                <Setter Property="Padding" Value="18,16" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
+                    BorderThickness="0,0,1,0" CornerRadius="0"
+                    Padding="14,16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -343,42 +307,19 @@
                     <StackPanel Grid.Row="0">
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
-                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Designer}" Command="{Binding ShowDesignerCommand}"
                                 ToolTip="Pracovní plocha pro přípravu grafiky" AutomationProperties.Name="Návrh">
-                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton}" Click="OnMaterialsClick"
                                 ToolTip="Materiály a doporučené parametry gravírování" AutomationProperties.Name="Materiály">
-                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Device}" Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
-                        </Button>
-                        <Button Style="{StaticResource NavButton.Chat}" Click="OnLaseroChatClick"
-                                 ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
-                            <StackPanel Orientation="Horizontal">
-                                <!-- Hand-built content rather than an IconLabel, so the collapse has
-                                     to be spelled out here: the gap goes with the label, or a
-                                     collapsed rail shows the avatar pushed 9px off centre. -->
-                                <Ellipse Width="22" Height="22">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Margin" Value="0,0,9,0" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                                    <Setter Property="Margin" Value="0" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                                </Ellipse>
-                                <TextBlock Text="Lasero Chat" VerticalAlignment="Center"
-                                           Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
-                            </StackPanel>
+                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
                     </StackPanel>
 
@@ -386,7 +327,7 @@
                         <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="8,8,8,12" />
                         <Button Style="{StaticResource NavButton}" Click="OnSettingsClick"
                                 ToolTip="Předvolby aplikace a pracovní plochy" AutomationProperties.Name="Nastavení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" />
                         </Button>
 
                         <!-- Whoever is signed in, at the foot of the sidebar. The e-mail is the only
@@ -396,27 +337,16 @@
                                 Click="OnSettingsClick" AutomationProperties.Name="Účet"
                                 Visibility="{Binding Account.IsSignedIn, Converter={StaticResource BoolToVisibility}}">
                             <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="26" Height="26"
+                                <Border DockPanel.Dock="Left" Width="26" Height="26" Margin="0,0,9,0"
                                         CornerRadius="{StaticResource Radius.Pill}"
                                         Background="{StaticResource Brush.SelectedSurface}">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Margin" Value="0,0,9,0" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                                    <Setter Property="Margin" Value="0" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
                                     <components:IconGlyph IconData="{StaticResource Glyph.User}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                                           Foreground="{StaticResource Brush.AccentText}" />
                                 </Border>
-                                <StackPanel VerticalAlignment="Center"
-                                            Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                                <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Account.Email}" FontWeight="Medium"
-                                               TextTrimming="CharacterEllipsis" />
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Account.Email}" />
                                     <TextBlock Text="{Binding Account.LicenceLabel}" Style="{StaticResource Text.Muted}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
@@ -425,31 +355,6 @@
                     </StackPanel>
                 </Grid>
             </Border>
-
-                <!--
-                    Half on the rail, half on the canvas. -11 is half the handle, so it is centred on
-                    the 1px border whatever the rail measures.
-                -->
-                <Button Style="{StaticResource Button.RailHandle}"
-                        Command="{Binding ToggleNavCommand}"
-                        HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Margin="0,0,-11,0"
-                        AutomationProperties.Name="Sbalit nebo rozbalit panel">
-                    <Button.ToolTip>
-                        <TextBlock>
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Sbalit panel na ikony" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                            <Setter Property="Text" Value="Rozbalit panel s popisky" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </Button.ToolTip>
-                </Button>
             </Grid>
 
             <!-- Home dashboard. No margin: Home owns its own 24px content padding and its device
@@ -508,6 +413,7 @@
                      time (EnterNodeEditMode adds it), so without this the two bars would show at once. -->
                 <Grid VerticalAlignment="Top" Margin="12,30,12,0" Panel.ZIndex="20">
                     <views:SelectionPropertiesBar HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                  TargetCanvas="{Binding ElementName=DesignerCanvas}"
                                                   Visibility="{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource InverseBoolToVisibility}}" />
                     <views:NodeEditToolbar HorizontalAlignment="Center" VerticalAlignment="Top"
                                            TargetCanvas="{Binding ElementName=DesignerCanvas}"
@@ -564,9 +470,10 @@
                                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
 
             <!--
-                Kamil. One instance for the whole application, declared last in the editor row so it
-                paints over whichever screen is showing without any of them knowing it exists — which
-                is what lets the operator move between Návrh, Materiály and Zařízení mid-conversation.
+                Kamil. Lives only over the Designer canvas — the operator's hands are already there,
+                and every other screen (Domů, Materiály, Zařízení) has its own uncluttered layout with
+                no floating overlay on top of it. "Lasero Chat" in the nav rail still reaches the same
+                conversation full-screen (see ChatView) for anywhere else.
 
                 It lives inside this row rather than over the whole window, so the machine strip below
                 is out of its reach by construction: Rámovat, Spustit, Pauza and Zastavit cannot be
@@ -575,14 +482,10 @@
                 The right margin tracks the inspector's live width, parking the panel against the
                 canvas instead of on top of the operation settings its own "Použít na operaci" writes.
             -->
-            <kamil:KamilAssistantHost Grid.Column="1" Grid.ColumnSpan="3" Panel.ZIndex="30"
+            <kamil:KamilAssistantHost x:Name="KamilHost" Grid.Column="1" Grid.ColumnSpan="3" Panel.ZIndex="30"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
                                       DataContext="{Binding Kamil}">
-                <kamil:KamilAssistantHost.Margin>
-                    <MultiBinding Converter="{StaticResource AssistantClearance}">
-                        <Binding ElementName="DesignerInspector" Path="ActualWidth" />
-                        <Binding ElementName="CanvasViewControls" Path="ActualHeight" />
-                    </MultiBinding>
-                </kamil:KamilAssistantHost.Margin>
             </kamil:KamilAssistantHost>
         </Grid>
 
@@ -690,12 +593,31 @@
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
 
+                <Border Grid.Column="1" Style="{StaticResource BarDivider}" HorizontalAlignment="Left"
+                        Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
+
+                <!-- Outside Designer, column 1's palette (and its own dividers above/below) collapses
+                     to zero width, leaving the device-status and job-action zones flush against each
+                     other with no separator at all — the two dividers above/below only ever cover the
+                     3-zone Designer layout, never this 2-zone one. Same shared BarDivider hairline,
+                     just the inverse visibility. -->
+                <Border Grid.Column="1" HorizontalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource BarDivider}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
 
                 <!-- The layer palette. Kept in the status strip on the operator's call: assigning a
                      production colour is something you do while working on the canvas, and reaching
                      the inspector's operation settings for it was a detour. The swatch matching the
                      selected layer is ringed. -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,20,0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
                             ToolTip="Vyberte objekt a kliknutím mu přiřaďte výrobní barvu">
                     <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
@@ -720,12 +642,15 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <Border Grid.Column="2" Style="{StaticResource BarDivider}" HorizontalAlignment="Left"
+                        Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
+
                 <!--
                     One authoritative job-control group for every screen, including Designer. Start
                     is danger-red because it begins a physical operation; Frame stays secondary.
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,0,0">
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"

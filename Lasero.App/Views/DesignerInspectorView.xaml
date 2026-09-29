@@ -5,6 +5,7 @@
              xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
              xmlns:conv="clr-namespace:Lasero.App.Converters"
              xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:views="clr-namespace:Lasero.App.Views"
              xmlns:layers="clr-namespace:Lasero.Core.Layers;assembly=Lasero.Core"
              MinWidth="320">
     <!--
@@ -16,7 +17,7 @@
 
         Flat on purpose. The previous version nested a card inside a tab inside a panel, so almost
         every control sat behind three edges. Here the panel is the only surface; groups are told
-        apart by an uppercase header, whitespace and a hairline.
+        apart by a section header, whitespace and a hairline.
 
         Nothing was dropped. The machine tab became a summary plus a link to the Device screen, which
         is where the full MachinePanelView lives; the layer context menu keeps every command it had.
@@ -35,6 +36,38 @@
 
         <Style x:Key="RowLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- "Ovládání stroje" is plain navigation to the Device screen, not a destructive or
+             attention-seeking action — Button.Link's accent-red foreground (built for a handful of
+             genuinely accent-coloured links elsewhere: Home's "Vše", KAMIL's retry) read as an
+             alarming pill here. Scoped to this one control rather than changing Button.Link itself,
+             which those other call sites still want unchanged. Neutral ink at rest, shifting to
+             primary ink on hover — Button.Ghost's own inherited hover wash/press/focus-ring mechanics
+             are untouched, so states stay consistent with every other ghost button in the app. -->
+        <Style x:Key="MachineControlLink" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Designer visual-refinement pass: the shared UnitField.Shell (used app-wide — Settings,
+             Materials, the device wizard) carries a permanent border, which is correct chrome for a
+             standalone settings form but reads as unnecessary weight against this panel's own
+             borderless rows and fields. Scoped to this file rather than editing the shared style, so
+             those other screens keep their existing field chrome untouched. Transparent at rest;
+             UnitField.Shell's own inherited hover/focus triggers still supply the affordance. -->
+        <Style x:Key="Field.Quiet" TargetType="Border" BasedOn="{StaticResource UnitField.Shell}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
         <!--
@@ -61,7 +94,9 @@
 
     <Border Background="{DynamicResource Brush.Panel}"
             BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding IsMachineControlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel>
 
                 <!-- ==================== ZAŘÍZENÍ ==================== -->
@@ -113,11 +148,18 @@
                         </Grid>
                     </Border>
 
-                    <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Left"
-                            Margin="0,8,0,0" Padding="0"
+                    <Button Style="{StaticResource MachineControlLink}" HorizontalAlignment="Left"
+                            Margin="0,8,0,0"
                             Click="OnMachineControlClick"
                             ToolTip="Otevřít ruční ovládání gravírky vedle plátna"
-                            Content="Ovládání stroje →" />
+                            automation:AutomationProperties.Name="Ovládání stroje">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ovládání stroje" VerticalAlignment="Center" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.ChevronRight}"
+                                                  Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                  Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
                 <Border Style="{StaticResource InspectorGroupDivider}" />
@@ -125,13 +167,8 @@
                 <!-- ==================== OBRÁZEK ==================== -->
                 <!--
                     Shown only when exactly one bitmap (raster) object is selected — never for SVG
-                    paths, text, shapes or groups. "Odstranit pozadí" is meant to read as an ordinary
-                    bitmap edit, not a special AI callout: same section chrome as ZAŘÍZENÍ/OPERACE
-                    above, same button styling as every other selected-object action. Processing runs
-                    in place (spinner + status text, no dialog); the one-time model download is the
-                    only step with a dialog, and it is a plain LaseroDialogWindow prompt raised from
-                    MainWindow.OnBackgroundRemovalRequested — nothing about ONNX/DirectML/models is
-                    ever named here.
+                    paths, text, shapes or groups. Background removal is provided through Lasero's
+                    authenticated Gemini service; consent is requested before the source image is sent.
                 -->
                 <StackPanel Margin="16,14,16,14"
                             Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
@@ -140,7 +177,12 @@
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
                             Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}"
-                            Content="Odstranit pozadí" />
+                            Content="Odstranit pozadí"
+                            ToolTip="Obrázek se odešle online službě Lasero (Gemini). Změnu lze vrátit pomocí Ctrl+Z." />
+
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource RowLabel}"
+                               Text="Obrázek se odešle online službě Lasero (Gemini)."
+                               Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}" />
 
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RestoreSelectedBackgroundCommand}"
@@ -184,8 +226,12 @@
                         <StackPanel Orientation="Horizontal">
                             <ProgressBar Width="72" Height="4" Minimum="0" Maximum="1"
                                          Value="{Binding Scene.BackgroundRemovalProgress}"
+                                         IsIndeterminate="{Binding Scene.BackgroundRemovalIsIndeterminate}"
                                          Margin="0,0,10,0" />
                             <TextBlock Text="{Binding Scene.BackgroundRemovalStatus}" VerticalAlignment="Center" Style="{StaticResource RowLabel}" />
+                            <Button Margin="10,0,0,0" Padding="8,2" MinHeight="24" Style="{StaticResource Button.Ghost}"
+                                    Command="{Binding Scene.CancelBackgroundRemovalCommand}"
+                                    Content="Zrušit" ToolTip="Zrušit odstranění pozadí" />
                         </StackPanel>
                     </Border>
 
@@ -210,7 +256,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="OPERACE" Style="{StaticResource InspectorGroupHeader}" />
+                        <TextBlock Text="Operace" Style="{StaticResource InspectorGroupHeader}" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal"
                                     Visibility="{Binding Scene.CanReorderLayers, Converter={StaticResource BoolToVisibility}}">
                             <Button Style="{StaticResource Button.GhostIcon}" Command="{Binding Scene.MoveSelectedLayerUpCommand}"
@@ -238,6 +284,7 @@
                              Background="Transparent"
                              AlternationCount="999"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              PreviewMouseRightButtonDown="OnLayerRowRightButtonDown"
                              automation:AutomationProperties.Name="Seznam operací">
                         <ListBox.ItemContainerStyle>
@@ -357,8 +404,16 @@
 
                                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding ProcessingSummary}" Style="{StaticResource Text.Muted}"
-                                                   Margin="0,1,0,0" TextTrimming="CharacterEllipsis" />
+                                        <!-- Keep every production value visible. Individual tokens wrap as units,
+                                             so a narrow inspector never cuts power or pass count mid-summary. -->
+                                        <WrapPanel Margin="0,1,0,0"
+                                                   ToolTip="{Binding ProcessingSummary}"
+                                                   automation:AutomationProperties.HelpText="{Binding ProcessingSummary}">
+                                            <TextBlock Text="{Binding ModeLabel}" Style="{StaticResource Text.Muted}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding Speed, StringFormat={}{0:0} mm/min}" Style="{StaticResource Text.Muted}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding Power, StringFormat={}{0:0.#} %}" Style="{StaticResource Text.Muted}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding Passes, StringFormat={}{0}×}" Style="{StaticResource Text.Muted}" />
+                                        </WrapPanel>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -465,7 +520,7 @@
                             Visibility="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot, Converter={StaticResource NotNullToVisibility}}"
                             DataContext="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot}">
 
-                    <TextBlock Text="NASTAVENÍ OPERACE" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,12" />
+                    <TextBlock Text="Nastavení operace" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,12" />
 
                     <!-- The name is the first thing about an operation, so it is editable in place
                          rather than behind the context menu. -->
@@ -540,13 +595,13 @@
 
                         <!-- Parametry. Slider for reach, field for precision — the field is the value
                              a production job is set by, so it is never the slider alone. -->
-                        <components:ParameterSlider Label="Výkon" Unit="%" Margin="0,0,0,16"
+                        <components:ParameterSlider Label="Výkon" Unit="%" Margin="0,0,0,20"
                                                     Minimum="0" Maximum="100"
                                                     TickFrequency="1" SmallChange="1" LargeChange="5"
                                                     FieldWidth="88"
                                                     Value="{Binding Power, Mode=TwoWay}" />
 
-                        <components:ParameterSlider Label="Rychlost" Unit="mm/min" Margin="0,0,0,16"
+                        <components:ParameterSlider Label="Rychlost" Unit="mm/min" Margin="0,0,0,20"
                                                     Minimum="10" Maximum="12000"
                                                     TickFrequency="10" SmallChange="10" LargeChange="100"
                                                     FieldWidth="112"
@@ -563,7 +618,7 @@
                                         ToolTip="O jeden průchod méně" automation:AutomationProperties.Name="Ubrat průchod">
                                     <TextBlock Text="−" FontSize="{StaticResource Size.Text.Section}" />
                                 </Button>
-                                <Border Style="{StaticResource UnitField.Shell}" Width="64"
+                                <Border Style="{StaticResource Field.Quiet}" Width="64"
                                         Height="{StaticResource Size.Control.Compact}"
                                         ToolTip="Kolikrát laser projede stejnou dráhu">
                                     <DockPanel>
@@ -591,7 +646,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Interval řádků" VerticalAlignment="Center" />
-                            <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}" Width="112"
+                            <Border Grid.Column="1" Style="{StaticResource Field.Quiet}" Width="112"
                                     Height="{StaticResource Size.Control.Compact}"
                                     ToolTip="Rozestup gravírovaných řádků. Menší hodnota znamená jemnější výplň a delší čas.">
                                 <DockPanel>
@@ -635,5 +690,36 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+
+        <!-- ==================== MACHINE CONTROL ====================
+             The former floating machine-control window's own content, unchanged: MachinePanelView is the
+             one implementation, shared with the Device screen. Only the chrome around it changed —
+             no separate window title bar/close-X/outer card, just this panel's own back header, since
+             it now IS the inspector rather than a window floating over it. -->
+        <Grid Visibility="{Binding IsMachineControlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Button Grid.Row="0" Style="{StaticResource MachineControlLink}" HorizontalAlignment="Left"
+                    Margin="16,14,16,0" Padding="4,0,10,0"
+                    Click="OnMachineControlBackClick"
+                    ToolTip="Zpět na nastavení operace"
+                    automation:AutomationProperties.Name="Zpět na nastavení operace">
+                <StackPanel Orientation="Horizontal">
+                    <components:IconGlyph IconData="{StaticResource Glyph.ChevronLeft}"
+                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Margin="0,0,4,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Ovládání stroje" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Padding="16,10,16,16">
+                <views:MachinePanelView />
+            </ScrollViewer>
+        </Grid>
+        </Grid>
     </Border>
 </UserControl>

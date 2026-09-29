@@ -6,15 +6,84 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:layers="clr-namespace:Lasero.Core.Layers;assembly=Lasero.Core"
         xmlns:materials="clr-namespace:Lasero.Core.Materials;assembly=Lasero.Core"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         x:Name="MaterialsDialog"
         Title="Vzorník materiálů" Width="1180" Height="720" MinWidth="900" MinHeight="560"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="True" ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="True" ResizeMode="CanResize" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:RgbColorToBrushConverter x:Key="RgbColorToBrush" />
+        <!-- The stock WPF tabs were the only classic chrome left in this window. Keep the native
+             selection model, keyboard navigation and content hosting, but render the two views as
+             quiet design-system tabs that work against both theme palettes. -->
+        <Style x:Key="MaterialTabs" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TabPanel Grid.Row="0" IsItemsHost="True" Background="Transparent" />
+                            <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1"
+                                              ContentSource="SelectedContent" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MaterialTab" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabSurface"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource Radius.Md}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.Field}" />
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="MaterialSwatchCell" TargetType="Button">
             <Setter Property="MinHeight" Value="58" />
             <Setter Property="Margin" Value="2" />
@@ -55,7 +124,12 @@
         </Style>
     </Window.Resources>
 
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
     <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <components:WindowTitleBar Title="Vzorník materiálů" IconData="{StaticResource Glyph.Materials}"
+                                    CloseButtonName="Zavřít vzorník materiálů" />
+    <Grid Grid.Row="1">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -81,7 +155,7 @@
                                 <TextBlock Text="Dostupné offline" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
-                        <Button Command="{Binding SynchronizeCommand}" ToolTip="Synchronizovat osobní recepty s účtem Lasero">
+                        <Button Style="{StaticResource Button.Secondary}" Command="{Binding SynchronizeCommand}" ToolTip="Synchronizovat osobní recepty s účtem Lasero">
                             <components:IconLabel IconData="{StaticResource Glyph.CloudSync}" Text="Synchronizovat" IconSize="{StaticResource Size.Icon.Sm}" />
                         </Button>
                     </StackPanel>
@@ -90,7 +164,8 @@
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="32,0,32,16">
+        <TabControl Grid.Row="1" Margin="32,0,32,16" Style="{StaticResource MaterialTabs}"
+                    ItemContainerStyle="{StaticResource MaterialTab}">
             <TabItem Header="Doporučené parametry">
                 <Grid Margin="0,16,0,0">
                     <Grid.RowDefinitions>
@@ -217,7 +292,7 @@
                                                                             <TextBlock Text="{Binding DataContext.PreviewText, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                        FontFamily="{StaticResource Font.Display}"
                                                                                        FontSize="{StaticResource Size.Text.Title}"
-                                                                                       FontWeight="Bold"
+                                                                                       FontWeight="SemiBold"
                                                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                                        TextTrimming="CharacterEllipsis" />
                                                                         </Button>
@@ -351,7 +426,7 @@
                                                 <TextBox Grid.Column="3" Text="{Binding Power, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" Margin="0,0,6,0" ToolTip="Výkon v procentech" />
                                                 <TextBox Grid.Column="4" Text="{Binding Passes, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" Margin="0,0,6,0" ToolTip="Počet průchodů" />
                                                 <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <Button ToolTip="Duplikovat recept" Padding="6,2" Margin="0,0,4,0" Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
+                                                    <Button Style="{StaticResource Button.Tool}" Width="30" Height="30" MinHeight="30" Padding="6" ToolTip="Duplikovat recept" Margin="0,0,4,0" Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
                                                         <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                                     </Button>
                                                     <Button ToolTip="Odstranit recept" Style="{StaticResource Button.Danger}" Padding="6,2" Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
@@ -365,7 +440,7 @@
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
-                    <Button Grid.Row="1" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,12,0,0">
+                    <Button Grid.Row="1" Style="{StaticResource Button.Secondary}" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,12,0,0">
                         <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový vlastní recept" />
                     </Button>
                 </Grid>
@@ -383,4 +458,6 @@
             </Grid>
         </Border>
     </Grid>
+    </Grid>
+    </Border>
 </Window>

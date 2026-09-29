@@ -30,6 +30,27 @@ public partial class IconLabel : UserControl
     public static readonly DependencyProperty StackedProperty = DependencyProperty.Register(
         nameof(Stacked), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
 
+    /// <summary>Forwarded to the inner IconGlyph — see IconGlyph.IsFilled. Default false leaves every
+    /// existing IconLabel call site unchanged.</summary>
+    public static readonly DependencyProperty IsFilledProperty = DependencyProperty.Register(
+        nameof(IsFilled), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
+
+    /// <summary>Forwarded to the inner IconGlyph — see IconGlyph.GridSize.</summary>
+    public static readonly DependencyProperty GridSizeProperty = DependencyProperty.Register(
+        nameof(GridSize), typeof(double), typeof(IconLabel), new PropertyMetadata(24.0));
+
+    public bool IsFilled
+    {
+        get => (bool)GetValue(IsFilledProperty);
+        set => SetValue(IsFilledProperty, value);
+    }
+
+    public double GridSize
+    {
+        get => (double)GetValue(GridSizeProperty);
+        set => SetValue(GridSizeProperty, value);
+    }
+
     public Geometry? IconData
     {
         get => (Geometry?)GetValue(IconDataProperty);

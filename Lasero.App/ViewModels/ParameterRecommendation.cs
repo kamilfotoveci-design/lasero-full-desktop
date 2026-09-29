@@ -35,7 +35,7 @@ public sealed partial class ParameterRecommendation
     public string SpeedLabel => SpeedMmPerMinute.ToString("0", CultureInfo.CurrentCulture);
     public string PowerLabel => PowerPercent.ToString("0.#", CultureInfo.CurrentCulture);
     public string PassesLabel => Passes.ToString("0", CultureInfo.CurrentCulture);
-    public string DpiLabel => Dpi?.ToString("0", CultureInfo.CurrentCulture) ?? "—";
+    public string DpiLabel => Dpi?.ToString("0", CultureInfo.CurrentCulture) ?? "Neuvedeno";
     public bool HasDpi => Dpi is > 0;
 
     private ParameterRecommendation(double speed, double power, int passes, int? dpi)

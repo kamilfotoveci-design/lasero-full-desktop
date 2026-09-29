@@ -1,4 +1,4 @@
-using System.Drawing.Imaging;
+﻿using System.Drawing.Imaging;
 using System.IO;
 using Lasero.App;
 using Lasero.App.ViewModels;
@@ -8,6 +8,7 @@ using Lasero.Core.Grbl;
 using Lasero.Core.Import;
 using Lasero.Core.Layers;
 using Lasero.Core.Scene;
+using Lasero.Core.Trace;
 using Xunit;
 
 namespace Lasero.Tests;
@@ -1554,11 +1555,11 @@ public class SceneViewModelTests
 
         var layer = Assert.Single(viewModel.Layers);
         layer.Mode = LayerMode.Cut;
-        var lineToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument());
+        var lineToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument(), 100);
 
         layer.Mode = LayerMode.Fill;
         layer.FillLineIntervalMm = 2;
-        var fillToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument());
+        var fillToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument(), 100);
 
         Assert.Contains(lineToolpath, line => line.Contains("(Cut)", StringComparison.Ordinal));
         Assert.Contains(fillToolpath, line => line.Contains("(Fill)", StringComparison.Ordinal));
@@ -1629,6 +1630,84 @@ public class SceneViewModelTests
 
         Assert.Same(bitmap, Assert.Single(viewModel.Objects));
         Assert.Same(layer, Assert.Single(viewModel.Layers));
+    }
+
+    [Fact]
+    public void ReplacingBitmapWithColorTraceAssignsEditablePathsToFillLayersAndUndoRestoresBitmap()
+    {
+        var viewModel = new SceneViewModel();
+        var bitmap = MakeRasterObject();
+        var bitmapLayer = SceneObjectFactory.CreateRasterLayer(bitmap.RasterOptions!);
+        bitmap.AssignToLayer(bitmapLayer);
+        viewModel.Layers.Add(bitmapLayer);
+        viewModel.Objects.Add(bitmap);
+
+        var redLayer = LayerSettings.CreateDefault(RgbColor.Red, LayerMode.Fill, "Červená");
+        var blue = new RgbColor(0, 0, 255);
+        var blueLayer = LayerSettings.CreateDefault(blue, LayerMode.Fill, "Modrá");
+        static VectorPath Rectangle(double x) => new()
+        {
+            Subpaths = [new VectorSubpath
+            {
+                Nodes =
+                [
+                    VectorNode.CornerAt(new Position(x, 0, 0)),
+                    VectorNode.CornerAt(new Position(x + 4, 0, 0)),
+                    VectorNode.CornerAt(new Position(x + 4, 4, 0)),
+                    VectorNode.CornerAt(new Position(x, 4, 0)),
+                ],
+                IsClosed = true,
+            }],
+        };
+        var redPath = Rectangle(1);
+        var bluePath = Rectangle(10);
+        var result = new BitmapTraceResult
+        {
+            Document = new ImportedDocument
+            {
+                Shapes = [],
+                Layers = [redLayer, blueLayer],
+                BoundingBox = new BoundingBox2D(0, 0, 20, 10),
+            },
+            VectorPaths =
+            [
+                new TracedVectorObject(redPath, RgbColor.Red),
+                new TracedVectorObject(bluePath, blue),
+            ],
+            PixelWidth = 20,
+            PixelHeight = 10,
+            ContourCount = 2,
+            PointCount = 8,
+            NodeCount = 8,
+        };
+
+        viewModel.ReplaceRasterWithTrace(bitmap, result);
+
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, item => Assert.NotNull(item.VectorPath));
+        Assert.Contains(viewModel.Objects, item => item.LocalShapes.All(shape => shape.LayerId == redLayer.Id));
+        Assert.Contains(viewModel.Objects, item => item.LocalShapes.All(shape => shape.LayerId == blueLayer.Id));
+        Assert.Equal(LayerMode.Fill, Assert.Single(viewModel.Layers, layer => layer.Id == redLayer.Id).Mode);
+        Assert.Equal(LayerMode.Fill, Assert.Single(viewModel.Layers, layer => layer.Id == blueLayer.Id).Mode);
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Same(bitmap, Assert.Single(viewModel.Objects));
+        Assert.DoesNotContain(viewModel.Layers, layer => layer.Id == redLayer.Id || layer.Id == blueLayer.Id);
+
+        viewModel.RedoCommand.Execute(null);
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, item => Assert.NotNull(item.VectorPath));
+
+        var saved = ProjectFileSerializer.Deserialize(ProjectFileSerializer.Serialize(viewModel.CreateProject()));
+        var reloaded = new SceneViewModel();
+        reloaded.LoadProject(saved);
+        Assert.Equal(2, reloaded.Objects.Count);
+        Assert.All(reloaded.Objects, item =>
+        {
+            Assert.NotNull(item.VectorPath);
+            Assert.All(item.LocalShapes, shape =>
+                Assert.Contains(reloaded.Layers, layer => layer.Id == shape.LayerId && layer.Mode == LayerMode.Fill));
+        });
     }
 
     [Fact]

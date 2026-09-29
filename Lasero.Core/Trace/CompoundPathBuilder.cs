@@ -27,9 +27,9 @@ public static class CompoundPathBuilder
 
         var fitOptions = new BezierFitOptions
         {
-            ToleranceMm = options.FitToleranceBasePx * scaleMmPerPixel,
+            ToleranceMm = options.FitToleranceBasePx * tree.SubpixelScale * scaleMmPerPixel,
             CornerAngleDegrees = options.CornerAngleThresholdDegrees,
-            DedupeDistanceMm = BitmapTraceOptions.DedupeDistancePx * scaleMmPerPixel,
+            DedupeDistanceMm = BitmapTraceOptions.DedupeDistancePx * tree.SubpixelScale * scaleMmPerPixel,
         };
 
         var results = new List<TracedVectorObject>();

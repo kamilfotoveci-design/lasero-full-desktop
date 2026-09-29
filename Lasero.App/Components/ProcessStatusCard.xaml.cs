@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace Lasero.App.Components;
 
@@ -22,7 +23,7 @@ public partial class ProcessStatusCard : UserControl
 {
     public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
         nameof(Status), typeof(ProcessStatus), typeof(ProcessStatusCard),
-        new PropertyMetadata(ProcessStatus.Idle));
+        new PropertyMetadata(ProcessStatus.Idle, OnStatusChanged));
 
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
         nameof(Title), typeof(string), typeof(ProcessStatusCard), new PropertyMetadata(string.Empty));
@@ -96,8 +97,107 @@ public partial class ProcessStatusCard : UserControl
 
     public static readonly DependencyProperty HasActionsProperty = HasActionsPropertyKey.DependencyProperty;
 
-    public ProcessStatusCard() => InitializeComponent();
+    private readonly SolidColorBrush _chipBrush = new(Color.FromRgb(0xF3, 0xF4, 0xF2));
+    private readonly SolidColorBrush _glyphBrush = new(Color.FromRgb(0x92, 0x97, 0x93));
+    private bool _colorsInitialized;
 
+    public ProcessStatusCard()
+    {
+        InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    /// <summary>Same reduced-motion check already established by KamilAssistantHost and
+    /// DeviceWizardOverlay - applied here too rather than inventing a second mechanism.</summary>
+    private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
+        && RenderCapability.Tier > 0;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        ChipSurface.Background = _chipBrush;
+        StatusGlyphIcon.Foreground = _glyphBrush;
+        _colorsInitialized = true;
+        ApplyStatusColors(Status, animate: false);
+    }
+
+    private static void OnStatusChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not ProcessStatusCard card || !card._colorsInitialized) return;
+        card.ApplyStatusColors((ProcessStatus)e.NewValue, animate: true);
+    }
+
+    /// <summary>
+    /// The chip tint and glyph tint move together in a short colour transition instead of the instant
+    /// swap the old per-status Background/Foreground triggers produced - a calm cue for "the machine's
+    /// situation just changed" rather than a flash. Runs on a local, per-instance SolidColorBrush (see
+    /// the class-level fields) because animating a shared DynamicResource brush's Color would leak
+    /// across every other consumer of that brush, the same reasoning already documented on the Button
+    /// template in SharedUiStyles.xaml.
+    ///
+    /// The colours mirror Brush.Field/InfoMuted/SuccessMuted/WarningMuted/DangerMuted and
+    /// Brush.TextMuted/AccentText/Success/Warning/Danger in LaseroTheme.xaml. There is no runtime
+    /// theme switcher in this app today; if one is added later this mapping needs to move to a
+    /// resource lookup instead of these literals.
+    /// </summary>
+    private void ApplyStatusColors(ProcessStatus status, bool animate)
+    {
+        var (chip, glyph) = status switch
+        {
+            ProcessStatus.Progress => (Color.FromRgb(0xEF, 0xF6, 0xFF), Color.FromRgb(0x25, 0x63, 0xEB)),
+            ProcessStatus.Success => (Color.FromRgb(0xF0, 0xFD, 0xF4), Color.FromRgb(0x15, 0x80, 0x3D)),
+            ProcessStatus.Warning => (Color.FromRgb(0xFF, 0xFB, 0xEB), Color.FromRgb(0xD9, 0x77, 0x06)),
+            ProcessStatus.Error => (Color.FromRgb(0xFE, 0xF2, 0xF2), Color.FromRgb(0xDC, 0x26, 0x26)),
+            _ => (Color.FromRgb(0xF3, 0xF4, 0xF2), Color.FromRgb(0x92, 0x97, 0x93)),
+        };
+
+        if (!animate || !AnimationsEnabled)
+        {
+            _chipBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            _glyphBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            _chipBrush.Color = chip;
+            _glyphBrush.Color = glyph;
+        }
+        else
+        {
+            var duration = (Duration)FindResource("Motion.Base");
+            var ease = (CubicEase)FindResource("Ease.Out");
+            _chipBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
+            {
+                To = chip, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
+            });
+            _glyphBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
+            {
+                To = glyph, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
+            });
+        }
+
+        AnimateContentCrossfade(animate);
+    }
+
+    /// <summary>A soft reveal on the title/description, not a real hide-then-show - the bound text
+    /// has already changed underneath by the time this runs, so dropping opacity to 0 would just be a
+    /// blank flash. Dipping partway and easing back up is the crossfade cue the spec asks for without
+    /// ever showing an empty state mid-transition (state must always be visible, per the discipline
+    /// KamilAssistantHost.ApplyState already follows).</summary>
+    private void AnimateContentCrossfade(bool animate)
+    {
+        if (!animate || !AnimationsEnabled)
+        {
+            ContentStack.BeginAnimation(OpacityProperty, null);
+            ContentStack.Opacity = 1;
+            return;
+        }
+
+        var ease = (CubicEase)FindResource("Ease.Out");
+        ContentStack.BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            From = 0.5,
+            To = 1,
+            Duration = (Duration)FindResource("Motion.Base"),
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.HoldEnd,
+        });
+    }
     public ProcessStatus Status
     {
         get => (ProcessStatus)GetValue(StatusProperty);

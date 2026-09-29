@@ -23,7 +23,7 @@ public sealed class JobPreflightTests
             FeedRatePerMinute = 1000,
         };
         var job = RasterPlanner.Plan(image, options);
-        var document = GCodeParser.Parse(GrblRasterGenerator.Generate(job), "raster");
+        var document = GCodeParser.Parse(GrblRasterGenerator.Generate(job, 1000), "raster");
 
         var result = JobPreflight.Evaluate(Context() with { Document = document });
 
@@ -38,6 +38,65 @@ public sealed class JobPreflightTests
 
         Assert.True(result.CanStart);
         Assert.Empty(result.Issues);
+    }
+
+    [Fact]
+    public void GeneratedJobBlocksWhenControllerPowerRangeIsUnknown()
+    {
+        var layer = new LayerSettings { Name = "engrave", Power = 50, Speed = 1000 };
+        var result = JobPreflight.Evaluate(Context() with { Layers = [layer], MaxSpindleSpeed = null });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "machine.power-range-unknown");
+    }
+
+    [Fact]
+    public void GeneratedJobBlocksWhenGrblLaserModeIsNotConfirmed()
+    {
+        var layer = new LayerSettings { Name = "engrave", Power = 50, Speed = 1000 };
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Layers = [layer],
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = false,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "machine.laser-mode-disabled");
+    }
+
+    [Fact]
+    public void RawGCodeAboveReportedControllerMaximumIsBlockedWithoutRewritingIt()
+    {
+        var rawLines = new[] { "M4 S1200", "G1 X10 Y10 F1000", "M5" };
+        var document = GCodeParser.Parse(rawLines, "raw");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            IsRawGCode = true,
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = true,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.power-exceeds-controller-range");
+        Assert.Equal("M4 S1200", document.RawLines[0]);
+    }
+
+    [Fact]
+    public void RawGCodeCannotTurnOnLaserWithoutSettingPowerInTheFile()
+    {
+        var document = GCodeParser.Parse(["M4", "G1 X10 Y10 F1000", "M5"], "raw");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            IsRawGCode = true,
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = true,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.spindle-power-unspecified");
     }
 
     [Theory]
@@ -143,4 +202,3 @@ public sealed class JobPreflightTests
         TriggeredPins = pins,
     };
 }
-

@@ -13,9 +13,8 @@ public sealed record TracedVectorObject(VectorPath Path, RgbColor Color);
 public sealed record BitmapTraceResult
 {
     /// <summary>Flattened view of every traced object, in the same flat/legacy shape the tracer has
-    /// always returned — still populated (from VectorPaths, see BitmapTracer) so existing consumers
-    /// that only read Document.Shapes/Layers (Lasero.Avalonia's EditorViewModel/BitmapTraceViewModel,
-    /// this project's own BitmapTraceViewModel preview) keep working unchanged.</summary>
+    /// always returned — still populated (from VectorPaths, see BitmapTracer) for consumers such as
+    /// Lasero.Avalonia that only read Document.Shapes/Layers.</summary>
     public required ImportedDocument Document { get; init; }
 
     /// <summary>One entry per traced object/region, carrying real curve geometry (Bezier handles,
@@ -26,7 +25,11 @@ public sealed record BitmapTraceResult
     public required int PixelWidth { get; init; }
     public required int PixelHeight { get; init; }
     public required int ContourCount { get; init; }
+    /// <summary>Number of flattened points in Document.Shapes, retained for legacy consumers.</summary>
     public required int PointCount { get; init; }
+
+    /// <summary>Total editable anchors across VectorPaths, excluding derived flattening points.</summary>
+    public int NodeCount { get; init; }
 
     public double WidthMm => Document.BoundingBox.MaxX - Document.BoundingBox.MinX;
     public double HeightMm => Document.BoundingBox.MaxY - Document.BoundingBox.MinY;

@@ -22,7 +22,7 @@ namespace Lasero.Core.BackgroundRemoval;
 /// unit-testable with a fake engine, without a real ~170MB model file or a live ONNX run.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class BackgroundRemovalService
+public sealed class BackgroundRemovalService : IBackgroundRemovalService
 {
     private readonly BackgroundRemovalModelStore _modelStore;
     private readonly Func<string, IBackgroundRemovalInferenceEngine> _engineFactory;
@@ -36,6 +36,11 @@ public sealed class BackgroundRemovalService
     }
 
     public bool IsModelAvailable => _modelStore.IsModelAvailable;
+
+    public bool IsReady => IsModelAvailable;
+
+    public Task PrepareAsync(IProgress<double>? progress = null, CancellationToken cancellationToken = default) =>
+        IsReady ? Task.CompletedTask : DownloadModelAsync(progress, cancellationToken);
 
     public Task DownloadModelAsync(IProgress<double>? progress = null, CancellationToken cancellationToken = default) =>
         _modelStore.DownloadModelAsync(progress, cancellationToken);

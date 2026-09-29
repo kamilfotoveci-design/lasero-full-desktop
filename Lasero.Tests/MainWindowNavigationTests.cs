@@ -51,8 +51,8 @@ public sealed class MainWindowNavigationTests
         Assert.DoesNotContain("x:Key=\"DesignerToolbarTool\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("x:Key=\"Toolbar.Strip\"", xaml, StringComparison.Ordinal);
 
-        // Select and Pan are radio entries; the closed shapes sit behind the rail's Tvary menu, which
-        // is still a command binding rather than a decoration.
+        // Select, Text and Line are radio entries; the closed shapes sit behind the rail's shape-tool
+        // button and its press-and-hold picker (checked below), not a text dropdown any more.
         Assert.Contains("ConverterParameter=Select", rail, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Text", rail, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Line", rail, StringComparison.Ordinal);
@@ -72,8 +72,13 @@ public sealed class MainWindowNavigationTests
                      "Rectangle", "Ellipse", "Triangle", "Pentagon", "Hexagon", "Octagon", "Star", "DoubleStar",
                  })
         {
-            Assert.Contains($"CommandParameter=\"{{x:Static vm:DesignerTool.{tool}}}\"", rail, StringComparison.Ordinal);
+            // Each shape is a picker cell carrying the tool via Tag, activated from OnShapePickerItemClick
+            // rather than a Command binding - the button also has to decide click-vs-long-press first.
+            Assert.Contains($"Tag=\"{{x:Static vm:DesignerTool.{tool}}}\"", rail, StringComparison.Ordinal);
         }
+
+        Assert.Contains("Click=\"OnShapePickerItemClick\"", rail, StringComparison.Ordinal);
+        Assert.Contains("MouseRightButtonUp=\"OnShapeButtonMouseRightButtonUp\"", rail, StringComparison.Ordinal);
 
         Assert.Contains("Command=\"{Binding GCode.LoadFileCommand}\"", rail, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Importovat grafiku\"", rail, StringComparison.Ordinal);
@@ -220,9 +225,15 @@ public sealed class MainWindowNavigationTests
 
         // Floating over the canvas rather than owning a layout row, so it costs the workspace nothing
         // when nothing is selected — which is most of the time.
-        Assert.Contains("<views:SelectionPropertiesBar HorizontalAlignment=\"Center\" VerticalAlignment=\"Top\" />", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("<views:SelectionPropertiesBar HorizontalAlignment=\"Center\" VerticalAlignment=\"Top\"", mainWindow, StringComparison.Ordinal);
         Assert.DoesNotContain("<views:SelectionPropertiesBar Grid.Row=", mainWindow, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding Scene.HasSelection", bar, StringComparison.Ordinal);
+
+        // Node Edit mode swaps this bar out for NodeEditToolbar rather than showing both — the edited
+        // object stays in SceneViewModel.SelectedObjects the whole time node-edit is active, so without
+        // this the whole-object X/Y/W/H bar and the per-node bar would float over the canvas together.
+        Assert.Contains("<views:NodeEditToolbar HorizontalAlignment=\"Center\" VerticalAlignment=\"Top\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource InverseBoolToVisibility}}\"", mainWindow, StringComparison.Ordinal);
 
         // Sideways scroll rather than a clipped field, for the window's 1080px minimum with text
         // selected. A half-cut millimetre value is the one thing a precision tool must not show.
@@ -232,14 +243,18 @@ public sealed class MainWindowNavigationTests
         Assert.DoesNotContain("PropertiesTabRadio", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("LayersTabRadio", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("MachineTabRadio", inspector, StringComparison.Ordinal);
-        Assert.Contains("Text=\"OPERACE\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Text=\"NASTAVENÍ OPERACE\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Operace\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Nastavení operace\"", inspector, StringComparison.Ordinal);
 
-        // The machine section is a read-only summary plus a route to the real Device screen; the full
-        // manual panel must not be embedded in the editor.
-        Assert.DoesNotContain("<views:MachinePanelView", inspector, StringComparison.Ordinal);
+        // The default view is a read-only summary; "Ovládání stroje" switches the SAME inspector to the
+        // full manual panel (MachinePanelView — the one implementation, also used by the Device screen)
+        // instead of opening a separate window, and a back control returns to the operation editor
+        // without tearing either panel down (so selection/scroll/settings survive the round trip).
+        Assert.Contains("<views:MachinePanelView", inspector, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnMachineControlClick\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnMachineControlBackClick\"", inspector, StringComparison.Ordinal);
         Assert.Contains("MachineStatus.DisplayState", inspector, StringComparison.Ordinal);
+        Assert.DoesNotContain("MachineControlWindow", inspector, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -109,3 +109,55 @@ for an RC. A dismissible "Nalezena záloha projektu" recovery dialog appears aft
 
 Only for an actual RC, not for every task: frontend review, backend/reliability review, visual QA
 across resolutions, full `dotnet test`, Release build, final diff review.
+
+## External UI/UX references
+
+For meaningful UI work, follow the concise loop: problem → inspect current Lasero implementation →
+consult 2–3 approved references → choose the interaction principle → implement with existing Lasero
+tokens and controls → verify technically and visually → document a reusable pattern when one emerges.
+
+Use `docs/ui-reference/approved-patterns/` as the local catalogue of approved interaction patterns.
+References are for interaction quality only; do not copy branding, visuals, or source code. Prefer
+native WPF implementations and existing Lasero architecture over translating web components literally.
+Primary research sources are 21st.dev, shadcn/ui, React Bits, and Motion Primitives; use Claude,
+ChatGPT, Linear, Figma, Raycast, Notion, LightBurn, Magic UI, and Aceternity UI when relevant.
+
+Meaningful UI changes must include targeted build/tests, rendered WPF inspection when supported, and
+checks for empty, loading, error, focus, keyboard, responsive-width, and theme states that apply.
+
+## ENGINEERING WORK RULE
+
+For meaningful engineering work, read and follow:
+
+- `docs/engineering/ENGINEERING_WORKFLOW.md`
+- `docs/engineering/BUG_FIX_WORKFLOW.md` for bugs/regressions
+- `docs/engineering/PERFORMANCE_WORKFLOW.md` for performance work
+- `docs/engineering/TESTING_STANDARDS.md`
+- `docs/engineering/UNDO_REDO_CONTRACT.md` for editing operations
+- `docs/engineering/DEFINITION_OF_DONE.md`
+
+Additional domain references:
+
+- UI/UX: `docs/ui-reference/*`
+- Vector editing: `docs/reference/LIGHTBURN_VECTOR_PARITY.md`
+
+Default workflow:
+
+```text
+inspect
+→ define problem
+→ research only what is necessary
+→ identify root cause / smallest safe design
+→ add tests
+→ implement
+→ verify
+→ report
+```
+
+Do not turn a bug fix into an architecture rewrite without explicit justification.
+
+Preserve unrelated dirty-tree changes.
+
+For user-editing operations, one gesture must equal one undo transaction.
+
+A task is not complete merely because it builds.

@@ -44,7 +44,11 @@ public partial class SceneViewModel : ObservableObject
 
     public IReadOnlyList<RgbColor> LayerPalette { get; } =
     [
-        new(18, 18, 18), new(214, 42, 42), new(239, 108, 37), new(232, 180, 0),
+        // Second entry is KAMIL's own cap green (#394E3B, sampled from Assets/LaseroAvatar.png), not
+        // a generic swatch pick — replaced the old orange at the user's request. Deliberately a much
+        // darker, more muted green than the existing bright green further along (42,157,82), so the
+        // two remain visually distinct rather than reading as a near-duplicate.
+        new(18, 18, 18), new(214, 42, 42), new(57, 78, 59), new(232, 180, 0),
         new(42, 157, 82), new(0, 151, 167), new(31, 95, 204), new(92, 76, 196),
         new(179, 62, 153), new(117, 72, 42), new(98, 105, 113), new(173, 181, 189),
     ];
@@ -62,11 +66,10 @@ public partial class SceneViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private DesignerTool _currentShapeTool = DesignerTool.Rectangle;
 
-    /// <summary>Drives the OBRÁZEK section's inline spinner in DesignerInspectorView — set by
-    /// MainWindow around its model-download/inference calls, which is where the actual work happens
-    /// (see BackgroundRemovalRequested). Kept as plain observable state, not a dialog, per the "feels
-    /// like Crop/Brightness-Contrast" requirement: only the one-time model download gets a dialog.</summary>
+    /// <summary>Drives the OBRÁZEK section's inline progress UI while MainWindow sends the image to
+    /// the authenticated Gemini service and awaits its result.</summary>
     [ObservableProperty] private bool _isRemovingBackground;
+    [ObservableProperty] private bool _backgroundRemovalIsIndeterminate;
     [ObservableProperty] private string? _backgroundRemovalStatus;
     [ObservableProperty] private string? _backgroundRemovalError;
     [ObservableProperty] private double _backgroundRemovalProgress;
@@ -169,6 +172,7 @@ public partial class SceneViewModel : ObservableObject
     public event Action? Changed;
     public event Action<SceneObject>? TraceRasterRequested;
     public event Action<SceneObject>? BackgroundRemovalRequested;
+    public event Action? BackgroundRemovalCancelRequested;
     public event Action<string>? VectorOperationRejected;
     /// <summary>Raised by OffsetSelectionCommand — MainWindow owns opening OffsetPathWindow and
     /// calling ApplyOffset back with its result, the same hand-off shape TraceRasterRequested already
@@ -269,7 +273,7 @@ public partial class SceneViewModel : ObservableObject
             : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.Mode ?? LayerMode.Cut;
 
     /// <summary>Executed by every mutating gesture the canvas performs (drag-move/rotate/resize on
-    /// MouseUp, keyboard nudge) â€” kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
+    /// MouseUp, keyboard nudge) — kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
     public void Execute(ISceneCommand command) => _commandStack.Execute(command);
 
     private (double X, double Y) NextCascadeOffset()
@@ -302,16 +306,17 @@ public partial class SceneViewModel : ObservableObject
             TraceRasterRequested?.Invoke(source);
     }
 
-    /// <summary>Kicks off "Odstranit pozadí" — the view (DesignerInspectorView/MainWindow) owns the
-    /// actual model-download prompt, off-thread inference call and processing-state UI, matching how
-    /// TraceSelectedRaster hands off to MainWindow.OnTraceRasterRequested rather than doing any of
-    /// that work in the view model itself.</summary>
+    /// <summary>Requests cloud background removal — MainWindow owns consent, HTTP work and the
+    /// processing-state UI, while this view model remains responsible for document undo/redo.</summary>
     [RelayCommand(CanExecute = nameof(CanRemoveSelectedBackground))]
     private void RemoveSelectedBackground()
     {
         if (Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false } source)
             BackgroundRemovalRequested?.Invoke(source);
     }
+
+    [RelayCommand]
+    private void CancelBackgroundRemoval() => BackgroundRemovalCancelRequested?.Invoke();
 
     /// <summary>Replaces a traced raster with one node-editable SceneObject per BitmapTraceResult.
     /// VectorPaths entry (several when the source bitmap held several disconnected shapes — see
@@ -341,6 +346,8 @@ public partial class SceneViewModel : ObservableObject
             var worldPath = ToWorldSpace(traced.Path, source.Transform, source.LocalPivot);
             var name = multipleObjects ? $"Trasování · {source.Name} ({index + 1})" : $"Trasování · {source.Name}";
             var tracedObject = VectorPathSceneFactory.Create(worldPath, traced.Color, name);
+            var layer = result.Document.Layers.FirstOrDefault(candidate => candidate.Color == traced.Color);
+            if (layer is not null) tracedObject.AssignToLayer(layer);
             tracedObject.IsVisible = source.IsVisible;
             tracedObject.IncludeInOutput = source.IncludeInOutput;
             tracedObjects.Add(tracedObject);
@@ -455,14 +462,14 @@ public partial class SceneViewModel : ObservableObject
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
     /// their own kind of content edit, so Ctrl+Z restores the original file and Ctrl+Y reapplies the
-    /// removal exactly like those. removedBackgroundFilePath is the new file BackgroundRemovalService
+    /// removal exactly like those. removedBackgroundFilePath is the new file background-removal service
     /// already wrote (with real alpha transparency); this method only ever swaps which file
     /// RasterFilePath points at — geometry, layer, transform and every other property are untouched.</summary>
-    public void CommitBackgroundRemoval(SceneObject item, string removedBackgroundFilePath)
+    public bool CommitBackgroundRemoval(SceneObject item, string removedBackgroundFilePath)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentException.ThrowIfNullOrWhiteSpace(removedBackgroundFilePath);
-        if (!item.IsRaster || item.HasBackgroundRemoved || !Objects.Contains(item)) return;
+        if (!item.IsRaster || item.HasBackgroundRemoved || !Objects.Contains(item)) return false;
 
         var replacement = WithRasterFile(item, removedBackgroundFilePath, item.RasterFilePath);
         var wasSelected = SelectedObjects.Contains(item);
@@ -473,6 +480,7 @@ public partial class SceneViewModel : ObservableObject
             SelectedObjects.Add(replacement);
         }
         NotifySelectionStateChanged();
+        return true;
     }
 
     /// <summary>"Obnovit pozadí" — points RasterFilePath back at the preserved original as one more
@@ -1369,6 +1377,13 @@ public partial class SceneViewModel : ObservableObject
             if (parent is null) continue;
             var previousId = child.GeometrySetId;
             var parentId = parent.Shape.GeometrySetId;
+            // Repair fallback only (docs/fill-winding-contract.md): a hole is normally declared by
+            // GeometrySetId + opposite winding. This path exists for legacy geometry whose contours
+            // carry separate set ids (old text). It never touches shapes already in one set, and every
+            // reclassification is logged so an unexpected one can be traced.
+            Serilog.Log.Information(
+                "Boolean pre-pass reclassified a contour into an enclosing compound path (legacy repair); child set {ChildSet} -> parent set {ParentSet}",
+                previousId, parentId);
             for (var index = 0; index < normalized.Count; index++)
             {
                 if (normalized[index].GeometrySetId == previousId)
@@ -1843,7 +1858,7 @@ public partial class SceneViewModel : ObservableObject
     partial void OnSelectedLayerChanged(LayerSettings? value) => NotifyLayerStateChanged();
 
     // --- Property-panel wrapper properties: ObjectTransform is a readonly struct, so binding a TextBox
-    // straight to "Selected.Transform.X" has no settable path â€” these translate a set into one
+    // straight to "Selected.Transform.X" has no settable path — these translate a set into one
     // TransformObjectCommand each, same as a completed drag gesture. Round 1 is single-selection only. ---
 
     public double SelectedX

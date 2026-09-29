@@ -54,9 +54,9 @@ public static class RasterImporter
     public static LaserJob BuildLaserJob(ProcessedImage processed, RasterImportOptions options) =>
         RasterPlanner.Plan(processed, ToPlanOptions(options));
 
-    public static List<string> BuildGCode(string filePath, RasterImportOptions options)
+    public static List<string> BuildGCode(string filePath, RasterImportOptions options, double controllerMaximumS)
     {
-        var pass = GrblRasterGenerator.Generate(BuildLaserJob(filePath, options));
+        var pass = GrblRasterGenerator.Generate(BuildLaserJob(filePath, options), controllerMaximumS);
         var lines = new List<string>(pass.Count * Math.Max(1, options.Passes));
         for (var index = 0; index < Math.Max(1, options.Passes); index++)
             lines.AddRange(pass);

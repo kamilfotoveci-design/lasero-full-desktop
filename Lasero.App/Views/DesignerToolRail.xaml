@@ -4,6 +4,7 @@
              xmlns:conv="clr-namespace:Lasero.App.Converters"
              xmlns:components="clr-namespace:Lasero.App.Components"
              xmlns:vm="clr-namespace:Lasero.App.ViewModels"
+             x:Name="Root"
              Width="56">
     <!--
         The editor's 56px rail. Two kinds of thing live here and they are kept visually apart: at the
@@ -16,14 +17,14 @@
     -->
     <UserControl.Resources>
         <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
+        <conv:ShapeToolIconConverter x:Key="ShapeToolIcon" />
+        <conv:ShapeToolTooltipConverter x:Key="ShapeToolTooltip" />
+        <conv:IsShapeToolConverter x:Key="IsShapeTool" />
 
-        <!-- Shared geometry for both kinds of rail entry: a 40px square inside the 56px rail, with
+        <!-- Shared geometry for both kinds of rail entry: a 36px square inside the 56px rail, with
              room on the left for the 3px active marker. -->
-        <Style x:Key="RailButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="MinHeight" Value="40" />
-            <Setter Property="Padding" Value="0" />
+        <Style x:Key="RailButton" TargetType="Button" BasedOn="{StaticResource Button.Tool}">
+            <Setter Property="Padding" Value="7" />
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
@@ -33,9 +34,14 @@
             active tool is marked four ways — tint, accent border, accent glyph and the left bar — so
             it survives a glance and colour-blindness alike.
         -->
+        <!-- Hover fades in/out over Motion.Fast on its own overlay layer, matching ShapePickerItem's
+             convention just below and the base Button template in LaseroTheme.xaml - the selected
+             state stays an instant Setter, exactly as ShapePickerItem's own "Selected" overlay does,
+             so only the transient hover cue gets a transition. -->
         <Style x:Key="RailTool" TargetType="RadioButton">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
+            <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="Background" Value="Transparent" />
@@ -43,6 +49,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -51,25 +58,44 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="{StaticResource Radius.Sm}" />
-                            <Border x:Name="Marker" Width="3" Height="20" HorizontalAlignment="Left"
-                                    Margin="-8,0,0,0" CornerRadius="{StaticResource Radius.Pill}"
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.PanelRaised}"
+                                    BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="Marker" Width="2" Height="20" HorizontalAlignment="Left"
+                                    Margin="-1,0,0,0" CornerRadius="{StaticResource Radius.Xs}"
                                     Background="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                                <Setter TargetName="Selected" Property="Opacity" Value="1" />
                                 <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
-                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="1" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -77,48 +103,127 @@
             </Setter>
         </Style>
 
-        <!-- A rail entry that opens a menu. Same 40px box as its neighbours; the stock MenuItem
-             chrome would otherwise draw a different shape in the middle of the column. -->
-        <Style x:Key="RailMenu" TargetType="MenuItem">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
+        <!-- The shape-tool button. Same 36px box as its neighbours, but it owns two extra pieces of
+             behaviour a plain RailTool doesn't: it tracks Scene.CurrentShapeTool (below, in its Tag)
+             instead of a fixed IsChecked, so it can show "active" while any of the eight shapes is
+             drawing, not just one. Hover/selected motion mirrors RailTool immediately above. -->
+        <Style x:Key="ShapeRailButton" TargetType="Button">
+            <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
             <Setter Property="Margin" Value="0,1" />
-            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="MenuItem">
+                    <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Border x:Name="Surface" Background="Transparent"
-                                    BorderBrush="Transparent" BorderThickness="1"
-                                    CornerRadius="{StaticResource Radius.Sm}">
-                                <ContentPresenter ContentSource="Header"
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
-                                   IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Right"
-                                   HorizontalOffset="4" PopupAnimation="Fade">
-                                <Border Background="{DynamicResource Brush.Panel}"
-                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-                                        CornerRadius="{StaticResource Radius.Md}" Padding="4"
-                                        Effect="{StaticResource Shadow.Dropdown}">
-                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
-                                </Border>
-                            </Popup>
+                            <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{StaticResource Radius.Sm}" />
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.PanelRaised}"
+                                    BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="Marker" Width="2" Height="20" HorizontalAlignment="Left"
+                                    Margin="-1,0,0,0" CornerRadius="{StaticResource Radius.Xs}"
+                                    Background="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
-                            <Trigger Property="IsSubmenuOpen" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                            <Trigger Property="Tag" Value="True">
+                                <Setter TargetName="Selected" Property="Opacity" Value="1" />
+                                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
-                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Scene.ActiveTool, Converter={StaticResource IsShapeTool}}" Value="True">
+                    <Setter Property="Tag" Value="True" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- One picker cell: a 44px square, the same footprint whichever of the eight shapes it
+             carries. Hover is a neutral wash that fades in over Motion.Fast, never the accent —
+             the accent is reserved for the one shape that is actually selected. -->
+        <Style x:Key="ShapePickerItem" TargetType="ToggleButton">
+            <Setter Property="Width" Value="{StaticResource Size.Control.Large}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Large}" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.SelectedSurface}"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
+                                    CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
+                            <Border x:Name="FocusRing" BorderBrush="{DynamicResource Brush.FocusRing}"
+                                    BorderThickness="0" CornerRadius="{StaticResource Radius.Sm}" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Selected" Property="Opacity" Value="1" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -182,56 +287,100 @@
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Text}" />
                 </RadioButton>
 
-                <!-- Every closed shape behind one entry. The glyph reports whichever shape tool is
-                     currently active, so the rail still says what a click will draw. -->
-                <Menu Background="Transparent" HorizontalAlignment="Center" Padding="0" Margin="0">
-                    <MenuItem Style="{StaticResource RailMenu}"
-                              ToolTip="Tvary — obdélník, elipsa, mnohoúhelníky a hvězdy"
-                              AutomationProperties.Name="Tvary">
-                        <MenuItem.Header>
-                            <components:IconGlyph>
-                                <components:IconGlyph.Style>
-                                    <Style TargetType="components:IconGlyph" BasedOn="{StaticResource RailGlyph}">
-                                        <Setter Property="IconData" Value="{StaticResource Glyph.Rectangle}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Ellipse}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Ellipse}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Triangle}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Pentagon}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Hexagon}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Octagon}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Polygon}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.Star}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Star}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Scene.ActiveTool}" Value="{x:Static vm:DesignerTool.DoubleStar}">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Star}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </components:IconGlyph.Style>
-                            </components:IconGlyph>
-                        </MenuItem.Header>
-                        <MenuItem Header="Obdélník  (R)" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Rectangle}" />
-                        <MenuItem Header="Elipsa  (E)" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Ellipse}" />
-                        <Separator />
-                        <MenuItem Header="Trojúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Triangle}" />
-                        <MenuItem Header="Pětiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Pentagon}" />
-                        <MenuItem Header="Šestiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Hexagon}" />
-                        <MenuItem Header="Osmiúhelník" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Octagon}" />
-                        <Separator />
-                        <MenuItem Header="Hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.Star}" />
-                        <MenuItem Header="Dvojitá hvězda" Command="{Binding Scene.ActivateToolCommand}" CommandParameter="{x:Static vm:DesignerTool.DoubleStar}" />
-                    </MenuItem>
-                </Menu>
+                <!-- Every closed shape behind one entry, Figma-style: a short click always activates
+                     Scene.CurrentShapeTool (the shape this button remembers — Rectangle until the
+                     operator picks something else), instantly and without opening anything. A
+                     press-and-hold, or a right-click, opens the picker below instead; all the timing
+                     and mouse-state logic lives in the code-behind, this markup only wires the events
+                     up and lays the picker out. -->
+                <Grid HorizontalAlignment="Center">
+                    <Button x:Name="ShapeToolButton" Style="{StaticResource ShapeRailButton}"
+                            ToolTip="{Binding Scene.CurrentShapeTool, Converter={StaticResource ShapeToolTooltip}}"
+                            AutomationProperties.Name="Tvary"
+                            PreviewMouseLeftButtonDown="OnShapeButtonPreviewMouseLeftButtonDown"
+                            PreviewMouseLeftButtonUp="OnShapeButtonPreviewMouseLeftButtonUp"
+                            PreviewMouseMove="OnShapeButtonPreviewMouseMove"
+                            MouseLeave="OnShapeButtonMouseLeave"
+                            MouseRightButtonUp="OnShapeButtonMouseRightButtonUp"
+                            KeyDown="OnShapeButtonKeyDown">
+                        <Grid>
+                            <components:IconGlyph Style="{StaticResource RailGlyph}"
+                                                   IconData="{Binding Scene.CurrentShapeTool, Converter={StaticResource ShapeToolIcon}}" />
+                            <!-- Quick-access indicator: this tool holds more shapes behind it. Deliberately
+                                 tiny and low-contrast — it is a hint, not a second button. -->
+                            <Path Data="M0,6 L6,6 L6,0 Z" Fill="{DynamicResource Brush.TextMuted}"
+                                  Width="6" Height="6" Opacity="0.55" IsHitTestVisible="False"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" />
+                        </Grid>
+                    </Button>
+
+                    <Popup x:Name="ShapePickerPopup" Placement="Custom" AllowsTransparency="True"
+                           StaysOpen="False" Focusable="False"
+                           Opened="OnShapePickerOpened" Closed="OnShapePickerClosed">
+                        <Border x:Name="ShapePickerSurface" Background="{DynamicResource Brush.Panel}"
+                                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                CornerRadius="{StaticResource Radius.Md}" Padding="8"
+                                Effect="{StaticResource Shadow.Dropdown}"
+                                Focusable="True" KeyDown="OnShapePickerKeyDown">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="ShapePickerScale" ScaleX="0.97" ScaleY="0.97" />
+                                    <TranslateTransform x:Name="ShapePickerTranslate" X="-3" Y="0" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <UniformGrid Columns="4" Rows="2">
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Obdélník (R)"
+                                              Tag="{x:Static vm:DesignerTool.Rectangle}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Obdélník">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Rectangle}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Elipsa (E)"
+                                              Tag="{x:Static vm:DesignerTool.Ellipse}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Ellipse, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Elipsa">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Ellipse}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Trojúhelník"
+                                              Tag="{x:Static vm:DesignerTool.Triangle}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Triangle, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Trojúhelník">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Triangle}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Pětiúhelník"
+                                              Tag="{x:Static vm:DesignerTool.Pentagon}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pentagon, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Pětiúhelník">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Pentagon}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Šestiúhelník"
+                                              Tag="{x:Static vm:DesignerTool.Hexagon}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Hexagon, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Šestiúhelník">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Hexagon}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Osmiúhelník"
+                                              Tag="{x:Static vm:DesignerTool.Octagon}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Octagon, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Osmiúhelník">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Octagon}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Hvězda"
+                                              Tag="{x:Static vm:DesignerTool.Star}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Star, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Hvězda">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Star}" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Dvojitá hvězda"
+                                              Tag="{x:Static vm:DesignerTool.DoubleStar}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=DoubleStar, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Dvojitá hvězda">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.DoubleStar}" />
+                                </ToggleButton>
+                            </UniformGrid>
+                        </Border>
+                    </Popup>
+                </Grid>
 
                 <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
                              IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
@@ -262,7 +411,7 @@
                         AutomationProperties.Name="Zařízení">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Device}" />
                 </Button>
-                <Button Style="{StaticResource RailButton}" Command="{Binding ShowChatCommand}"
+                <Button Style="{StaticResource RailButton}" Click="OnChatClick"
                         ToolTip="Lasero Chat — pomoc s návrhem, materiály a gravírováním"
                         AutomationProperties.Name="Lasero Chat">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Chat}" />

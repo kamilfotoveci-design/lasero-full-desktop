@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LaserCraft Studio - Návrh</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-high": "#e7e7f3",
+                        "secondary": "#585f6c",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#dce2f3",
+                        "surface-bright": "#faf8ff",
+                        "on-secondary-fixed-variant": "#404754",
+                        "on-surface": "#191b23",
+                        "on-surface-variant": "#434655",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "surface-container-low": "#f3f3fe",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "inverse-surface": "#2e3039",
+                        "primary-container": "#2563eb",
+                        "outline": "#737686",
+                        "surface-container": "#ededf9",
+                        "background": "#faf8ff",
+                        "on-error": "#ffffff",
+                        "surface": "#faf8ff",
+                        "on-tertiary-container": "#ffede6",
+                        "outline-variant": "#c3c6d7",
+                        "on-secondary-container": "#5e6572",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-primary-container": "#eeefff",
+                        "tertiary": "#943700",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#c0c7d6",
+                        "on-background": "#191b23",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-secondary-fixed": "#151c27",
+                        "surface-tint": "#0053db",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#dce2f3",
+                        "surface-variant": "#e1e2ed",
+                        "surface-container-highest": "#e1e2ed",
+                        "surface-dim": "#d9d9e5",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#b4c5ff",
+                        "primary": "#004ac6",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#bc4800"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "container-padding": "24px",
+                        "unit": "4px",
+                        "sidebar-width": "56px",
+                        "inspector-width": "320px",
+                        "element-gap": "12px",
+                        "toolbar-height": "48px",
+                        "footer-height": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-home": ["Inter"],
+                        "body-base": ["Inter"],
+                        "body-compact": ["Inter"],
+                        "section-header": ["Inter"],
+                        "label-uppercase": ["Inter"],
+                        "metadata": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-home": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-compact": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "section-header": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-uppercase": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "metadata": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f3f3fe; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c3c6d7; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #737686; 
+        }
+        
+        /* Grid background for canvas */
+        .canvas-grid {
+            background-size: 20px 20px;
+            background-image: 
+                linear-gradient(to right, #e1e2ed 1px, transparent 1px),
+                linear-gradient(to bottom, #e1e2ed 1px, transparent 1px);
+        }
+        .canvas-ruler-h {
+            background-size: 20px 100%;
+            background-image: linear-gradient(to right, #737686 1px, transparent 1px);
+        }
+        .canvas-ruler-v {
+            background-size: 100% 20px;
+            background-image: linear-gradient(to bottom, #737686 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen overflow-hidden flex flex-col font-body-base">
+<!-- TopNavBar -->
+<header class="bg-surface border-b border-outline-variant flex justify-between items-center w-full px-gutter h-toolbar-height shrink-0">
+<div class="flex items-center space-x-6">
+<div class="text-section-header font-section-header font-bold text-on-surface flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">swipe_left_alt</span>
+<span>LaserCraft Studio</span>
+</div>
+<nav class="hidden md:flex space-x-1">
+<button class="px-3 py-1 text-metadata font-metadata text-on-surface-variant hover:bg-surface-container-high rounded transition-colors duration-150 ease-in-out">Soubor</button>
+<button class="px-3 py-1 text-metadata font-metadata text-on-surface-variant hover:bg-surface-container-high rounded transition-colors duration-150 ease-in-out">Upravit</button>
+<button class="px-3 py-1 text-metadata font-metadata text-on-surface-variant hover:bg-surface-container-high rounded transition-colors duration-150 ease-in-out">Zobrazit</button>
+<button class="px-3 py-1 text-metadata font-metadata text-on-surface-variant hover:bg-surface-container-high rounded transition-colors duration-150 ease-in-out">Nástroje</button>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-body-compact font-body-compact px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container hover:bg-primary hover:text-white transition-colors duration-150 flex items-center space-x-1">
+<span class="material-symbols-outlined text-[18px]">usb</span>
+<span>Připojit</span>
+</button>
+<div class="flex items-center space-x-1 border-l border-outline-variant pl-4">
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[20px]">settings</span></button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[20px]">minimize</span></button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[20px]">square</span></button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded hover:bg-error hover:text-on-error transition-colors"><span class="material-symbols-outlined text-[20px]">close</span></button>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar (Narrow) -->
+<nav class="bg-surface-container-low border-r border-outline-variant w-sidebar-width flex flex-col items-center py-4 space-y-4 shrink-0 z-10">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Domů">
+<span class="material-symbols-outlined text-[24px]">home</span>
+</button>
+<button class="p-2 bg-secondary-container text-on-secondary-container border-l-4 border-primary rounded-r-lg transition-colors flex flex-col items-center" title="Návrh">
+<span class="material-symbols-outlined text-[24px]">edit_square</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Text">
+<span class="material-symbols-outlined text-[24px]">match_case</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Tvary">
+<span class="material-symbols-outlined text-[24px]">category</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Import">
+<span class="material-symbols-outlined text-[24px]">upload_file</span>
+</button>
+<div class="flex-1"></div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Materiály">
+<span class="material-symbols-outlined text-[24px]">layers</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors flex flex-col items-center group" title="Historie úloh">
+<span class="material-symbols-outlined text-[24px]">history</span>
+</button>
+</nav>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col bg-surface-container-lowest relative overflow-hidden">
+<!-- Contextual Transform Toolbar -->
+<div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-surface border border-outline-variant rounded-lg shadow-sm flex items-center px-4 py-2 space-x-6 z-20">
+<div class="flex items-center space-x-4">
+<div class="flex items-center space-x-2">
+<span class="text-label-uppercase text-on-surface-variant">X</span>
+<input class="w-16 h-8 text-body-compact border-outline-variant rounded px-2 focus:ring-2 focus:ring-primary focus:border-primary" type="text" value="108.45"/>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-label-uppercase text-on-surface-variant">Y</span>
+<input class="w-16 h-8 text-body-compact border-outline-variant rounded px-2 focus:ring-2 focus:ring-primary focus:border-primary" type="text" value="102.15"/>
+</div>
+</div>
+<div class="w-px h-6 bg-outline-variant"></div>
+<div class="flex items-center space-x-2">
+<div class="flex items-center space-x-2">
+<span class="text-label-uppercase text-on-surface-variant">W</span>
+<input class="w-16 h-8 text-body-compact border-outline-variant rounded px-2 focus:ring-2 focus:ring-primary focus:border-primary" type="text" value="68.47"/>
+</div>
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[16px]">link</span></button>
+<div class="flex items-center space-x-2">
+<span class="text-label-uppercase text-on-surface-variant">H</span>
+<input class="w-16 h-8 text-body-compact border-outline-variant rounded px-2 focus:ring-2 focus:ring-primary focus:border-primary" type="text" value="28.09"/>
+</div>
+</div>
+<div class="w-px h-6 bg-outline-variant"></div>
+<div class="flex items-center space-x-4">
+<button class="flex items-center space-x-1 text-metadata text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">rotate_right</span>
+<span>0°</span>
+</button>
+<button class="flex items-center space-x-1 text-metadata text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">align_horizontal_center</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+<button class="flex items-center space-x-1 text-metadata text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">flip</span>
+</button>
+</div>
+</div>
+<!-- Canvas Area -->
+<div class="flex-1 relative overflow-auto bg-surface-bright flex items-center justify-center p-8">
+<!-- Rulers -->
+<div class="absolute top-0 left-8 right-0 h-6 bg-surface border-b border-outline-variant flex items-end">
+<div class="canvas-ruler-h w-[800px] h-2 ml-8"></div>
+</div>
+<div class="absolute top-6 left-0 bottom-0 w-8 bg-surface border-r border-outline-variant flex justify-end">
+<div class="canvas-ruler-v h-[800px] w-2 mt-2"></div>
+</div>
+<!-- Laser Bed Workspace -->
+<div class="relative w-[800px] h-[800px] bg-white border border-outline-variant shadow-sm ml-8 mt-6 overflow-hidden">
+<!-- Grid -->
+<div class="absolute inset-0 canvas-grid opacity-50"></div>
+<!-- Selected Object -->
+<div class="absolute left-[300px] top-[350px] border border-primary bg-primary/5 p-2 group cursor-move">
+<div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-primary rounded-full"></div>
+<div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-primary rounded-full"></div>
+<div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-primary rounded-full"></div>
+<div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-primary rounded-full"></div>
+<!-- Rotation Handle -->
+<div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-white border border-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute -top-4 left-1/2 transform -translate-x-1/2 w-px h-4 bg-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="text-[80px] font-bold text-primary font-['Arial'] leading-none tracking-wider opacity-80" style="text-shadow: 0 0 1px rgba(0,74,198,0.5);">
+                            KAVÁRNA
+                        </div>
+</div>
+</div>
+<!-- View Controls -->
+<div class="absolute bottom-6 right-6 bg-surface border border-outline-variant rounded-lg shadow-sm flex items-center px-2 py-1 space-x-2">
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[18px]">undo</span></button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors opacity-50"><span class="material-symbols-outlined text-[18px]">redo</span></button>
+<div class="w-px h-4 bg-outline-variant"></div>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[18px]">pan_tool</span></button>
+<div class="w-px h-4 bg-outline-variant"></div>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<span class="text-metadata text-on-surface font-medium w-12 text-center">100%</span>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+</div>
+</main>
+<!-- Right Inspector Panel -->
+<aside class="w-inspector-width bg-surface border-l border-outline-variant flex flex-col shrink-0 overflow-y-auto">
+<!-- Device Status Section -->
+<div class="p-4 border-b border-outline-variant">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-on-surface-variant">precision_manufacturing</span>
+<span class="text-section-header font-section-header text-on-surface">TTS-55 Pro</span>
+</div>
+<button class="p-1 text-on-surface-variant hover:bg-surface-container-high rounded"><span class="material-symbols-outlined text-[18px]">more_vert</span></button>
+</div>
+<div class="bg-surface-container p-3 rounded-lg flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<span class="text-body-compact text-on-surface">Připojeno</span>
+</div>
+<span class="text-metadata text-on-surface-variant">USB</span>
+</div>
+</div>
+<!-- Material & Process -->
+<div class="p-4 border-b border-outline-variant space-y-4">
+<div class="flex items-center justify-between cursor-pointer group">
+<h3 class="text-metadata font-bold text-on-surface uppercase tracking-wider group-hover:text-primary transition-colors">Materiál</h3>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary text-[18px]">chevron_right</span>
+</div>
+<button class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 flex items-center justify-between hover:border-primary transition-colors text-left">
+<div class="flex items-center space-x-2">
+<div class="w-6 h-6 rounded bg-amber-200 border border-amber-300"></div>
+<span class="text-body-compact text-on-surface">Překližka (Bříza)</span>
+</div>
+<span class="text-metadata text-on-surface-variant">3mm</span>
+</button>
+<div class="pt-2">
+<label class="text-metadata text-on-surface-variant mb-1 block">Režim zpracování</label>
+<div class="flex bg-surface-container-low rounded-lg p-1 border border-outline-variant">
+<button class="flex-1 py-1 px-2 text-body-compact rounded bg-white shadow-sm text-on-surface font-medium">Gravírovat</button>
+<button class="flex-1 py-1 px-2 text-body-compact rounded text-on-surface-variant hover:bg-surface-container-high transition-colors">Řezat</button>
+<button class="flex-1 py-1 px-2 text-body-compact rounded text-on-surface-variant hover:bg-surface-container-high transition-colors">Značit</button>
+</div>
+</div>
+</div>
+<!-- Operation Parameters -->
+<div class="p-4 flex-1">
+<h3 class="text-metadata font-bold text-on-surface uppercase tracking-wider mb-4">Parametry</h3>
+<div class="space-y-5">
+<!-- Power Slider -->
+<div>
+<div class="flex justify-between items-center mb-1">
+<label class="text-body-compact text-on-surface">Výkon</label>
+<span class="text-body-compact text-on-surface-variant">75 %</span>
+</div>
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="1" type="range" value="75"/>
+</div>
+<!-- Speed Slider -->
+<div>
+<div class="flex justify-between items-center mb-1">
+<label class="text-body-compact text-on-surface">Rychlost</label>
+<span class="text-body-compact text-on-surface-variant">3000 mm/min</span>
+</div>
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" max="10000" min="100" type="range" value="3000"/>
+</div>
+<!-- Passes Input -->
+<div class="flex justify-between items-center">
+<label class="text-body-compact text-on-surface">Počet průchodů</label>
+<div class="flex items-center">
+<button class="w-6 h-6 flex items-center justify-center border border-outline-variant rounded-l bg-surface-container-low hover:bg-surface-container-high">-</button>
+<input class="w-12 h-6 text-center text-body-compact border-y border-outline-variant p-0 m-0 focus:ring-0" type="number" value="1"/>
+<button class="w-6 h-6 flex items-center justify-center border border-outline-variant rounded-r bg-surface-container-low hover:bg-surface-container-high">+</button>
+</div>
+</div>
+<!-- Advanced toggle -->
+<div class="pt-2">
+<button class="flex items-center space-x-1 text-metadata text-primary hover:underline">
+<span>Pokročilé nastavení</span>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<!-- Footer / Machine Bar -->
+<footer class="bg-surface border-t border-outline-variant flex justify-between items-center px-gutter h-footer-height shrink-0 z-50">
+<div class="flex items-center space-x-4">
+<div class="flex items-center space-x-2 text-metadata text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span>Projekt byl uložen.</span>
+</div>
+</div>
+<div class="flex items-center space-x-3">
+<div class="flex items-center space-x-2 mr-4">
+<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="text-label-uppercase text-on-surface font-medium">Připraveno</span>
+</div>
+<button class="px-4 py-1.5 border border-outline-variant rounded text-body-compact font-medium text-on-surface hover:bg-surface-container-high transition-colors flex items-center space-x-1">
+<span class="material-symbols-outlined text-[18px]">border_outer</span>
+<span>Rámovat</span>
+</button>
+<button class="px-6 py-1.5 bg-error text-on-error rounded text-body-compact font-bold hover:bg-red-700 transition-colors shadow-sm flex items-center space-x-1">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+<span>Spustit</span>
+</button>
+</div>
+</footer>
+</body></html>
