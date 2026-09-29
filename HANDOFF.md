@@ -2104,8 +2104,20 @@ explicitne. Presné čísla:
 | stav | rozmery | anchor |
 |---|---|---|
 | Minimized | 48×48 kruh, `Size.Icon.Xxl` token, `Radius.Pill` | rovnaký bottom-right bod ako doteraz |
-| QuickAsk | 400×132 (bolo 440×156) | rastie z rovnakého bodu (`RenderTransformOrigin="1,1"`) |
+| QuickAsk | 400×160 (zmerané 2026-09-29; 132 orezávalo druhý rad chipov, 156 ešte orezávalo spodný okraj posledného chipu; bolo 440×156) | rastie z rovnakého bodu (`RenderTransformOrigin="1,1"`) |
 | Expanded | 420×(500–640 adaptívne, bolo 340–640) | rastie z rovnakého bodu, hlavne nahor |
+
+**Aktualizácia 2026-09-29 (prebíja starší text nižšie):**
+- **Close neexistuje.** Hlavička Expanded aj QuickAsk majú len Minimize (glyph `Minimize`, tooltip
+  „Zmenšit na odznak · Esc"); stav `Hidden` zostáva len vo view-modeli, z UI naň nevedie žiadna cesta.
+  Sekcie nižšie o `Button.ChromeClose` a o Close → Hidden → reopen sú zastarané.
+- **KAMIL sa zobrazuje LEN na obrazovke Návrh.** `KamilAssistantHost` v `MainWindow.xaml` má
+  `Visibility` viazané na `DataContext.CurrentScreen == Designer` cez `RelativeSource AncestorType=Window`
+  (vlastný DataContext hostiteľa je Kamil VM). Collapsed, nie unloaded, takže konverzácia prežije.
+  Pripnuté testom `KamilPlacementTests`.
+- **Pokojová pozícia hlavy** = pravý okraj 20px vľavo od inspektora, spodný okraj 16px nad
+  zoom/undo klastrom (rovnako ako v `2c5dcbf`). Rezerváciu robí len `AssistantClearanceConverter`
+  na Margine hostiteľa; `GetUsableBounds()` ju už nepočíta druhýkrát.
 
 **Prechody** (všetky `Ease.Out`, žiadny bounce/overshoot): Minimized→QuickAsk 210ms,
 QuickAsk→Minimized 210ms, QuickAsk→Expanded 240ms, Expanded→Minimized 210ms.
