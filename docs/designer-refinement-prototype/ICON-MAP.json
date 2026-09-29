@@ -1,0 +1,188 @@
+{
+  "Line": {
+    "asset": "icons/Line.svg",
+    "wpfResource": "Glyph.Line",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Import": {
+    "asset": "icons/Import.svg",
+    "wpfResource": "Glyph.Import",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Rectangle": {
+    "asset": "icons/Rectangle.svg",
+    "wpfResource": "Glyph.Rectangle",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Select": {
+    "asset": "icons/Select.svg",
+    "wpfResource": "Glyph.Select",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Home": {
+    "asset": "icons/Home.svg",
+    "wpfResource": "Glyph.Home",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Chat": {
+    "asset": "icons/Chat.svg",
+    "wpfResource": "Glyph.Chat",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Minimize": {
+    "asset": "icons/Minimize.svg",
+    "wpfResource": "Glyph.Minimize",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Redo": {
+    "asset": "icons/Redo.svg",
+    "wpfResource": "Glyph.Redo",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Device": {
+    "asset": "icons/Device.svg",
+    "wpfResource": "Glyph.Device",
+    "family": "LASERO laser head — existing project geometry",
+    "rendering": "stroked geometry, native 24x24, stroke 1.6"
+  },
+  "ChevronDown": {
+    "asset": "icons/ChevronDown.svg",
+    "wpfResource": "Glyph.ChevronDown",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Settings": {
+    "asset": "icons/Settings.svg",
+    "wpfResource": "Glyph.Settings",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "ArrowDown": {
+    "asset": "icons/ArrowDown.svg",
+    "wpfResource": "Glyph.ArrowDown",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Maximize": {
+    "asset": "icons/Maximize.svg",
+    "wpfResource": "Glyph.Maximize",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Rotate": {
+    "asset": "icons/Rotate.svg",
+    "wpfResource": "new Designer-scoped rotation glyph",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Zap": {
+    "asset": "icons/Zap.svg",
+    "wpfResource": "Glyph.Zap",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "ChevronRight": {
+    "asset": "icons/ChevronRight.svg",
+    "wpfResource": "Glyph.ChevronRight",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Frame": {
+    "asset": "icons/Frame.svg",
+    "wpfResource": "Glyph.Frame",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Eye": {
+    "asset": "icons/Eye.svg",
+    "wpfResource": "Glyph.Eye",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Text": {
+    "asset": "icons/Text.svg",
+    "wpfResource": "Glyph.Text",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Delete": {
+    "asset": "icons/Delete.svg",
+    "wpfResource": "Glyph.Delete",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "AlignCenterHorizontal": {
+    "asset": "icons/AlignCenterHorizontal.svg",
+    "wpfResource": "Glyph.AlignCenterHorizontal",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "EyeOff": {
+    "asset": "icons/EyeOff.svg",
+    "wpfResource": "Glyph.EyeOff",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Play": {
+    "asset": "icons/Play.svg",
+    "wpfResource": "Glyph.Play",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Undo": {
+    "asset": "icons/Undo.svg",
+    "wpfResource": "Glyph.Undo",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "ArrowUp": {
+    "asset": "icons/ArrowUp.svg",
+    "wpfResource": "Glyph.ArrowUp",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "ZapOff": {
+    "asset": "icons/ZapOff.svg",
+    "wpfResource": "Glyph.ZapOff",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Materials": {
+    "asset": "icons/Materials.svg",
+    "wpfResource": "Glyph.Materials",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Link": {
+    "asset": "icons/Link.svg",
+    "wpfResource": "Glyph.Link",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Restore": {
+    "asset": "icons/Restore.svg",
+    "wpfResource": "Glyph.Restore",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "Close": {
+    "asset": "icons/Close.svg",
+    "wpfResource": "Glyph.Close",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  },
+  "More": {
+    "asset": "icons/More.svg",
+    "wpfResource": "Glyph.More",
+    "family": "Phosphor Regular",
+    "rendering": "filled silhouette, native 256x256; normalize to 24x24 if required"
+  }
+}

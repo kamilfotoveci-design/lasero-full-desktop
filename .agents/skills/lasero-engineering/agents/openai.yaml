@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero engineering"
+  short_description: "Lasero architecture and engineering workflow"
+  default_prompt: "Use $lasero-engineering for this Lasero task. Inspect the current implementation and follow its workflow."

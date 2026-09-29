@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero WPF quality"
+  short_description: "Lasero WPF UI and interaction quality"
+  default_prompt: "Use $lasero-wpf-quality for this Lasero task. Inspect the current implementation and follow its workflow."

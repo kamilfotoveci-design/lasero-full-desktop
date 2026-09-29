@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero machine safety"
+  short_description: "Lasero GRBL and machine safety"
+  default_prompt: "Use $lasero-machine-safety for this Lasero task. Inspect the current implementation and follow its workflow."

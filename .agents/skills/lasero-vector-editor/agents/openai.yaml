@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lasero vector editor"
+  short_description: "Lasero geometry and path editing"
+  default_prompt: "Use $lasero-vector-editor for this Lasero task. Inspect the current implementation and follow its workflow."

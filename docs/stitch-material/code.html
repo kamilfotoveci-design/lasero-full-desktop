@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html lang="cs"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lasero Material Test</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#2563eb",
+                        "on-tertiary-fixed": "#360f00",
+                        "background": "#faf8ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-secondary-fixed-variant": "#404754",
+                        "surface-container": "#ededf9",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#b4c5ff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-primary-container": "#eeefff",
+                        "on-tertiary-container": "#ffede6",
+                        "surface": "#faf8ff",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e1e2ed",
+                        "outline-variant": "#c3c6d7",
+                        "surface-tint": "#0053db",
+                        "surface-dim": "#d9d9e5",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#dce2f3",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary-container": "#bc4800",
+                        "on-surface": "#191b23",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#5e6572",
+                        "primary": "#004ac6",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f3f3fe",
+                        "surface-bright": "#faf8ff",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c7d6",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-secondary-fixed": "#151c27",
+                        "outline": "#737686",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "inverse-surface": "#2e3039",
+                        "secondary-fixed": "#dce2f3",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#943700",
+                        "surface-container-highest": "#e1e2ed",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#191b23",
+                        "surface-container-high": "#e7e7f3",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface-variant": "#434655",
+                        "secondary": "#585f6c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "sidebar-width": "240px",
+                        "toolbar-height": "48px",
+                        "element-gap": "12px"
+                    },
+                    "fontFamily": {
+                        "label-uppercase": ["Inter"],
+                        "body-base": ["Inter"],
+                        "headline-home": ["Inter"],
+                        "body-compact": ["Inter"],
+                        "section-header": ["Inter"],
+                        "metadata": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-uppercase": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-home": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-compact": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "section-header": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "metadata": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .grid-pattern {
+                background-image: 
+                    linear-gradient(to right, #e1e2ed 1px, transparent 1px),
+                    linear-gradient(to bottom, #e1e2ed 1px, transparent 1px);
+                background-size: 20px 20px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-surface-dim min-h-screen flex items-center justify-center font-body-base text-on-surface p-6">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest rounded-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full max-w-6xl flex flex-col overflow-hidden border border-outline-variant">
+<!-- Header -->
+<header class="flex items-center justify-between px-container-padding py-4 border-b border-outline-variant bg-surface">
+<div>
+<h1 class="font-headline-home text-headline-home text-primary">Test materiálu</h1>
+<p class="font-body-compact text-body-compact text-on-surface-variant mt-1">Najděte ideální kombinaci výkonu a rychlosti pro tento materiál.</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-low border border-outline-variant rounded px-3 py-1.5 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-outline">layers</span>
+<span class="font-metadata text-metadata text-on-surface-variant">Překližka · 3 mm | TTS-55 Pro</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</header>
+<!-- Main Content Split -->
+<div class="flex flex-1 overflow-hidden h-[600px]">
+<!-- Visual Test Grid Canvas -->
+<div class="flex-1 bg-surface-container-low p-6 flex flex-col items-center justify-center border-r border-outline-variant relative overflow-hidden">
+<div class="absolute inset-0 grid-pattern opacity-50"></div>
+<div class="relative z-10 bg-[#e8cdb4] shadow-sm p-8 rounded-sm">
+<!-- Axis Labels -->
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 font-label-uppercase text-label-uppercase text-on-surface-variant whitespace-nowrap">
+                         VÝKON (%)
+                     </div>
+<div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 font-label-uppercase text-label-uppercase text-on-surface-variant whitespace-nowrap">
+                         RYCHLOST (mm/min)
+                     </div>
+<!-- Top Row (Power values) -->
+<div class="flex ml-12 mb-2 gap-4">
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">30</div>
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">40</div>
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">50</div>
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">60</div>
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">70</div>
+<div class="w-12 text-center font-metadata text-metadata text-on-surface-variant">80</div>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Row 1 -->
+<div class="flex items-center gap-4">
+<div class="w-10 text-right font-metadata text-metadata text-on-surface-variant">1000</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-100 bg-[#d9a05b] mix-blend-multiply"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-100 bg-[#c48b47] mix-blend-multiply"></div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center gap-4">
+<div class="w-10 text-right font-metadata text-metadata text-on-surface-variant">2000</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-100 bg-[#e0b070] mix-blend-multiply"></div>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center gap-4">
+<div class="w-10 text-right font-metadata text-metadata text-on-surface-variant">3000</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-70"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<!-- Selected Cell -->
+<div class="w-12 h-12 border-2 border-primary-container rounded-sm bg-[#2563eb] bg-opacity-10 shadow-[0_0_0_2px_rgba(37,99,235,0.3)] cursor-pointer hover:bg-opacity-20 transition-all flex items-center justify-center relative">
+<div class="absolute -top-10 bg-inverse-surface text-inverse-on-surface px-2 py-1 rounded text-[10px] whitespace-nowrap z-20 pointer-events-none">60% | 3000 mm/min</div>
+</div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="flex items-center gap-4">
+<div class="w-10 text-right font-metadata text-metadata text-on-surface-variant">4000</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-50"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-60"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-70"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-90"></div>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="flex items-center gap-4">
+<div class="w-10 text-right font-metadata text-metadata text-on-surface-variant">5000</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-30"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-40"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-50"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-60"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-70"></div>
+<div class="w-12 h-12 border border-[#8a5a44] rounded-sm opacity-80"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Settings Sidebar -->
+<div class="w-80 bg-surface-container-lowest p-6 overflow-y-auto flex flex-col gap-6">
+<div>
+<h2 class="font-section-header text-section-header text-on-surface border-b border-outline-variant pb-2 mb-4">Parametry testu</h2>
+<div class="flex flex-col gap-4">
+<!-- Power Range -->
+<div class="bg-surface-container-low p-3 rounded border border-outline-variant">
+<label class="font-label-uppercase text-label-uppercase text-on-surface-variant flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[16px]">bolt</span> Výkon (%)
+                            </label>
+<div class="flex gap-2 items-center">
+<span class="text-metadata text-on-surface-variant w-6 text-right">Od</span>
+<input class="h-8 w-16 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="30"/>
+<span class="text-metadata text-on-surface-variant w-4 text-center">do</span>
+<input class="h-8 w-16 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="80"/>
+</div>
+<div class="flex gap-2 items-center mt-2">
+<span class="text-metadata text-on-surface-variant w-6 text-right">Krok</span>
+<input class="h-8 w-16 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="10"/>
+</div>
+</div>
+<!-- Speed Range -->
+<div class="bg-surface-container-low p-3 rounded border border-outline-variant">
+<label class="font-label-uppercase text-label-uppercase text-on-surface-variant flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[16px]">speed</span> Rychlost (mm/min)
+                            </label>
+<div class="flex gap-2 items-center">
+<span class="text-metadata text-on-surface-variant w-6 text-right">Od</span>
+<input class="h-8 w-20 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="1000"/>
+<span class="text-metadata text-on-surface-variant w-4 text-center">do</span>
+<input class="h-8 w-20 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="5000"/>
+</div>
+<div class="flex gap-2 items-center mt-2">
+<span class="text-metadata text-on-surface-variant w-6 text-right">Krok</span>
+<input class="h-8 w-20 bg-surface-container-lowest border-outline-variant rounded px-2 text-body-compact focus:ring-2 focus:ring-primary-container" type="number" value="1000"/>
+</div>
+</div>
+<!-- Preview Info -->
+<div class="mt-2 bg-surface-container rounded p-4 border border-outline-variant border-dashed">
+<div class="flex justify-between items-center mb-1">
+<span class="font-metadata text-metadata text-on-surface-variant">Velikost testu:</span>
+<span class="font-body-compact text-body-compact text-on-surface">100 x 80 mm</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-metadata text-metadata text-on-surface-variant">Odhadovaný čas:</span>
+<span class="font-body-compact text-body-compact text-on-surface font-semibold">6 min 20 s</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<footer class="flex justify-between items-center px-container-padding py-4 border-t border-outline-variant bg-surface">
+<button class="bg-surface-container-lowest border border-outline-variant text-on-surface px-4 py-2 rounded font-body-compact text-body-compact hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">center_focus_strong</span> Rámovat test
+            </button>
+<div class="flex gap-3">
+<button class="bg-primary-container text-on-primary px-4 py-2 rounded font-body-compact text-body-compact hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">check</span> Použít toto nastavení
+                </button>
+<button class="bg-[#ba1a1a] text-on-error px-6 py-2 rounded font-body-compact text-body-compact font-semibold hover:bg-[#93000a] transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span> Spustit test
+                </button>
+</div>
+</footer>
+</div>
+</body></html>
