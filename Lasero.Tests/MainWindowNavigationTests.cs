@@ -22,7 +22,7 @@ public sealed class MainWindowNavigationTests
         var mainViewModel = File.ReadAllText(Path.Combine(root, "Lasero.App", "ViewModels", "MainViewModel.cs"));
         var machinePanel = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "MachinePanelView.xaml"));
 
-        Assert.Contains("Command=\"{Binding Connection.ConnectCommand}\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding Connection.SmartConnectCommand}\"", mainWindow, StringComparison.Ordinal);
         Assert.Contains("CurrentScreen != AppScreen.Designer", mainViewModel, StringComparison.Ordinal);
         Assert.Contains("Text=\"Polohovací paprsek\"", machinePanel, StringComparison.Ordinal);
         Assert.Contains("PreviewMouseLeftButtonDown=\"OnPositioningLaserPressed\"", machinePanel, StringComparison.Ordinal);

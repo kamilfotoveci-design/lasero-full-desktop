@@ -47,6 +47,18 @@ public partial class DeviceWizardViewModel : ObservableObject
     /// retry rather than silently advancing to a Setup screen that has nothing to configure.</summary>
     [ObservableProperty] private bool _connectFailed;
 
+    /// <summary>Set by the shell when the status-strip Připojit could not decide alone (several
+    /// controllers or none) and hands over to the wizard; the overlay then starts the automatic
+    /// search immediately instead of waiting for a second click.</summary>
+    public bool AutoStartRequested { get; set; }
+
+    /// <summary>One line per serial port the last automatic search examined, with the reason it was not
+    /// used. Shown when nothing was found so the operator can see what was tried.</summary>
+    [ObservableProperty] private string? _scanReport;
+
+    /// <summary>The headline sentence for the "nothing found" screen.</summary>
+    [ObservableProperty] private string _nothingFoundSummary = "Zkontrolujte USB kabel a zapnutí gravírky, potom zkuste hledání znovu.";
+
     /// <summary>How long <see cref="UseSelectedMachine"/> waits for the controller to identify
     /// itself before treating the attempt as failed. Internal so tests can shrink it instead of
     /// sleeping for the real 8 seconds slower hardware may legitimately need.</summary>
@@ -90,7 +102,98 @@ public partial class DeviceWizardViewModel : ObservableObject
         OnPropertyChanged(nameof(FoundSomething));
         OnPropertyChanged(nameof(CanFinish));
         UseSelectedMachineCommand.NotifyCanExecuteChanged();
+        AutoConnectCommand.NotifyCanExecuteChanged();
         FinishCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanAutoConnect() => Step != DeviceWizardStep.Scanning && !_connection.IsConnecting && !_connection.IsDetecting;
+
+    /// <summary>The primary action: find a GRBL controller on the serial ports and connect to it without
+    /// asking for a model, port or baud rate. Runs only from this click. One controller is connected
+    /// straight away; several are listed for a choice; none gives an actionable explanation.</summary>
+    [RelayCommand(CanExecute = nameof(CanAutoConnect))]
+    private async Task AutoConnect()
+    {
+        _scanCancellation?.Cancel();
+        _scanCancellation = new CancellationTokenSource();
+        var cancellationToken = _scanCancellation.Token;
+
+        FoundMachines.Clear();
+        SelectedMachine = null;
+        ConnectFailed = false;
+        ScanReport = null;
+        if (_connection.IsConnected) _connection.DisconnectCommand.Execute(null);
+        Step = DeviceWizardStep.Scanning;
+        ScanStatus = "Hledám GRBL na portech COM…";
+
+        var progress = new Progress<GrblPortScanProgress>(report =>
+            ScanStatus = $"Hledám GRBL na portech COM… Zkouším {report.PortName} rychlostí {report.BaudRate} Bd ({report.PortIndex + 1} z {report.PortCount})");
+
+        GrblPortScanResult? result = null;
+        try
+        {
+            result = await _connection.DetectAsync(progress, cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(exception, "Automatic GRBL detection failed");
+        }
+
+        if (cancellationToken.IsCancellationRequested) return;
+
+        foreach (var found in result?.Grbl ?? [])
+        {
+            FoundMachines.Add(new DiscoveredMachine(found.PortName, found.BaudRate ?? 115200, found.FirmwareBanner,
+                new GrblDeviceProfile { FirmwareBanner = found.FirmwareBanner })
+            {
+                IsAutoDetected = true,
+                StateLabel = found.StateLabel,
+            });
+        }
+        var (report, summary) = DescribeNothingFound(result);
+        ScanReport = string.IsNullOrEmpty(report) ? null : report;
+        NothingFoundSummary = summary;
+
+        if (FoundMachines.Count == 1)
+        {
+            SelectedMachine = FoundMachines[0];
+            ScanStatus = $"Nalezeno na {SelectedMachine.PortName}, připojuji…";
+            var connected = await ConnectMachineAsync(SelectedMachine, cancellationToken).ConfigureAwait(true);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                if (_connection.IsConnected) _connection.DisconnectCommand.Execute(null);
+                return;
+            }
+            if (connected) return;
+        }
+
+        Step = DeviceWizardStep.Results;
+        OnPropertyChanged(nameof(FoundNothing));
+        OnPropertyChanged(nameof(FoundSomething));
+    }
+
+    private static (string Report, string Summary) DescribeNothingFound(GrblPortScanResult? result)
+    {
+        if (result is null)
+            return (string.Empty, "Automatické hledání teď nelze spustit. Zařízení připojte ručně v části Upřesnit.");
+        if (result.PortsExamined == 0)
+            return (string.Empty, "Windows nehlásí žádný port COM. Zkontrolujte, že je laser zapnutý a připojený datovým USB kabelem, a případně nainstalujte ovladač CH340 nebo CP210x.");
+
+        var lines = result.Others.Select(other => $"{other.PortName} - " + other.Outcome switch
+        {
+            GrblProbeOutcome.Busy => "port drží jiný program",
+            GrblProbeOutcome.OpenFailed => "port se nepodařilo otevřít",
+            GrblProbeOutcome.NotGrbl => "zařízení odpovídá, ale nejde o GRBL",
+            GrblProbeOutcome.Skipped => "přeskočeno (Bluetooth)",
+            _ => "bez odpovědi",
+        });
+        var examined = result.PortsExamined;
+        return (string.Join(Environment.NewLine, lines),
+            $"Prohledáno portů COM: {examined}. Žádný neodpověděl jako GRBL. Zkontrolujte kabel, ovladač a zda port nedrží jiný program.");
     }
 
     partial void OnSelectedMachineChanged(DiscoveredMachine? value)
@@ -146,6 +249,7 @@ public partial class DeviceWizardViewModel : ObservableObject
     private void CancelScan()
     {
         _scanCancellation?.Cancel();
+        _connection.CancelDetection();
         Step = DeviceWizardStep.Intro;
     }
 
@@ -160,18 +264,25 @@ public partial class DeviceWizardViewModel : ObservableObject
     private bool CanUseSelectedMachine() => Step == DeviceWizardStep.Results && SelectedMachine is not null;
 
     [RelayCommand(CanExecute = nameof(CanUseSelectedMachine))]
-    private async Task UseSelectedMachine()
+    private async Task UseSelectedMachine() => await ConnectMachineAsync(SelectedMachine!).ConfigureAwait(true);
+
+    /// <summary>Connects to one found controller and moves on to Setup. Shared by the manual pick from
+    /// the result list and the automatic single-controller case. Returns whether it ended connected.</summary>
+    private async Task<bool> ConnectMachineAsync(DiscoveredMachine machine, CancellationToken cancellationToken = default)
     {
-        var machine = SelectedMachine!;
         ConnectFailed = false;
         if (_connection.IsConnected) _connection.DisconnectCommand.Execute(null);
 
-        // Choosing the explicitly labelled simulator must not inherit a blocked hardware profile.
-        if (machine.IsSimulator)
+        // The simulator and any automatically found controller are generic GRBL: they must not inherit
+        // a blocked hardware model left selected in the advanced section.
+        if (machine.IsSimulator || machine.IsAutoDetected)
             _connection.SelectedCompatibility = MachineCompatibilityCatalog.Get(MachineCompatibilityCatalog.ExistingGrblId);
         _connection.RefreshPortsCommand.Execute(null);
         _connection.SelectedPort = machine.PortName;
         _connection.BaudRate = machine.BaudRate;
+        // The scan just closed this port; give Windows a moment to release it before reopening.
+        if (machine.IsAutoDetected && _connection.ConnectSettleDelay > TimeSpan.Zero)
+            await Task.Delay(_connection.ConnectSettleDelay, cancellationToken).ConfigureAwait(true);
         _connection.ConnectCommand.Execute(null);
 
         // The Device panel re-reads $$ on every connect and writes the bed size it finds. Waiting for
@@ -185,14 +296,16 @@ public partial class DeviceWizardViewModel : ObservableObject
         if (!_connection.IsConnected)
         {
             ConnectFailed = true;
-            return;
+            return false;
         }
 
+        if (machine.IsAutoDetected && identified) MachineName = _connection.ActiveMachineName;
         SetupMessage = identified
             ? _connection.IdentificationMessage
             : "Zařízení je připojené, ale jeho nastavení se nepodařilo načíst. Rozměry pracovní plochy zadejte ručně.";
         Step = DeviceWizardStep.Setup;
         OnPropertyChanged(nameof(CanFinish));
+        return true;
     }
 
     private Task<bool> WaitForIdentificationAsync(TimeSpan timeout)

@@ -184,24 +184,25 @@
                             </Grid>
 
                             <TextBlock Text="Přidat zařízení" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
-                            <TextBlock Text="Máte-li laser připojený USB kabelem, rozbalte Připojit laser USB kabelem a vyberte jeho model a port. LASERO žádný port neotevře samo. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
+                            <TextBlock Text="Zapněte laser, připojte jej datovým USB kabelem a klepněte na Připojit laser automaticky. Model ani port vybírat nemusíte, LASERO řadič GRBL najde samo. Porty se zkoušejí jen po tomto klepnutí, nikdy při spuštění. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
 
                             <!-- Progressive disclosure: manual port/baud entry, for the rare machine
                                  the automatic scan cannot see. Reuses ConnectionViewModel's own
                                  existing manual controls — no second connection path. -->
                             <ToggleButton x:Name="ManualToggle" Style="{StaticResource ToggleButton.Link}"
                                           HorizontalAlignment="Center" Margin="0,22,0,0"
-                                          automation:AutomationProperties.Name="Připojit laser USB kabelem">
-                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Připojit laser USB kabelem" IconSize="{StaticResource Size.Icon.Sm}" />
+                                          automation:AutomationProperties.Name="Upřesnit">
+                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Upřesnit" IconSize="{StaticResource Size.Icon.Sm}" />
                             </ToggleButton>
                             <Border Style="{StaticResource InspectorSection}" Margin="0,14,0,0"
                                     Visibility="{Binding IsChecked, ElementName=ManualToggle, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="Ruční připojení" FontWeight="SemiBold" />
+                                    <TextBlock Text="Upřesnit model (volitelné)" FontWeight="SemiBold" />
                                     <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
-                                              SelectedItem="{Binding Connection.SelectedCompatibility}" DisplayMemberPath="DisplayName" Margin="0,8,0,0" />
+                                              SelectedItem="{Binding Connection.SelectedCompatibility}" DisplayMemberPath="DisplayName" Margin="0,8,0,0"
+                                              automation:AutomationProperties.Name="Upřesnit model" />
                                     <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,8" />
-                                    <TextBlock Text="Vyberte přesný model, port a rychlost. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
+                                    <TextBlock Text="Ruční připojení je určeno pro řadič, který automatické hledání nenašlo. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,12" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -256,7 +257,7 @@
                                 </Grid.Triggers>
                             </Grid>
 
-                            <TextBlock Text="Hledání zařízení…" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
+                            <TextBlock Text="Hledání laseru…" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
                             <TextBlock Text="{Binding ScanStatus}" Style="{StaticResource StepSubtext}" />
                         </StackPanel>
 
@@ -303,7 +304,7 @@
                                                         <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                         <TextBlock Style="{StaticResource Text.Muted}" Margin="0,3,0,0"
                                                                    Visibility="{Binding IsSimulator, Converter={StaticResource InverseBoolToVisibility}}"
-                                                                   Text="Připraveno k připojení" />
+                                                                   Text="{Binding Summary}" />
                                                         <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
                                                                     Visibility="{Binding IsSimulator, Converter={StaticResource BoolToVisibility}}">
                                                             <Border Style="{StaticResource Badge}">
@@ -406,15 +407,24 @@
                                 <components:IconGlyph IconData="{StaticResource Glyph.Warning}"
                                                       Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                       HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" />
-                                <TextBlock Text="Zařízení se nepodařilo najít" Style="{StaticResource StepHeadline}" Margin="0,14,0,0" />
-                                <TextBlock Text="Zkontrolujte USB kabel a zapnutí gravírky, potom zkuste hledání znovu."
+                                <TextBlock Text="Laser se nepodařilo najít" Style="{StaticResource StepHeadline}" Margin="0,14,0,0" />
+                                <TextBlock Text="{Binding NothingFoundSummary}"
                                            Style="{StaticResource StepSubtext}" />
+                                <TextBlock Text="{Binding ScanReport}" Style="{StaticResource StepSubtext}" TextAlignment="Left" Margin="0,10,0,0"
+                                           Visibility="{Binding ScanReport, Converter={StaticResource NotNullToVisibility}}" />
 
                                 <ToggleButton x:Name="TipsToggle" Style="{StaticResource ToggleButton.Link}"
                                               HorizontalAlignment="Center" Margin="0,14,0,0">
                                     <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Nejčastější příčiny" IconSize="{StaticResource Size.Icon.Sm}" />
                                 </ToggleButton>
                                 <StackPanel Visibility="{Binding IsChecked, ElementName=TipsToggle, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,0">
+                                    <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Kabel jen pro nabíjení" FontWeight="SemiBold" />
+                                            <TextBlock Text="Použijte datový USB kabel. Některé kabely přenášejí jen napájení a port se ve Windows neobjeví."
+                                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </Border>
                                     <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,8">
                                         <StackPanel>
                                             <TextBlock Text="Chybí ovladač USB převodníku" FontWeight="SemiBold" />
@@ -575,10 +585,14 @@
                                 Content="Zpět" />
 
                         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
-                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding ScanCommand}"
+                            <Button Style="{StaticResource Button.Regular}" Command="{Binding ScanCommand}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsIntro, Converter={StaticResource BoolToVisibility}}">
+                                <components:IconLabel IconData="{StaticResource Glyph.Search}" Text="Vyzkoušet simulátor" />
+                            </Button>
+                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding AutoConnectCommand}"
                                     Visibility="{Binding IsIntro, Converter={StaticResource BoolToVisibility}}"
                                     IsDefault="True">
-                                <components:IconLabel IconData="{StaticResource Glyph.Search}" Text="Vyzkoušet simulátor" Foreground="White" />
+                                <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit laser automaticky" Foreground="White" />
                             </Button>
 
                             <Button Content="Zastavit hledání" Command="{Binding CancelScanCommand}"
@@ -589,9 +603,13 @@
                                 <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" Foreground="White" />
                             </Button>
 
-                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding ScanCommand}"
+                            <Button Style="{StaticResource Button.Regular}" Command="{Binding ScanCommand}" Margin="0,0,8,0"
                                     Visibility="{Binding FoundNothing, Converter={StaticResource BoolToVisibility}}">
-                                <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Načíst simulátor znovu" Foreground="White" />
+                                <components:IconLabel IconData="{StaticResource Glyph.Search}" Text="Vyzkoušet simulátor" />
+                            </Button>
+                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding AutoConnectCommand}"
+                                    Visibility="{Binding FoundNothing, Converter={StaticResource BoolToVisibility}}">
+                                <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Hledat znovu" Foreground="White" />
                             </Button>
 
                             <Button Style="{StaticResource PrimaryBlue}" Command="{Binding FinishCommand}"

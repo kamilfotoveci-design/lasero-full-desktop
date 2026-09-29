@@ -558,11 +558,11 @@
                                 </components:StatusBadge.Style>
                             </components:StatusBadge>
 
-                            <Button Style="{StaticResource Button.Ghost}" Command="{Binding Connection.ConnectCommand}"
+                            <Button Style="{StaticResource Button.Ghost}" Command="{Binding Connection.SmartConnectCommand}"
                                     Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
                                     Foreground="{StaticResource Brush.AccentText}"
                                     Content="Připojit"
-                                    ToolTip="Připojí naposledy vybraný laser, aniž byste museli opustit návrh"
+                                    ToolTip="Připojí naposledy použitý laser, jinak jej najde automaticky na portech COM"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
                             <!-- Job badge, file and message: on Návrh always, elsewhere only once a job has

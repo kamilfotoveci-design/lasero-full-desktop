@@ -60,6 +60,15 @@ public partial class DeviceWizardOverlay : UserControl
         ApplyStep(_viewModel.Step, animate: false);
         AnimateOpen();
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => Focus()));
+        if (viewModel.AutoStartRequested)
+        {
+            viewModel.AutoStartRequested = false;
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (ReferenceEquals(_viewModel, viewModel) && viewModel.AutoConnectCommand.CanExecute(null))
+                    viewModel.AutoConnectCommand.Execute(null);
+            }));
+        }
     }
 
     /// <summary>Esc, and the close button, both funnel through here. If a scan or a connection

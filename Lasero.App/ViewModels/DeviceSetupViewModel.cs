@@ -36,6 +36,8 @@ public partial class DeviceSetupViewModel : ObservableObject
     {
         if (args.PropertyName is not (nameof(ConnectionViewModel.IsConnected)
             or nameof(ConnectionViewModel.IsConnecting)
+            or nameof(ConnectionViewModel.IsDetecting)
+            or nameof(ConnectionViewModel.DetectionStatus)
             or nameof(ConnectionViewModel.ConnectionError)
             or nameof(ConnectionViewModel.DetectedDevice)
             or nameof(ConnectionViewModel.IdentificationMessage)
@@ -63,7 +65,7 @@ public partial class DeviceSetupViewModel : ObservableObject
     {
         get
         {
-            if (_connection.IsConnecting) return ProcessStatus.Progress;
+            if (_connection.IsConnecting || _connection.IsDetecting) return ProcessStatus.Progress;
             if (_connection.IsConnected)
                 return _connection.DetectedDevice is null ? ProcessStatus.Progress : ProcessStatus.Success;
             return _connection.ConnectionError is null ? ProcessStatus.Waiting : ProcessStatus.Error;
@@ -81,6 +83,8 @@ public partial class DeviceSetupViewModel : ObservableObject
 
     public string Description => Status switch
     {
+        ProcessStatus.Progress when _connection.IsDetecting =>
+            _connection.DetectionStatus ?? "Hledám GRBL na portech COM…",
         ProcessStatus.Progress when !_connection.IsConnected =>
             $"Otevírání portu {_connection.SelectedPort} rychlostí {_connection.BaudRate} Bd.",
         ProcessStatus.Progress =>
@@ -89,7 +93,7 @@ public partial class DeviceSetupViewModel : ObservableObject
             _connection.IdentificationMessage ?? "Lasero rozpoznalo zařízení a načetlo jeho parametry.",
         ProcessStatus.Error =>
             _connection.ConnectionError ?? "LASERO se nepodařilo připojit ke stroji. Zkontrolujte USB kabel a zkuste to znovu.",
-        _ => "Zapněte laser a připojte jej datovým USB kabelem. LASERO žádný port neotevře samo, zvolte jej ručně v části Ruční připojení, případně použijte Vyhledat zařízení. Návrh lze upravovat i bez laseru.",
+        _ => "Zapněte laser a připojte jej datovým USB kabelem. Po klepnutí na Připojit laser automaticky LASERO samo najde řadič GRBL na portech COM, model ani port vybírat nemusíte. Porty se nezkoušejí bez vašeho klepnutí. Návrh lze upravovat i bez laseru.",
     };
 
     /// <summary>A bar only while something is genuinely running, and indeterminate throughout: GRBL
@@ -106,14 +110,14 @@ public partial class DeviceSetupViewModel : ObservableObject
     /// </summary>
     public string? PrimaryLabel => Status switch
     {
-        ProcessStatus.Waiting => "Vyhledat zařízení",
+        ProcessStatus.Waiting => "Připojit laser automaticky",
         ProcessStatus.Error => "Zkusit znovu",
         _ => null,
     };
 
     public ICommand? PrimaryCommand => Status switch
     {
-        ProcessStatus.Waiting => OpenWizardCommand,
+        ProcessStatus.Waiting => _connection.SmartConnectCommand,
         ProcessStatus.Error => _connection.ConnectCommand,
         _ => null,
     };
@@ -128,6 +132,7 @@ public partial class DeviceSetupViewModel : ObservableObject
 
     public ICommand? SecondaryCommand => Status switch
     {
+        ProcessStatus.Progress when _connection.IsDetecting => CancelDetectionCommand,
         ProcessStatus.Progress or ProcessStatus.Success => _connection.DisconnectCommand,
         ProcessStatus.Error => OpenWizardCommand,
         _ => null,
@@ -152,6 +157,9 @@ public partial class DeviceSetupViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenWizard() => _openWizard();
+
+    [RelayCommand]
+    private void CancelDetection() => _connection.CancelDetection();
 
     private string PortLabel => VirtualGrblTransport.IsVirtualPort(_connection.SelectedPort)
         ? "Simulátor — bez hardwaru"
