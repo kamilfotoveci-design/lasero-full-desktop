@@ -58,6 +58,11 @@ public sealed class ConnectionViewModelTests : IDisposable
 
         machine.Connect(VirtualGrblTransport.PortName);
         machine.RequestStatus();
+        viewModel.ConfigurePositioningLaser(maximumSValue: null, laserModeEnabled: true);
+        Assert.False(viewModel.CanUsePositioningLaser);
+        await viewModel.StartPositioningLaserAsync();
+        Assert.False(viewModel.IsPositioningLaserOn);
+
         viewModel.ConfigurePositioningLaser(maximumSValue: 1000, laserModeEnabled: true);
 
         Assert.True(viewModel.CanUsePositioningLaser);
@@ -112,6 +117,93 @@ public sealed class ConnectionViewModelTests : IDisposable
         Assert.True(viewModel.HomeCommand.CanExecute(null));
         Assert.True(viewModel.SetOriginHereCommand.CanExecute(null));
         Assert.True(viewModel.GoToWorkZeroCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task OriginAndRapidCommandsAskForConfirmationBeforeAnything()
+    {
+        var (machine, transport, viewModel) = CreateReadyJog("confirm-asks.json");
+        using var _ = machine;
+        var prompts = new List<LaseroDialogOptions>();
+        viewModel.ConfirmAction = o => { prompts.Add(o); return false; };
+
+        await viewModel.SetOriginHereCommand.ExecuteAsync(null);
+        await viewModel.GoToWorkZeroCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, prompts.Count);
+        Assert.All(prompts, o => Assert.DoesNotContain('?', o.Message + o.Title));
+        Assert.All(prompts, o => Assert.DoesNotContain('!', o.Message + o.Title));
+    }
+
+    [Fact]
+    public async Task DecliningConfirmationSendsNothingToTheMachine()
+    {
+        var (machine, transport, viewModel) = CreateReadyJog("confirm-declines.json");
+        using var _ = machine;
+        viewModel.ConfirmAction = _ => false;
+        transport.Sent.Clear();
+
+        await viewModel.SetOriginHereCommand.ExecuteAsync(null);
+        await viewModel.GoToWorkZeroCommand.ExecuteAsync(null);
+
+        Assert.Empty(transport.Sent);
+    }
+
+    [Fact]
+    public async Task AcceptingConfirmationSendsTheCommands()
+    {
+        var (machine, transport, viewModel) = CreateReadyJog("confirm-accepts.json");
+        using var _ = machine;
+        viewModel.ConfirmAction = _ => true;
+        transport.Sent.Clear();
+
+        await viewModel.SetOriginHereCommand.ExecuteAsync(null);
+        Assert.Contains(transport.Sent, l => l.StartsWith("G10", StringComparison.OrdinalIgnoreCase));
+
+        await viewModel.GoToWorkZeroCommand.ExecuteAsync(null);
+        Assert.Contains(transport.Sent, l => l.Contains("G0", StringComparison.OrdinalIgnoreCase) && l.Contains("X0 Y0"));
+    }
+
+    [Fact]
+    public async Task ConfirmationDoesNotBypassTheLaserInterlock()
+    {
+        var (machine, transport, viewModel) = CreateReadyJog("confirm-interlock.json");
+        using var _ = machine;
+        viewModel.ConfigurePositioningLaser(maximumSValue: 1000, laserModeEnabled: true);
+        await viewModel.StartPositioningLaserAsync();
+        machine.RequestStatus();
+        var asked = false;
+        viewModel.ConfirmAction = _ => { asked = true; return true; };
+        transport.Sent.Clear();
+
+        Assert.False(viewModel.GoToWorkZeroCommand.CanExecute(null));
+        Assert.False(viewModel.SetOriginHereCommand.CanExecute(null));
+        Assert.False(asked);
+        Assert.Empty(transport.Sent);
+    }
+
+    private (GrblConnection Machine, RecordingTransport Transport, JogViewModel ViewModel) CreateReadyJog(string settingsFile)
+    {
+        var transport = new RecordingTransport(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
+        var machine = new GrblConnection(transport);
+        var settings = new AppSettingsStore(Path.Combine(_directory, settingsFile));
+        var viewModel = new JogViewModel(machine, settings);
+        machine.Connect(VirtualGrblTransport.PortName);
+        machine.RequestStatus();
+        return (machine, transport, viewModel);
+    }
+
+    private sealed class RecordingTransport(IGrblTransport inner) : IGrblTransport
+    {
+        public List<string> Sent { get; } = [];
+        public bool IsOpen => inner.IsOpen;
+        public event Action<string>? LineReceived { add => inner.LineReceived += value; remove => inner.LineReceived -= value; }
+        public event Action<Exception>? UnexpectedlyClosed { add => inner.UnexpectedlyClosed += value; remove => inner.UnexpectedlyClosed -= value; }
+        public void Open(string portName, int baudRate) => inner.Open(portName, baudRate);
+        public void Close() => inner.Close();
+        public void WriteLine(string text) { lock (Sent) Sent.Add(text); inner.WriteLine(text); }
+        public void WriteRealtimeByte(byte value) => inner.WriteRealtimeByte(value);
+        public void Dispose() => inner.Dispose();
     }
 
     public void Dispose()
