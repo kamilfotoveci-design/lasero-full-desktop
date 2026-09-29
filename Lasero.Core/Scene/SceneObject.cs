@@ -110,6 +110,15 @@ public sealed partial class SceneObject : ObservableObject
         return true;
     }
 
+    /// <summary>Puts back a previously captured shape list and tells listeners the geometry changed -
+    /// the undo half of any command that rewrote LocalShapes in place (see AssignObjectsToLayerCommand).</summary>
+    public void RestoreLocalShapes(IReadOnlyList<ImportedShape> shapes)
+    {
+        ArgumentNullException.ThrowIfNull(shapes);
+        LocalShapes = shapes;
+        OnPropertyChanged(nameof(LocalShapes));
+    }
+
     public bool AssignToLayer(LayerSettings target)
     {
         ArgumentNullException.ThrowIfNull(target);

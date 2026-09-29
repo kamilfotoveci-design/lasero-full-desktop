@@ -139,6 +139,10 @@ public partial class SceneViewModel : ObservableObject
     public bool CanEditSelectedLayerColor => SelectedLayer is not null && !IsSelectedLayerRaster;
     public bool CanAssignSelectionToLayer => HasSelection && SelectedObjects.All(item => !item.IsRaster) &&
         SelectedLayer is not null && !IsSelectedLayerRaster;
+    /// <summary>Whether the selection may be moved onto a layer at all - unlike CanAssignSelectionToLayer
+    /// this does not depend on which layer row is currently highlighted, so a context menu can offer
+    /// every layer by name.</summary>
+    public bool CanAssignToAnyLayer => HasSelection && SelectedObjects.All(item => !item.IsRaster && !item.IsLocked);
     public bool CanDeleteSelectedLayer => SelectedLayer is not null && CountObjectsUsingLayer(SelectedLayer) == 0;
     public bool CanMoveSelectedLayerUp => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) > 0;
     public bool CanMoveSelectedLayerDown => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) is var index && index >= 0 && index < Layers.Count - 1;
@@ -203,6 +207,7 @@ public partial class SceneViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanRedo));
+        NotifyLayerStateChanged();
         RefreshCommands();
         Changed?.Invoke();
     }
@@ -749,14 +754,14 @@ public partial class SceneViewModel : ObservableObject
             layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) ||
             SelectedObjects.Any(item => item.IsRaster)) return;
 
-        var changed = false;
-        foreach (var item in SelectedObjects)
-            changed |= item.AssignToLayer(layer);
-        if (!changed) return;
+        // One undo step for the whole selection: the right-click "Přiřadit do vrstvy" menu made this
+        // a mouse-quick action, and a mis-click there has to be as cheap to take back as any other edit.
+        var command = new AssignObjectsToLayerCommand(SelectedObjects.ToList(), layer);
+        if (!command.ChangesAnything) return;
 
+        Execute(command);
         SelectedLayer = layer;
         NotifyLayerStateChanged();
-        Changed?.Invoke();
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSelectedLayer))]
@@ -915,6 +920,25 @@ public partial class SceneViewModel : ObservableObject
     {
         if (Selected is null) return;
         Execute(new ReorderObjectCommand(Scene, Selected, 0));
+    }
+
+    /// <summary>Objects[0] is the back of the stack and the last item the front, the same order
+    /// SendToBack/BringToFront already move to. One-step moves are only meaningful for one object.</summary>
+    public bool CanBringForward => Selected is not null && Objects.IndexOf(Selected) is var index && index >= 0 && index < Objects.Count - 1;
+    public bool CanSendBackward => Selected is not null && Objects.IndexOf(Selected) > 0;
+
+    [RelayCommand(CanExecute = nameof(CanBringForward))]
+    private void BringForward()
+    {
+        if (Selected is null) return;
+        Execute(new ReorderObjectCommand(Scene, Selected, Objects.IndexOf(Selected) + 1));
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSendBackward))]
+    private void SendBackward()
+    {
+        if (Selected is null) return;
+        Execute(new ReorderObjectCommand(Scene, Selected, Objects.IndexOf(Selected) - 1));
     }
 
     [RelayCommand(CanExecute = nameof(CanTransformSingle))]
@@ -1816,6 +1840,8 @@ public partial class SceneViewModel : ObservableObject
         DuplicateCommand.NotifyCanExecuteChanged();
         BringToFrontCommand.NotifyCanExecuteChanged();
         SendToBackCommand.NotifyCanExecuteChanged();
+        BringForwardCommand.NotifyCanExecuteChanged();
+        SendBackwardCommand.NotifyCanExecuteChanged();
         CopyCommand.NotifyCanExecuteChanged();
         CutCommand.NotifyCanExecuteChanged();
         PasteCommand.NotifyCanExecuteChanged();
