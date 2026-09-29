@@ -184,10 +184,16 @@ their availability can change in the current workflow. Empty, disconnected, busy
 states must all be readable from the status strip.
 
 Keyboard focus is always visible — a 2px cobalt ring, inside the border on unfilled controls and
-outside the fill on filled ones.
+outside the fill on filled ones. It appears only when focus arrived from the keyboard: templates
+trigger on `FocusVisual.IsVisible`, never on `IsKeyboardFocused`, so a mouse click leaves no ring.
+Text inputs are the exception and show their cobalt border on any focus.
+
+Disabled filled controls use the flat disabled surface; glyph-only and composite controls dim to
+`Opacity.Disabled` (0.45), the one dimming level. Every other rule of behaviour (Esc layering, numeric
+field commit and revert, double-click, cursors, dialogs, tooltips) is in `docs/interaction-rules.md`.
 
 Hover and press are one mechanic at two strengths: `Brush.HoverWash` (ink) over whatever the control
-already is, 6% for hover and 14% for press. There is deliberately no per-kind pressed colour — that
+already is, 6% for hover and 8% for press. Toggle buttons use the same two layers as `Button`. There is deliberately no per-kind pressed colour — that
 would be a second implementation of one state, and every new button kind would have to re-derive it.
 The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.
 

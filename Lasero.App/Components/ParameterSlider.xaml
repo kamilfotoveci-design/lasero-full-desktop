@@ -77,7 +77,7 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Grip" Property="Width" Value="20" />
@@ -107,7 +107,6 @@
                     <TextBlock DockPanel.Dock="Right" Text="{Binding Unit, ElementName=Root}"
                                Style="{StaticResource UnitField.Suffix}" />
                     <TextBox x:Name="ValueField" Style="{StaticResource UnitField.Input}"
-                             KeyDown="OnValueFieldKeyDown"
                              automation:AutomationProperties.Name="{Binding Label, ElementName=Root}"
                              Text="{Binding Value, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 </DockPanel>

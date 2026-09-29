@@ -71,7 +71,7 @@
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
                             </Trigger>

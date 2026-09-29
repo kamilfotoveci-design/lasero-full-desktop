@@ -141,13 +141,6 @@ public partial class ParameterSlider : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Enter commits and keeps the field selected, the same idiom the transform fields use —
-    /// typing a value and pressing Enter must not require tabbing away to take effect.</summary>
-    private void OnValueFieldKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || sender is not TextBox field) return;
-        field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-        field.SelectAll();
-        e.Handled = true;
-    }
+    // The value field commits on Enter and reverts on Esc through the app-wide field behaviour
+    // (Lasero.App.Input.InteractionBehaviors), the same as every other numeric field.
 }

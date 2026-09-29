@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Shell;
+using Lasero.App.Input;
 using Lasero.App.ViewModels;
 using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Grbl;
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();
         PreviewKeyDown += OnPreviewKeyDown;
+        KeyDown += OnKeyDown;
 
         _autosaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _autosaveTimer.Tick += (_, _) => _viewModel.SaveRecoverySnapshot();
@@ -66,6 +68,26 @@ public partial class MainWindow : Window
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         var isTextInput = Keyboard.FocusedElement is TextBox or PasswordBox or ComboBox;
+
+        // Shortcuts that act on the design belong to the Designer screen. The bindings in
+        // MainWindow.xaml are window-wide, so without this Delete, Ctrl+D or Ctrl+Z on Home, Device
+        // or Chat changed a design the user could not see. A text field keeps its own editing keys.
+        var shortcutKey = e.Key == Key.System ? e.SystemKey : e.Key;
+        var onDesigner = _viewModel.CurrentScreen == AppScreen.Designer;
+        if (InteractionRules.SuppressSceneShortcut(onDesigner, shortcutKey, Keyboard.Modifiers, isTextInput))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // And never mid-gesture: Delete during a move would commit a transform for deleted objects.
+        if (onDesigner && DesignerCanvas.IsPointerGestureActive &&
+            InteractionRules.IsMutatingSceneShortcut(shortcutKey, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (isTextInput) return;
 
         var modifiers = Keyboard.Modifiers;
@@ -108,6 +130,38 @@ public partial class MainWindow : Window
         {
             OpenKeyboardShortcuts();
             e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Esc that nothing closer claimed (docs/interaction-rules.md 1.1). It runs on the bubbling event
+    /// so an open dropdown, a field with an edit to revert and the assistant's own composer all get
+    /// first refusal, and it is what makes Esc work when focus is on a button or the inspector
+    /// instead of the canvas.
+    /// </summary>
+    private void OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || e.Handled) return;
+
+        var action = InteractionRules.ForWindowEscape(
+            designerScreen: _viewModel.CurrentScreen == AppScreen.Designer,
+            focusInTextInput: Keyboard.FocusedElement is TextBox or PasswordBox or ComboBox,
+            canvasHasEscapableState: DesignerCanvas.HasEscapableState,
+            assistantOpen: _viewModel.Kamil.State is not (KamilAssistantState.Minimized or KamilAssistantState.Hidden));
+
+        switch (action)
+        {
+            case WindowEscapeAction.LeaveTextField:
+                DesignerCanvas.Focus();
+                e.Handled = true;
+                break;
+            case WindowEscapeAction.CanvasLayers:
+                e.Handled = DesignerCanvas.HandleEscape();
+                break;
+            case WindowEscapeAction.MinimizeAssistant:
+                _viewModel.Kamil.StepBack();
+                e.Handled = true;
+                break;
         }
     }
 

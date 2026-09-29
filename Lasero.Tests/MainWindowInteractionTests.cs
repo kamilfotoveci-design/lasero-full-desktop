@@ -17,8 +17,12 @@ public sealed class MainWindowInteractionTests
             "SelectedTextValue", "SelectedTextHeight",
         ];
 
-        Assert.Equal(deferredFields.Length, CountOccurrences(xaml, "KeyDown=\"OnValueFieldKeyDown\""));
-        Assert.Contains("GetBindingExpression(TextBox.TextProperty)?.UpdateSource()", codeBehind, StringComparison.Ordinal);
+        // Enter, Esc and click-to-select are one app-wide behaviour now (InteractionBehaviors), so the
+        // bar carries no handler of its own and none of its fields opts out.
+        Assert.DoesNotContain("KeyDown=\"OnValueFieldKeyDown\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("OnValueFieldKeyDown", codeBehind, StringComparison.Ordinal);
+        var behaviours = File.ReadAllText(Path.Combine(root, "Lasero.App", "Input", "InteractionBehaviors.cs"));
+        Assert.Contains("expression.UpdateSource()", behaviours, StringComparison.Ordinal);
 
         // Every one of these fields defers its binding to LostFocus, so a half-typed number never
         // reaches the scene. That is what makes the Enter handler necessary: without it a typed value

@@ -181,8 +181,10 @@
     <!-- AutoReverse makes the complete breathe cycle 3.2 s. Use only for real activity. -->
     <Duration x:Key="Motion.Breathe">0:0:1.6</Duration>
     <CubicEase x:Key="Ease.Out" EasingMode="EaseOut" />
+    <!-- One dimming level for disabled glyph-only and composite controls (filled buttons use the flat
+         disabled surface instead). Two values, 0.4 and 0.45, had crept in side by side. -->
+    <system:Double x:Key="Opacity.Disabled">0.45</system:Double>
     <SineEase x:Key="Ease.Breathe" EasingMode="EaseInOut" />
-    <BackEase x:Key="Ease.Spring" EasingMode="EaseOut" Amplitude="0.12" />
 
     <!-- 4pt spacing scale (4/8/12/16/20/24/32) — enforced as literal multiples throughout instead of ad hoc margins. -->
 
@@ -441,13 +443,13 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <!--
@@ -570,19 +572,43 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1">
+                    <Grid>
+                        <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1" />
+                        <!-- The same two wash layers the Button template uses, so a toggle answers the
+                             pointer exactly like a button does: hover 6 percent, press 8, no border change. -->
+                        <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                        <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Press" Property="Opacity" Value="0.08" />
+                        </Trigger>
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -600,23 +626,44 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{StaticResource Radius.Sm}">
+                    <Grid>
+                        <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1" />
+                        <!-- The same two wash layers the Button template uses, so a toggle answers the
+                             pointer exactly like a button does: hover 6 percent, press 8, no border change. -->
+                        <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                        <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Press" Property="Opacity" Value="0.08" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -790,7 +837,7 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -813,7 +860,7 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Danger}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DangerMuted}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -888,12 +935,12 @@
                             <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.AccentHover}" />
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.AccentHover}" />
                         </MultiTrigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                             <Setter TargetName="Box" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45" />
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -951,7 +998,7 @@
                             <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                             <Setter Property="FontWeight" Value="Medium" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                             <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
                         </Trigger>
@@ -1001,6 +1048,10 @@
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DisabledSurface}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -1027,6 +1078,10 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DisabledSurface}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -1101,7 +1156,7 @@
                             <Setter TargetName="Toggle" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45" />
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="{StaticResource Brush.TextSecondary}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -1152,11 +1207,11 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45" />
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -1263,7 +1318,7 @@
                             <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Field}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -1398,7 +1453,7 @@
                             <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="RowBg" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                             <Setter TargetName="RowBg" Property="BorderThickness" Value="2" />
                         </Trigger>

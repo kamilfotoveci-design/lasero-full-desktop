@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using Lasero.App.Input;
 using Lasero.App.ViewModels;
 using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
@@ -994,7 +995,7 @@ public partial class SceneCanvas : UserControl
             Stroke = SelectionBrush,
             StrokeThickness = 1.2,
             Tag = obj,
-            Cursor = Cursors.Hand,
+            Cursor = RotateCursor.Get(),
         };
         rotateHandle.MouseLeftButtonDown += OnRotateHandleMouseLeftButtonDown;
         Canvas.SetLeft(rotateHandle, rotateScreen.X - (HandleSizePx + 2) / 2);
@@ -1067,7 +1068,7 @@ public partial class SceneCanvas : UserControl
         if (ViewModel is null) return;
         Focus();
 
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             if (ViewModel.SelectedObjects.Contains(obj)) ViewModel.SelectedObjects.Remove(obj);
             else ViewModel.SelectedObjects.Add(obj);
@@ -1172,7 +1173,11 @@ public partial class SceneCanvas : UserControl
         Focus();
         if (ViewModel is null || ViewModel.ActiveTool != DesignerTool.Select) return;
 
-        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        // Shift adds to the selection, Ctrl subtracts from it, neither replaces it
+        // (docs/interaction-rules.md 1.5).
+        var additive = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        _marqueeSubtracts = !additive && Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        if (!additive && !_marqueeSubtracts)
             ViewModel.SelectedObjects.Clear();
 
         _dragMode = DragMode.Select;
@@ -1462,16 +1467,9 @@ public partial class SceneCanvas : UserControl
     {
         if (e.Key == Key.Escape)
         {
+            // One press, one layer: leave editing and keep the text, the selection and the tool. The
+            // next Esc peels the next layer (docs/interaction-rules.md 1.1).
             CommitInlineTextEdit(applyChanges: true);
-            // Same Escape convention OnCanvasKeyDown already uses elsewhere: leave a non-Select tool
-            // first, only clear the selection once already on Select.
-            if (ViewModel is not null)
-            {
-                if (ViewModel.ActiveTool != DesignerTool.Select)
-                    ViewModel.ActiveTool = DesignerTool.Select;
-                else
-                    ViewModel.SelectedObjects.Clear();
-            }
             Focus();
             e.Handled = true;
             return;
@@ -1860,6 +1858,8 @@ public partial class SceneCanvas : UserControl
         _rubberBandVisual.Height = Math.Abs(current.Y - _dragStartScreen.Y);
     }
 
+    private bool _marqueeSubtracts;
+
     private void FinishRubberBand()
     {
         if (_rubberBandVisual is null) { return; }
@@ -1881,7 +1881,10 @@ public partial class SceneCanvas : UserControl
                 if (obj.IsLocked || !IsObjectVisibleOnCanvas(obj)) continue;
                 var b = obj.WorldBounds();
                 var intersects = b.MinX <= worldMaxX && b.MaxX >= worldMinX && b.MinY <= worldMaxY && b.MaxY >= worldMinY;
-                if (intersects && !ViewModel.SelectedObjects.Contains(obj))
+                if (!intersects) continue;
+                if (_marqueeSubtracts)
+                    ViewModel.SelectedObjects.Remove(obj);
+                else if (!ViewModel.SelectedObjects.Contains(obj))
                     ViewModel.SelectedObjects.Add(obj);
             }
         }
@@ -1965,10 +1968,9 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
-        // VECTOR PATH TOOL HOOK: layered Escape, both cases only between clicks/drags (_dragMode ==
-        // None) -- while an actual drag is in progress the generic CancelActiveInteraction block below
-        // already owns Escape via its own DragMode.PathTool/NodeEdit cases.
-        if (e.Key == Key.Escape && _dragMode == DragMode.None)
+        // Enter mirrors double-click on a path: it enters node edit, and leaves it again. Esc also
+        // leaves it (docs/interaction-rules.md 1.2), so the pair is symmetrical from the keyboard.
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && _dragMode == DragMode.None)
         {
             if (_nodeEditObject is not null)
             {
@@ -1976,23 +1978,22 @@ public partial class SceneCanvas : UserControl
                 e.Handled = true;
                 return;
             }
-            if (_pathToolDrawing)
+
+            if (ViewModel.ActiveTool == DesignerTool.Select && ViewModel.SelectedObjects.Count == 1 &&
+                ViewModel.Selected is { IsVectorPath: true, IsLocked: false } editable)
             {
-                CancelLastVectorPathNode();
+                EnterNodeEditMode(editable);
                 e.Handled = true;
                 return;
             }
         }
 
+        // Esc peels one layer per press (docs/interaction-rules.md 1.1). When there is nothing left
+        // for the canvas to peel, the key is deliberately left unhandled so it bubbles to the main
+        // window, which minimizes the assistant; swallowing it here is what stopped that happening.
         if (e.Key == Key.Escape)
         {
-            if (_dragMode != DragMode.None)
-                CancelActiveInteraction();
-            else if (ViewModel.ActiveTool != DesignerTool.Select)
-                ViewModel.ActiveTool = DesignerTool.Select;
-            else
-                ViewModel.SelectedObjects.Clear();
-            e.Handled = true;
+            e.Handled = HandleEscape();
             return;
         }
 
@@ -2042,6 +2043,55 @@ public partial class SceneCanvas : UserControl
             EndPan();
         else if (_dragMode == DragMode.None)
             UpdateToolCursor();
+    }
+
+    /// <summary>True while a pointer gesture (move, resize, rotate, draw, pan, node drag, marquee)
+    /// is in progress. The main window refuses design-changing shortcuts during one.</summary>
+    public bool IsPointerGestureActive => _dragMode != DragMode.None;
+
+    /// <summary>Whether Esc has anything temporary to peel here, wherever keyboard focus is.</summary>
+    public bool HasEscapableState => InteractionRules.ForCanvasEscape(CurrentEscapeState()) != CanvasEscapeAction.None;
+
+    private CanvasEscapeState CurrentEscapeState() => new(
+        GestureActive: _dragMode != DragMode.None,
+        InlineTextEditing: _inlineTextEditor is not null,
+        NodeEditActive: _nodeEditObject is not null,
+        PathInProgress: _pathToolDrawing,
+        NonSelectToolActive: ViewModel is { } scene && scene.ActiveTool != DesignerTool.Select,
+        HasSelection: ViewModel is { } current && current.SelectedObjects.Count > 0);
+
+    /// <summary>
+    /// One Esc press, one layer, innermost first (see <see cref="InteractionRules.ForCanvasEscape"/>).
+    /// Returns false when there was nothing to peel, so the caller can let the key travel on.
+    /// </summary>
+    public bool HandleEscape()
+    {
+        if (ViewModel is null) return false;
+
+        var action = InteractionRules.ForCanvasEscape(CurrentEscapeState());
+        switch (action)
+        {
+            case CanvasEscapeAction.CancelGesture:
+                CancelActiveInteraction();
+                break;
+            case CanvasEscapeAction.ExitInlineTextEdit:
+                CommitInlineTextEdit(applyChanges: true);
+                Focus();
+                break;
+            case CanvasEscapeAction.ExitNodeEdit:
+                ExitNodeEditMode();
+                break;
+            case CanvasEscapeAction.CancelPathNode:
+                CancelLastVectorPathNode();
+                break;
+            case CanvasEscapeAction.ResetTool:
+                ViewModel.ActiveTool = DesignerTool.Select;
+                break;
+            case CanvasEscapeAction.ClearSelection:
+                ViewModel.SelectedObjects.Clear();
+                break;
+        }
+        return action != CanvasEscapeAction.None;
     }
 
     private void CancelActiveInteraction()

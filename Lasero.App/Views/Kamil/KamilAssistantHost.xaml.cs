@@ -398,7 +398,7 @@ public partial class KamilAssistantHost : UserControl
         bool opening,
         bool closing)
     {
-        var ease = (IEasingFunction)FindResource("Ease.Spring");
+        var ease = (IEasingFunction)FindResource("Ease.Out");
 
         Surface.Width = Surface.ActualWidth > 0 ? Surface.ActualWidth : Surface.Width;
         Surface.Height = Surface.ActualHeight > 0 ? Surface.ActualHeight : Surface.Height;
@@ -545,8 +545,12 @@ public partial class KamilAssistantHost : UserControl
     {
         var width = Root.ActualWidth > 0 ? Root.ActualWidth : ActualWidth;
         var height = Root.ActualHeight > 0 ? Root.ActualHeight : ActualHeight;
-        return new Rect(SafeMargin, SafeMargin,
-            Math.Max(0, width - SafeMargin), Math.Max(0, height - SafeMargin));
+        // The top edge sits below the floating selection bar (MainWindow.xaml: 30px inset plus the
+        // bar's height, see ContextBarClearance). Without it an Expanded panel at 1366 x 768 rose over the bar and covered
+        // its X, Y, size and rotation fields (docs/ui-review-2026-09-29.md P2-2). The panel now gets
+        // shorter instead of covering them, and the head cannot be parked over the bar either.
+        return new Rect(SafeMargin, ContextBarClearance,
+            Math.Max(0, width - SafeMargin), Math.Max(0, height - ContextBarClearance));
     }
 
     private Point ClampPosition(Point position, Size size, Rect bounds)
@@ -647,6 +651,11 @@ public partial class KamilAssistantHost : UserControl
     }
 
     private const double SafeMargin = 16;
+
+    /// <summary>Distance from the top of the workspace to just under the selection bar: the 30px inset
+    /// in MainWindow.xaml, the bar's height, and a gap. The bar is tallest, about 68px, when a text
+    /// object is selected, because its horizontal scrollbar appears; that is the case measured here.</summary>
+    internal const double ContextBarClearance = 30 + 68 + 8;
     private const double AnchorGap = 12;
 
     /// <summary>
@@ -700,7 +709,7 @@ public partial class KamilAssistantHost : UserControl
             To = visible ? 0 : 4,
             Duration = ContentDuration,
             BeginTime = visible ? TimeSpan.FromMilliseconds(70) : TimeSpan.Zero,
-            EasingFunction = (IEasingFunction)Application.Current.FindResource("Ease.Spring"),
+            EasingFunction = (IEasingFunction)Application.Current.FindResource("Ease.Out"),
             FillBehavior = FillBehavior.HoldEnd,
         });
     }

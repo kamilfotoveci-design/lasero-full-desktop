@@ -20,6 +20,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        Lasero.App.Input.InteractionBehaviors.Register();
 
         DispatcherUnhandledException += (_, args) =>
         {

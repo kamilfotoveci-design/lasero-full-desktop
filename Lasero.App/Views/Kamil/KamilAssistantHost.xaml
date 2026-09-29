@@ -78,9 +78,9 @@
                                     <BeginStoryboard>
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
-                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                             <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
-                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
@@ -112,9 +112,9 @@
                                     <BeginStoryboard>
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleX"
-                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                             <DoubleAnimation Storyboard.TargetName="AvatarScale" Storyboard.TargetProperty="ScaleY"
-                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                                             To="1.018" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>

@@ -87,7 +87,7 @@
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
                             </Trigger>
@@ -122,7 +122,7 @@
                     <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose X">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Poloha na ose X v milimetrech"
                                      Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -131,7 +131,7 @@
                     <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose Y">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Poloha na ose Y v milimetrech"
                                      Text="{Binding Scene.SelectedY, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -151,7 +151,7 @@
                     <Border Style="{StaticResource BarField}" ToolTip="Výsledná šířka objektu">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Šířka v milimetrech"
                                      Text="{Binding Scene.SelectedWidth, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -180,7 +180,7 @@
                     <Border Style="{StaticResource BarField}" ToolTip="Výsledná výška objektu">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Výška v milimetrech"
                                      Text="{Binding Scene.SelectedHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -202,7 +202,7 @@
                     <Border Style="{StaticResource BarField}" Width="74" ToolTip="Otočení objektu ve stupních">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="°" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Otočení ve stupních"
                                      Text="{Binding Scene.SelectedRotation, StringFormat=0.#, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -218,7 +218,6 @@
                             Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
                     <TextBox Width="118" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
                              VerticalContentAlignment="Center" Padding="10,0" Margin="0,0,6,0"
-                             KeyDown="OnValueFieldKeyDown"
                              automation:AutomationProperties.Name="Znění textu" ToolTip="Znění textu"
                              Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
                     <!-- Each family renders in itself, so the list is browsable by eye. -->
@@ -238,7 +237,7 @@
                             ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}" KeyDown="OnValueFieldKeyDown"
+                            <TextBox Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Výška písma v milimetrech"
                                      Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>

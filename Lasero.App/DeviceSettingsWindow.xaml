@@ -38,7 +38,7 @@
                                 <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="1" />
                             </Trigger>
