@@ -5,7 +5,78 @@
              Focusable="True"
              KeyDown="OnCanvasKeyDown"
              KeyUp="OnCanvasKeyUp"
+             ContextMenuOpening="OnCanvasContextMenuOpening"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
+    <UserControl.Resources>
+        <!--
+            Context-menu row. The app-wide MenuItem style only draws the header, which is right for the
+            flat zoom and recipe menus but drops everything a command menu needs: the icon column, the
+            shortcut on the right, the check mark and a submenu that opens beside its row. Applied
+            explicitly by SceneCanvas.ContextMenus.cs, so no other menu in the app changes.
+        -->
+        <Style x:Key="CanvasMenuItem" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" />
+                            <Grid Margin="4,0,8,0" MinHeight="{TemplateBinding MinHeight}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="16" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter x:Name="IconHost" Grid.Column="0" ContentSource="Icon"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Path x:Name="CheckMark" Grid.Column="0" Data="{StaticResource Glyph.Check}"
+                                      Stroke="{DynamicResource Brush.Accent}" StrokeThickness="2"
+                                      Width="12" Height="12" Stretch="Uniform"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                                <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="False"
+                                                  Margin="4,0,16,0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                           FontSize="{StaticResource Size.Text.Meta}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <Path x:Name="Arrow" Grid.Column="3" Data="{StaticResource Glyph.ChevronRight}"
+                                      Stroke="{DynamicResource Brush.TextMuted}" StrokeThickness="1.5"
+                                      Width="10" Height="10" Stretch="Uniform"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                            </Grid>
+                            <Popup x:Name="SubPopup" Placement="Right" HorizontalOffset="-2" VerticalOffset="-5"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                <Border Background="{DynamicResource Brush.Panel}"
+                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                                        CornerRadius="{StaticResource Radius.Lg}" Padding="4"
+                                        Effect="{StaticResource Shadow.Dropdown}" MinWidth="180">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Role" Value="SubmenuHeader">
+                                <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Field}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <!--
         No card. The canvas used to sit inside a rounded, bordered, drop-shadowed sheet, which framed
         the drawing area as one panel among several; in the editor it is the subject, so it runs to
@@ -40,51 +111,8 @@
                         PreviewMouseWheel="OnDrawCanvasMouseWheel"
                         MouseLeftButtonDown="OnDrawCanvasMouseLeftButtonDown"
                         MouseLeftButtonUp="OnDrawCanvasMouseLeftButtonUp"
+                        MouseRightButtonDown="OnCanvasBackgroundRightButtonDown"
                         MouseMove="OnDrawCanvasMouseMove">
-                    <Canvas.ContextMenu>
-                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                            <MenuItem Header="Vyjmout" Command="{Binding Scene.CutCommand}" InputGestureText="Ctrl+X">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Cut}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Kopírovat" Command="{Binding Scene.CopyCommand}" InputGestureText="Ctrl+C">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Copy}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Vložit" Command="{Binding Scene.PasteCommand}" InputGestureText="Ctrl+V">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Paste}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Duplikovat" Command="{Binding Scene.DuplicateCommand}" InputGestureText="Ctrl+D">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Odstranit" Command="{Binding Scene.DeleteCommand}" InputGestureText="Del">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Danger}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="Trasovat bitmapu" Command="{Binding Scene.TraceSelectedRasterCommand}" InputGestureText="Alt+T">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Vector}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
-                            <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
-                            <MenuItem Header="Převrátit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
-                            <MenuItem Header="Převrátit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
-                            <Separator />
-                            <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
-                            <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
-                            <Separator />
-                            <MenuItem Header="Seskupit vybrané" Command="{Binding Scene.GroupSelectionCommand}" InputGestureText="Ctrl+G">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Group}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Sjednotit vektor" Command="{Binding Scene.UniteSelectionCommand}" InputGestureText="Ctrl+Shift+U">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Union}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Rozdělit skupinu na části" Command="{Binding Scene.UngroupSelectionCommand}" InputGestureText="Ctrl+Shift+G">
-                                <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Ungroup}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Zamknout / odemknout" Command="{Binding Scene.ToggleLockCommand}" />
-                            <Separator />
-                            <MenuItem Header="Vybrat vše" Command="{Binding Scene.SelectAllCommand}" InputGestureText="Ctrl+A" />
-                        </ContextMenu>
-                    </Canvas.ContextMenu>
                 </Canvas>
             </Grid>
         </Border>

@@ -473,7 +473,8 @@
                 <controls:SceneCanvas x:Name="DesignerCanvas"
                                       ViewModel="{Binding Scene}"
                                       WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}"
-                                      WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}" />
+                                      WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}"
+                                      ImportCommand="{Binding GCode.LoadFileCommand}" />
 
                 <!--
                     The selection's contextual toolbar. Top-centre over the canvas, present only while

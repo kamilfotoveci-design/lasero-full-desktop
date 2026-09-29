@@ -654,21 +654,16 @@ public partial class SceneCanvas
         RedrawSelectionOverlay();
     }
 
+    /// <summary>Right-click on a node dot opens the node menu (Corner/Smooth, break, close, delete). The
+    /// old direct Corner/Smooth toggle is one click away in that menu and on the Node Edit toolbar.</summary>
     private void OnNodeRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null || !CanOpenContextMenu) return;
         var tag = (NodeHitTag)((FrameworkElement)sender).Tag;
         if (tag.IsHandle) return;
         e.Handled = true;
-
-        // Compact contextual action instead of a big inspector, per the spec: right-click toggles
-        // Corner <-> Smooth directly rather than opening a menu for a two-way choice.
-        var subpath = _nodeEditWorkingPath.Subpaths[tag.Subpath];
-        var node = subpath.Nodes[tag.Node];
-        var newType = node.Type == VectorNodeType.Corner ? VectorNodeType.Smooth : VectorNodeType.Corner;
-        var nodes = subpath.Nodes.ToList();
-        nodes[tag.Node] = VectorPathEditor.ConvertNodeType(node, newType);
-        CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(tag.Subpath, subpath with { Nodes = nodes }));
+        Focus();
+        ShowNodeContextMenuFor(tag.Subpath, tag.Node, e.GetPosition(DrawCanvas));
     }
 
     /// <summary>Starts a segment-body drag (LIGHTBURN_VECTOR_PARITY.md §15): captures the pre-drag

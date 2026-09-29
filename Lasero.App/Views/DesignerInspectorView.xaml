@@ -333,6 +333,8 @@
                                             <MenuItem Header="Duplikovat vrstvu"
                                                       Command="{Binding PlacementTarget.Tag.Scene.DuplicateSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <MenuItem Header="Odstranit vrstvu"
+                                                      ToolTip="Vrstvu nelze odstranit, dokud ji používá nějaký tvar. Nejdřív tvary přiřaďte do jiné vrstvy."
+                                                      ToolTipService.ShowOnDisabled="True"
                                                       Command="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
                                     </Grid.ContextMenu>
