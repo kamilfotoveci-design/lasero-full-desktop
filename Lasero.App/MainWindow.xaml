@@ -241,7 +241,7 @@
                     </Button>
                 </StackPanel>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="MinimizeButton" Style="{StaticResource Button.Chrome}" Click="OnMinimizeClick" AutomationProperties.Name="Minimalizovat">
                         <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </Button>
