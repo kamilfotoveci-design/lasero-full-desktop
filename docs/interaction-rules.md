@@ -189,3 +189,16 @@ recorded means noted and deliberately left, with the reason.
 Core fill and winding, background removal, `GrblConnection` and beam safety, `JobPreflight`; the
 context-menu contents and first-run text and tooltips being reworked by other agents; anything that
 sends to hardware. No control that starts a job, jogs, homes or zeroes is touched.
+
+## 4. Button state pass (2026-09-29)
+
+Pinned by `Lasero.Tests/ButtonStateTests.cs`.
+
+| # | Where | Defect | Fix |
+|---|---|---|---|
+| B1 | `Button.LargeSecondary` (Home Importovat, Otevrit projekt) | Based on `Button.Large`, so it inherited `Button.Primary` hover and press Background triggers. A Style trigger outranks a Style setter, so hover or press painted the white button graphite with dark text (looked black); a disabled button under the pointer did the same | Based on `Button.Secondary`; `Button.Primary` triggers guarded with `IsEnabled=True` |
+| B2 | implicit ToggleButton, RadioButton, RepeatButton, Expander | No implicit style: stock Windows chrome (blue hover, bevel, circled arrow) on the five Expanders | Implicit styles using the shared wash mechanic |
+| B3 | `Button.Chrome`, `Button.ChromeClose`, `Segment`, `ToggleButton.Link`, `DeviceSettingsNav`, rail tools, shape picker | No pressed state | Pressed brush added |
+| B4 | `Button.Chrome*`, `QuickLayerButton`, `DeviceSettingsNav`, `MaterialSwatchCell`, rail tools, shape picker, Kamil avatar | No disabled state | `Opacity.Disabled` or `TextDisabled` |
+| B5 | `Field.Select`, `ComboBox` hover | Border went to `TextSecondary`, near black | `TextMuted` |
+| B6 | `ShapePickerItem` | Focus ring on `IsKeyboardFocused`, so a click left it | `FocusVisual.IsVisible` |

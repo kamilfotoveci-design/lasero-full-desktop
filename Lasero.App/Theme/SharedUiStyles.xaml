@@ -242,6 +242,9 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+                        </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                         </Trigger>
@@ -265,14 +268,14 @@
     </Style>
     <!--
         The quieter half of a hero's button row: same height as Button.Large so the row lines up, but
-        a panel surface and normal text. Button.Large descends from Button.Primary, which sets a white
-        Foreground — overriding only Background there gives white text on a white button.
+        a panel surface and normal text. It is based on Button.Secondary, not Button.Large: Button.Primary
+        carries hover and press Background triggers that outrank any Background set here, which turned
+        this button graphite with dark text under the pointer.
     -->
-    <Style x:Key="Button.LargeSecondary" TargetType="Button" BasedOn="{StaticResource Button.Large}">
-        <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
-        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="FontWeight" Value="Medium" />
+    <Style x:Key="Button.LargeSecondary" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="Height" Value="{StaticResource Size.Control.Large}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Large}" />
+        <Setter Property="Padding" Value="18,0" />
     </Style>
 
     <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -436,6 +439,10 @@
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

@@ -93,9 +93,17 @@
                                 <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+                                <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -161,9 +169,17 @@
                                 <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+                                <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -222,8 +238,16 @@
                                 <Setter TargetName="Selected" Property="Opacity" Value="1" />
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                             </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
+                                <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

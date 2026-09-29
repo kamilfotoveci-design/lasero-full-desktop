@@ -37,6 +37,13 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.Field}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
                                 <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />

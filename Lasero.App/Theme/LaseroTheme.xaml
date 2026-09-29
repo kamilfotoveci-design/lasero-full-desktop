@@ -499,14 +499,24 @@
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
+            <!-- Enabled only. A Style trigger outranks the template's disabled trigger, so an
+                 unguarded hover here painted a disabled primary button graphite. -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsEnabled" Value="True" />
+                    <Condition Property="IsMouseOver" Value="True" />
+                </MultiTrigger.Conditions>
                 <Setter Property="Background" Value="{StaticResource Brush.PrimaryActionHover}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryActionHover}" />
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
+            </MultiTrigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsEnabled" Value="True" />
+                    <Condition Property="IsPressed" Value="True" />
+                </MultiTrigger.Conditions>
                 <Setter Property="Background" Value="{StaticResource Brush.PrimaryActionPressed}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.PrimaryActionPressed}" />
-            </Trigger>
+            </MultiTrigger>
         </Style.Triggers>
     </Style>
 
@@ -767,8 +777,14 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
+                        </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -790,8 +806,15 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Danger}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AccentHover}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
+                        </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DangerMuted}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -908,6 +931,9 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorderStrong}" />
                         </Trigger>
                         <!--
                             Declared after hover so a hovered selected segment still reads as selected.
@@ -1031,7 +1057,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
                     <Grid>
-                        <ToggleButton x:Name="Toggle"
+                        <ToggleButton x:Name="Toggle" Style="{x:Null}"
                                       Background="{TemplateBinding Background}"
                                       BorderBrush="{TemplateBinding BorderBrush}"
                                       BorderThickness="{TemplateBinding BorderThickness}"
@@ -1054,7 +1080,7 @@
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="FieldBg" Property="BorderBrush" Value="{StaticResource Brush.TextSecondary}" />
+                                            <Setter TargetName="FieldBg" Property="BorderBrush" Value="{StaticResource Brush.TextMuted}" />
                                         </Trigger>
                                         <Trigger Property="IsChecked" Value="True">
                                             <Setter TargetName="FieldBg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
@@ -1135,7 +1161,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.TextMuted}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
@@ -1529,4 +1558,88 @@
         </Style.Triggers>
     </Style>
 
+
+    <!-- ===================== Implicit fallbacks for controls with no bespoke style =====================
+         A ToggleButton, RadioButton, RepeatButton or Expander that carries no Style used to render the
+         stock Windows chrome: a blue hover, a grey bevel, a circled arrow. These give them the
+         same wash mechanic as Button. Styles that name themselves (Toggle.Icon, Segment, ...) are
+         unaffected, an explicit Style always replaces the implicit one. Plain Setters, no animation,
+         so there is no state that can be left behind. -->
+    <Style TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Icon}" />
+    <Style TargetType="RadioButton" BasedOn="{StaticResource Segment}" />
+    <Style TargetType="RepeatButton">
+        <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Grid>
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}" />
+                        <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" CornerRadius="{StaticResource Radius.Md}" />
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.06" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.1" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DisabledSurface}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="Expander">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <DockPanel>
+                        <ToggleButton x:Name="HeaderToggle" Style="{x:Null}" DockPanel.Dock="Top" Cursor="Hand" Focusable="True"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Grid Background="Transparent" MinHeight="{StaticResource Size.Control.Compact}">
+                                        <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" CornerRadius="{StaticResource Radius.Sm}" />
+                                        <StackPanel Orientation="Horizontal" Margin="4,0">
+                                            <Path x:Name="Chevron" Data="{StaticResource Glyph.ChevronDown}" Stroke="{StaticResource Brush.TextSecondary}"
+                                                  StrokeThickness="1.6" StrokeLineJoin="Round" Stretch="Uniform" Width="10" Height="10"
+                                                  VerticalAlignment="Center" Margin="0,0,8,0" RenderTransformOrigin="0.5,0.5">
+                                                <Path.RenderTransform><RotateTransform Angle="-90" /></Path.RenderTransform>
+                                            </Path>
+                                            <ContentPresenter ContentSource="Content" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="0" /></Setter.Value></Setter>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.06" /></Trigger>
+                                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.1" /></Trigger>
+                                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                                            <Setter TargetName="Hover" Property="Opacity" Value="0.1" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                            <ContentPresenter ContentSource="Header" />
+                        </ToggleButton>
+                        <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="{TemplateBinding Padding}" />
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True"><Setter TargetName="Body" Property="Visibility" Value="Visible" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
