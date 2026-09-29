@@ -217,15 +217,19 @@ public partial class GCodeViewModel : ObservableObject
                     RegenerateFromScene();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
-                    var importViewModel = new RasterImportViewModel(_connection, _settingsStore, dialog.FileName,
-                        ImportWidthMm, feedRatePerMinute: 3000, RasterMaxPower, RasterDpi);
-                    var importWindow = new RasterImportWindow(importViewModel) { Owner = Application.Current.MainWindow };
-                    if (importWindow.ShowDialog() != true) break;
-
-                    _scene.ImportRasterFile(dialog.FileName, importViewModel.BuildOptions());
+                    // Put the photo on the canvas immediately. Image tone and engraving settings can
+                    // be changed later from its context menu, without blocking import on a dialog.
+                    var rasterOptions = new RasterImportOptions
+                    {
+                        TargetWidthMm = ImportWidthMm,
+                        Dpi = RasterDpi,
+                        FeedRatePerMinute = 3000,
+                        MaxPower = RasterMaxPower,
+                    };
+                    _scene.ImportRasterFile(dialog.FileName, rasterOptions);
                     ImportKind = ImportKind.Raster;
                     FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "Obrázek byl převeden do odstínů šedi. Velikost upravíte na plátně, výkon a rychlost v kartě Vrstvy.";
+                    LastMessage = "Obrázek byl přidán na plátno. Velikost upravíte přímo na plátně; nastavení obrázku otevřete pravým kliknutím.";
                     RegenerateFromScene();
                     break;
                 default:
