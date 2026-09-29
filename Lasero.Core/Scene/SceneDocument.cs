@@ -22,7 +22,10 @@ public sealed class SceneDocument
     {
         var shapes = Objects
             .Where(o => o.IsVisible && o.IncludeInOutput)
-            .SelectMany(o => o.GetWorldShapes())
+            // Guid.Empty means "one compound path per object"; keep that meaning once shapes from
+            // several objects are pooled, so the fill contract never merges unrelated objects.
+            .SelectMany(o => o.GetWorldShapes().Select(shape =>
+                shape.GeometrySetId == Guid.Empty ? shape with { GeometrySetId = o.Id } : shape))
             .Select(shape => shape with
             {
                 Points = shape.Points

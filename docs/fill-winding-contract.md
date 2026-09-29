@@ -1,8 +1,10 @@
 # Fill / winding contract (Phase 2)
 
-Status: Step 1 (current behaviour + proposed contract) and characterization tests done. **No
-production code changed.** The first behavioural increment is blocked on a user decision (section 5)
-because it changes physical G-code output and two goldens.
+Status: migration steps 1 and 2 IMPLEMENTED (decisions D-A NonZero per group, D-B fixture made
+opposite-wound, D-C touching runs stay split, D-D only geometry-nested-unrelated-fill.gcode updated).
+Sections 2-4 describe the behaviour BEFORE this change (the "current" wording is historical);
+the characterization tests were flipped to "Agreement_" where the toolpath now matches the canvas.
+Steps 3-6 (SVG fill-rule, offset normalisation, trace preview, NormalizeNestedCompoundPaths) remain.
 
 Tests pinning everything below: `Lasero.Tests/FillWindingContractCharacterizationTests.cs` (19 cases).
 Related: `docs/vector-and-machine-architecture-audit.md` 5.1 / 5.2 / 10.1, HANDOFF session 13 finding D9.

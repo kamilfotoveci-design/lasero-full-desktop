@@ -13,14 +13,11 @@ namespace Lasero.Tests;
 /// <summary>
 /// Phase 2 (fill / winding contract) CHARACTERISATION tests. See docs/fill-winding-contract.md.
 ///
-/// These pin what the code does TODAY where the producers (SVG import, tracer, boolean, offset,
-/// text) and the consumers (ToolpathBuilder fill = layer-wide EvenOdd; canvas = per-compound-path
-/// NonZero) disagree. They are behaviour locks, not endorsements. Tests whose name starts with
-/// "Disagreement_" assert a state that the contract decision is expected to change; they name the
-/// oracle ("what the canvas draws") next to the actual toolpath so the disagreement is explicit.
-/// When the contract lands, invert those tests deliberately -- do not delete them.
-///
-/// No golden files are involved and none are regenerated here.
+/// They were written as characterization of the pre-contract behaviour (toolpath fill = layer-wide
+/// EvenOdd, canvas = per-compound-path NonZero). The fill contract (NonZero per group, groups
+/// unioned) has since landed in ToolpathBuilder and SceneDocument.ToImportedDocument, so the
+/// toolpath/canvas cases are now "Agreement_" tests against the canvas oracle. The tests still named
+/// "Disagreement_" (SVG fill-rule, offset) describe producer gaps that later migration steps close.
 /// </summary>
 public sealed class FillWindingContractCharacterizationTests
 {
@@ -160,68 +157,65 @@ public sealed class FillWindingContractCharacterizationTests
         Assert.False(CanvasFills(shapes, 20, 17.5));
     }
 
-    /// <summary>Fill ignores winding direction entirely: reversing one ring of a same-set pair does
-    /// not change a single engraved run. (Cut output does follow point order -- see the existing
-    /// geometry-reversed-path golden.)</summary>
+    /// <summary>Winding now decides holes: reversing the inner ring of a same-set pair turns a solid
+    /// merge into a hole.</summary>
     [Fact]
-    public void Current_FillOutputIsIndependentOfRingWindingDirection()
+    public void Contract_WindingDirectionDistinguishesHoleFromMerge()
     {
         var set = Guid.NewGuid();
-        var sameWound = Emit([Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set)]);
-        var oppositeWound = Emit([Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set, clockwise: true)]);
+        var sameWound = Spans(Emit([Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set)]));
+        var oppositeWound = Spans(Emit([Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set, clockwise: true)]));
 
-        Assert.Equal(sameWound, oppositeWound);
+        Assert.True(Burns(sameWound, 20, 17.5));
+        Assert.False(Burns(oppositeWound, 20, 17.5));
     }
 
-    /// <summary>DISAGREEMENT. Same-wound nested rings in ONE declared set (what the existing
-    /// geometry-compound-path-hole-fill golden feeds in, and what an SVG whose author relied on
-    /// fill-rule="evenodd" produces). The toolpath leaves a hole; the canvas (NonZero) draws it solid.
-    /// The operator previews solid metal and gets a hollow engraving.</summary>
+    /// <summary>Same-wound nested rings in ONE declared set merge. Previously the toolpath left a hole
+    /// while the canvas drew it solid; both are now solid.</summary>
     [Fact]
-    public void Disagreement_SameWoundNestedRingsInOneSet_ToolpathHollowCanvasSolid()
+    public void Agreement_SameWoundNestedRingsInOneSet_SolidInToolpathAndCanvas()
     {
         var set = Guid.NewGuid();
         var shapes = new[] { Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set) };
 
         var spans = Spans(Emit(shapes));
 
-        Assert.False(Burns(spans, 20, 17.5)); // toolpath: hole
-        Assert.True(CanvasFills(shapes, 20, 17.5)); // canvas: solid
+        Assert.True(Burns(spans, 20, 17.5));
+        Assert.True(CanvasFills(shapes, 20, 17.5));
     }
 
-    /// <summary>DISAGREEMENT (Phase 1 finding D9, restated with the canvas oracle). Two UNRELATED
-    /// nested shapes (distinct sets): the canvas paints two independent filled regions, the toolpath
-    /// carves the inner one out of the outer.</summary>
+    /// <summary>Phase 1 finding D9, fixed. Two UNRELATED nested shapes (distinct sets) are two
+    /// independent filled regions in both the canvas and the toolpath.</summary>
     [Fact]
-    public void Disagreement_NestedRingsInDifferentSets_ToolpathHollowCanvasSolid()
+    public void Agreement_NestedRingsInDifferentSets_SolidInToolpathAndCanvas()
     {
         var shapes = new[] { Rect(0, 0, 40, 40, Guid.NewGuid()), Rect(10, 10, 30, 30, Guid.NewGuid()) };
 
         var spans = Spans(Emit(shapes));
 
-        Assert.False(Burns(spans, 20, 17.5));
+        Assert.True(Burns(spans, 20, 17.5));
         Assert.True(CanvasFills(shapes, 20, 17.5));
     }
 
-    /// <summary>DISAGREEMENT. Partially overlapping (not nested) unrelated shapes: the overlap is an
-    /// unengraved lens in the toolpath, filled on the canvas.</summary>
+    /// <summary>Partially overlapping (not nested) unrelated shapes: the overlap is
+    /// engraved (union), matching the canvas.</summary>
     [Fact]
-    public void Disagreement_PartiallyOverlappingShapes_OverlapIsUnengraved()
+    public void Agreement_PartiallyOverlappingShapes_OverlapIsEngraved()
     {
         var shapes = new[] { Rect(0, 0, 20, 20, Guid.NewGuid()), Rect(10, 10, 30, 30, Guid.NewGuid()) };
 
         var spans = Spans(Emit(shapes));
 
         Assert.True(Burns(spans, 5, 12.5));
-        Assert.False(Burns(spans, 15, 12.5)); // overlap: skipped by the toolpath
+        Assert.True(Burns(spans, 15, 12.5));
         Assert.True(Burns(spans, 25, 12.5));
         Assert.True(CanvasFills(shapes, 15, 12.5));
     }
 
-    /// <summary>Same overlap but in one set: EvenOdd (toolpath) and NonZero same-wound (canvas) still
-    /// disagree; GeometrySetId makes no difference to the toolpath.</summary>
+    /// <summary>Same overlap but in one set: same-wound rings merge under NonZero, identical to the
+    /// different-sets union.</summary>
     [Fact]
-    public void Disagreement_PartialOverlapInOneSetBehavesLikeDifferentSets()
+    public void Agreement_PartialOverlapInOneSetBehavesLikeDifferentSets()
     {
         var set = Guid.NewGuid();
         var oneSet = Emit([Rect(0, 0, 20, 20, set), Rect(10, 10, 30, 30, set)]);
@@ -294,18 +288,18 @@ public sealed class FillWindingContractCharacterizationTests
         Assert.Equal(none.Shapes.Select(s => s.Points), nonZero.Shapes.Select(s => s.Points));
     }
 
-    /// <summary>DISAGREEMENT for SVG semantics: a same-wound nested pair in one &lt;path&gt; is SOLID in
-    /// SVG's default nonzero rule (and on Lasero's canvas), but the toolpath engraves a hole. The
-    /// author of the SVG has no way to say otherwise -- fill-rule is dropped on import.</summary>
+    /// <summary>A same-wound nested pair in one &lt;path&gt; is SOLID in SVG's default nonzero rule and on
+    /// Lasero's canvas; the toolpath now agrees. (An explicit fill-rule="evenodd" is still not
+    /// honoured on import -- migration step 3.)</summary>
     [Fact]
-    public void Disagreement_SvgSameWoundNestedPath_ToolpathHollowCanvasSolid()
+    public void Agreement_SvgSameWoundNestedPath_SolidInToolpathAndCanvas()
     {
         var document = SvgImporter.Import(string.Format(NestedSameWoundPath, "fill-rule='nonzero'"), 40);
         document.Layers[0].FillLineIntervalMm = Interval;
 
         var spans = Spans(ToolpathBuilder.BuildGCode(document, ControllerMaximumS));
 
-        Assert.False(Burns(spans, 20, 17.5));
+        Assert.True(Burns(spans, 20, 17.5));
         Assert.True(CanvasFills(document.Shapes, 20, 17.5));
     }
 
@@ -324,13 +318,11 @@ public sealed class FillWindingContractCharacterizationTests
         Assert.False(CanvasFills(document.Shapes, 20, 17.5));
     }
 
-    /// <summary>Legacy Guid.Empty means "one compound path per SceneObject" for the canvas and for
-    /// BuildSourceRings, but SceneDocument.ToImportedDocument flattens every object's shapes without
-    /// rewriting it -- so ToolpathBuilder sees two objects' Empty-set shapes as one pool. Two
-    /// separately imported SVGs that overlap therefore carve each other. The canvas paints them as
-    /// two independent (per-object) regions.</summary>
+    /// <summary>Legacy Guid.Empty means "one compound path per SceneObject". SceneDocument.
+    /// ToImportedDocument now resolves it to the object's id, so two separately imported SVGs that
+    /// overlap no longer carve each other, matching the canvas.</summary>
     [Fact]
-    public void Disagreement_TwoLegacyEmptySetObjects_CarveEachOtherInToolpath()
+    public void Agreement_TwoLegacyEmptySetObjects_DoNotCarveEachOtherInToolpath()
     {
         string Square(int min, int max) =>
             $"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><path fill='black' " +
@@ -352,7 +344,7 @@ public sealed class FillWindingContractCharacterizationTests
         var document = scene.ToImportedDocument();
         var spans = Spans(ToolpathBuilder.BuildGCode(document, ControllerMaximumS));
 
-        Assert.False(Burns(spans, 20, 17.5)); // toolpath: inner carved out of outer
+        Assert.True(Burns(spans, 20, 17.5));
         // Canvas oracle: each object is its own group, so both are simply filled.
         foreach (var obj in scene.Objects)
             Assert.True(CanvasFills(obj.GetWorldShapes(), 20, 17.5));

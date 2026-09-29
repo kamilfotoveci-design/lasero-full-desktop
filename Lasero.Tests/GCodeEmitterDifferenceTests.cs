@@ -238,28 +238,31 @@ public sealed class GCodeEmitterDifferenceTests
     /// left unengraved. The operator sees a hole they never asked for, in material they have already
     /// paid for, with no warning anywhere in preflight or preview.
     ///
-    /// Recommendation: FIX in Phase 2, via the single shared topology/fill contract. This test
-    /// asserts the CURRENT broken equality on purpose: when the contract lands, this test must fail,
-    /// and whoever fixes it should replace it with its inverse (the two cases must then differ) plus
-    /// regenerate the two goldens it names.
+    /// RESOLVED in Phase 2 (docs/fill-winding-contract.md): fill is NonZero per compound group with
+    /// groups unioned. This test was inverted accordingly: the two cases must now differ. The
+    /// text above records the original finding.
     /// </summary>
     [Fact]
-    public void D9_FillTreatsUnrelatedNestedShapesExactlyLikeADeclaredCompoundPath()
+    public void D9_FillNoLongerTreatsUnrelatedNestedShapesLikeADeclaredCompoundPath()
     {
         var sharedSet = Guid.NewGuid();
-        var compound = FillOutput(outerSet: sharedSet, innerSet: sharedSet);
+        var compound = FillOutput(outerSet: sharedSet, innerSet: sharedSet, innerClockwise: true);
         var unrelated = FillOutput(outerSet: Guid.NewGuid(), innerSet: Guid.NewGuid());
 
-        // Identical today. Goldens: geometry-compound-path-hole-fill / geometry-nested-unrelated-fill.
-        Assert.Equal(compound, unrelated);
+        // Phase 2 fill contract: they now differ. Goldens: geometry-compound-path-hole-fill (hole,
+        // unchanged) / geometry-nested-unrelated-fill (solid, updated).
+        Assert.NotEqual(compound, unrelated);
 
-        // And the hole is real: no scanline crosses the inner rectangle's interior.
-        Assert.DoesNotContain(compound, line =>
-            line.StartsWith("G1 X", StringComparison.Ordinal) && line.Contains(" Y17.5 ", StringComparison.Ordinal)
-            && line.Contains("X20", StringComparison.Ordinal));
+        // Scanline Y17.5 runs right to left. The declared compound path stops at the hole's edge
+        // (G0 X10 resumes on the far side); the unrelated pair is one solid run from X40 to X0.
+        Assert.Contains("G0 X10 Y17.5", compound);
+        Assert.Contains("G1 X30 Y17.5 F3000", compound);
+        Assert.Contains("G0 X40 Y17.5", unrelated);
+        Assert.Contains("G1 X0 Y17.5 F3000", unrelated);
+        Assert.DoesNotContain("G0 X10 Y17.5", unrelated);
     }
 
-    private static IReadOnlyList<string> FillOutput(Guid outerSet, Guid innerSet)
+    private static IReadOnlyList<string> FillOutput(Guid outerSet, Guid innerSet, bool innerClockwise = false)
     {
         var layer = new LayerSettings
         {
@@ -274,22 +277,26 @@ public sealed class GCodeEmitterDifferenceTests
 
         return ToolpathBuilder.BuildGCode(new ImportedDocument
         {
-            Shapes = [FillRect(0, 0, 40, 40, outerSet), FillRect(10, 10, 30, 30, innerSet)],
+            Shapes = [FillRect(0, 0, 40, 40, outerSet), FillRect(10, 10, 30, 30, innerSet, innerClockwise)],
             Layers = [layer],
             BoundingBox = new BoundingBox2D(0, 0, 40, 40),
         }, ControllerMaximumS);
     }
 
-    private static ImportedShape FillRect(double minX, double minY, double maxX, double maxY, Guid set) => new()
+    private static List<Position> Ring(double minX, double minY, double maxX, double maxY, bool clockwise)
     {
-        Points =
-        [
-            new Position(minX, minY, 0),
-            new Position(maxX, minY, 0),
-            new Position(maxX, maxY, 0),
-            new Position(minX, maxY, 0),
-            new Position(minX, minY, 0),
-        ],
+        var ring = new List<Position>
+        {
+            new(minX, minY, 0), new(maxX, minY, 0), new(maxX, maxY, 0), new(minX, maxY, 0), new(minX, minY, 0),
+        };
+        if (clockwise) ring.Reverse();
+        return ring;
+    }
+
+    private static ImportedShape FillRect(
+        double minX, double minY, double maxX, double maxY, Guid set, bool clockwise = false) => new()
+    {
+        Points = Ring(minX, minY, maxX, maxY, clockwise),
         IsClosed = true,
         LayerColor = Black,
         PreferredMode = LayerMode.Fill,
