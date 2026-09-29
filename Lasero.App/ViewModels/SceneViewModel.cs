@@ -62,11 +62,10 @@ public partial class SceneViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private DesignerTool _currentShapeTool = DesignerTool.Rectangle;
 
-    /// <summary>Drives the OBRÁZEK section's inline spinner in DesignerInspectorView — set by
-    /// MainWindow around its model-download/inference calls, which is where the actual work happens
-    /// (see BackgroundRemovalRequested). Kept as plain observable state, not a dialog, per the "feels
-    /// like Crop/Brightness-Contrast" requirement: only the one-time model download gets a dialog.</summary>
+    /// <summary>Drives the OBRÁZEK section's inline progress UI while MainWindow sends the image to
+    /// the authenticated Gemini service and awaits its result.</summary>
     [ObservableProperty] private bool _isRemovingBackground;
+    [ObservableProperty] private bool _backgroundRemovalIsIndeterminate;
     [ObservableProperty] private string? _backgroundRemovalStatus;
     [ObservableProperty] private string? _backgroundRemovalError;
     [ObservableProperty] private double _backgroundRemovalProgress;
@@ -169,6 +168,7 @@ public partial class SceneViewModel : ObservableObject
     public event Action? Changed;
     public event Action<SceneObject>? TraceRasterRequested;
     public event Action<SceneObject>? BackgroundRemovalRequested;
+    public event Action? BackgroundRemovalCancelRequested;
     public event Action<string>? VectorOperationRejected;
     /// <summary>Raised by OffsetSelectionCommand — MainWindow owns opening OffsetPathWindow and
     /// calling ApplyOffset back with its result, the same hand-off shape TraceRasterRequested already
@@ -302,16 +302,17 @@ public partial class SceneViewModel : ObservableObject
             TraceRasterRequested?.Invoke(source);
     }
 
-    /// <summary>Kicks off "Odstranit pozadí" — the view (DesignerInspectorView/MainWindow) owns the
-    /// actual model-download prompt, off-thread inference call and processing-state UI, matching how
-    /// TraceSelectedRaster hands off to MainWindow.OnTraceRasterRequested rather than doing any of
-    /// that work in the view model itself.</summary>
+    /// <summary>Requests cloud background removal — MainWindow owns consent, HTTP work and the
+    /// processing-state UI, while this view model remains responsible for document undo/redo.</summary>
     [RelayCommand(CanExecute = nameof(CanRemoveSelectedBackground))]
     private void RemoveSelectedBackground()
     {
         if (Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false } source)
             BackgroundRemovalRequested?.Invoke(source);
     }
+
+    [RelayCommand]
+    private void CancelBackgroundRemoval() => BackgroundRemovalCancelRequested?.Invoke();
 
     /// <summary>Replaces a traced raster with one node-editable SceneObject per BitmapTraceResult.
     /// VectorPaths entry (several when the source bitmap held several disconnected shapes — see
@@ -455,14 +456,14 @@ public partial class SceneViewModel : ObservableObject
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
     /// their own kind of content edit, so Ctrl+Z restores the original file and Ctrl+Y reapplies the
-    /// removal exactly like those. removedBackgroundFilePath is the new file BackgroundRemovalService
+    /// removal exactly like those. removedBackgroundFilePath is the new file background-removal service
     /// already wrote (with real alpha transparency); this method only ever swaps which file
     /// RasterFilePath points at — geometry, layer, transform and every other property are untouched.</summary>
-    public void CommitBackgroundRemoval(SceneObject item, string removedBackgroundFilePath)
+    public bool CommitBackgroundRemoval(SceneObject item, string removedBackgroundFilePath)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentException.ThrowIfNullOrWhiteSpace(removedBackgroundFilePath);
-        if (!item.IsRaster || item.HasBackgroundRemoved || !Objects.Contains(item)) return;
+        if (!item.IsRaster || item.HasBackgroundRemoved || !Objects.Contains(item)) return false;
 
         var replacement = WithRasterFile(item, removedBackgroundFilePath, item.RasterFilePath);
         var wasSelected = SelectedObjects.Contains(item);
@@ -473,6 +474,7 @@ public partial class SceneViewModel : ObservableObject
             SelectedObjects.Add(replacement);
         }
         NotifySelectionStateChanged();
+        return true;
     }
 
     /// <summary>"Obnovit pozadí" — points RasterFilePath back at the preserved original as one more

@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Windows;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
+using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Jobs;
 using Lasero.Core.LaseroApi;
 using Lasero.Core.Machines;
@@ -73,6 +74,15 @@ public partial class App : Application
                 services.AddSingleton<SceneViewModel>();
                 services.AddSingleton<GCodeViewModel>();
                 services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(15) });
+                // Cloud first (signed-in Lasero proxy, no key in the app), then the on-device model if it
+                // is already cached. Nothing here reads or stores a Gemini key.
+                services.AddSingleton(_ => BackgroundRemovalConsentStore.CreateDefault());
+                services.AddSingleton<IBackgroundRemovalService>(sp => new FallbackBackgroundRemovalService(
+                    new GeminiBackgroundRemovalService(
+                        new HttpClient { Timeout = GeminiBackgroundRemovalService.DefaultRequestTimeout },
+                        cancellationToken => sp.GetRequiredService<AccountViewModel>().GetIdTokenAsync(cancellationToken)),
+                    new BackgroundRemovalService()));
+                services.AddSingleton<BackgroundRemovalCoordinator>();
                 services.AddSingleton<LaseroAuthClient>();
                 services.AddSingleton<LaseroAccountClient>();
                 services.AddSingleton<LaseroChatClient>();
@@ -116,7 +126,7 @@ public partial class App : Application
         // constructed (and their AccountViewModel.PropertyChanged subscriptions wired) above, before
         // TryResumeSessionAsync/SignIn ever changed Account.UserId — so Chat/Materials/Home's
         // account-scoped caches have already reloaded for the now-current account automatically.
-        var window = new MainWindow(viewModel);
+        var window = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = window;
         window.Show();
 

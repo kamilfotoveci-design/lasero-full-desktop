@@ -125,13 +125,8 @@
                 <!-- ==================== OBRÁZEK ==================== -->
                 <!--
                     Shown only when exactly one bitmap (raster) object is selected — never for SVG
-                    paths, text, shapes or groups. "Odstranit pozadí" is meant to read as an ordinary
-                    bitmap edit, not a special AI callout: same section chrome as ZAŘÍZENÍ/OPERACE
-                    above, same button styling as every other selected-object action. Processing runs
-                    in place (spinner + status text, no dialog); the one-time model download is the
-                    only step with a dialog, and it is a plain LaseroDialogWindow prompt raised from
-                    MainWindow.OnBackgroundRemovalRequested — nothing about ONNX/DirectML/models is
-                    ever named here.
+                    paths, text, shapes or groups. Background removal is provided through Lasero's
+                    authenticated Gemini service; consent is requested before the source image is sent.
                 -->
                 <StackPanel Margin="16,14,16,14"
                             Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
@@ -140,7 +135,12 @@
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
                             Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}"
-                            Content="Odstranit pozadí" />
+                            Content="Odstranit pozadí"
+                            ToolTip="Obrázek se odešle online službě Lasero (Gemini). Změnu lze vrátit pomocí Ctrl+Z." />
+
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource RowLabel}"
+                               Text="Obrázek se odešle online službě Lasero (Gemini)."
+                               Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}" />
 
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RestoreSelectedBackgroundCommand}"
@@ -184,8 +184,12 @@
                         <StackPanel Orientation="Horizontal">
                             <ProgressBar Width="72" Height="4" Minimum="0" Maximum="1"
                                          Value="{Binding Scene.BackgroundRemovalProgress}"
+                                         IsIndeterminate="{Binding Scene.BackgroundRemovalIsIndeterminate}"
                                          Margin="0,0,10,0" />
                             <TextBlock Text="{Binding Scene.BackgroundRemovalStatus}" VerticalAlignment="Center" Style="{StaticResource RowLabel}" />
+                            <Button Margin="10,0,0,0" Padding="8,2" MinHeight="24" Style="{StaticResource Button.Ghost}"
+                                    Command="{Binding Scene.CancelBackgroundRemovalCommand}"
+                                    Content="Zrušit" ToolTip="Zrušit odstranění pozadí" />
                         </StackPanel>
                     </Border>
 
