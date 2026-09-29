@@ -38,10 +38,20 @@ public sealed partial class VirtualGrblTransport : IGrblTransport
         Emit("Grbl 1.1h [Virtuální laser Lasero]");
     }
 
+    /// <summary>Current programmed spindle/laser S value inside the simulated controller.</summary>
+    public double SpindleSpeed { get { lock (_sync) return _spindleSpeed; } }
+
+    /// <summary>True while the simulated beam would be emitting (S greater than zero).</summary>
+    public bool IsBeamOn => SpindleSpeed > 0;
+
     public void Close()
     {
-        lock (_sync) { IsOpen = false; _mode = GrblMachineMode.Idle; _spindleSpeed = 0; }
+        // Closing the host side of a cable does not switch a real controller's laser off: only M5,
+        // a soft reset or an alarm does. The simulator must not hide that (Open still models the
+        // board reset that a fresh serial session triggers).
+        lock (_sync) { IsOpen = false; _mode = GrblMachineMode.Idle; }
     }
+
 
     public void WriteLine(string text)
     {
