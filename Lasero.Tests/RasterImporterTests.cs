@@ -165,8 +165,8 @@ public sealed class RasterImporterTests : IDisposable
             FeedRatePerMinute = 1000,
             Passes = 1,
         };
-        var onePass = RasterImporter.BuildGCode(path, baseOptions);
-        var threePasses = RasterImporter.BuildGCode(path, baseOptions with { Passes = 3 });
+        var onePass = RasterImporter.BuildGCode(path, baseOptions, 100);
+        var threePasses = RasterImporter.BuildGCode(path, baseOptions with { Passes = 3 }, 100);
 
         Assert.Equal(onePass.Count * 3, threePasses.Count);
         Assert.Equal(onePass, threePasses.Take(onePass.Count));

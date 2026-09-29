@@ -1,4 +1,5 @@
 using System.Globalization;
+using Lasero.Core.Grbl;
 
 namespace Lasero.Core.Raster;
 
@@ -6,8 +7,9 @@ namespace Lasero.Core.Raster;
 /// text. Pure function of its input, so identical LaserJobs always produce identical G-code.</summary>
 public static class GrblRasterGenerator
 {
-    public static IReadOnlyList<string> Generate(LaserJob job)
+    public static IReadOnlyList<string> Generate(LaserJob job, double controllerMaximumS)
     {
+        ArgumentNullException.ThrowIfNull(job);
         var lines = new List<string> { "G90", "G21", "M5" };
         var feed = Fmt(job.FeedRatePerMinute);
         var inRun = false;
@@ -26,14 +28,15 @@ public static class GrblRasterGenerator
 
             if (!inRun)
             {
-                lines.Add($"M4 S{Fmt(move.Power)}");
+                lines.Add($"M4 S{Fmt(GrblPowerScale.PercentToSValue(move.Power, controllerMaximumS))}");
                 inRun = true;
                 continue;
             }
 
+            var powerS = Fmt(GrblPowerScale.PercentToSValue(move.Power, controllerMaximumS));
             lines.Add(isFirstG1InRun
-                ? $"G1 X{Fmt(move.X)} Y{Fmt(move.Y)} S{Fmt(move.Power)} F{feed}"
-                : $"G1 X{Fmt(move.X)} Y{Fmt(move.Y)} S{Fmt(move.Power)}");
+                ? $"G1 X{Fmt(move.X)} Y{Fmt(move.Y)} S{powerS} F{feed}"
+                : $"G1 X{Fmt(move.X)} Y{Fmt(move.Y)} S{powerS}");
             isFirstG1InRun = false;
         }
 

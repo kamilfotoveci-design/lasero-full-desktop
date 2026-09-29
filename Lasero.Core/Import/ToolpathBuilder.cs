@@ -13,8 +13,9 @@ namespace Lasero.Core.Import;
 /// </summary>
 public static class ToolpathBuilder
 {
-    public static List<string> BuildGCode(ImportedDocument document)
+    public static List<string> BuildGCode(ImportedDocument document, double controllerMaximumS)
     {
+        ArgumentNullException.ThrowIfNull(document);
         var lines = new List<string> { "G90", "G21", "M5" };
 
         // Collection order is the explicit manufacturing order shown in the Layers panel.
@@ -26,6 +27,7 @@ public static class ToolpathBuilder
         {
             var shapes = document.Shapes.Where(shape => BelongsToLayer(shape, layer)).ToList();
             if (shapes.Count == 0) continue;
+            var powerS = GrblPowerScale.PercentToSValue(layer.Power, controllerMaximumS);
 
             lines.Add($"; --- Vrstva {layer.Name} ({layer.Mode}) ---");
 
@@ -33,18 +35,18 @@ public static class ToolpathBuilder
             {
                 case LayerMode.Cut:
                     lines.Add("; Operace: Čára");
-                    AppendCutLayer(lines, shapes, layer);
+                    AppendCutLayer(lines, shapes, layer, powerS);
                     break;
                 case LayerMode.Fill:
                     lines.Add("; Operace: Výplň");
-                    AppendFillLayer(lines, shapes, layer);
+                    AppendFillLayer(lines, shapes, layer, powerS);
                     break;
                 case LayerMode.FillAndCut:
                     // Engrave first so the final contour cannot shift an already cut-out part.
                     lines.Add("; Operace: Výplň");
-                    AppendFillLayer(lines, shapes, layer);
+                    AppendFillLayer(lines, shapes, layer, powerS);
                     lines.Add("; Operace: Čára");
-                    AppendCutLayer(lines, shapes, layer);
+                    AppendCutLayer(lines, shapes, layer, powerS);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layer.Mode), layer.Mode, "Neznámý režim vrstvy.");
@@ -60,7 +62,7 @@ public static class ToolpathBuilder
             ? shape.LayerId == layer.Id
             : shape.LayerColor.IsApproximately(layer.Color);
 
-    private static void AppendCutLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer)
+    private static void AppendCutLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer, double powerS)
     {
         var feed = Fmt(layer.Speed);
         for (int pass = 0; pass < layer.Passes; pass++)
@@ -70,7 +72,7 @@ public static class ToolpathBuilder
                 if (shape.Points.Count < 2) continue;
                 var first = shape.Points[0];
                 lines.Add($"G0 X{Fmt(first.X)} Y{Fmt(first.Y)}");
-                lines.Add($"M4 S{Fmt(layer.Power)}");
+                lines.Add($"M4 S{Fmt(powerS)}");
                 foreach (var p in shape.Points.Skip(1))
                     lines.Add($"G1 X{Fmt(p.X)} Y{Fmt(p.Y)} F{feed}");
                 if (shape.IsClosed && !SamePoint(shape.Points[^1], first))
@@ -80,7 +82,7 @@ public static class ToolpathBuilder
         }
     }
 
-    private static void AppendFillLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer)
+    private static void AppendFillLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer, double powerS)
     {
         var closedShapes = shapes.Where(s => s.IsClosed && s.Points.Count >= 3).ToList();
         if (closedShapes.Count == 0) return;
@@ -133,7 +135,7 @@ public static class ToolpathBuilder
                     var to = reverse ? xs[pairIndex] : xs[pairIndex + 1];
 
                     lines.Add($"G0 X{Fmt(from)} Y{Fmt(y)}");
-                    lines.Add($"M4 S{Fmt(layer.Power)}");
+                    lines.Add($"M4 S{Fmt(powerS)}");
                     lines.Add($"G1 X{Fmt(to)} Y{Fmt(y)} F{feed}");
                     lines.Add("M5");
                 }

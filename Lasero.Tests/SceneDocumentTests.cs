@@ -29,14 +29,14 @@ public class SceneDocumentTests
     public void ToImportedDocumentReproducesSameGCodeAsDirectBuild()
     {
         var original = SvgImporter.Import(SampleSvg, targetWidthMm: 100);
-        var expectedLines = ToolpathBuilder.BuildGCode(original);
+        var expectedLines = ToolpathBuilder.BuildGCode(original, 100);
 
         var scene = new SceneDocument();
         scene.Objects.Add(WrapAtIdentity(original));
         foreach (var layer in original.Layers)
             scene.Layers.Add(layer);
 
-        var actualLines = ToolpathBuilder.BuildGCode(scene.ToImportedDocument());
+        var actualLines = ToolpathBuilder.BuildGCode(scene.ToImportedDocument(), 100);
 
         Assert.Equal(expectedLines, actualLines);
     }
@@ -49,7 +49,7 @@ public class SceneDocumentTests
         layer.IsVisible = false;
         layer.IsEnabled = true;
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
 
         Assert.Contains(lines, line => line.StartsWith("; --- Vrstva", StringComparison.Ordinal));
         Assert.Contains(lines, line => line.StartsWith("M4 S", StringComparison.Ordinal));
@@ -140,7 +140,7 @@ public class SceneDocumentTests
             ],
         };
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
         var cutHeader = lines.FindIndex(line => line.Contains("První řez", StringComparison.Ordinal));
         var fillHeader = lines.FindIndex(line => line.Contains("Druhá výplň", StringComparison.Ordinal));
 
@@ -171,7 +171,7 @@ public class SceneDocumentTests
             ],
         };
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
 
         Assert.DoesNotContain(lines, line => line.Contains("První vrstva", StringComparison.Ordinal));
         Assert.Contains(lines, line => line.Contains("Cílová vrstva", StringComparison.Ordinal));
@@ -204,7 +204,7 @@ public class SceneDocumentTests
             ],
         };
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
         var fillMarker = lines.FindIndex(line => line == "; Operace: Výplň");
         var cutMarker = lines.FindIndex(line => line == "; Operace: Čára");
 

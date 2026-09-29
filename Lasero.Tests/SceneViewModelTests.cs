@@ -1554,11 +1554,11 @@ public class SceneViewModelTests
 
         var layer = Assert.Single(viewModel.Layers);
         layer.Mode = LayerMode.Cut;
-        var lineToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument());
+        var lineToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument(), 100);
 
         layer.Mode = LayerMode.Fill;
         layer.FillLineIntervalMm = 2;
-        var fillToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument());
+        var fillToolpath = ToolpathBuilder.BuildGCode(viewModel.Scene.ToImportedDocument(), 100);
 
         Assert.Contains(lineToolpath, line => line.Contains("(Cut)", StringComparison.Ordinal));
         Assert.Contains(fillToolpath, line => line.Contains("(Fill)", StringComparison.Ordinal));

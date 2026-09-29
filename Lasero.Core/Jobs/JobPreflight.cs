@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
 using Lasero.Core.Layers;
@@ -25,6 +27,9 @@ public sealed record JobPreflightContext
     public required double WorkAreaHeightMm { get; init; }
     public IReadOnlyList<LayerSettings>? Layers { get; init; }
     public IReadOnlyList<RasterImportOptions>? RasterOptions { get; init; }
+    public double? MaxSpindleSpeed { get; init; }
+    public bool? LaserModeEnabled { get; init; }
+    public bool IsRawGCode { get; init; }
 }
 
 public sealed record JobPreflightResult(IReadOnlyList<PreflightIssue> Issues)
@@ -35,6 +40,8 @@ public sealed record JobPreflightResult(IReadOnlyList<PreflightIssue> Issues)
 
 public static class JobPreflight
 {
+    private static readonly Regex GCodeWordPattern = new(@"([A-Za-z])\s*(-?\d+\.?\d*)", RegexOptions.Compiled);
+
     public static JobPreflightResult Evaluate(JobPreflightContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -52,6 +59,14 @@ public static class JobPreflight
 
         ValidateEngravingSettings(context.Layers, issues);
         ValidateRasterSettings(context.RasterOptions, issues);
+        if ((context.Layers?.Any(layer => layer.IsEnabled) == true || context.RasterOptions?.Count > 0)
+            && (context.MaxSpindleSpeed is not { } maxS || !double.IsFinite(maxS) || maxS <= 0))
+            issues.Add(Block("machine.power-range-unknown", "Rozsah výkonu zařízení není známý. Načtěte nastavení GRBL včetně $30 a úlohu připravte znovu."));
+        if ((context.Layers?.Any(layer => layer.IsEnabled) == true || context.RasterOptions?.Count > 0)
+            && context.LaserModeEnabled != true)
+            issues.Add(Block("machine.laser-mode-disabled", "Laserový režim GRBL ($32=1) není potvrzen. Zkontrolujte nastavení zařízení a znovu načtěte profil."));
+        if (context.IsRawGCode && context.Document is { } rawDocument)
+            ValidateRawGCodePower(context, rawDocument, issues);
 
         if (context.IsConnected)
         {
@@ -73,6 +88,63 @@ public static class JobPreflight
             issues.Add(Block("job.framing-required", "Nejprve ověřte umístění rámováním."));
 
         return new JobPreflightResult(issues);
+    }
+
+    private static void ValidateRawGCodePower(
+        JobPreflightContext context,
+        GCodeDocument document,
+        ICollection<PreflightIssue> issues)
+    {
+        double? currentPower = null;
+        var spindleOn = false;
+        var anyPoweredCommand = false;
+        var maxS = context.MaxSpindleSpeed;
+
+        foreach (var rawLine in document.RawLines)
+        {
+            var line = rawLine.Split(';', 2)[0];
+            line = Regex.Replace(line, @"\([^)]*\)", string.Empty).Trim();
+            if (line.Length == 0) continue;
+            if (line.StartsWith('$'))
+            {
+                issues.Add(Block("job.controller-command-not-allowed", "Importovaný G-code obsahuje přímý příkaz pro řadič. Takové příkazy odesílejte přes ovládací prvky zařízení."));
+                continue;
+            }
+
+            var spindleEnable = false;
+            var spindleDisable = false;
+            foreach (Match match in GCodeWordPattern.Matches(line))
+            {
+                var letter = char.ToUpperInvariant(match.Groups[1].Value[0]);
+                if (letter == 'S' && double.TryParse(match.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedPower))
+                    currentPower = parsedPower;
+                else if (letter == 'M' && int.TryParse(match.Groups[2].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mCode))
+                {
+                    spindleEnable |= mCode is 3 or 4;
+                    spindleDisable |= mCode == 5;
+                }
+            }
+
+            if (spindleDisable) spindleOn = false;
+            if (spindleEnable) spindleOn = true;
+            if (!spindleOn) continue;
+
+            if (currentPower is null)
+            {
+                issues.Add(Block("job.spindle-power-unspecified", "G-code zapíná laser bez výkonu S určeného v tomto souboru."));
+                continue;
+            }
+            if (currentPower > 0) anyPoweredCommand = true;
+            if (!double.IsFinite(currentPower.Value) || currentPower < 0)
+                issues.Add(Block("settings.invalid-power", "Importovaný G-code obsahuje neplatnou hodnotu S."));
+            else if (maxS is { } maximum && double.IsFinite(maximum) && maximum > 0 && currentPower > maximum)
+                issues.Add(Block("job.power-exceeds-controller-range", $"G-code požaduje výkon nad maximem $30 ({maximum:0.###}). Hodnoty S v importovaném G-code zůstávají beze změny."));
+        }
+
+        if (anyPoweredCommand && (maxS is not { } reportedMaximum || !double.IsFinite(reportedMaximum) || reportedMaximum <= 0))
+            issues.Add(Block("machine.power-range-unknown", "G-code zapíná laser, ale maximum $30 není načteno."));
+        if (anyPoweredCommand && context.LaserModeEnabled != true)
+            issues.Add(Block("machine.laser-mode-disabled", "G-code zapíná laser, ale režim GRBL ($32=1) není potvrzen."));
     }
 
     private static void ValidateBounds(JobPreflightContext context, ICollection<PreflightIssue> issues)

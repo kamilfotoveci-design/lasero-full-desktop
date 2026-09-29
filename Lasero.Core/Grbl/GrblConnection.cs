@@ -17,7 +17,7 @@ public enum GrblConnectionState
 /// closes the session because continuing would shift GRBL responses onto the
 /// wrong commands and make machine state unsafe.
 /// </summary>
-public sealed class GrblConnection : ILaserMachine
+public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
 {
     private readonly IGrblTransport _transport;
     private readonly IGrblProtocolParser _protocolParser;
@@ -39,7 +39,9 @@ public sealed class GrblConnection : ILaserMachine
     private int _commandGeneration;
     private int _resetting;
     private int _settingsQueryCollecting;
+    private int _powerProfileVersion;
     private MachineAlert? _activeAlert;
+    private GrblDeviceProfile? _deviceProfile;
 
     public GrblConnection() : this(new GrblSerialTransport()) { }
 
@@ -69,6 +71,7 @@ public sealed class GrblConnection : ILaserMachine
     public MachineStatus? LastStatus { get; private set; }
     public DateTime? LastStatusReceivedUtc { get; private set; }
     public string? FirmwareBanner { get; private set; }
+    public GrblDeviceProfile? DeviceProfile => Volatile.Read(ref _deviceProfile);
     public MachineAlert? ActiveAlert => Volatile.Read(ref _activeAlert);
     public LaserMachineDisplayState DisplayState => LaserMachineDisplayStateResolver.Resolve(State, LastStatus?.Mode, ActiveAlert);
 
@@ -81,6 +84,7 @@ public sealed class GrblConnection : ILaserMachine
     public event Action<string>? Connected;
     public event Action<Exception?>? Disconnected;
     public event Action<MachineAlert?>? AlertChanged;
+    public event Action<GrblDeviceProfile?>? DeviceProfileChanged;
 
     public static string[] GetAvailablePortNames() => GrblSerialTransport.GetAvailablePortNames();
 
@@ -103,6 +107,7 @@ public sealed class GrblConnection : ILaserMachine
                 Interlocked.Exchange(ref _resetting, 0);
                 Interlocked.Increment(ref _commandGeneration);
                 FirmwareBanner = null;
+                SetDeviceProfile(null);
                 InvalidateStatus();
                 lock (_alertLock) _activeAlert = null;
                 _transport.LineReceived += OnLineReceived;
@@ -157,6 +162,7 @@ public sealed class GrblConnection : ILaserMachine
             Interlocked.Increment(ref _commandGeneration);
             InvalidateStatus();
             FirmwareBanner = null;
+            SetDeviceProfile(null);
             FailAllPending("Zařízení bylo resetováno.");
             FailQueued(_queue, "Příkaz byl zrušen resetem zařízení.");
             FailSettingsQuery("Dotaz byl zrušen resetem zařízení.");
@@ -183,6 +189,7 @@ public sealed class GrblConnection : ILaserMachine
     {
         if (string.IsNullOrWhiteSpace(line))
             return Task.FromResult(GrblCommandResult.Failure("Prázdný příkaz nebyl odeslán."));
+        var changesPowerProfile = IsPowerProfileSettingWrite(line);
         lock (_commandDispatchLock)
         {
             if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0)
@@ -192,6 +199,11 @@ public sealed class GrblConnection : ILaserMachine
             var queue = _queue;
             if (queue is null || queue.IsAddingCompleted)
                 return Task.FromResult(GrblCommandResult.Failure("Spojení se právě ukončuje."));
+            if (changesPowerProfile)
+            {
+                Interlocked.Increment(ref _powerProfileVersion);
+                SetDeviceProfile(null);
+            }
             var completion = new TaskCompletionSource<GrblCommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (!queue.TryAdd(new QueuedCommand(line, completion, Volatile.Read(ref _commandGeneration))))
                 completion.TrySetResult(GrblCommandResult.Failure("Fronta příkazů je plná. Počkejte na dokončení probíhající operace."));
@@ -226,6 +238,8 @@ public sealed class GrblConnection : ILaserMachine
 
     public async Task<IReadOnlyList<string>> QuerySettingsAsync()
     {
+        var queryGeneration = Volatile.Read(ref _commandGeneration);
+        var powerProfileVersion = Volatile.Read(ref _powerProfileVersion);
         TaskCompletionSource<IReadOnlyList<string>> query;
         lock (_settingsLock)
         {
@@ -241,7 +255,16 @@ public sealed class GrblConnection : ILaserMachine
             var result = await SendCommandAsync("$$").ConfigureAwait(false);
             if (!result.IsOk)
                 throw new IOException(result.Message ?? "Nastavení zařízení se nepodařilo načíst.");
-            return await query.Task.WaitAsync(CommandTimeout).ConfigureAwait(false);
+            var settings = await query.Task.WaitAsync(CommandTimeout).ConfigureAwait(false);
+            lock (_commandDispatchLock)
+            {
+                if (State != GrblConnectionState.Connected || queryGeneration != Volatile.Read(ref _commandGeneration))
+                    throw new IOException("Nastavení zařízení pochází z ukončeného nebo resetovaného spojení.");
+                if (powerProfileVersion != Volatile.Read(ref _powerProfileVersion))
+                    throw new IOException("Nastavení výkonu se mezitím změnilo. Načtěte profil zariadenia znovu.");
+                SetDeviceProfile(GrblDeviceProfileParser.Parse(settings, FirmwareBanner));
+            }
+            return settings;
         }
         finally
         {
@@ -445,6 +468,7 @@ public sealed class GrblConnection : ILaserMachine
                 if (queue is not null && !queue.IsAddingCompleted) queue.CompleteAdding();
                 InvalidateStatus();
                 FirmwareBanner = null;
+                SetDeviceProfile(null);
                 FailAllPending(reason is TimeoutException
                     ? "Zařízení neodpovědělo v časovém limitu."
                     : "Spojení bylo ukončeno.");
@@ -483,6 +507,20 @@ public sealed class GrblConnection : ILaserMachine
             LastStatus = null;
             LastStatusReceivedUtc = null;
         }
+    }
+
+    private void SetDeviceProfile(GrblDeviceProfile? profile)
+    {
+        Volatile.Write(ref _deviceProfile, profile);
+        InvokeSafely(DeviceProfileChanged, profile, nameof(DeviceProfileChanged));
+    }
+
+    private static bool IsPowerProfileSettingWrite(string line)
+    {
+        var text = line.Trim();
+        if (!text.StartsWith('$') || !text.Contains('=')) return false;
+        return GrblDeviceProfileParser.TryParseSetting(text, out var setting, out _)
+            && setting is 30 or 32;
     }
 
     private void OnUnexpectedlyClosed(Exception exception) => DisconnectCore(exception, joinQueueThread: false);

@@ -50,7 +50,7 @@ public sealed class FillToolpathTests
     {
         var document = SquareDocument(10, FillLayer(1));
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
         var parsed = GCodeParser.Parse(lines, "fill");
 
         var rapid = parsed.Segments.Where(s => s.IsRapid).Sum(JobTimeEstimatorProbe.Length);
@@ -68,7 +68,7 @@ public sealed class FillToolpathTests
     {
         var document = SquareDocument(10, FillLayer(1));
 
-        var lines = ToolpathBuilder.BuildGCode(document);
+        var lines = ToolpathBuilder.BuildGCode(document, 100);
 
         // Reordering the runs must not change how many there are, nor the M4/M5 bracketing that
         // keeps the beam off while repositioning.
@@ -108,6 +108,16 @@ public sealed class FillToolpathTests
 
         Assert.Equal(3000, layer.Speed);
         Assert.Equal(30, layer.Power);
+    }
+
+    [Fact]
+    public void VectorPowerPercentScalesToReportedControllerMaximum()
+    {
+        var document = SquareDocument(10, FillLayer(1));
+
+        var lines = ToolpathBuilder.BuildGCode(document, 1000);
+
+        Assert.Contains("M4 S300", lines);
     }
 
     [Fact]

@@ -46,7 +46,7 @@ public class SvgImporterTests
     public void GeneratesNonEmptyGCodeForBothLayers()
     {
         var doc = SvgImporter.Import(SampleSvg, targetWidthMm: 100);
-        var lines = ToolpathBuilder.BuildGCode(doc);
+        var lines = ToolpathBuilder.BuildGCode(doc, 100);
 
         Assert.Contains(lines, l => l.StartsWith("M4"));
         Assert.Contains(lines, l => l.StartsWith("G1"));
@@ -104,7 +104,7 @@ public class SvgImporterTests
         var cutLayer = doc.Layers.First(l => l.Mode == LayerMode.Cut);
         cutLayer.IsEnabled = false;
 
-        var lines = ToolpathBuilder.BuildGCode(doc);
+        var lines = ToolpathBuilder.BuildGCode(doc, 100);
 
         Assert.DoesNotContain(lines, l => l.Contains("Rez"));
     }
