@@ -22,6 +22,11 @@ public sealed class KamilPlacementTests
         Assert.Contains("RelativeSource={RelativeSource AncestorType=Window}", tag, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Designer", tag, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(xaml, "<kamil:KamilAssistantHost "));
+
+        // Declared inside the canvas column, never spanning the splitter and inspector columns.
+        Assert.DoesNotContain("ColumnSpan", tag, StringComparison.Ordinal);
+        Assert.True(xaml.IndexOf("x:Name=\"WorkspaceArea\"", StringComparison.Ordinal) < start);
+        Assert.DoesNotContain("DesignerInspector\" Path=\"ActualWidth", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -55,5 +60,56 @@ public sealed class KamilPlacementTests
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "LaseroDesktop.sln")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate LaseroDesktop.sln.");
+    }
+}
+
+public sealed class KamilHeadAnchorTests
+{
+    // Mirrors MainWindow's grid: nav rail | canvas (*, min 420) | splitter (6) | inspector.
+    private const double SplitterWidth = 6;
+    private const double StatusStripHeight = 48;
+    private const double TitleBarHeight = 60;
+    private const double ControlsHeight = 40;
+
+    [Theory]
+    [InlineData(1080, 640, 56, 320)]
+    [InlineData(1366, 768, 56, 320)]
+    [InlineData(1480, 900, 56, 320)]
+    [InlineData(1920, 1032, 56, 320)]
+    [InlineData(1480, 900, 56, 560)]
+    [InlineData(1000, 700, 164, 320)]
+    public void HeadRestsAtTheCanvasBottomRightAboveTheZoomClusterForAnyColumnWidths(
+        double windowWidth, double windowHeight, double navWidth, double inspectorWidth)
+    {
+        var canvasWidth = Math.Max(420, windowWidth - navWidth - SplitterWidth - inspectorWidth);
+        var rowHeight = windowHeight - TitleBarHeight - StatusStripHeight;
+
+        // The host lives in the canvas column, so its size is the canvas's, minus its margin.
+        var margin = Lasero.App.Converters.AssistantClearanceConverter.Clearance(ControlsHeight);
+        var hostWidth = canvasWidth - margin.Left - margin.Right;
+        var hostHeight = rowHeight - margin.Top - margin.Bottom;
+
+        var head = Lasero.App.Views.Kamil.KamilAssistantHost.HeadOrigin(hostWidth, hostHeight);
+        var size = Lasero.App.Views.Kamil.KamilAssistantHost.HeadSize;
+        var headRightInCanvas = margin.Left + head.X + size.Width;
+        var headBottomInRow = margin.Top + head.Y + size.Height;
+
+        Assert.Equal(canvasWidth - 20, headRightInCanvas, 3);       // shares the cluster's right edge
+        Assert.True(headRightInCanvas <= canvasWidth);              // never over splitter or inspector
+        Assert.True(headBottomInRow <= rowHeight - 20 - ControlsHeight - 12 + 0.001); // above the cluster
+        Assert.True(headBottomInRow < rowHeight);                   // never over the status strip
+    }
+
+    [Fact]
+    public void ClearanceIgnoresWhateverTheInspectorMeasures()
+    {
+        var converter = new Lasero.App.Converters.AssistantClearanceConverter();
+        var withHeight = (System.Windows.Thickness)converter.Convert([40.0], typeof(System.Windows.Thickness), null!, System.Globalization.CultureInfo.InvariantCulture);
+        var unmeasured = (System.Windows.Thickness)converter.Convert([0.0], typeof(System.Windows.Thickness), null!, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(20, withHeight.Right);
+        Assert.Equal(20, unmeasured.Right);
+        Assert.Equal(72, withHeight.Bottom);
+        Assert.Equal(32, unmeasured.Bottom);
     }
 }
