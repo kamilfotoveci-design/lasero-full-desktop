@@ -465,11 +465,10 @@ public sealed class FillWindingContractCharacterizationTests
         Assert.NotEqual(Math.Sign(areas[0]), Math.Sign(areas[1]));
     }
 
-    /// <summary>VectorOffsetPlanner does no winding normalisation (audit 5.1): a same-wound nested
-    /// pair -- which the toolpath engraves as a hollow compound path -- is offset as two overlapping
-    /// OUTERS. The hole is not preserved. Pins today's result so the contract change is visible.</summary>
+    /// <summary>A same-wound nested pair is one merged solid region under the NonZero contract, and
+    /// Clipper's offset agrees: the two rings merge into a single 44x44 outer, no hole.</summary>
     [Fact]
-    public void Disagreement_OffsetOfSameWoundNestedPairLosesTheHoleTheToolpathWouldEngrave()
+    public void Agreement_OffsetOfSameWoundNestedPairMergesLikeTheToolpathFill()
     {
         var outer = Rect(0, 0, 40, 40, Guid.Empty).Points.Take(4).ToList();
         var inner = Rect(10, 10, 30, 30, Guid.Empty).Points.Take(4).ToList();
@@ -477,8 +476,55 @@ public sealed class FillWindingContractCharacterizationTests
         var rings = Clipper2VectorOffsetService.Default.OffsetClosedGroup(
             [outer, inner], 2, VectorJoinType.Miter, 2);
 
-        // Today: the two same-wound rings merge into one 44x44 outer; no hole ring is returned.
         var ring = Assert.Single(rings);
         Assert.Equal(44 * 44, Math.Abs(SignedArea(ring)), precision: 3);
+    }
+
+    /// <summary>Hole semantics do not depend on which absolute direction the outer ring has: a
+    /// clockwise outer with a counter-clockwise hole offsets to a bigger outer and a smaller hole.</summary>
+    [Fact]
+    public void Producer_OffsetKeepsHoleWhenOuterIsClockwise()
+    {
+        var outer = Rect(0, 0, 40, 40, Guid.Empty, clockwise: true).Points.Skip(1).ToList();
+        var hole = Rect(10, 10, 30, 30, Guid.Empty).Points.Take(4).ToList();
+
+        var rings = Clipper2VectorOffsetService.Default.OffsetClosedGroup(
+            [outer, hole], 2, VectorJoinType.Miter, 2);
+
+        Assert.Equal(2, rings.Count);
+        var areas = rings.Select(SignedArea).OrderByDescending(Math.Abs).ToList();
+        Assert.Equal(44 * 44, Math.Abs(areas[0]), precision: 3);
+        Assert.Equal(16 * 16, Math.Abs(areas[1]), precision: 3);
+        Assert.NotEqual(Math.Sign(areas[0]), Math.Sign(areas[1]));
+    }
+
+    /// <summary>End to end through VectorOffsetPlanner: an object with a hole (opposite winding) keeps
+    /// it, and the resulting rings fill hollow in the toolpath.</summary>
+    [Fact]
+    public void Agreement_PlannerOffsetOfHollowObjectStaysHollowInToolpath()
+    {
+        var set = Guid.NewGuid();
+        var source = new SceneObject
+        {
+            Name = "hollow",
+            LocalShapes = [Rect(0, 0, 40, 40, set), Rect(10, 10, 30, 30, set, clockwise: true)],
+            LocalBounds = new BoundingBox2D(0, 0, 40, 40),
+            LocalPivot = Position.Zero,
+        };
+
+        var path = VectorOffsetPlanner.ComputeOffset(
+            source, Clipper2VectorOffsetService.Default, 2, VectorJoinType.Miter, 2);
+
+        Assert.NotNull(path);
+        var group = Guid.NewGuid();
+        var shapes = path!.FlattenAll().Select(ring => new ImportedShape
+        {
+            Points = ring, IsClosed = true, LayerColor = Black, PreferredMode = LayerMode.Fill, GeometrySetId = group,
+        }).ToList();
+        Assert.Equal(2, shapes.Count);
+        var spans = Spans(Emit(shapes));
+        Assert.False(Burns(spans, 20, 20.5)); // scanlines start at minY(-2)+2.5
+        Assert.False(CanvasFills(shapes, 20, 20.5));
+        Assert.True(Burns(spans, 5, 20.5));
     }
 }
