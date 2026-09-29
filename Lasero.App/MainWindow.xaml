@@ -321,14 +321,14 @@
                     The extra padding when collapsed is what centres the glyphs. The rail is 74 wide to
                     clear the 26px account avatar, but a nav button's content is left-aligned behind its
                     own 10px padding, so at 14px rail padding every icon sat 8px left of centre and the
-                    strip read as leaning. 18 + 10 on each side of an 18px glyph fills 74 exactly.
+                    strip read as leaning. 17 + 10 on each side of a 20px glyph fills 74 exactly.
                 -->
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Padding" Value="14,16" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                <Setter Property="Padding" Value="18,16" />
+                                <Setter Property="Padding" Value="17,16" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -343,42 +343,23 @@
                     <StackPanel Grid.Row="0">
                         <Button Style="{StaticResource NavButton.Home}" Command="{Binding ShowHomeCommand}"
                                 ToolTip="Přehled projektů, úloh a zařízení" AutomationProperties.Name="Domů">
-                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Home}" Text="Domů" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Designer}" Command="{Binding ShowDesignerCommand}"
                                 ToolTip="Pracovní plocha pro přípravu grafiky" AutomationProperties.Name="Návrh">
-                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton}" Click="OnMaterialsClick"
                                 ToolTip="Materiály a doporučené parametry gravírování" AutomationProperties.Name="Materiály">
-                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Device}" Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Chat}" Click="OnLaseroChatClick"
                                  ToolTip="Pomoc s návrhem, materiály a gravírováním" AutomationProperties.Name="Lasero Chat">
-                            <StackPanel Orientation="Horizontal">
-                                <!-- Hand-built content rather than an IconLabel, so the collapse has
-                                     to be spelled out here: the gap goes with the label, or a
-                                     collapsed rail shows the avatar pushed 9px off centre. -->
-                                <Ellipse Width="22" Height="22">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Margin" Value="0,0,9,0" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsNavCollapsed}" Value="True">
-                                                    <Setter Property="Margin" Value="0" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.LaseroAvatarSource}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                                </Ellipse>
-                                <TextBlock Text="Lasero Chat" VerticalAlignment="Center"
-                                           Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
-                            </StackPanel>
+                            <components:IconLabel IconData="{StaticResource Glyph.Chat}" Text="Lasero Chat" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
                     </StackPanel>
 
@@ -386,7 +367,7 @@
                         <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="8,8,8,12" />
                         <Button Style="{StaticResource NavButton}" Click="OnSettingsClick"
                                 ToolTip="Předvolby aplikace a pracovní plochy" AutomationProperties.Name="Nastavení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Md}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" CompactMode="{Binding IsNavCollapsed}" />
                         </Button>
 
                         <!-- Whoever is signed in, at the foot of the sidebar. The e-mail is the only

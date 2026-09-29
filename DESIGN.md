@@ -158,8 +158,8 @@ Sizes come from `Size.Icon.*` and markup must not carry a numeric one:
 |---|---|
 | `Chrome` 12 | window buttons and dismiss glyphs — the one step below Sm, by platform convention |
 | `Sm` 16 | inside compact controls and the status bar |
-| `Md` 18 | toolbars and the navigation rail |
-| `Lg` 20 | window and panel header identity, machine state |
+| `Md` 18 | toolbars, menus and compact rows |
+| `Lg` 20 | the navigation rail, the designer tool rail, window and panel header identity, machine state |
 | `Xl` 24 | empty-state and onboarding art |
 
 Stroke weight is `Size.Icon.Stroke` (1.75), which is also what every exported SVG in
