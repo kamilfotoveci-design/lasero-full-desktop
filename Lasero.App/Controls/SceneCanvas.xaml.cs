@@ -595,7 +595,10 @@ public partial class SceneCanvas : UserControl
             // because that cache is flattened once at a fixed document-space tolerance. Keep the
             // original cubic geometry for WPF rendering; the flattened cache remains for hit testing
             // and machine output.
-            paths[i].Data = obj.VectorPath is { } vectorPath
+            // While a node/handle/segment drag is in flight the edit lives in the working path, not in
+            // obj.VectorPath (the object is only replaced on mouse-up), so draw that or the outline
+            // stays put while the dots move.
+            paths[i].Data = VectorPathRenderSource.For(obj, _nodeEditObject, _nodeEditWorkingPath, _nodeDragSession is not null) is { } vectorPath
                 ? BuildVectorPathGeometry(obj, vectorPath)
                 : BuildCompoundGeometry(group);
             paths[i].Stroke = new SolidColorBrush(color);

@@ -307,8 +307,9 @@ public partial class SceneCanvas
         // In case this fires mid-drag (e.g. a tool-switch shortcut while a node is captured), restore
         // the object's LocalShapes to their pre-drag snapshot first — same guarantee CancelNodeEditDrag
         // gives an explicit Escape.
-        if (_nodeEditObject is not null && _nodeDragSession is not null)
-            _nodeEditObject.LocalShapes = _nodeDragSession.OriginalShapes;
+        var interrupted = _nodeEditObject is not null && _nodeDragSession is not null ? _nodeEditObject : null;
+        if (interrupted is not null)
+            interrupted.LocalShapes = _nodeDragSession!.OriginalShapes;
         _nodeEditObject = null;
         _nodeEditWorkingPath = null;
         _selectedNodeKeys.Clear();
@@ -321,6 +322,9 @@ public partial class SceneCanvas
         _hoveredNodeKey = null;
         _hoveredHandleKey = null;
         _hoveredSegment = null;
+        // An interrupted drag had its live frame drawn; put the object's own curve back.
+        if (interrupted is not null && _objectVisuals.ContainsKey(interrupted))
+            UpdateObjectGeometry(interrupted);
         RedrawSelectionOverlay();
     }
 
@@ -1008,6 +1012,12 @@ public partial class SceneCanvas
         _nodeDragSession = null;
         _nodeDragSnapCandidates = [];
         _activeSnapTarget = null;
+        // A drag that ends without a commit (dragged back to where it started, or the edit was
+        // rejected) leaves the last live frame on screen; with the drag over, the object's own curve
+        // is the truth again. After a commit this re-renders the replacement with the curve it already
+        // has.
+        if (_nodeEditObject is not null && _objectVisuals.ContainsKey(_nodeEditObject))
+            UpdateObjectGeometry(_nodeEditObject);
         // OnDrawCanvasMouseLeftButtonUp releases capture after it sets _dragMode to None. Keeping the
         // release there prevents our LostMouseCapture cancellation path from mistaking a normal
         // completed drag for an interrupted one.
