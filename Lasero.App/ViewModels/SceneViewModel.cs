@@ -334,10 +334,10 @@ public partial class SceneViewModel : ObservableObject
     /// pixel grid scaled to mm, origin at the bitmap's corner — see BitmapTracer/CompoundPathBuilder),
     /// so ToWorldSpace bakes the source raster's placement (position, and its scale if it was ever
     /// resized) into the node/handle coordinates themselves before handing off to
-    /// VectorPathSceneFactory.Create, which always builds with Transform.Identity and a zero pivot —
-    /// carrying the source's ObjectTransform over unchanged would rotate/scale the result around the
-    /// wrong pivot (VectorPathSceneFactory always uses Position.Zero, not the source's bounds-center),
-    /// which is exactly the same reason ScenePrimitiveFactory's other object types don't pair a
+    /// VectorPathSceneFactory.Create, which always builds with Transform.Identity and a pivot at the
+    /// result's own bounds centre — carrying the source's ObjectTransform over unchanged would
+    /// rotate/scale the result around the wrong pivot (the source's, not the result's), which is
+    /// exactly the same reason ScenePrimitiveFactory's other object types don't pair a
     /// borrowed Transform with newly built local geometry either.</summary>
     public void ReplaceRasterWithTrace(SceneObject source, BitmapTraceResult result)
     {
@@ -1810,6 +1810,10 @@ public partial class SceneViewModel : ObservableObject
                     })
                     .ToList();
 
+                // Paths drawn before the pen tool learned to keep its pivot at the centre of the
+                // bounds were saved with a pivot at the document origin. Moving the pivot (and
+                // compensating Transform) leaves them exactly where they are and gives them working
+                // selection grips, rotate and flip; objects that are already centred come back as-is.
                 return new SceneObject
                 {
                     LocalShapes = shapes,
@@ -1825,7 +1829,7 @@ public partial class SceneViewModel : ObservableObject
                     IsVisible = item.IsVisible,
                     IsLocked = item.IsLocked,
                     IncludeInOutput = item.IncludeInOutput,
-                };
+                }.WithPivotAtBoundsCenter();
             })
             .ToList();
 

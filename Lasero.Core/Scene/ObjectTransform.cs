@@ -44,6 +44,21 @@ public readonly record struct ObjectTransform(double X, double Y, double Rotatio
     }
 
     /// <summary>
+    /// The same placement expressed about a different pivot: every local point lands exactly where it
+    /// did before. Apply scales and rotates about the pivot, so moving the pivot while keeping X/Y
+    /// would shift any rotated or scaled object; X/Y absorb the difference instead. With no rotation and
+    /// unit scale the pivot is irrelevant and X/Y come back unchanged.
+    /// </summary>
+    public ObjectTransform WithPivotMoved(Position from, Position to)
+    {
+        var dx = from.X - to.X;
+        var dy = from.Y - to.Y;
+        var (rx, ry) = Rotate(dx * ScaleX, dy * ScaleY, RotationDeg);
+        // Parenthesised so an identity transform adds exactly zero and X/Y survive bit for bit.
+        return this with { X = X + (dx - rx), Y = Y + (dy - ry) };
+    }
+
+    /// <summary>
     /// Computes the transform that results from dragging one resize handle to <paramref name="mouseWorld"/>,
     /// keeping the opposite corner/edge (the "anchor") fixed in world space. Correct under rotation: the
     /// anchor is defined in the object's local frame and re-derived in world space via the CURRENT transform,
@@ -114,6 +129,9 @@ public readonly record struct ObjectTransform(double X, double Y, double Rotatio
 
     /// <summary>The local-space point a given handle drags, using Min/Max for its active axes and the
     /// pivot's own coordinate (i.e. an offset of zero) for whichever axis that handle doesn't affect.
+    /// That is the middle of the edge only while the pivot is the centre of <paramref name="bounds"/>,
+    /// which every SceneObject must keep true (see SceneObject.IsPivotAtBoundsCenter): an off-centre
+    /// pivot puts these grips on the pivot's own X/Y lines, nowhere near the shape.
     /// Public so the canvas can compute matching on-screen handle positions (via Apply) for rendering.</summary>
     public static Position HandleLocalPoint(BoundingBox2D bounds, Position pivot, ResizeHandle handle)
     {

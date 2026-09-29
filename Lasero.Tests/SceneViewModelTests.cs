@@ -648,7 +648,16 @@ public class SceneViewModelTests
         // rather than naively joining local-space nodes.
         var a = MakeOpenLineObject(new Position(0, 0, 0), new Position(1, 0, 0));
         a.Transform = a.Transform with { RotationDeg = 0, ScaleX = 10, ScaleY = 10 };
-        Assert.Equal(new Position(10, 0, 0), a.GetWorldVectorPath()!.Subpaths[0].Nodes[1].Anchor);
+        // Scaling is about the object's own pivot (the middle of its bounds), so shift the scaled line
+        // until its end sits on world (10,0) instead of assuming where the pivot is.
+        var scaledEnd = a.GetWorldVectorPath()!.Subpaths[0].Nodes[1].Anchor;
+        a.Transform = a.Transform with
+        {
+            X = a.Transform.X + (10 - scaledEnd.X),
+            Y = a.Transform.Y + (0 - scaledEnd.Y),
+        };
+        Assert.True(PositionsApproximatelyEqual(new Position(10, 0, 0), a.GetWorldVectorPath()!.Subpaths[0].Nodes[1].Anchor));
+        Assert.NotEqual(new Position(10, 0, 0), a.VectorPath!.Subpaths[0].Nodes[1].Anchor);
         var b = MakeOpenLineObject(new Position(10, 0, 0), new Position(20, 0, 0));
         viewModel.Objects.Add(a);
         viewModel.Objects.Add(b);

@@ -8,12 +8,18 @@ namespace Lasero.Core.Scene;
 /// <summary>
 /// Wraps a VectorPath into a SceneObject, flattening it to ImportedShape.Points at creation/rebuild
 /// time (see the boundary comment at the top of VectorPath.cs). Coordinates are kept in absolute mm
-/// exactly as clicked on the canvas — LocalPivot stays at the origin and Transform stays Identity —
-/// the same simple convention ScenePrimitiveFactory.CreateLine already uses for the plain Line tool,
-/// rather than the "recenter around the shape's own bounds" convention CreateRectangle/CreateEllipse
-/// use. A vector path is built incrementally over many clicks, so there is no natural "drag rectangle"
-/// to center around; recentering would also mean the object's Transform.X/Y stop matching where the
-/// operator actually clicked, which the node-edit overlay would then have to un-do on every read.
+/// exactly as clicked on the canvas and Transform stays Identity, rather than the "recenter the
+/// geometry around its own bounds" convention CreateRectangle/CreateEllipse use. A vector path is
+/// built incrementally over many clicks, so there is no natural "drag rectangle" to center around;
+/// recentering would also mean the object's Transform.X/Y stop matching where the operator actually
+/// clicked, which the node-edit overlay would then have to un-do on every read.
+///
+/// The pivot is a different matter: it must be the centre of the bounds (SceneObject.IsPivotAtBoundsCenter),
+/// because the selection grips, rotate, flip and resize all assume it. It used to stay at the origin,
+/// which drew a selected path's edge grips, pivot marker and rotate grip on the document's X=0/Y=0
+/// axes, nowhere near the path, and made rotate/flip orbit the origin. Moving only the pivot is free:
+/// with an identity transform Apply(p, pivot) is p wherever the pivot sits, so the coordinates the
+/// operator clicked are still the coordinates stored.
 /// </summary>
 public static class VectorPathSceneFactory
 {
@@ -27,7 +33,7 @@ public static class VectorPathSceneFactory
             Name = name,
             LocalShapes = shapes,
             LocalBounds = bounds,
-            LocalPivot = Position.Zero,
+            LocalPivot = CenterOf(bounds),
             VectorPath = path,
             Transform = ObjectTransform.Identity,
         };
@@ -35,7 +41,9 @@ public static class VectorPathSceneFactory
 
     /// <summary>Re-flattens an existing vector-path object after a node edit (move/add/delete/convert
     /// node, drag handle, close path). Identity, transform, layer assignment and flags all carry
-    /// over — only the geometry changes, the same contract VectorTextFactory.Rebuild uses for text.</summary>
+    /// over — only the geometry changes, the same contract VectorTextFactory.Rebuild uses for text.
+    /// Editing moves the bounds, so the pivot follows their centre; Transform is adjusted for the pivot
+    /// move (ObjectTransform.WithPivotMoved) so a rotated or scaled object does not jump on the canvas.</summary>
     public static SceneObject Rebuild(SceneObject existing, VectorPath path)
     {
         ArgumentNullException.ThrowIfNull(existing);
@@ -55,20 +63,25 @@ public static class VectorPathSceneFactory
                 PreferredMode = previous.PreferredMode,
             }).ToList();
 
+        var pivot = CenterOf(bounds);
+
         return new SceneObject
         {
             Id = existing.Id,
             Name = existing.Name,
             LocalShapes = localShapes,
             LocalBounds = bounds,
-            LocalPivot = Position.Zero,
+            LocalPivot = pivot,
             VectorPath = path,
-            Transform = existing.Transform,
+            Transform = existing.Transform.WithPivotMoved(existing.LocalPivot, pivot),
             IsVisible = existing.IsVisible,
             IsLocked = existing.IsLocked,
             IncludeInOutput = existing.IncludeInOutput,
         };
     }
+
+    private static Position CenterOf(BoundingBox2D bounds) =>
+        new((bounds.MinX + bounds.MaxX) / 2, (bounds.MinY + bounds.MaxY) / 2, 0);
 
     private static (IReadOnlyList<ImportedShape> Shapes, BoundingBox2D Bounds) BuildShapes(
         VectorPath path, RgbColor color, Guid geometrySetId)

@@ -90,6 +90,8 @@ Editable-path (bezier node) work: an `EditablePath`/`PathNode` model preserving 
 
 `SceneDocument` holds `ObservableCollection<SceneObject> Objects` and `ObservableCollection<LayerSettings> Layers` (global, per-color — not per-object). Every `SceneObject` has: `Id`, `LocalShapes` (flattened `ImportedShape` list), `LocalPivot`, `LocalBounds`, `Transform`, `Name`, `IsVisible`, `IsLocked`, plus optional `RasterFilePath`/`RasterOptions` for raster imports. `SceneDocument.ToImportedDocument()` flattens every visible object's transformed geometry into one `ImportedDocument` — the bridge to `ToolpathBuilder`.
 
+**Invariant: `LocalPivot` is the centre of `LocalBounds`** (`SceneObject.IsPivotAtBoundsCenter`). Selection grips (`ObjectTransform.HandleLocalPoint`), resize (`ComputeResize`), rotate, flip and the inspector size all act about the pivot and assume it is the middle of the box; off-centre, the edge grips and rotate grip land on the pivot's own X/Y lines and rotate/flip orbit that point. Anything that builds or rebuilds an object must keep it centred. `VectorPathSceneFactory` does (it moves only the pivot and compensates `Transform` with `ObjectTransform.WithPivotMoved`, so nothing shifts on the canvas), and `SceneViewModel.LoadProject` heals older files via `SceneObject.WithPivotAtBoundsCenter()`.
+
 There is no polymorphic `GraphicObject`/`VectorObject`/`LineObject`/... hierarchy as the previous version proposed — `SceneObject` is a single concrete type whose `LocalShapes` can represent any imported/flattened geometry. Don't introduce that hierarchy without a concrete need; it doesn't match how the importers or the canvas currently work.
 
 ---

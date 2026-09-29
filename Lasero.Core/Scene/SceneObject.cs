@@ -249,11 +249,53 @@ public sealed partial class SceneObject : ObservableObject
         };
     }
 
-    /// <summary>A copy with a new Id, sharing the same (immutable) local geometry — used by duplicate.</summary>
-    public SceneObject Clone() => new()
+    /// <summary>Centre of <see cref="LocalBounds"/>, in the same local space as <see cref="LocalPivot"/>.</summary>
+    public Position LocalBoundsCenter => new(
+        (LocalBounds.MinX + LocalBounds.MaxX) / 2,
+        (LocalBounds.MinY + LocalBounds.MaxY) / 2,
+        LocalPivot.Z);
+
+    /// <summary>
+    /// Whether <see cref="LocalPivot"/> is the centre of <see cref="LocalBounds"/>. Every factory keeps
+    /// this true and everything that draws or drags a selection depends on it: edge-midpoint grips sit
+    /// at the pivot's coordinate on the axis they do not move, the pivot marker and rotate grip hang off
+    /// it, and rotate, flip and resize all scale about it. Off-centre, the grips are drawn on the
+    /// pivot's own X/Y lines and rotating orbits the shape around that point. Within a millionth of a
+    /// millimetre counts as centred, far below anything a laser can place.
+    /// </summary>
+    public bool IsPivotAtBoundsCenter
     {
+        get
+        {
+            var centre = LocalBoundsCenter;
+            return Math.Abs(centre.X - LocalPivot.X) <= PivotTolerance
+                && Math.Abs(centre.Y - LocalPivot.Y) <= PivotTolerance;
+        }
+    }
+
+    private const double PivotTolerance = 1e-6;
+
+    /// <summary>
+    /// This object with its pivot moved to the centre of its bounds and Transform adjusted so nothing
+    /// moves on the canvas (same Id, same world geometry). Returns this object unchanged when the pivot
+    /// is already there. Heals objects saved while the pen tool still built them with a pivot at the
+    /// document origin.
+    /// </summary>
+    public SceneObject WithPivotAtBoundsCenter()
+    {
+        if (IsPivotAtBoundsCenter) return this;
+        var pivot = LocalBoundsCenter;
+        return CopyWith(Id, pivot, Transform.WithPivotMoved(LocalPivot, pivot));
+    }
+
+    /// <summary>A copy with a new Id, sharing the same (immutable) local geometry — used by duplicate.</summary>
+    public SceneObject Clone() => CopyWith(Guid.NewGuid(), LocalPivot, Transform);
+
+    private SceneObject CopyWith(Guid id, Position pivot, ObjectTransform transform) => new()
+    {
+        Id = id,
         LocalShapes = LocalShapes,
-        LocalPivot = LocalPivot,
+        LocalPivot = pivot,
         LocalBounds = LocalBounds,
         RasterFilePath = RasterFilePath,
         RasterOptions = RasterOptions,
@@ -261,7 +303,7 @@ public sealed partial class SceneObject : ObservableObject
         Text = Text,
         VectorPath = VectorPath,
         Name = Name,
-        Transform = Transform,
+        Transform = transform,
         IsVisible = IsVisible,
         IsLocked = IsLocked,
         IncludeInOutput = IncludeInOutput,
