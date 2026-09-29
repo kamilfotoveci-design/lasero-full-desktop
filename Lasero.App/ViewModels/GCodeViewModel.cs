@@ -852,7 +852,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             FeedRatePerMinute = FramingFeedRate,
             Mode = FramingMode,
-            LaserPower = 0,
+            LaserPower = ReadControllerMaximumS() is > 0 ? FramingOptions.VisiblePowerPercent : 0,
         };
         var frameLines = FramingService.BuildFrameGCode(Document.BoundingBox, options, ReadControllerMaximumS()).ToList();
         if (PlacementMode == JobPlacementMode.CurrentPosition)

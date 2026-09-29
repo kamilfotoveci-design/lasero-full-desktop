@@ -355,12 +355,13 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         StatusMessage = null;
         try
         {
+            var controllerMaximumS = (_machine as IGrblDeviceProfileSource)?.DeviceProfile?.MaxSpindleSpeed;
             var frameLines = FramingService.BuildFrameGCode(job.Bounds, new FramingOptions
             {
                 FeedRatePerMinute = 3000,
                 Mode = FramingMode.FullOutline,
-                LaserPower = 0,
-            });
+                LaserPower = controllerMaximumS is > 0 ? FramingOptions.VisiblePowerPercent : 0,
+            }, controllerMaximumS);
 
             var document = GCodeParser.Parse(frameLines);
             var preflight = JobPreflight.Evaluate(new JobPreflightContext
