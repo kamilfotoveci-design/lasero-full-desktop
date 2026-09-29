@@ -9,6 +9,10 @@ public sealed record CapabilityEvidence(CapabilitySupport Support, CapabilityVer
 /// No dimensions, speed, power or module defaults are inferred from these entries.</summary>
 public sealed record MachineCompatibility(string Id, string DisplayName, string Limitation)
 {
+    /// <summary>Combo boxes and any other text-only presenter fall back to ToString(); the compiler-generated
+    /// record dump ("MachineCompatibility { Id = ... }") must never reach the operator.</summary>
+    public override string ToString() => DisplayName;
+
     public bool AllowsDirectConnection => Id == MachineCompatibilityCatalog.ExistingGrblId;
     public CapabilityEvidence GetCapability(MachineCapability capability) => new(
         CapabilitySupport.Unresolved, CapabilityVerification.Unverified);
