@@ -564,9 +564,10 @@
                                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
 
             <!--
-                Kamil. One instance for the whole application, declared last in the editor row so it
-                paints over whichever screen is showing without any of them knowing it exists — which
-                is what lets the operator move between Návrh, Materiály and Zařízení mid-conversation.
+                Kamil. One instance, shown only while the Designer (Návrh) screen is current: the
+                operator's hands are already on the canvas when they need it, and Home, Materiály,
+                Zařízení, Chat and the dialogs stay free of it. Collapsed rather than unloaded, so the
+                conversation is exactly as they left it on return.
 
                 It lives inside this row rather than over the whole window, so the machine strip below
                 is out of its reach by construction: Rámovat, Spustit, Pauza and Zastavit cannot be
@@ -576,6 +577,7 @@
                 canvas instead of on top of the operation settings its own "Použít na operaci" writes.
             -->
             <kamil:KamilAssistantHost Grid.Column="1" Grid.ColumnSpan="3" Panel.ZIndex="30"
+                                      Visibility="{Binding DataContext.CurrentScreen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
                                       DataContext="{Binding Kamil}">
                 <kamil:KamilAssistantHost.Margin>
                     <MultiBinding Converter="{StaticResource AssistantClearance}">

@@ -535,27 +535,18 @@ public partial class KamilAssistantHost : UserControl
         PersistentAvatarLayer.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>The rectangle the head and the panel may occupy. The host's own Margin (see
+    /// <see cref="Lasero.App.Converters.AssistantClearanceConverter"/>) already stops its right edge
+    /// 20px short of the inspector and its bottom edge clear of the zoom/undo cluster, so the head
+    /// rests flush against the bottom-right corner of this control and only the left/top edges get a
+    /// safety inset. Reserving the inspector or the cluster a second time here is what once pushed the
+    /// head into the middle of the canvas.</summary>
     private Rect GetUsableBounds(Size surfaceSize)
     {
         var width = Root.ActualWidth > 0 ? Root.ActualWidth : ActualWidth;
         var height = Root.ActualHeight > 0 ? Root.ActualHeight : ActualHeight;
-        var rightReservation = 0d;
-        var bottomReservation = 0d;
-
-        if (Window.GetWindow(this) is Window window)
-        {
-            if (window.FindName("InspectorColumn") is ColumnDefinition inspectorColumn)
-                rightReservation = inspectorColumn.ActualWidth;
-            if (window.FindName("InspectorSplitter") is FrameworkElement splitter && splitter.IsVisible)
-                rightReservation += splitter.ActualWidth;
-            if (window.FindName("CanvasViewControls") is FrameworkElement controls && controls.IsVisible)
-                bottomReservation = controls.ActualHeight + SafeMargin;
-        }
-
-        var right = Math.Max(SafeMargin, width - rightReservation - SafeMargin);
-        var bottom = Math.Max(SafeMargin, height - bottomReservation - SafeMargin);
         return new Rect(SafeMargin, SafeMargin,
-            Math.Max(0, right - SafeMargin), Math.Max(0, bottom - SafeMargin));
+            Math.Max(0, width - SafeMargin), Math.Max(0, height - SafeMargin));
     }
 
     private Point ClampPosition(Point position, Size size, Rect bounds)
