@@ -30,18 +30,20 @@
             <Setter Property="Margin" Value="0,0,6,0" />
         </Style>
 
+        <!-- Designer visual-refinement pass: transparent at rest rather than the shared
+             UnitField.Shell's permanent border — a floating toolbar of five compact fields read as
+             busier with all of them boxed than the bordered chrome was worth. UnitField.Shell's own
+             inherited hover/focus triggers still reveal the border as an editing affordance. Scoped
+             here rather than on the shared style itself, which other screens still use as-is. -->
         <Style x:Key="BarField" TargetType="Border" BasedOn="{StaticResource UnitField.Shell}">
             <Setter Property="Width" Value="100" />
             <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
-        <Style x:Key="BarDivider" TargetType="Border">
-            <Setter Property="Width" Value="1" />
-            <Setter Property="Height" Value="20" />
-            <Setter Property="Margin" Value="9,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
-        </Style>
+        <!-- BarDivider moved to Theme/SharedUiStyles.xaml (merged app-wide) so MainWindow's bottom
+             bar can reuse the same hairline instead of relying only on Margin gaps between zones. -->
 
         <Style x:Key="BarGlyph" TargetType="components:IconGlyph">
             <Setter Property="Width" Value="{StaticResource Size.Icon.Sm}" />
@@ -107,11 +109,6 @@
              row genuinely cannot fit, and scrolling it beats clipping a field in half. -->
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                       Focusable="False">
-            <!-- The 5px slim bar the rest of the product uses. A full-weight scrollbar under a
-                 floating 46px toolbar was thicker than the gap it sat in. -->
-            <ScrollViewer.Resources>
-                <Style TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Slim}" />
-            </ScrollViewer.Resources>
             <StackPanel Orientation="Horizontal">
 
                 <!-- ============ Poloha ============ -->
@@ -160,21 +157,13 @@
                                   IsChecked="{Binding Scene.LockAspectRatio}"
                                   ToolTip="Zachovat poměr stran při změně šířky nebo výšky"
                                   AutomationProperties.Name="Zachovat poměr stran">
-                        <!-- A padlock that opens and closes, rather than a chain link: the state is
-                             the point of this control, and a closed lock says "tied together" at a
-                             glance where a link glyph looked the same either way. -->
-                        <components:IconGlyph>
-                            <components:IconGlyph.Style>
-                                <Style TargetType="components:IconGlyph" BasedOn="{StaticResource BarGlyph}">
-                                    <Setter Property="IconData" Value="{StaticResource Glyph.Unlock}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Scene.LockAspectRatio}" Value="True">
-                                            <Setter Property="IconData" Value="{StaticResource Glyph.Lock}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </components:IconGlyph.Style>
-                        </components:IconGlyph>
+                        <!-- Designer visual-refinement pass: one chain glyph, not a padlock that
+                             swaps open/closed — Toggle.Icon's own checked-state surface (accent tint,
+                             border, foreground) already carries the on/off state, per this control's
+                             existing IsChecked binding, ToolTip and AutomationProperties.Name, all of
+                             which are unchanged. -->
+                        <components:IconGlyph Style="{StaticResource BarGlyph}"
+                                              IconData="{StaticResource Glyph.Link}" />
                     </ToggleButton>
                     <TextBlock Text="V" Style="{StaticResource BarLabel}" ToolTip="Výška" />
                     <Border Style="{StaticResource BarField}" ToolTip="Výsledná výška objektu">
@@ -208,6 +197,28 @@
                         </DockPanel>
                     </Border>
                 </StackPanel>
+
+                <!-- ============ Node Edit entry ============ -->
+                <!-- The primary, discoverable way to start editing a path's nodes — a single click,
+                     always visible whenever the selection is one node-editable object. Double-
+                     clicking the shape's own stroke on the canvas still works too (existing gesture,
+                     kept as a shortcut for users who already know it), but is no longer the only
+                     entry point: aiming a double-click at a thin curved stroke is not something a new
+                     user should have to discover or a returning one should have to re-aim every time. -->
+                <Border Style="{StaticResource BarDivider}"
+                        Visibility="{Binding Scene.Selected.IsVectorPath, Converter={StaticResource BoolToVisibility}}" />
+                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                        Click="OnEnterNodeEditClick"
+                        Visibility="{Binding Scene.Selected.IsVectorPath, Converter={StaticResource BoolToVisibility}}"
+                        ToolTip="Upraví jednotlivé uzly a raménka této dráhy."
+                        AutomationProperties.Name="Upravit uzly">
+                    <StackPanel Orientation="Horizontal">
+                        <components:IconGlyph Style="{StaticResource BarGlyph}" IconData="{StaticResource Glyph.Vector}"
+                                              Foreground="{DynamicResource Brush.TextSecondary}"
+                                              VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="Upravit uzly" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
 
                 <!-- ============ Text ============ -->
                 <Border Style="{StaticResource BarDivider}"
@@ -245,7 +256,7 @@
                     <ToggleButton Style="{StaticResource Toggle.Icon}"
                                   IsChecked="{Binding Scene.SelectedTextBold}"
                                   ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
-                        <TextBlock Text="B" FontWeight="Bold" FontSize="{StaticResource Size.Text.Section}" />
+                        <TextBlock Text="B" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Section}" />
                     </ToggleButton>
                     <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="4,0,0,0"
                                   IsChecked="{Binding Scene.SelectedTextItalic}"
@@ -275,13 +286,25 @@
                                                       IconData="{StaticResource Glyph.ChevronDown}" />
                             </StackPanel>
                         </MenuItem.Header>
-                        <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}" />
-                        <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}" />
-                        <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}" />
+                        <MenuItem Header="Vlevo" Command="{Binding Scene.AlignLeftCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignCenterHorizontal}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Vpravo" Command="{Binding Scene.AlignRightCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <Separator />
-                        <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}" />
-                        <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}" />
-                        <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}" />
+                        <MenuItem Header="Nahoru" Command="{Binding Scene.AlignTopCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignTop}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Na střed svisle" Command="{Binding Scene.AlignMiddleCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignMiddle}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignBottom}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
 
@@ -297,11 +320,19 @@
                                                       IconData="{StaticResource Glyph.ChevronDown}" />
                             </StackPanel>
                         </MenuItem.Header>
-                        <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}" />
-                        <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}" />
+                        <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.FlipHorizontal}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.FlipVertical}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <Separator />
-                        <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}" />
-                        <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}" />
+                        <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.RotateLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
 
@@ -345,36 +376,62 @@
                         <MenuItem Header="Trasovat bitmapu" InputGestureText="Alt+T"
                                   Command="{Binding Scene.TraceSelectedRasterCommand}"
                                   Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Odstranit pozadí"
+                                  Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
+                                  Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}" />
+                        <MenuItem Header="Obnovit pozadí"
+                                  Command="{Binding Scene.RestoreSelectedBackgroundCommand}"
+                                  Visibility="{Binding Scene.CanRestoreSelectedBackground, Converter={StaticResource BoolToVisibility}}" />
 
                         <!-- Align/Flip/Rotate normally have their own visible menus in the row above;
                              those two collapse while text is selected (see the Uspořádání comment),
                              so their only reachable copy at that point is here. -->
                         <MenuItem Header="Zarovnat vlevo" Command="{Binding Scene.AlignLeftCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zarovnat na střed vodorovně" Command="{Binding Scene.AlignCenterHorizontalCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignCenterHorizontal}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zarovnat vpravo" Command="{Binding Scene.AlignRightCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zarovnat nahoru" Command="{Binding Scene.AlignTopCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignTop}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zarovnat na střed svisle" Command="{Binding Scene.AlignMiddleCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignMiddle}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zarovnat dolů" Command="{Binding Scene.AlignBottomCommand}"
                                   IsEnabled="{Binding Scene.HasMultipleSelection}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignBottom}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zrcadlit vodorovně" Command="{Binding Scene.FlipHorizontalCommand}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.FlipHorizontal}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Zrcadlit svisle" Command="{Binding Scene.FlipVerticalCommand}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.FlipVertical}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Otočit o 90° vlevo" Command="{Binding Scene.RotateLeftCommand}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.RotateLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Otočit o 90° vpravo" Command="{Binding Scene.RotateRightCommand}"
-                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.RotateRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                         <Separator Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
 
                         <MenuItem Header="Duplikovat" InputGestureText="Ctrl+D" Command="{Binding Scene.DuplicateCommand}" />
@@ -393,8 +450,12 @@
                         <MenuItem Header="Odstranit" InputGestureText="Delete" Command="{Binding Scene.DeleteCommand}" />
 
                         <Separator />
-                        <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}" />
-                        <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}" />
+                        <MenuItem Header="Přenést dopředu" Command="{Binding Scene.BringToFrontCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.BringFront}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Přenést dozadu" Command="{Binding Scene.SendToBackCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.SendBack}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
 
                         <Separator />
                         <MenuItem Header="Velká písmena" IsCheckable="True"

@@ -44,7 +44,11 @@ public partial class SceneViewModel : ObservableObject
 
     public IReadOnlyList<RgbColor> LayerPalette { get; } =
     [
-        new(18, 18, 18), new(214, 42, 42), new(239, 108, 37), new(232, 180, 0),
+        // Second entry is KAMIL's own cap green (#394E3B, sampled from Assets/LaseroAvatar.png), not
+        // a generic swatch pick — replaced the old orange at the user's request. Deliberately a much
+        // darker, more muted green than the existing bright green further along (42,157,82), so the
+        // two remain visually distinct rather than reading as a near-duplicate.
+        new(18, 18, 18), new(214, 42, 42), new(57, 78, 59), new(232, 180, 0),
         new(42, 157, 82), new(0, 151, 167), new(31, 95, 204), new(92, 76, 196),
         new(179, 62, 153), new(117, 72, 42), new(98, 105, 113), new(173, 181, 189),
     ];
@@ -283,7 +287,7 @@ public partial class SceneViewModel : ObservableObject
             : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.Mode ?? LayerMode.Cut;
 
     /// <summary>Executed by every mutating gesture the canvas performs (drag-move/rotate/resize on
-    /// MouseUp, keyboard nudge) â€” kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
+    /// MouseUp, keyboard nudge) — kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
     public void Execute(ISceneCommand command) => _commandStack.Execute(command);
 
     private (double X, double Y) NextCascadeOffset()
@@ -356,6 +360,8 @@ public partial class SceneViewModel : ObservableObject
             var worldPath = ToWorldSpace(traced.Path, source.Transform, source.LocalPivot);
             var name = multipleObjects ? $"Trasování · {source.Name} ({index + 1})" : $"Trasování · {source.Name}";
             var tracedObject = VectorPathSceneFactory.Create(worldPath, traced.Color, name);
+            var layer = result.Document.Layers.FirstOrDefault(candidate => candidate.Color == traced.Color);
+            if (layer is not null) tracedObject.AssignToLayer(layer);
             tracedObject.IsVisible = source.IsVisible;
             tracedObject.IncludeInOutput = source.IncludeInOutput;
             tracedObjects.Add(tracedObject);
@@ -1914,7 +1920,7 @@ public partial class SceneViewModel : ObservableObject
     partial void OnSelectedLayerChanged(LayerSettings? value) => NotifyLayerStateChanged();
 
     // --- Property-panel wrapper properties: ObjectTransform is a readonly struct, so binding a TextBox
-    // straight to "Selected.Transform.X" has no settable path â€” these translate a set into one
+    // straight to "Selected.Transform.X" has no settable path — these translate a set into one
     // TransformObjectCommand each, same as a completed drag gesture. Round 1 is single-selection only. ---
 
     public double SelectedX

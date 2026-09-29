@@ -24,15 +24,6 @@
         <conv:MachineDisplayStateToLabelConverter x:Key="MachineStateLabel" />
         <conv:MachineDisplayStateToStatePillKindConverter x:Key="MachineStatePillKind" />
 
-        <!-- 16/24 semibold, matching the mockup's section-header and headline-home steps onto the
-             product's existing type scale. -->
-        <Style x:Key="SectionHeading" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
-            <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-
         <!-- The rail's stat tiles: a metadata caption over a compact value. -->
         <Style x:Key="RailTile" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
@@ -118,10 +109,10 @@
                 </StackPanel>
 
                 <!-- Pokračovat v práci -->
-                <TextBlock Text="Pokračovat v práci" Style="{StaticResource SectionHeading}"
-                           HorizontalAlignment="Left" Margin="0,0,0,16" />
+                <TextBlock Text="Pokračovat v práci" Style="{StaticResource PanelTitle}"
+                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,0,16" />
 
-                <Border Style="{StaticResource Card}" Padding="24,22"
+                <Border Style="{StaticResource Card}" Padding="24,20"
                         Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}"
                         Margin="0,0,0,32">
                     <components:EmptyState IconPrimaryData="{StaticResource Glyph.Project}"
@@ -167,13 +158,17 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Naposledy použité materiály" Style="{StaticResource SectionHeading}" />
+                            <TextBlock Text="Naposledy použité materiály" Style="{StaticResource PanelTitle}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" TextWrapping="Wrap" />
                             <Button Grid.Column="1" Style="{StaticResource Button.Link}" Click="OnMaterialsClick"
-                                    Content="Knihovna materiálů →"
+                                    Content="Vše →"
                                     ToolTip="Otevřít knihovnu materiálů a přednastavení" />
                         </Grid>
 
-                        <Border Style="{StaticResource ThumbnailCard}"
+                        <!-- BorderThickness overridden to 0: this is a flat row list (matching the
+                             Designer inspector's OPERACE list), not a gallery of thumbnails, so it
+                             does not need ThumbnailCard's own frame — only its zero padding. -->
+                        <Border Style="{StaticResource ThumbnailCard}" BorderThickness="0"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource BoolToVisibility}}">
                             <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}">
                                 <ItemsControl.ItemTemplate>
@@ -197,7 +192,7 @@
                             </ItemsControl>
                         </Border>
 
-                        <Border Style="{StaticResource Card}" Padding="24,22"
+                        <Border Style="{StaticResource Card}" Padding="24,20"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}">
                             <components:EmptyState IconPrimaryData="{StaticResource Glyph.Materials}"
                                                    Title="Zatím žádné použité materiály"
@@ -206,10 +201,10 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Poslední úloha" Style="{StaticResource SectionHeading}"
-                                   HorizontalAlignment="Left" Margin="0,0,0,16" />
+                        <TextBlock Text="Poslední úloha" Style="{StaticResource PanelTitle}"
+                                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,0,16" />
 
-                        <Border Style="{StaticResource Card}" Padding="16" MinHeight="154"
+                        <Border Style="{StaticResource Card}" Padding="16" MinHeight="152"
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource BoolToVisibility}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -238,8 +233,7 @@
 
                                 <Border Grid.Column="1" Width="64" Height="64" VerticalAlignment="Top"
                                         CornerRadius="{StaticResource Radius.Sm}"
-                                        Background="{DynamicResource Brush.PanelRaised}"
-                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1">
+                                        Background="{DynamicResource Brush.PanelRaised}">
                                     <components:IconGlyph IconData="{StaticResource Glyph.History}"
                                                           Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                           Foreground="{DynamicResource Brush.TextMuted}" />
@@ -247,7 +241,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource Card}" Padding="24,22" MinHeight="154"
+                        <Border Style="{StaticResource Card}" Padding="24,20" MinHeight="152"
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}">
                             <components:EmptyState IconPrimaryData="{StaticResource Glyph.History}"
                                                    Title="Zatím žádná dokončená úloha"
@@ -270,7 +264,8 @@
 
                 <Border Grid.Row="0" Padding="16,14"
                         BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                    <TextBlock Text="Zařízení" Style="{StaticResource SectionHeading}" />
+                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}"
+                               VerticalAlignment="Center" Margin="0" />
                 </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -282,16 +277,9 @@
                                 BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
                                 CornerRadius="{StaticResource Radius.Lg}" Padding="16,20" Margin="0,0,0,24">
                             <StackPanel HorizontalAlignment="Center">
-                                <!-- Third step of the rail's tonal ladder: white rail, PanelRaised card,
-                                     and the disc a shade darker again. PanelBorder is the only
-                                     neutral at that value in the palette, so it doubles as the fill
-                                     here rather than a one-off grey being invented for one disc. -->
-                                <Border Width="96" Height="96" CornerRadius="{StaticResource Radius.Pill}"
-                                        Background="{DynamicResource Brush.PanelBorder}" Margin="0,0,0,12">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Device}"
-                                                          Width="{StaticResource Size.Icon.Xxl}" Height="{StaticResource Size.Icon.Xxl}"
-                                                          Foreground="{DynamicResource Brush.Accent}" />
-                                </Border>
+                                <components:IconGlyph IconData="{StaticResource Glyph.Device}"
+                                                      Width="{StaticResource Size.Icon.Hero}" Height="{StaticResource Size.Icon.Hero}"
+                                                      Foreground="{DynamicResource Brush.Accent}" Margin="0,0,0,12" />
                                 <TextBlock Text="{Binding Home.DeviceName}" FontWeight="SemiBold"
                                            HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
                                 <components:StatusBadge Margin="0,10,0,0" HorizontalAlignment="Center"
@@ -361,14 +349,15 @@
                                 Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
                                 ToolTip="Najít a připojit gravírku">
                             <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení"
-                                                  Foreground="White" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+                                                  Foreground="White" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
                         </Button>
 
                         <Button Style="{StaticResource Button.Regular}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
+                                Height="{StaticResource Size.Control.Primary}" MinHeight="{StaticResource Size.Control.Primary}"
                                 Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, poloha a ruční ovládání gravírky">
                             <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Ovládání stroje"
-                                                  IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+                                                  IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
                         </Button>
 
                         <Grid>
@@ -392,7 +381,7 @@
                                     ToolTip="{Binding GCode.FrameActionTooltip}"
                                     automation:AutomationProperties.Name="Rámovat">
                                 <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat" Stacked="True"
-                                                      IconSize="{StaticResource Size.Icon.Md}" />
+                                                      IconSize="{StaticResource Size.Icon.Lg}" />
                             </Button>
                         </Grid>
                     </StackPanel>

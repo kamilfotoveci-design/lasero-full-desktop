@@ -1,0 +1,6 @@
+VTracer 1.0.0-alpha.4 (Windows x64 CLI)
+Source: https://github.com/visioncortex/vtracer/tree/1.0.0-alpha.4
+Release archive: https://github.com/visioncortex/vtracer/releases/download/1.0.0-alpha.4/vtracer-x86_64-pc-windows-msvc.zip
+Release archive SHA-256: 8EADB5529864265F003F791AD9CB128E1B9B8B8AF8C21016F38B04706BCF3531
+Bundled vtracer.exe SHA-256: 185C20424A5EED31F2ED0CAF9D72B6CC7AE86480BAB05199FD5CBDE55D4B40B1
+License: MIT. See VTracer-LICENSE.txt.

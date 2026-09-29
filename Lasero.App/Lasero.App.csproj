@@ -25,6 +25,18 @@
     <None Include="Assets\Fonts\Inter-LICENSE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\Tools\vtracer.exe"
+          Link="vtracer.exe"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\Tools\VTracer-LICENSE.txt"
+          Link="VTracer-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\Tools\VTracer-SOURCE.txt"
+          Link="VTracer-SOURCE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

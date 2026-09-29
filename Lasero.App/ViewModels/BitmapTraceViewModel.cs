@@ -2,6 +2,8 @@ using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Lasero.Core.Grbl;
+using Lasero.Core.Scene;
 using Lasero.Core.Trace;
 
 namespace Lasero.App.ViewModels;
@@ -13,22 +15,44 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
     private bool _initialized;
 
     [ObservableProperty] private double _threshold = 128;
-    [ObservableProperty] private double _simplificationPixels = 1.2;
-    [ObservableProperty] private int _minimumFeaturePixels = 8;
+    [ObservableProperty] private TraceMode _mode = TraceMode.FilledShapes;
+    [ObservableProperty] private ThresholdMode _thresholdMode = ThresholdMode.Manual;
+    [ObservableProperty] private TraceQuality _quality = TraceQuality.Balanced;
+    [ObservableProperty] private double _detail = 0.5;
+    [ObservableProperty] private double _noiseRemoval;
+    [ObservableProperty] private double _contrast;
+    // A modest cubic fit preserves small letter details without reproducing pixel stair steps.
+    [ObservableProperty] private double _simplificationPixels = 0.4;
+    [ObservableProperty] private int _minimumFeaturePixels = 2;
     [ObservableProperty] private bool _invert;
     [ObservableProperty] private bool _isComputing;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private Geometry? _previewGeometry;
+    [ObservableProperty] private IReadOnlyList<ColoredTracePreviewPath> _coloredPreviewPaths = [];
+    [ObservableProperty] private double _previewStrokeThicknessMm = 0.12;
     [ObservableProperty] private BitmapTraceResult? _result;
 
     public string FileName { get; }
     public BitmapSource SourceImage { get; }
-    public double PreviewWidthMm { get; }
-    public double PreviewHeightMm { get; }
+    // Public setters are a defensive WPF binding boundary: sizing/layout updates must never
+    // turn a stale/default TwoWay binding into an unhandled Dispatcher exception.
+    public double PreviewWidthMm { get; set; }
+    public double PreviewHeightMm { get; set; }
     public bool HasResult => Result is { ContourCount: > 0 } && !IsComputing;
+    public bool IsFilledMode => Mode == TraceMode.FilledShapes;
+    public bool IsColorMode => Mode == TraceMode.Color;
+    public bool IsOutlineMode => Mode == TraceMode.Outline;
+    public bool IsManualThreshold => IsFilledMode && ThresholdMode == ThresholdMode.Manual;
+    public string ModeDescription => Mode switch
+    {
+        TraceMode.FilledShapes => "Uzavřené tvary a otvory pro loga, text a černobílou grafiku.",
+        TraceMode.Outline => "Hrany z fotografie nebo linkové kresby; může zachytit i vnitřní detaily.",
+        TraceMode.Color => "Oddělené barevné plochy pro barevná loga a ilustrace.",
+        _ => string.Empty,
+    };
     public string ResultSummary => Result is null
         ? "Čekám na náhled"
-        : $"{Result.ContourCount} obrysů · {Result.PointCount:N0} bodů";
+        : $"{Result.ContourCount} obrysů · {Result.NodeCount:N0} uzlů";
 
     public BitmapTraceViewModel(string filePath, double targetWidthMm)
     {
@@ -47,6 +71,24 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
     }
 
     partial void OnThresholdChanged(double value) => QueueTrace();
+    partial void OnModeChanged(TraceMode value)
+    {
+        OnPropertyChanged(nameof(IsFilledMode));
+        OnPropertyChanged(nameof(IsColorMode));
+        OnPropertyChanged(nameof(IsOutlineMode));
+        OnPropertyChanged(nameof(IsManualThreshold));
+        OnPropertyChanged(nameof(ModeDescription));
+        QueueTrace();
+    }
+    partial void OnThresholdModeChanged(ThresholdMode value)
+    {
+        OnPropertyChanged(nameof(IsManualThreshold));
+        QueueTrace();
+    }
+    partial void OnQualityChanged(TraceQuality value) => QueueTrace();
+    partial void OnDetailChanged(double value) => QueueTrace();
+    partial void OnNoiseRemovalChanged(double value) => QueueTrace();
+    partial void OnContrastChanged(double value) => QueueTrace();
     partial void OnSimplificationPixelsChanged(double value) => QueueTrace();
     partial void OnMinimumFeaturePixelsChanged(int value) => QueueTrace();
     partial void OnInvertChanged(bool value) => QueueTrace();
@@ -63,8 +105,6 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
         _traceCancellation?.Cancel();
         _traceCancellation?.Dispose();
         _traceCancellation = new CancellationTokenSource();
-        Result = null;
-        PreviewGeometry = null;
         _ = RecomputeAsync(_traceCancellation.Token, immediate);
     }
 
@@ -79,19 +119,52 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
             var options = new BitmapTraceOptions
             {
                 Threshold = (byte)Math.Clamp(Math.Round(Threshold), 0, 255),
+                Mode = Mode,
+                ThresholdMode = ThresholdMode,
+                Quality = Quality,
+                Detail = Math.Clamp(Detail, 0, 1),
+                NoiseRemoval = Math.Clamp(NoiseRemoval, 0, 1),
+                Contrast = Math.Clamp(Contrast, -1, 1),
                 MinimumFeaturePixels = Math.Max(1, MinimumFeaturePixels),
                 SimplificationPixels = Math.Max(0, SimplificationPixels),
                 TargetWidthMm = PreviewWidthMm,
                 Invert = Invert,
             };
 
-            var result = await Task.Run(() => BitmapTracer.Trace(_filePath, options, cancellationToken), cancellationToken);
+            // Trace and construct frozen WPF geometry off the UI thread. The previous preview stays
+            // visible while a slider is moving, then the latest result replaces it in one UI turn.
+            var preview = await Task.Run(() =>
+            {
+                var traced = BitmapTracer.Trace(_filePath, options, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (options.Mode == TraceMode.Color)
+                {
+                    var colored = traced.VectorPaths.Select(item =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var brush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(
+                            item.Color.R, item.Color.G, item.Color.B));
+                        brush.Freeze();
+                        return new ColoredTracePreviewPath(
+                            BuildPreviewGeometry([item], traced.HeightMm, fill: true), brush);
+                    }).ToArray();
+                    return (Result: traced, Geometry: (Geometry?)null,
+                        ColoredPaths: (IReadOnlyList<ColoredTracePreviewPath>)colored);
+                }
+                return (Result: traced, Geometry: (Geometry?)BuildPreviewGeometry(traced),
+                    ColoredPaths: (IReadOnlyList<ColoredTracePreviewPath>)[]);
+            }, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Result = result;
-            PreviewGeometry = BuildPreviewGeometry(result);
-            StatusMessage = result.ContourCount == 0
-                ? "Nebyly nalezeny žádné obrysy. Zkuste upravit práh nebo zapnout invertování."
-                : "Náhled je připravený. Modrá čára ukazuje výsledný vektor.";
+            Result = preview.Result;
+            PreviewGeometry = preview.Geometry;
+            ColoredPreviewPaths = preview.ColoredPaths;
+            StatusMessage = preview.Result.ContourCount == 0
+                ? options.Mode == TraceMode.FilledShapes
+                    ? "Nebyly nalezeny žádné obrysy. Zkuste upravit práh nebo zapnout invertování."
+                    : "Nebyly nalezeny žádné obrysy. Zkuste jiný režim nebo upravit rozpoznání."
+                : options.Mode == TraceMode.Color
+                    ? "Náhled je připravený. Barevné plochy ukazují výsledné vektorové vrstvy."
+                    : "Náhled je připravený. Zvýrazněná křivka ukazuje výsledný Bézierův vektor.";
         }
         catch (OperationCanceledException)
         {
@@ -101,6 +174,7 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
         {
             Result = null;
             PreviewGeometry = null;
+            ColoredPreviewPaths = [];
             StatusMessage = $"Trasování se nezdařilo: {ex.Message}";
         }
         finally
@@ -120,27 +194,51 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
         return image;
     }
 
-    private static Geometry BuildPreviewGeometry(BitmapTraceResult result)
+    private static Geometry BuildPreviewGeometry(BitmapTraceResult result) =>
+        BuildPreviewGeometry(result.VectorPaths, result.HeightMm);
+
+    private static Geometry BuildPreviewGeometry(IReadOnlyList<TracedVectorObject> vectorPaths, double heightMm, bool fill = false)
     {
-        var geometry = new PathGeometry { FillRule = FillRule.EvenOdd };
-        foreach (var shape in result.Document.Shapes)
+        var geometry = new PathGeometry { FillRule = FillRule.Nonzero }; // fill contract: NonZero per compound group (docs/fill-winding-contract.md)
+        foreach (var traced in vectorPaths)
         {
-            if (shape.Points.Count < 2) continue;
-            var figure = new PathFigure
+            foreach (var subpath in traced.Path.Subpaths)
             {
-                StartPoint = new System.Windows.Point(shape.Points[0].X, result.HeightMm - shape.Points[0].Y),
-                IsClosed = shape.IsClosed,
-                IsFilled = false,
-            };
-            var segment = new PolyLineSegment();
-            foreach (var point in shape.Points.Skip(1))
-                segment.Points.Add(new System.Windows.Point(point.X, result.HeightMm - point.Y));
-            figure.Segments.Add(segment);
-            geometry.Figures.Add(figure);
+                if (subpath.Nodes.Count < 2) continue;
+                var figure = new PathFigure
+                {
+                    StartPoint = ToPreviewPoint(subpath.Nodes[0].Anchor, heightMm),
+                    IsClosed = subpath.IsClosed,
+                    IsFilled = fill,
+                };
+
+                for (var i = 0; i < subpath.SegmentCount; i++)
+                {
+                    var (a, b) = subpath.Segment(i);
+                    if (VectorSubpath.IsStraightSegment(a, b))
+                    {
+                        figure.Segments.Add(new LineSegment(ToPreviewPoint(b.Anchor, heightMm), isStroked: true));
+                        continue;
+                    }
+
+                    var control1 = a.HandleOut ?? a.Anchor;
+                    var control2 = b.HandleIn ?? b.Anchor;
+                    figure.Segments.Add(new BezierSegment(
+                        ToPreviewPoint(control1, heightMm),
+                        ToPreviewPoint(control2, heightMm),
+                        ToPreviewPoint(b.Anchor, heightMm),
+                        isStroked: true));
+                }
+
+                geometry.Figures.Add(figure);
+            }
         }
         geometry.Freeze();
         return geometry;
     }
+
+    private static System.Windows.Point ToPreviewPoint(Position point, double heightMm) =>
+        new(point.X, heightMm - point.Y);
 
     public void Dispose()
     {
@@ -149,3 +247,5 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
         _traceCancellation = null;
     }
 }
+
+public sealed record ColoredTracePreviewPath(Geometry Geometry, Brush Stroke);

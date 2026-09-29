@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Media;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
 using Lasero.Core.BackgroundRemoval;
@@ -16,6 +17,23 @@ namespace Lasero.App;
 public partial class App : Application
 {
     private IHost? _host;
+
+    public App()
+    {
+        // WPF otherwise rounds layout only opportunistically. Enabling both at the Window
+        // metadata boundary keeps inherited text, 1px borders and vector icons on the same
+        // device-pixel grid at 100–200% PerMonitorV2 scaling, without scaling the UI with a transform.
+        FrameworkElement.UseLayoutRoundingProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(true));
+        UIElement.SnapsToDevicePixelsProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(true));
+        TextOptions.TextFormattingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextFormattingMode.Display, FrameworkPropertyMetadataOptions.Inherits));
+        TextOptions.TextRenderingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextRenderingMode.ClearType, FrameworkPropertyMetadataOptions.Inherits));
+        TextOptions.TextHintingModeProperty.OverrideMetadata(
+            typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Fixed, FrameworkPropertyMetadataOptions.Inherits));
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {

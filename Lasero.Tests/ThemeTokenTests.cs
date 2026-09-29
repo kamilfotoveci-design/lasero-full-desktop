@@ -90,6 +90,120 @@ public sealed class ThemeTokenTests
     }
 
     /// <summary>
+    /// Static desktop text must be formatted on the device-pixel grid. Ideal mode is useful for
+    /// document typography, but at LASERO's 12–16px control sizes it produces softer fractional
+    /// glyph placement. The Window root is the one inheritance boundary that should own this.
+    /// </summary>
+    [Fact]
+    public void WindowRenderingUsesDisplayClearTypeAndFixedHinting()
+    {
+        var theme = File.ReadAllText(ThemePath("LaseroTheme.xaml"));
+        var startup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Lasero.App", "App.xaml.cs"));
+        var windowStyle = theme[theme.IndexOf("<Style TargetType=\"Window\">", StringComparison.Ordinal)..];
+        windowStyle = windowStyle[..windowStyle.IndexOf("</Style>", StringComparison.Ordinal)];
+
+        Assert.Contains("Property=\"UseLayoutRounding\" Value=\"True\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"SnapsToDevicePixels\" Value=\"True\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"TextOptions.TextFormattingMode\" Value=\"Display\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"TextOptions.TextRenderingMode\" Value=\"ClearType\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"TextOptions.TextHintingMode\" Value=\"Fixed\"", windowStyle, StringComparison.Ordinal);
+
+        // Lasero windows derive from Window, so an implicit Window style is not a reliable root
+        // setter. Metadata on Window is inherited by MainWindow and every dialog subclass.
+        Assert.Contains("TextOptions.TextFormattingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
+        Assert.Contains("TextFormattingMode.Display", startup, StringComparison.Ordinal);
+        Assert.Contains("TextOptions.TextRenderingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
+        Assert.Contains("TextRenderingMode.ClearType", startup, StringComparison.Ordinal);
+        Assert.Contains("TextOptions.TextHintingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
+        Assert.Contains("TextHintingMode.Fixed", startup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AssistantAvatarsUseOneCanonicalArtworkAndReusableControl()
+    {
+        var root = FindRepositoryRoot();
+        var project = File.ReadAllText(Path.Combine(root, "Lasero.App", "Lasero.App.csproj"));
+        var theme = File.ReadAllText(ThemePath("LaseroTheme.xaml"));
+        var markup = string.Join('\n', AppXamlFiles().Select(File.ReadAllText));
+        var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
+        var kamilHost = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "Kamil", "KamilAssistantHost.xaml"));
+
+        Assert.Contains("<Resource Include=\"Assets\\LaseroAvatar.png\"", project, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"Image.LaseroAvatarSource\"", theme, StringComparison.Ordinal);
+        Assert.Contains("DecodePixelWidth=\"256\"", theme, StringComparison.Ordinal);
+        Assert.True(Regex.Matches(kamilHost, "<components:LaseroAvatar\\b").Count >= 3);
+        // ChatView (the full-screen "Lasero Chat" nav destination) is a legitimate, separate
+        // consumer of the shared LaseroAvatar control — reusing it there is the point of having a
+        // reusable control, not a violation of it. Only MainWindow (which should reach the avatar
+        // exclusively through KamilAssistantHost/ChatView, never inline) is asserted against below.
+        Assert.DoesNotContain("<components:LaseroAvatar", mainWindow, StringComparison.Ordinal);
+        Assert.DoesNotMatch("<components:LaseroAvatar[^>]*Size=\"[0-9]+\\.[0-9]+\"", markup);
+        Assert.DoesNotContain("Image.KamilAvatar", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Image.KamilSidebarAvatar", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("KamilAvatarSidebar.svg", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApplicationSidebarIsPermanentlyExpanded()
+    {
+        var root = FindRepositoryRoot();
+        var window = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
+        var windowCode = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "Lasero.App", "ViewModels", "MainViewModel.cs"));
+        var settings = File.ReadAllText(Path.Combine(root, "Lasero.App", "AppSettingsStore.cs"));
+        var theme = File.ReadAllText(ThemePath("LaseroTheme.xaml"));
+
+        Assert.Contains("x:Name=\"NavColumn\" Width=\"164\"", window, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsNavCollapsed", window + windowCode + viewModel + settings, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToggleNavCommand", window + viewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Button.RailHandle", window + theme, StringComparison.Ordinal);
+        Assert.DoesNotContain("CompactMode=", window, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MinimizedAssistantIsOnlyTheBreathingArtwork()
+    {
+        var host = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Lasero.App", "Views", "Kamil", "KamilAssistantHost.xaml"));
+        var start = host.IndexOf("x:Key=\"Kamil.MinimizedAvatar\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, "Kamil.MinimizedAvatar style not found");
+        var style = host[start..host.IndexOf("</Style>", start, StringComparison.Ordinal)];
+
+        Assert.Contains("x:Name=\"BreatheScale\"", style, StringComparison.Ordinal);
+        Assert.Contains("Binding=\"{Binding Chat.IsBusy}\" Value=\"True\"", style, StringComparison.Ordinal);
+        Assert.Contains("RepeatBehavior=\"Forever\"", style, StringComparison.Ordinal);
+        Assert.Contains("EasingFunction=\"{StaticResource Ease.Breathe}\"", style, StringComparison.Ordinal);
+        Assert.Contains("To=\"1.015\"", style, StringComparison.Ordinal);
+        Assert.DoesNotContain("To=\"1.09\"", style, StringComparison.Ordinal);
+        Assert.DoesNotContain("HoverRing", style, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shadow.Sheet", style, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Ellipse", style, StringComparison.Ordinal);
+
+        var minimizedState = host.IndexOf("Value=\"Minimized\"", style.Length + start, StringComparison.Ordinal);
+        Assert.True(minimizedState >= 0, "Minimized surface state not found");
+        var minimizedBlock = host[minimizedState..host.IndexOf("</DataTrigger>", minimizedState, StringComparison.Ordinal)];
+        Assert.Contains("Property=\"Effect\" Value=\"{x:Null}\"", minimizedBlock, StringComparison.Ordinal);
+        Assert.Contains("Property=\"BorderThickness\" Value=\"0\"", minimizedBlock, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MotionTokensUseRestrainedDesktopSpringAndRespectReducedMotion()
+    {
+        var root = FindRepositoryRoot();
+        var theme = File.ReadAllText(ThemePath("LaseroTheme.xaml"));
+        var accessibility = File.ReadAllText(Path.Combine(root, "Lasero.App", "UiAccessibility.cs"));
+
+        Assert.Contains("x:Key=\"Motion.Spatial\">0:0:0.26", theme, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"Motion.Panel\">0:0:0.34", theme, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"Motion.Breathe\">0:0:1.6", theme, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.975\"", theme, StringComparison.Ordinal);
+        Assert.DoesNotContain("To=\"0.96\" Duration=\"0:0:0.05\"", theme, StringComparison.Ordinal);
+
+        foreach (var key in new[] { "Motion.VeryFast", "Motion.Fast", "Motion.Base", "Motion.Spatial", "Motion.Panel" })
+            Assert.Contains($"Resources[\"{key}\"] = new Duration(TimeSpan.Zero)", accessibility, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Hover and press are one ink-wash mechanic at two strengths. If a per-kind pressed colour ever
     /// appears, the same state ends up with two implementations that have to agree by hand.
     ///

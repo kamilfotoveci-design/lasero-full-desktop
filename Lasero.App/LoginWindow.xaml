@@ -3,22 +3,67 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Přihlášení do Lasero" Width="780" Height="570" MinWidth="780" MinHeight="570"
-        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" WindowStyle="None"
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="0" CornerRadius="0" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!-- 44px brings the two fields up to the same height as the primary button below them
+             (which was already 44 — a literal, not a token; the fields were the ones off at the
+             default 36px Size.Control.Base). Focus is strengthened locally, not globally: the shared
+             implicit TextBox/PasswordBox style already swaps BorderBrush to Brush.Accent on focus via
+             its ControlTemplate trigger, which still fires normally through BasedOn — this only adds
+             a second Style-level trigger thickening the border on top of that, so every other text
+             field in the app keeps its existing, thinner focus treatment. -->
+        <Style x:Key="LoginTextField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="44" />
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderThickness" Value="2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LoginPasswordField" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
+            <Setter Property="Height" Value="44" />
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderThickness" Value="2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Busy state renders inside the button itself — the same thin indeterminate bar the app
+             already uses elsewhere (BitmapTraceWindow's "Počítám obrysy…" indicator), just sized to
+             sit beside a line of text instead of floating above the whole form as a second,
+             disconnected loading affordance. -->
         <Style x:Key="LoginPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryBlue}">
             <Setter Property="Content" Value="Přihlásit se" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsBusy}" Value="True">
-                    <Setter Property="Content" Value="Pracuji…" />
                     <Setter Property="IsEnabled" Value="False" />
+                    <Setter Property="Content">
+                        <Setter.Value>
+                            <StackPanel Orientation="Horizontal">
+                                <ProgressBar IsIndeterminate="True" Width="28" Height="3" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Přihlašuji…" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Setter.Value>
+                    </Setter>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
     <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <components:WindowTitleBar Title="Přihlášení do Lasero" IconData="{StaticResource Glyph.User}"
+                                    CloseButtonName="Zavřít přihlášení" />
+    <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="286" />
             <ColumnDefinition Width="*" />
@@ -94,47 +139,72 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                    <ProgressBar IsIndeterminate="True"
-                                 Height="3"
-                                 Margin="0,0,0,18"
-                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
-
                     <TextBlock Text="E-mailová adresa" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
                     <TextBox x:Name="EmailInput"
+                             Style="{StaticResource LoginTextField}"
                              Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
                              MaxLength="254"
-                             Height="{StaticResource Size.Control.Base}"
-                             Margin="0,7,0,4"
+                             Margin="0,8,0,4"
                              AutomationProperties.Name="E-mail" />
                     <TextBlock Text="{Binding EmailError}"
                                Foreground="{StaticResource Brush.Danger}"
                                FontSize="{StaticResource Size.Text.Meta}"
                                TextWrapping="Wrap"
-                               Margin="2,0,0,12"
-                               MinHeight="14" />
+                               Margin="2,0,0,8"
+                               MinHeight="16" />
 
                     <TextBlock Text="Heslo" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
-                    <PasswordBox x:Name="PasswordInput"
-                                 PasswordChanged="OnPasswordChanged"
+                    <Grid Margin="0,8,0,4">
+                        <PasswordBox x:Name="PasswordInput"
+                                     Style="{StaticResource LoginPasswordField}"
+                                     PasswordChanged="OnPasswordChanged"
+                                     MaxLength="256"
+                                     Padding="10,0,40,0"
+                                     AutomationProperties.Name="Heslo" />
+                        <TextBox x:Name="PasswordRevealInput"
+                                 Style="{StaticResource LoginTextField}"
+                                 TextChanged="OnPasswordRevealChanged"
                                  MaxLength="256"
-                                 Height="{StaticResource Size.Control.Base}"
-                                 Margin="0,7,0,4"
-                                 AutomationProperties.Name="Heslo" />
+                                 Padding="10,0,40,0"
+                                 Visibility="Collapsed"
+                                 AutomationProperties.Name="Heslo (viditelné)" />
+                        <!-- Toggle.Icon is the app's existing icon-toggle chrome (used for the
+                             enable/visibility columns in the Designer's own operation list) — reused
+                             here rather than a one-off button style. -->
+                        <ToggleButton x:Name="PasswordVisibilityToggle"
+                                      Style="{StaticResource Toggle.Icon}"
+                                      Width="36" Height="36"
+                                      HorizontalAlignment="Right" Margin="0,0,4,0"
+                                      Click="OnTogglePasswordVisibility"
+                                      ToolTip="Zobrazit heslo"
+                                      AutomationProperties.Name="Zobrazit heslo">
+                            <components:IconGlyph Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}">
+                                <components:IconGlyph.Style>
+                                    <Style TargetType="components:IconGlyph">
+                                        <Setter Property="IconData" Value="{StaticResource Glyph.Eye}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                                <Setter Property="IconData" Value="{StaticResource Glyph.EyeOff}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </components:IconGlyph.Style>
+                            </components:IconGlyph>
+                        </ToggleButton>
+                    </Grid>
                     <TextBlock Text="{Binding PasswordError}"
                                Foreground="{StaticResource Brush.Danger}"
                                FontSize="{StaticResource Size.Text.Meta}"
                                TextWrapping="Wrap"
-                               Margin="2,0,0,2"
-                               MinHeight="14" />
+                               Margin="2,0,0,8"
+                               MinHeight="16" />
 
                     <Button Content="Zapomenuté heslo"
                             Command="{Binding RequestPasswordResetCommand}"
+                            Style="{StaticResource Button.Link}"
                             HorizontalAlignment="Left"
-                            Padding="0,8"
-                            Margin="0,0,0,12"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Foreground="{StaticResource Brush.Info}" />
+                            Padding="0,0"
+                            Margin="0,0,0,16" />
 
                     <Button Click="OnSignInClick"
                             IsDefault="True"
@@ -174,4 +244,6 @@
             </Grid>
         </Border>
     </Grid>
+    </Grid>
+    </Border>
 </Window>

@@ -6,6 +6,8 @@
              KeyDown="OnCanvasKeyDown"
              KeyUp="OnCanvasKeyUp"
              ContextMenuOpening="OnCanvasContextMenuOpening"
+             Loaded="OnSceneCanvasLoaded"
+             Unloaded="OnSceneCanvasUnloaded"
              LostKeyboardFocus="OnCanvasLostKeyboardFocus">
     <UserControl.Resources>
         <!--
@@ -108,6 +110,7 @@
                         PreviewMouseLeftButtonUp="OnDrawCanvasPreviewMouseLeftButtonUp"
                         PreviewMouseDown="OnDrawCanvasMouseDown"
                         PreviewMouseUp="OnDrawCanvasMouseUp"
+                        LostMouseCapture="OnDrawCanvasLostMouseCapture"
                         PreviewMouseWheel="OnDrawCanvasMouseWheel"
                         MouseLeftButtonDown="OnDrawCanvasMouseLeftButtonDown"
                         MouseLeftButtonUp="OnDrawCanvasMouseLeftButtonUp"

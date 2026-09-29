@@ -280,10 +280,11 @@ public static class BezierFitter
     }
 
     /// <summary>How far along the polyline (in the same units as the points, mm for CompoundPathBuilder's
-    /// callers) DetectCorners looks on each side before measuring a turn — a small multiple of the
-    /// dedupe distance, which is itself derived from the working-resolution pixel size, so the window
-    /// scales with source resolution instead of a fixed pixel count.</summary>
-    private static double CornerWindowDistance(BezierFitOptions options) => Math.Max(options.DedupeDistanceMm * 6, 1e-6);
+    /// callers) DetectCorners looks on each side before measuring a turn. The window grows with fit
+    /// tolerance so one-pixel staircase turns on a smooth contour are not mistaken for real corners;
+    /// it still scales with source resolution through the pixel-derived tolerances.</summary>
+    private static double CornerWindowDistance(BezierFitOptions options) =>
+        Math.Max(Math.Max(options.DedupeDistanceMm * 6, options.ToleranceMm * 2), 1e-6);
 
     /// <summary>Flags vertices where the polyline turns sharply enough to force a VectorNodeType.Corner
     /// split. Deliberately measures the turn over a small arc-length window (StepBack/StepForward)

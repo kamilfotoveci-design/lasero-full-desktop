@@ -67,6 +67,8 @@ public partial class ConnectionViewModel : ObservableObject
     {
         _connection = connection;
         _settingsStore = settingsStore;
+        if (_connection is IGrblDeviceProfileSource profileSource)
+            profileSource.DeviceProfileChanged += profile => RunOnUiThread(() => DetectedDevice = profile);
         _workAreaWidthMm = settingsStore.Current.Machine.WorkAreaWidthMm;
         _workAreaHeightMm = settingsStore.Current.Machine.WorkAreaHeightMm;
         _connection.ConnectionStateChanged += state => RunOnUiThread(() =>

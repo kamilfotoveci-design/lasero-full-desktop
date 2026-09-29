@@ -1,5 +1,12 @@
 # Third-party notices
 
+## VTracer (bitmap vectorization)
+
+The Windows x64 VTracer 1.0.0-alpha.4 CLI is bundled with LASERO for local bitmap tracing.
+Copyright (c) 2024 TSANG, Hao Fung. MIT License.
+Source and verified release archive: https://github.com/visioncortex/vtracer/releases/tag/1.0.0-alpha.4
+The full license and pinned binary hashes are included as `VTracer-LICENSE.txt` and `VTracer-SOURCE.txt` next to the executable.
+
 ## isnet-general-use.onnx (background removal model)
 
 The local background-removal model bundled/downloaded by "Odstranit pozadí" is isnet-general-use.onnx

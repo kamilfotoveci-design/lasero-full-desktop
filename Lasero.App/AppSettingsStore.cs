@@ -41,25 +41,6 @@ public sealed class WorkspacePreferences
     public const double MinInspectorWidth = 320;
     public const double MaxInspectorWidth = 560;
 
-    /// <summary>Whether the navigation rail is showing icons only. Remembered because it is a
-    /// posture, not a per-task choice: someone working on a 1366 screen collapses it once and wants
-    /// it collapsed the next morning too.</summary>
-    public bool IsNavCollapsed { get; set; }
-
-    /// <summary>
-    /// Rail widths. The collapsed value is derived from the widest item in the strip, not the typical
-    /// one: rail padding 14 + button padding 10 + the 26px account avatar + 10 + 14 = 74. Sizing it to
-    /// the 18px navigation glyphs instead gave 66, which centred the glyphs perfectly and quietly cut
-    /// the right-hand third off the avatar — a Border does clip, and nothing in the layout complains.
-    /// Everything narrower than 26 simply centres in the space.
-    ///
-    /// While the rail is collapsed its column stays at the collapsed width even as the rail itself
-    /// peeks open over the canvas, so the two are not interchangeable: one is layout, the other is
-    /// what is drawn.
-    /// </summary>
-    public const double ExpandedNavWidth = 164;
-    public const double CollapsedNavWidth = 74;
-
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
         : DefaultInspectorWidth;

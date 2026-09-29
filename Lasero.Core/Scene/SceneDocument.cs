@@ -17,7 +17,7 @@ public sealed class SceneDocument
     public ObservableCollection<LayerSettings> Layers { get; } = new();
 
     /// <summary>Flattens every visible object's transformed geometry into one ImportedDocument —
-    /// the bridge to the existing, unchanged ToolpathBuilder.BuildGCode(ImportedDocument).</summary>
+    /// the bridge from scene geometry into the GRBL-range-aware ToolpathBuilder.</summary>
     public ImportedDocument ToImportedDocument(double offsetX = 0, double offsetY = 0)
     {
         var shapes = Objects

@@ -20,24 +20,21 @@
         <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
     </UserControl.Resources>
 
-    <Border x:Name="Surface" Height="220" Cursor="Hand"
+    <Border x:Name="Surface" Height="220" Cursor="Hand" RenderTransformOrigin="0.5,0.5"
             Background="{DynamicResource Brush.Panel}"
-            BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+            BorderThickness="1"
             CornerRadius="{StaticResource Radius.Lg}" ClipToBounds="True"
             Tag="{Binding ElementName=Root}"
             ToolTip="{Binding Path}"
+            MouseEnter="OnSurfaceMouseEnter" MouseLeave="OnSurfaceMouseLeave"
             automation:AutomationProperties.Name="{Binding Name}">
-        <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <!-- The mockup marks hover with the accent border rather than a lift; the theme
-                         forbids shadows for depth, so this is the whole hover state. -->
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+        <!-- Hover used to be an instant BorderBrush swap on a Style trigger. It is now a short colour
+             transition on a local, per-instance SolidColorBrush plus a -1 DIP lift, driven from
+             ProjectThumbCard.xaml.cs - animating the shared DynamicResource brush directly would leak
+             across every other card, the same reasoning documented on the Button template. -->
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="SurfaceOffset" Y="0" />
+        </Border.RenderTransform>
 
         <Border.InputBindings>
             <MouseBinding MouseAction="LeftClick"

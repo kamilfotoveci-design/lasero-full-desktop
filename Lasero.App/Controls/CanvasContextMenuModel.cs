@@ -22,7 +22,7 @@ public enum ContextAction
     // Canvas and view
     Import, FitView, ZoomActual, CenterBed,
     // Node edit
-    NodeSmooth, NodeCorner, NodeBreak, NodeClosePath, NodeDelete,
+    NodeSmooth, NodeCorner, NodeBreak, NodeClosePath, NodeJoin, NodeDelete,
     SelectAllNodes, DeselectNodes, ExitNodeEdit,
     // Segment edit
     SegmentToCurve, SegmentToLine, SegmentInsertHere, SegmentInsertMidpoint, SegmentDelete,
@@ -130,6 +130,11 @@ public sealed record NodeContextState
     public bool CanBreak { get; init; }
     /// <summary>The selection lives in one open subpath with enough nodes to close it.</summary>
     public bool CanClosePath { get; init; }
+    /// <summary>The single selected node is an open endpoint of a path. Join is then offered, disabled
+    /// with a reason while no other open end lies within join tolerance.</summary>
+    public bool IsOpenEndpoint { get; init; }
+    /// <summary>Another path's open end is close enough to this endpoint to be joined to it.</summary>
+    public bool CanJoin { get; init; }
 }
 
 public sealed record SegmentContextState
@@ -267,6 +272,10 @@ public static class CanvasContextMenuBuilder
         var path = new List<ContextMenuItemModel>();
         if (s.CanBreak)
             path.Add(ContextMenuItemModel.Command(ContextAction.NodeBreak, "Rozdělit dráhu zde"));
+        if (s.IsOpenEndpoint && s.SelectedNodeCount == 1)
+            path.Add(s.CanJoin
+                ? ContextMenuItemModel.Command(ContextAction.NodeJoin, "Spojit s nejbližší dráhou")
+                : ContextMenuItemModel.Command(ContextAction.NodeJoin, "Spojit s nejbližší dráhou", enabled: false, reason: "V dosahu není žádný volný konec jiné dráhy."));
         if (s.CanClosePath)
             path.Add(ContextMenuItemModel.Command(ContextAction.NodeClosePath, "Uzavřít dráhu"));
         groups.Add(path);

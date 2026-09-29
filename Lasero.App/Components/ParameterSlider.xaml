@@ -10,12 +10,20 @@
         exactly. Both drive the same bound property, so they can never disagree.
     -->
     <UserControl.Resources>
-        <!-- The stock WPF slider draws Aero chrome that belongs to no part of this product. A flat
-             1px track with a filled portion and a round accent thumb is the whole control. -->
+        <!-- The stock WPF slider draws Aero chrome that belongs to no part of this product. A quiet
+             4px track and a small instrument-like thumb keep the control precise rather than web-like. -->
+        <Style x:Key="ParameterValue.Input" TargetType="TextBox" BasedOn="{StaticResource UnitField.Input}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
+        </Style>
+
         <Style x:Key="Slider.Parameter" TargetType="Slider">
             <Setter Property="Focusable" Value="True" />
             <Setter Property="IsMoveToPointEnabled" Value="True" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -30,17 +38,22 @@
                                 is clamped by the renderer, and the clamp produced a tapered lens
                                 instead of a capsule at narrow widths.
                             -->
-                            <Border Height="6" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
+                            <Border Height="4" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
                                     Background="{DynamicResource Brush.PanelBorder}" />
                             <Track x:Name="PART_Track">
+                                <!-- Designer visual-refinement pass: neutral, not accent-filled — coral
+                                     is reserved for selection, focus, active nodes and the active-tool
+                                     indicator elsewhere in the Designer; an ordinary laser power/speed
+                                     slider isn't any of those, so its fill and thumb rim use the same
+                                     neutral ink as the rest of the inspector's text. -->
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Command="Slider.DecreaseLarge" Focusable="False"
                                                   OverridesDefaultStyle="True">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Grid Background="Transparent">
-                                                    <Border Height="6" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
-                                                            Background="{DynamicResource Brush.Accent}" />
+                                                    <Border Height="4" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
+                                                            Background="{DynamicResource Brush.TextSecondary}" />
                                                 </Grid>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
@@ -60,15 +73,25 @@
                                     <!-- A white disc with an accent rim. On a filled track the handle
                                          needs an edge of its own, or it reads as the end of the bar
                                          rather than as the thing you drag. -->
-                                    <Thumb x:Name="Grip" Width="18" Height="18" Focusable="False"
+                                    <Thumb x:Name="Grip" Width="16" Height="16" Focusable="False"
                                            OverridesDefaultStyle="True">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
                                                 <Grid Background="Transparent">
                                                     <Ellipse Fill="{DynamicResource Brush.Panel}"
-                                                             Stroke="{DynamicResource Brush.Accent}"
+                                                             Stroke="{DynamicResource Brush.TextSecondary}"
                                                              StrokeThickness="2" />
                                                 </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Width" Value="17" />
+                                                        <Setter Property="Height" Value="17" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseCaptured" Value="True">
+                                                        <Setter Property="Width" Value="18" />
+                                                        <Setter Property="Height" Value="18" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -80,8 +103,8 @@
                                 <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Grip" Property="Width" Value="20" />
-                                <Setter TargetName="Grip" Property="Height" Value="20" />
+                                <Setter TargetName="Grip" Property="Width" Value="18" />
+                                <Setter TargetName="Grip" Property="Height" Value="18" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -91,7 +114,7 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <Grid Margin="0,0,0,6">
+        <Grid Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -100,7 +123,7 @@
             <TextBlock Text="{Binding Label, ElementName=Root}" VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
 
-            <Border Grid.Column="1" Style="{StaticResource UnitField.Shell}"
+            <Border x:Name="ValueShell" Grid.Column="1" Style="{StaticResource UnitField.Shell}"
                     Width="{Binding FieldWidth, ElementName=Root}"
                     Height="{StaticResource Size.Control.Compact}">
                 <DockPanel>
@@ -108,7 +131,7 @@
                                Style="{StaticResource UnitField.Suffix}" />
                     <TextBox x:Name="ValueField" Style="{StaticResource UnitField.Input}"
                              automation:AutomationProperties.Name="{Binding Label, ElementName=Root}"
-                             Text="{Binding Value, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                             Text="{Binding Value, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" />
                 </DockPanel>
             </Border>
         </Grid>

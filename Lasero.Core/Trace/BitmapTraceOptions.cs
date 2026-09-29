@@ -10,6 +10,9 @@ public enum TraceMode
     /// <summary>Traces edges/contours in the source photo instead of solid regions — for line-art or
     /// engraving-guide style output. Simpler pipeline, no hole/compound-path handling.</summary>
     Outline,
+
+    /// <summary>Quantizes a color graphic into distinct editable filled regions and layers.</summary>
+    Color,
 }
 
 /// <summary>How FilledShapes mode separates ink from background before contour extraction.</summary>
@@ -34,7 +37,7 @@ public enum TraceQuality
     HighFidelity,
 }
 
-/// <summary>Parameters used when converting a bitmap into vector contours. The original four fields
+/// <summary>Parameters used when converting a bitmap into vector contours. The original fields
 /// (Threshold/MinimumFeaturePixels/SimplificationPixels/TargetWidthMm/Invert) remain the Manual-mode
 /// defaults so existing callers keep working unchanged; everything below them is the user-facing
 /// knob set for the curve-fitting pipeline. None of these properties name a raw OpenCV/curve-fitting
@@ -43,8 +46,9 @@ public enum TraceQuality
 public sealed record BitmapTraceOptions
 {
     public byte Threshold { get; init; } = 128;
-    public int MinimumFeaturePixels { get; init; } = 8;
-    public double SimplificationPixels { get; init; } = 1.2;
+    /// <summary>Minimum contour area in working-resolution pixels squared.</summary>
+    public int MinimumFeaturePixels { get; init; } = 2;
+    public double SimplificationPixels { get; init; } = 0.4;
     public double TargetWidthMm { get; init; } = 100;
     public bool Invert { get; init; }
 
@@ -62,7 +66,7 @@ public sealed record BitmapTraceOptions
     /// <summary>0 = keep every speck, 1 = aggressively drop small components. Drives the minimum
     /// contour-area filter; supersedes <see cref="MinimumFeaturePixels"/> as the user-facing knob,
     /// but both are honoured (whichever removes more wins) so existing callers/tests are unaffected.</summary>
-    public double NoiseRemoval { get; init; } = 0.2;
+    public double NoiseRemoval { get; init; } = 0;
 
     /// <summary>-1 (flatten) .. 0 (unchanged) .. 1 (punch up) contrast applied before thresholding.</summary>
     public double Contrast { get; init; }
@@ -109,8 +113,10 @@ public sealed record BitmapTraceOptions
     internal const double DedupeDistancePx = 0.5;
 
     /// <summary>Max perpendicular error, in working-resolution pixels, a fitted Bezier segment may
-    /// have against the source polyline before BezierFitter splits and refits.</summary>
-    internal double FitToleranceBasePx => Lerp(0.6, 5.0, Smoothness);
+    /// have against the source polyline before BezierFitter splits and refits. Zero requests the
+    /// most detailed fit, with a small floor to avoid recursive fitting toward zero error. Contours
+    /// are extracted at subpixel resolution, so this remains a source-pixel tolerance.</summary>
+    internal double FitToleranceBasePx => Math.Max(0.2, SimplificationPixels);
 
     /// <summary>Minimum contour area, in working-resolution pixels, below which a component is
     /// treated as noise and dropped. Honours whichever of NoiseRemoval/MinimumFeaturePixels is more

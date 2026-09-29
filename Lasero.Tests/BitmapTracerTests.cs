@@ -94,6 +94,13 @@ public sealed class BitmapTracerTests
             Assert.True(rawPointCount > 100, $"expected a dense raw contour, got {rawPointCount} points");
             Assert.True(subpath.Nodes.Count < 20, $"expected < 20 fitted nodes, got {subpath.Nodes.Count}");
             Assert.All(subpath.Nodes, node => Assert.True(node.HasAnyHandle || subpath.Nodes.Count <= 2));
+
+            // A smooth path is useful only if it still hugs the bitmap. The source disc is centered
+            // at (100,100) with a 60 px radius; allow for its antialiased pixel boundary.
+            var radialErrors = subpath.Flatten(0.01).Select(point =>
+                Math.Abs(Distance(point, new Position(100, 100, 0)) - 60)).ToList();
+            Assert.True(radialErrors.Max() < 3,
+                $"trace moved too far from the source circle: max radial error {radialErrors.Max():0.###} px");
         }
         finally
         {
@@ -286,6 +293,40 @@ public sealed class BitmapTracerTests
             Assert.NotEmpty(result.VectorPaths);
             Assert.True(result.PointCount > 0);
             Assert.NotEmpty(result.Document.Shapes);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Trace_ColorBlocks_ProducesEditableFilledLayersAndDisablesWhiteBackground()
+    {
+        if (!VTracerColorTracer.IsAvailable) return;
+        var path = CreateBitmap(120, 80, graphics =>
+        {
+            graphics.FillRectangle(Brushes.Red, 10, 12, 35, 50);
+            graphics.FillRectangle(Brushes.Blue, 70, 12, 35, 50);
+        });
+        try
+        {
+            var result = BitmapTracer.Trace(path, new BitmapTraceOptions
+            {
+                Mode = TraceMode.Color,
+                TargetWidthMm = 120,
+                MinimumFeaturePixels = 1,
+            });
+
+            Assert.NotEmpty(result.VectorPaths);
+            Assert.True(result.Document.Layers.Count >= 2);
+            Assert.All(result.Document.Layers, layer => Assert.Equal(Lasero.Core.Layers.LayerMode.Fill, layer.Mode));
+            Assert.All(result.Document.Shapes, shape => Assert.Contains(result.Document.Layers,
+                layer => layer.Id == shape.LayerId && layer.Color == shape.LayerColor));
+            Assert.All(result.VectorPaths, item => Assert.All(item.Path.Subpaths,
+                subpath => Assert.True(subpath.IsClosed && subpath.Nodes.Count >= 3)));
+            Assert.Contains(result.Document.Layers, layer => !layer.IsEnabled &&
+                layer.Color.R >= 245 && layer.Color.G >= 245 && layer.Color.B >= 245);
         }
         finally
         {

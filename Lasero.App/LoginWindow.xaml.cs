@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Lasero.App.ViewModels;
 
@@ -28,6 +30,36 @@ public partial class LoginWindow : Window
     }
 
     private void OnPasswordChanged(object sender, RoutedEventArgs e) => _account.Password = PasswordInput.Password;
+
+    private void OnPasswordRevealChanged(object sender, TextChangedEventArgs e) => _account.Password = PasswordRevealInput.Text;
+
+    /// <summary>Swaps which of the two stacked controls is visible/interactive rather than trying to
+    /// make one control do both jobs — WPF's PasswordBox has no bindable/revealable plaintext by
+    /// design. The hidden side is kept in sync with whichever one the operator just used, so toggling
+    /// back never loses a keystroke.</summary>
+    private void OnTogglePasswordVisibility(object sender, RoutedEventArgs e)
+    {
+        var reveal = PasswordVisibilityToggle.IsChecked == true;
+        var label = reveal ? "Skrýt heslo" : "Zobrazit heslo";
+        PasswordVisibilityToggle.ToolTip = label;
+        AutomationProperties.SetName(PasswordVisibilityToggle, label);
+
+        if (reveal)
+        {
+            PasswordRevealInput.Text = PasswordInput.Password;
+            PasswordInput.Visibility = Visibility.Collapsed;
+            PasswordRevealInput.Visibility = Visibility.Visible;
+            PasswordRevealInput.Focus();
+            PasswordRevealInput.CaretIndex = PasswordRevealInput.Text.Length;
+        }
+        else
+        {
+            PasswordInput.Password = PasswordRevealInput.Text;
+            PasswordRevealInput.Visibility = Visibility.Collapsed;
+            PasswordInput.Visibility = Visibility.Visible;
+            PasswordInput.Focus();
+        }
+    }
 
     private void OnSignInClick(object sender, RoutedEventArgs e)
     {

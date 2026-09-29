@@ -240,6 +240,13 @@ public partial class SceneCanvas
             canBreak = subpath.IsClosed || (nodes[0].Node != 0 && nodes[0].Node != subpath.Nodes.Count - 1);
         }
 
+        var isOpenEndpoint = false;
+        if (nodes.Count == 1)
+        {
+            var only = path.Subpaths[nodes[0].Subpath];
+            isOpenEndpoint = !only.IsClosed && (nodes[0].Node == 0 || nodes[0].Node == only.Nodes.Count - 1);
+        }
+
         var canClose = false;
         if (ResolveContextSubpathIndex() is { } resolved)
         {
@@ -253,11 +260,13 @@ public partial class SceneCanvas
             AllSmooth = types.Count == 1 ? types[0] == VectorNodeType.Smooth : null,
             CanBreak = canBreak,
             CanClosePath = canClose,
+            IsOpenEndpoint = isOpenEndpoint,
+            CanJoin = isOpenEndpoint && FindCrossObjectJoinCandidate() is not null,
         };
         OpenMenu(CanvasContextMenuBuilder.ForNode(state), at, item => RunObjectAction(item));
     }
 
-    private void OpenSegmentMenu(SegmentHit hit, Point at)
+    private void OpenSegmentMenu(VectorPathHitTester.Hit hit, Point at)
     {
         if (_nodeEditWorkingPath is null) return;
         var (a, b) = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex].Segment(hit.SegmentIndex);
@@ -402,6 +411,7 @@ public partial class SceneCanvas
             case ContextAction.NodeSmooth: ConvertSelectedNodes(VectorNodeType.Smooth); break;
             case ContextAction.NodeCorner: ConvertSelectedNodes(VectorNodeType.Corner); break;
             case ContextAction.NodeBreak: BreakSelectedNode(); break;
+            case ContextAction.NodeJoin: JoinSelectedEndpointToCandidate(); break;
             case ContextAction.NodeClosePath: ToggleSelectedSubpathClosed(); break;
             case ContextAction.NodeDelete: DeleteSelectedNodes(); break;
             case ContextAction.SelectAllNodes: SelectAllNodes(); break;
@@ -410,7 +420,7 @@ public partial class SceneCanvas
         }
     }
 
-    private void RunSegmentAction(ContextMenuItemModel row, SegmentHit hit)
+    private void RunSegmentAction(ContextMenuItemModel row, VectorPathHitTester.Hit hit)
     {
         if (_nodeEditWorkingPath is null || hit.SubpathIndex >= _nodeEditWorkingPath.Subpaths.Count) return;
         var path = _nodeEditWorkingPath;
@@ -444,23 +454,5 @@ public partial class SceneCanvas
         _selectedNodeKeys.Clear();
         _hoveredSegment = null;
         CommitNodeEdit(updated);
-    }
-
-    /// <summary>Selects every node of the edited path - the node-edit counterpart of Ctrl+A.</summary>
-    public void SelectAllNodes()
-    {
-        if (_nodeEditWorkingPath is null) return;
-        _selectedNodeKeys.Clear();
-        for (var s = 0; s < _nodeEditWorkingPath.Subpaths.Count; s++)
-            for (var n = 0; n < _nodeEditWorkingPath.Subpaths[s].Nodes.Count; n++)
-                _selectedNodeKeys.Add((s, n));
-        RedrawSelectionOverlay();
-    }
-
-    public void ClearNodeSelection()
-    {
-        if (_selectedNodeKeys.Count == 0) return;
-        _selectedNodeKeys.Clear();
-        RedrawSelectionOverlay();
     }
 }

@@ -14,6 +14,7 @@ public partial class PreviewWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        WindowFrameHook.Attach(this, TryFindResource("Brush.PanelBorderStrong") as System.Windows.Media.SolidColorBrush);
         Closing += OnClosing;
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();

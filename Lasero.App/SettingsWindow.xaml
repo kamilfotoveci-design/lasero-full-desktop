@@ -4,13 +4,23 @@
         xmlns:components="clr-namespace:Lasero.App.Components"
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:materials="clr-namespace:Lasero.Core.Materials;assembly=Lasero.Core"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Nastavení Lasero" Width="980" Height="760" MinWidth="880" MinHeight="620"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" WindowStyle="None"
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     </Window.Resources>
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
     <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <components:WindowTitleBar Title="Nastavení Lasero" IconData="{StaticResource Glyph.Settings}"
+                                    CloseButtonName="Zavřít nastavení" />
+    <Grid Grid.Row="1">
         <Grid.ColumnDefinitions><ColumnDefinition Width="0" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="66" /></Grid.RowDefinitions>
 
@@ -208,4 +218,6 @@
             </StackPanel>
         </Border>
     </Grid>
+    </Grid>
+    </Border>
 </Window>

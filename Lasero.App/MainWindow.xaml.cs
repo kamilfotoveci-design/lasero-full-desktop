@@ -1,13 +1,14 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Shell;
 using Lasero.App.Input;
 using Lasero.App.ViewModels;
+using Lasero.App.Views.Kamil;
+using Lasero.App.Views.DeviceSetup;
 using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Grbl;
 using Lasero.Core.Jobs;
@@ -23,7 +24,6 @@ public partial class MainWindow : Window
     private readonly BackgroundRemovalCoordinator _backgroundRemoval;
     private readonly BackgroundRemovalConsentStore _backgroundRemovalConsent;
     private MaterialsWindow? _materialsWindow;
-    private MachineControlWindow? _machineControlWindow;
     private PreviewWindow? _previewWindow;
 
     public MainWindow(
@@ -45,6 +45,8 @@ public partial class MainWindow : Window
         _viewModel.DeviceWizardRequested += OpenDeviceWizard;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
+        KamilHost.AssistantResized += OnAssistantResized;
+        DeviceWizardOverlayHost.SettingsRequested += (_, _) => OpenSettings();
         Loaded += OnLoaded;
         Closing += OnClosing;
         // Without this the maximized window is inflated by the resize border, which pushed the
@@ -478,21 +480,9 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>The Designer inspector's "Ovládání stroje" route. One instance, reactivated rather
-    /// than reopened, and non-modal so the operator can jog while watching the artwork.</summary>
-    public void OpenMachineControl()
-    {
-        if (_machineControlWindow is not null)
-        {
-            _machineControlWindow.Activate();
-            return;
-        }
-
-        _machineControlWindow = new MachineControlWindow(_viewModel) { Owner = this };
-        _machineControlWindow.Closed += (_, _) => _machineControlWindow = null;
-        _machineControlWindow.PositionBeside(this);
-        _machineControlWindow.Show();
-    }
+    /// <summary>Public so the Designer rail's shape picker can return focus to the canvas after
+    /// activating a tool, the same way MainWindow's own keyboard shortcuts already do.</summary>
+    public void FocusCanvas() => DesignerCanvas.Focus();
 
     public void OpenMaterials()
     {
@@ -538,12 +528,6 @@ public partial class MainWindow : Window
     /// layout pass that gave it a size has finished first.</summary>
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.IsNavCollapsed))
-        {
-            ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: true);
-            return;
-        }
-
         if (e.PropertyName != nameof(MainViewModel.CurrentScreen)) return;
 
         ApplyWorkspaceMode();
@@ -584,10 +568,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void RestoreWorkspaceLayout()
     {
-        // Restored without animating: the saved posture is where the window starts, not something
-        // the operator just asked for.
-        _viewModel.IsNavCollapsed = _viewModel.SettingsStore.Current.Workspace.IsNavCollapsed;
-        ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: false);
         ApplyWorkspaceMode();
 
         // Starting straight into the editor skips the screen change that normally triggers the fit,
@@ -603,28 +583,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Animates the navigation rail between its two widths.
-    ///
-    /// The animation is on the Border's Width and the column is Auto, because GridLength has no
-    /// built-in animation and writing a GridLengthAnimation to avoid one layout pass per frame is not
-    /// worth it for one panel over 180ms.
-    ///
-    /// 180ms with a cubic ease is inside the 150-300ms band where a transition reads as the panel
-    /// moving rather than as the app stalling; ease-out on the way open and ease-in on the way shut so
-    /// the motion settles where the eye is going to end up. Windows' own animation setting is
-    /// honoured: with it off the rail simply arrives at the new width, which is also what happens on
-    /// the very first layout so the saved state does not animate in at startup.
-    /// </summary>
-    /// <summary>
     /// Swaps the left column between the full application sidebar and the Designer's 56px rail.
-    ///
-    /// Deliberately not folded into IsNavCollapsed. That flag is the operator's own posture, saved
-    /// across sessions; the editor's narrow rail is a property of the screen. Overloading one onto
-    /// the other would mean opening the editor silently rewrote a preference, and leaving it would
-    /// then collapse Home too.
-    ///
-    /// The two rails are separate controls and exactly one is visible, so nothing about the sidebar's
-    /// collapse, animation or peek behaviour runs while Designer is showing.
+    /// The application sidebar is always expanded; only the editor substitutes its dedicated compact
+    /// tool rail so navigation never changes posture behind the operator's back.
     /// </summary>
     private void ApplyWorkspaceMode()
     {
@@ -632,54 +593,25 @@ public partial class MainWindow : Window
 
         NavRailHost.Visibility = designer ? Visibility.Collapsed : Visibility.Visible;
         DesignerRail.Visibility = designer ? Visibility.Visible : Visibility.Collapsed;
+        // Kamil owns the visibility of its inner layers while switching between minimized,
+        // quick-ask and expanded states. Keep the host itself scoped to the Designer so that a
+        // stale inner state can never leave the avatar visible on Home, Device or Chat.
+        KamilHost.Visibility = designer ? Visibility.Visible : Visibility.Collapsed;
 
         if (designer)
         {
-            // No animation between screens: switching to the editor is a navigation, and sliding the
-            // rail would make it read as a panel opening rather than a different screen arriving.
-            NavRail.BeginAnimation(FrameworkElement.WidthProperty, null);
             NavColumn.Width = new GridLength(DesignerRailWidth);
             return;
         }
 
-        ApplyNavRailWidth(_viewModel.IsNavCollapsed, animate: false);
+        NavColumn.Width = new GridLength(NavigationRailWidth);
     }
+
+    private const double NavigationRailWidth = 164;
 
     /// <summary>Matches DesignerToolRail's own Width. The rail is a fixed strip, not a resizable
     /// panel, so the number lives in exactly these two places and nowhere else.</summary>
     private const double DesignerRailWidth = 56;
-
-    private void ApplyNavRailWidth(bool collapsed, bool animate)
-    {
-        // Designer owns the column while it is showing; a posture change made from a dialog must not
-        // reach in and resize the editor's rail underneath it.
-        if (_viewModel.CurrentScreen == AppScreen.Designer) return;
-
-        // The column is set rather than animated: it defines the canvas's slot, and animating both
-        // would have the workspace relayout on every frame for no visible gain. The rail's own width is
-        // what the eye follows.
-        NavColumn.Width = new GridLength(collapsed
-            ? WorkspacePreferences.CollapsedNavWidth
-            : WorkspacePreferences.ExpandedNavWidth);
-
-        var target = collapsed ? WorkspacePreferences.CollapsedNavWidth : WorkspacePreferences.ExpandedNavWidth;
-
-        if (!animate || !SystemParameters.ClientAreaAnimation)
-        {
-            NavRail.BeginAnimation(FrameworkElement.WidthProperty, null);
-            NavRail.Width = target;
-            return;
-        }
-
-        var slide = new DoubleAnimation
-        {
-            To = target,
-            Duration = TimeSpan.FromMilliseconds(180),
-            EasingFunction = new CubicEase { EasingMode = collapsed ? EasingMode.EaseIn : EasingMode.EaseOut },
-            FillBehavior = FillBehavior.HoldEnd,
-        };
-        NavRail.BeginAnimation(FrameworkElement.WidthProperty, slide);
-    }
 
     private void OnInspectorSplitterDragCompleted(object sender, DragCompletedEventArgs e)
     {
@@ -692,6 +624,21 @@ public partial class MainWindow : Window
         {
             // Panel sizing is a convenience; failing to remember it must never interrupt the session.
             Log.Warning(ex, "Failed to persist inspector width");
+        }
+    }
+
+    private void OnAssistantResized(object? sender, AssistantSizeChangedEventArgs e)
+    {
+        try
+        {
+            var workspace = _viewModel.SettingsStore.Current.Workspace;
+            workspace.AssistantWidth = e.Width;
+            workspace.AssistantHeight = e.Height;
+            _viewModel.SettingsStore.Save();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to persist Kamil assistant size");
         }
     }
 
