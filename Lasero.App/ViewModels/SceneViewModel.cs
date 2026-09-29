@@ -1369,6 +1369,13 @@ public partial class SceneViewModel : ObservableObject
             if (parent is null) continue;
             var previousId = child.GeometrySetId;
             var parentId = parent.Shape.GeometrySetId;
+            // Repair fallback only (docs/fill-winding-contract.md): a hole is normally declared by
+            // GeometrySetId + opposite winding. This path exists for legacy geometry whose contours
+            // carry separate set ids (old text). It never touches shapes already in one set, and every
+            // reclassification is logged so an unexpected one can be traced.
+            Serilog.Log.Information(
+                "Boolean pre-pass reclassified a contour into an enclosing compound path (legacy repair); child set {ChildSet} -> parent set {ParentSet}",
+                previousId, parentId);
             for (var index = 0; index < normalized.Count; index++)
             {
                 if (normalized[index].GeometrySetId == previousId)

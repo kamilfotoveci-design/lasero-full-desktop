@@ -1,12 +1,10 @@
 # Fill / winding contract (Phase 2)
 
-Status: migration steps 1 and 2 IMPLEMENTED (decisions D-A NonZero per group, D-B fixture made
-opposite-wound, D-C touching runs stay split, D-D only geometry-nested-unrelated-fill.gcode updated).
-Sections 2-4 describe the behaviour BEFORE this change (the "current" wording is historical);
-the characterization tests were flipped to "Agreement_" where the toolpath now matches the canvas.
-Steps 3-6 (SVG fill-rule, offset normalisation, trace preview, NormalizeNestedCompoundPaths) remain.
+Status: migration steps 1-6 done (see section 6 for what each turned out to need). Sections 2-4
+describe behaviour AFTER the change. The original pre-change analysis is in the git history of this
+file (commit 3eca4f8).
 
-Tests pinning everything below: `Lasero.Tests/FillWindingContractCharacterizationTests.cs` (19 cases).
+Tests pinning everything below: `Lasero.Tests/FillWindingContractCharacterizationTests.cs` (all Agreement_/Contract_/Producer_/Repair_ tests).
 Related: `docs/vector-and-machine-architecture-audit.md` 5.1 / 5.2 / 10.1, HANDOFF session 13 finding D9.
 
 ## 1. Vocabulary in the data model
@@ -20,70 +18,56 @@ Related: `docs/vector-and-machine-architecture-audit.md` 5.1 / 5.2 / 10.1, HANDO
 - A hole is not declared anywhere. It exists only as a geometric relationship (containment plus,
   by convention, opposite winding).
 
-## 2. Current behaviour per consumer
+## 2. Behaviour per consumer (after migration steps 1-6)
 
 | Consumer | Rule | Grouping key | Where |
 |---|---|---|---|
-| Toolpath fill | **EvenOdd** on the crossings of all closed shapes pooled together | layer only. `GeometrySetId`, object identity and winding are never read | `Lasero.Core/Import/ToolpathBuilder.cs:85-146` (closed filter :87, crossing collection :102-114, sort + pair :119-135) |
-| Toolpath cut | none, emits ring point order (direction matters, existing golden `geometry-reversed-path`) | per shape | `ToolpathBuilder.cs:65-83` |
-| Canvas draw (generic) | **NonZero**, one `Path` per group, groups painted independently (so unioned) | `(GeometrySetId, LayerId, LayerColor)` inside one object; Empty = whole object | `Lasero.App/Controls/SceneCanvas.xaml.cs:491-494`, `:626-644` |
-| Canvas draw (node-editable objects) | **NonZero**, one `PathGeometry` for the whole `VectorPath` (set/layer ignored) | object | `SceneCanvas.xaml.cs:592-594`, `:648-688` |
-| Canvas fill decision | fill if layer mode is Fill/FillAndCut and group has a closed shape | group | `SceneCanvas.xaml.cs:584-599` |
-| Hit test | per shape point-in-polygon; a hole does not exist (click in a counter selects the outer via its own polygon) | shape | `Lasero.App/Controls/SceneHitTester.cs:76-77` |
-| Trace preview | **EvenOdd** (`IsFilled = fill`) | whole trace result | `Lasero.App/ViewModels/BitmapTraceViewModel.cs:202-208` |
-| Boolean ops | EvenOdd inside each `GeometrySetId` group (`Resolve`), then `Union(EvenOdd)` across groups and folded across objects with the chosen op under EvenOdd | set (after `NormalizeNestedCompoundPaths`) | `SceneViewModel.cs:1320-1339`, `:1058`, `:1129` |
-| Hole inference | closed, opposite sign, smaller, bbox-contained, first point inside -> child adopts parent's set id. Silent, runs before every boolean | pairwise | `SceneViewModel.cs:1344-1388` |
-| Offset | Clipper `InflatePaths` per `GeometrySetId` group, no normalisation. Clipper treats orientation as meaningful, so winding decides hole vs second outer | set | `Lasero.Core/Geometry/VectorOffsetPlanner.cs:49-59`, `Clipper2VectorOffsetService.cs:22-34` |
-| Open paths | never fill (toolpath filter :87, canvas `IsFilled = IsClosed`) | | pinned by `Current_OpenShapesDoNotAffectFill` |
-| Layers | processing layers never interact (GCodeViewModel filters shapes per layer before calling the builder) | `LayerId` | `GCodeViewModel.cs:357-368` |
+| Toolpath fill | **NonZero per group** from signed scanline crossings, runs of different groups **unioned**; runs that merely touch stay separate | `GeometrySetId` (legacy `Guid.Empty` resolved to the owning object's id by `SceneDocument.ToImportedDocument`), inside one layer | `Lasero.Core/Import/ToolpathBuilder.cs` `AppendFillLayer`; `Lasero.Core/Scene/SceneDocument.cs` `ToImportedDocument` |
+| Toolpath cut | none, emits ring point order (direction matters, golden `geometry-reversed-path`) | per shape | `ToolpathBuilder.AppendCutLayer` |
+| Canvas draw (generic) | NonZero, one `Path` per group, groups painted independently (so unioned) | `(GeometrySetId, LayerId, LayerColor)` inside one object; Empty = whole object | `Lasero.App/Controls/SceneCanvas.xaml.cs` `CompoundGroups`, `BuildCompoundGeometry` |
+| Canvas draw (node-editable) | NonZero, one `PathGeometry` for the whole `VectorPath` | object | `SceneCanvas.xaml.cs` `BuildVectorPathGeometry` |
+| Hit test | per shape point-in-polygon (holes are not modelled) | shape | `Lasero.App/Controls/SceneHitTester.cs` |
+| Trace preview (filled) | NonZero (was EvenOdd), one geometry per traced object = per group | traced object | `Lasero.App/ViewModels/BitmapTraceViewModel.cs` `BuildPreviewGeometry` (see note below) |
+| Boolean ops | `Resolve(EvenOdd)` inside each set, then Union across sets and folding across objects. For well-formed input (holes wound opposite) EvenOdd and NonZero coincide; only same-wound nested rings in ONE set differ (boolean: hole, fill: merge) | set | `SceneViewModel.BuildSourceRings`, `UniteSelection`, `CombineSelection` |
+| Hole repair | `NormalizeNestedCompoundPaths`: repair fallback for legacy geometry whose contours carry separate set ids (old text). Links opposite-wound, contained contours of DIFFERENT sets as hole+parent, i.e. the contract's own hole definition. Never touches shapes already in one set; now logs every reclassification | pairwise | `SceneViewModel.NormalizeNestedCompoundPaths` |
+| Offset | Clipper `InflatePaths` per set. Behaves per the contract without normalisation: same-wound nested rings merge, opposite-wound holes are kept whatever the outer's absolute direction | set | `VectorOffsetPlanner.ComputeOffsetRings`, `Clipper2VectorOffsetService` |
+| Open paths | never fill | | `ToolpathBuilder` closed filter; canvas `IsFilled = IsClosed` |
+| Layers | never interact | `LayerId` | `GCodeViewModel.BuildSceneGCode` |
 
-How shapes reach the toolpath: `SceneDocument.ToImportedDocument` (`Lasero.Core/Scene/SceneDocument.cs:21-45`)
-does `SelectMany(o => o.GetWorldShapes())` and copies shapes as they are. It does not rewrite
-`Guid.Empty`, so object identity is dropped at exactly the point the fill rule needs it.
+Note on the trace preview: the one-line change (`FillRule.Nonzero`) lives in `BitmapTraceViewModel.cs`,
+whose surrounding preview function is uncommitted work by another agent and was therefore left
+in the working tree for that owner to commit with the rest of the file.
 
-## 3. Current behaviour per producer
+## 3. Producers (after migration steps 1-6)
 
-| Producer | GeometrySetId | Winding of holes | Fill-rule info | Where |
-|---|---|---|---|---|
-| SVG import | always `Guid.Empty`, even inside one `<path>` | whatever the source has (y-flip is consistent, so relative winding is preserved) | `fill-rule` attribute **ignored** (no occurrence in Lasero.Core). SVG default is nonzero | `SvgImporter.cs:147-153`, `:60`; flatteners under `Import/Svg/` |
-| Bitmap trace (filled) | one fresh id per traced object (root contour + descendants) | **declared**: even depth positive, odd depth negative, independent of extractor order | none needed, consistent for both rules | `Trace/CompoundPathBuilder.cs:54-55`, `:73-77`; `BitmapTracer.cs:84`, `:208-225` |
-| Hand-drawn / node edit | one id per object, reused on `Rebuild` | user drawn, undeclared | none | `VectorPathSceneFactory.cs:48`, `:89` |
-| Text | one id per string, all glyph contours | comes from WPF `FormattedText` geometry (glyph outlines, holes opposite); `Weld` unions via `Geometry.Combine` | none | `VectorTextFactory.cs:256-267`, `:286` |
-| Boolean result | fresh id per operation, all result rings | Clipper output: outers positive, holes negative (asserted by `Clipper2VectorBooleanServiceTests` and the new `Agreement_BooleanResolveOutputFillsHollowInToolpathAndCanvas`) | none | `SceneViewModel.cs:1436-1463` |
-| Offset result | rings from all groups in one `VectorPath`, one new object/set | Clipper output, opposite winding kept for a well-formed input (`Producer_OffsetKeepsOppositeWindingOfWellFormedCompound`) | none | `VectorOffsetPlanner.cs:32-38` |
-| Primitives (rect/ellipse/polygon) | own id/Empty, single ring | n/a | n/a | `ScenePrimitiveFactory.cs` |
+| Producer | GeometrySetId | Hole convention | Where |
+|---|---|---|---|
+| SVG import | `Guid.Empty` for every contour = one compound group per imported object | source winding kept for nonzero/default. `fill-rule="evenodd"` (attribute, `style`, or inherited from a group) re-winds rings by nesting depth (even positive, odd negative), on flattened shapes and `VectorPath` together | `SvgImporter.cs` `ReadEvenOdd`, `EvenOddReverseFlags` |
+| Bitmap trace (filled) | one id per traced object | declared: even depth positive, odd negative | `Trace/CompoundPathBuilder.cs` |
+| Hand-drawn / node edit | one id per object | user drawn (opposite winding = hole) | `VectorPathSceneFactory.cs` |
+| Text | one id per string | WPF glyph outlines, holes opposite | `VectorTextFactory.cs` |
+| Boolean result | fresh id per operation | Clipper output: outers positive, holes negative | `SceneViewModel.ToImportedShapes` |
+| Offset result | one new object | Clipper output, opposite winding preserved | `VectorOffsetPlanner.ComputeOffset` |
+| Primitives | own id/Empty, single ring | n/a | `ScenePrimitiveFactory.cs` |
 
-## 4. Where they disagree (all pinned by tests, all currently pass)
+## 4. Agreement matrix and remaining gaps
 
-All disagreements come from one fact: the toolpath uses layer-wide EvenOdd while the canvas uses
-per-group NonZero, and only the tracer, boolean and offset producers emit windings that make the two
-rules coincide.
+Toolpath fill, canvas, SVG import, tracer, boolean (well-formed input) and offset now answer the
+same inside/outside question, pinned by the `Agreement_*`, `Contract_*`, `Producer_*` and
+`Repair_*` tests in `Lasero.Tests/FillWindingContractCharacterizationTests.cs`
+(same-wound nested rings merge; opposite-wound rings are holes; unrelated shapes never carve each
+other; overlap is engraved; legacy `Guid.Empty` objects stay independent; evenodd SVGs keep
+their holes; offset keeps or merges consistently).
 
-1. Same-wound nested rings in one set: toolpath hollow, canvas solid.
-   `Disagreement_SameWoundNestedRingsInOneSet_ToolpathHollowCanvasSolid`.
-   Note the existing golden `geometry-compound-path-hole-fill` feeds exactly this (both rects are
-   counter-clockwise), so the golden's "declared compound path with a hole" is only a hole under
-   EvenOdd.
-2. Unrelated nested shapes (different sets): toolpath hollow, canvas two solid regions (D9).
-   `Disagreement_NestedRingsInDifferentSets_ToolpathHollowCanvasSolid`.
-3. Partially overlapping shapes: overlap lens is not engraved, canvas paints it.
-   `Disagreement_PartiallyOverlappingShapes_OverlapIsUnengraved`,
-   `Disagreement_PartialOverlapInOneSetBehavesLikeDifferentSets` (set id is irrelevant to the toolpath).
-4. SVG: `fill-rule` dropped, so a same-wound nested `<path>` (solid under SVG's default) engraves
-   hollow. `Current_SvgImporterIgnoresFillRuleAndLeavesGeometrySetEmpty`,
-   `Disagreement_SvgSameWoundNestedPath_ToolpathHollowCanvasSolid`.
-5. Two separately imported objects, both `Guid.Empty`: canvas treats them as two regions,
-   `ToImportedDocument` pools them, toolpath carves one out of the other.
-   `Disagreement_TwoLegacyEmptySetObjects_CarveEachOtherInToolpath`.
-6. Offset of a same-wound nested pair: the hole is lost (rings merge into one outer), although the
-   toolpath would engrave it hollow. `Disagreement_OffsetOfSameWoundNestedPairLosesTheHoleTheToolpathWouldEngrave`.
-7. Trace preview uses EvenOdd; equal to NonZero for tracer output, so no visible disagreement today.
-
-Where they agree (pinned): opposite-wound hole in one set (`Agreement_OppositeWoundHoleInOneSet...`,
-`Agreement_SvgOppositeWoundHole...`, boolean output, tracer output via
-`Producer_TracerForcesOuterPositiveAndHoleNegativeWinding`). Layers stay independent
-(`Current_ShapesOnDifferentLayersDoNotCarveEachOther`). Fill output does not depend on ring direction
-(`Current_FillOutputIsIndependentOfRingWindingDirection`).
+Remaining gaps, deliberately not changed here:
+1. Boolean `Resolve(EvenOdd)` inside one set still turns same-wound nested rings into a hole while
+   fill/canvas merge them. Switching it to NonZero would change user-visible boolean results and the
+   fixture of `SceneViewModelTests.UniteSelectionPreservesAnExistingHoleInOneOfTheSources`
+   (same-wound). Needs a user decision.
+2. `NormalizeNestedCompoundPaths` cannot be removed: `UniteRepairsCounterInLegacyTextGroupWithSeparateGeometryIds`
+   fails without it. It is now documented and logged, not surfaced in the UI (UI change out of scope).
+3. Hit test does not model holes.
+4. Cut layers and `VectorPath` canvas rendering ignore `GeometrySetId` (whole object = one path).
 
 ## 5. Proposed contract
 
@@ -121,23 +105,21 @@ for cases 1, 3 and 4. This is decision D-A below.
 - All other goldens (no nesting/overlap) stay byte-identical, provided run construction and the
   serpentine ordering are unchanged when no intervals overlap.
 
-## 6. Minimal migration steps
+## 6. Migration steps and outcome
 
-Each step independent and testable; steps 1-2 are the "first increment" and need D-A..D-C.
+1. Done (f80bac7): `SceneDocument.ToImportedDocument` resolves `Guid.Empty` to the object's id.
+2. Done (f80bac7): NonZero-per-group fill with union; one golden updated as authorised.
+3. Done: SVG `fill-rule="evenodd"` re-winding; nonzero/default untouched.
+4. No code needed: offset already follows the contract; tests added.
+5. One-line NonZero change in the trace preview, left in the working tree (see note in section 2).
+6. Kept as a documented, logged repair fallback rather than removed (a legacy-text test depends on it).
 
-1. `SceneDocument.ToImportedDocument` (`SceneDocument.cs:21`): replace `Guid.Empty` by a per-object
-   id. Zero output change while the toolpath is still EvenOdd (it never reads the id); the existing
-   `SceneViewModel.GroupSelection` already does this locally (`SceneViewModel.cs:962-970`).
-2. `ToolpathBuilder.AppendFillLayer`: per scanline, compute NonZero intervals per group (signed
-   crossings), union the intervals across groups, then feed the existing serpentine emission.
-   Production files: `SceneDocument.cs`, `ToolpathBuilder.cs` (2 files). Goldens: see above.
-3. `SvgImporter`: honour `fill-rule` and assign per-element set ids (separate decision; changes
-   imported geometry of evenodd SVGs).
-4. `VectorOffsetPlanner`: normalise winding per group before `OffsetClosedGroup` so offset agrees.
-5. `BitmapTraceViewModel` preview to NonZero (cosmetic consistency).
-6. Demote `NormalizeNestedCompoundPaths` to a fallback and surface when it fires (audit 10.1b).
+## 7. Decisions
 
-## 7. Decisions needed from the user
+D-A to D-D were approved and implemented. Open: D-E, whether boolean `Resolve` inside one set should
+move to NonZero (remaining gap 1 in section 4).
+
+Original list:
 
 - D-A: NonZero-per-group (recommended) or EvenOdd-per-group as the contract.
 - D-B: for `geometry-compound-path-hole-fill`, change the golden (hole disappears) or change the

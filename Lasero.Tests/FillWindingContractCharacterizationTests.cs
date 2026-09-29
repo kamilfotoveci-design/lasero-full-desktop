@@ -527,4 +527,57 @@ public sealed class FillWindingContractCharacterizationTests
         Assert.False(CanvasFills(shapes, 20, 20.5));
         Assert.True(Burns(spans, 5, 20.5));
     }
+
+    // ------------------------------------------------- boolean pre-pass (repair fallback)
+
+    private static (Lasero.App.ViewModels.SceneViewModel ViewModel, SceneObject Source) BooleanFixture(bool innerClockwise)
+    {
+        var viewModel = new Lasero.App.ViewModels.SceneViewModel();
+        var layer = LayerSettings.CreateDefault(Black, LayerMode.Cut, "Vektor");
+        viewModel.Layers.Add(layer);
+        var source = new SceneObject
+        {
+            Name = "nested",
+            LocalShapes =
+            [
+                Rect(0, 0, 40, 40, Guid.NewGuid(), layerId: layer.Id),
+                Rect(10, 10, 30, 30, Guid.NewGuid(), innerClockwise, layer.Id),
+            ],
+            LocalPivot = Position.Zero,
+            LocalBounds = new BoundingBox2D(0, 0, 40, 40),
+        };
+        viewModel.Objects.Add(source);
+        viewModel.SelectedObjects.Add(source);
+        return (viewModel, source);
+    }
+
+    /// <summary>NormalizeNestedCompoundPaths is a repair fallback for legacy geometry whose contours
+    /// carry separate set ids (old text, see SceneViewModelTests.UniteRepairsCounterInLegacyTextGroup...).
+    /// Opposite-wound nested contours in different sets are still linked as hole and parent -- the
+    /// same "hole = opposite winding" definition the fill contract uses -- so a boolean keeps the hole.</summary>
+    [Fact]
+    public void Repair_OppositeWoundNestedContoursInDifferentSetsKeepTheirHoleInBooleans()
+    {
+        var (viewModel, _) = BooleanFixture(innerClockwise: true);
+
+        viewModel.UniteSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Equal(2, result.LocalShapes.Count);
+        Assert.NotEqual(Math.Sign(SignedArea(result.LocalShapes[0].Points)), Math.Sign(SignedArea(result.LocalShapes[1].Points)));
+    }
+
+    /// <summary>Same-wound nested contours in different sets are NOT reclassified: they are two
+    /// independent solid regions, so the union is one ring (matches toolpath fill and canvas).</summary>
+    [Fact]
+    public void Repair_SameWoundNestedContoursInDifferentSetsAreNotTurnedIntoAHole()
+    {
+        var (viewModel, _) = BooleanFixture(innerClockwise: false);
+
+        viewModel.UniteSelectionCommand.Execute(null);
+
+        var result = Assert.Single(viewModel.Objects);
+        Assert.Single(result.LocalShapes);
+        Assert.Equal(1600, Math.Abs(SignedArea(result.LocalShapes[0].Points)), precision: 2);
+    }
 }
