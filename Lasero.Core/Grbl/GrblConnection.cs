@@ -39,6 +39,9 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
     private int _commandGeneration;
     private int _resetting;
     private int _settingsQueryCollecting;
+    // 1 from the moment an M3/M4 line is handed to the transport until an M5 is acknowledged or the
+    // controller is reset. Decides whether closing the session must first force the beam off.
+    private int _beamMayBeOn;
     private int _powerProfileVersion;
     private MachineAlert? _activeAlert;
     private GrblDeviceProfile? _deviceProfile;
@@ -105,6 +108,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
             try
             {
                 Interlocked.Exchange(ref _resetting, 0);
+                Volatile.Write(ref _beamMayBeOn, 0);
                 Interlocked.Increment(ref _commandGeneration);
                 FirmwareBanner = null;
                 SetDeviceProfile(null);
@@ -159,6 +163,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
             if (State != GrblConnectionState.Connected || Volatile.Read(ref _disconnecting) != 0) return;
             // Keep commands blocked until a fresh startup banner establishes a response boundary.
             Interlocked.Exchange(ref _resetting, 1);
+            Volatile.Write(ref _beamMayBeOn, 0);
             Interlocked.Increment(ref _commandGeneration);
             InvalidateStatus();
             FirmwareBanner = null;
@@ -307,9 +312,13 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
                             }
                         }
                         _pendingResponses.Enqueue(command.Completion);
+                        var spindle = ClassifySpindle(command.Text);
+                        if (spindle == SpindleWord.On) Volatile.Write(ref _beamMayBeOn, 1);
                         _transport.WriteLine(command.Text);
                     }
-                    command.Completion.Task.WaitAsync(CommandTimeout, cancellationToken).GetAwaiter().GetResult();
+                    var outcome = command.Completion.Task.WaitAsync(CommandTimeout, cancellationToken).GetAwaiter().GetResult();
+                    if (outcome.IsOk && ClassifySpindle(command.Text) == SpindleWord.Off)
+                        Volatile.Write(ref _beamMayBeOn, 0);
                 }
                 catch (TimeoutException ex)
                 {
@@ -375,6 +384,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
             {
                 if (Volatile.Read(ref _disconnecting) != 0) return;
                 Interlocked.Increment(ref _commandGeneration);
+                Volatile.Write(ref _beamMayBeOn, 0);
                 InvalidateStatus();
                 FailAllPending("Řadič byl restartován.");
                 FailQueued(_queue, "Příkaz byl zrušen restartem řadiče.");
@@ -474,6 +484,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
                     : "Spojení bylo ukončeno.");
                 FailQueued(queue, "Spojení bylo ukončeno.");
                 FailSettingsQuery("Spojení bylo ukončeno.");
+                ForceBeamOffBeforeClose();
             }
 
             CleanupTransportSubscriptions();
@@ -498,6 +509,37 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
         {
             Interlocked.Exchange(ref _disconnecting, 0);
         }
+    }
+
+    /// <summary>
+    /// Closing a serial port does not switch a GRBL laser off. If an M3/M4 was sent and never
+    /// followed by an acknowledged M5, send the realtime soft reset (which stops the spindle/laser
+    /// and flushes the planner) while the port can still be written. A port that is already dead
+    /// cannot be reached, so failures here are expected and ignored.
+    /// </summary>
+    private void ForceBeamOffBeforeClose()
+    {
+        if (Interlocked.Exchange(ref _beamMayBeOn, 0) == 0) return;
+        try { _transport.WriteRealtimeByte(GrblRealtimeCommand.SoftReset); }
+        catch { }
+    }
+
+    private enum SpindleWord { None, On, Off }
+
+    private static readonly System.Text.RegularExpressions.Regex SpindleWordPattern =
+        new(@"(?<![A-Za-z0-9.])M0*([345])(?![0-9.])", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex CommentPattern =
+        new(@"\([^)]*\)|;.*$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>Last spindle word (M3/M4 on, M5 off) on a G-code line, ignoring comments.</summary>
+    private static SpindleWord ClassifySpindle(string line)
+    {
+        var code = CommentPattern.Replace(line, " ");
+        var result = SpindleWord.None;
+        foreach (System.Text.RegularExpressions.Match match in SpindleWordPattern.Matches(code))
+            result = match.Groups[1].Value == "5" ? SpindleWord.Off : SpindleWord.On;
+        return result;
     }
 
     private void InvalidateStatus()
