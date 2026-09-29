@@ -138,7 +138,10 @@ public static class GCodeParser
                 bbox = bbox.Include(target.X, target.Y);
             }
 
-            if (segments.Count == 1)
+            // The implicit start (machine 0,0) only belongs to the extent when the first move is a
+            // cutting one. A rapid travel from there is not part of the artwork; counting it made a job
+            // placed at 200,100 report a 200x100 size and made framing trace a box from the bed corner.
+            if (segments.Count == 1 && !segments[0].IsRapid)
                 bbox = bbox.Include(pos.X, pos.Y);
 
             pos = target;

@@ -719,27 +719,27 @@
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}"
+                    <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}" AutomationProperties.Name="Rámovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.FrameActionTooltip}">
                         <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
-                    <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}"
+                    <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}" AutomationProperties.Name="Pozastavit"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTip="Pozastaví úlohu a zhasne laser. Pokračovat lze tlačítkem Pokračovat">
                         <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
-                    <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}"
+                    <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}" AutomationProperties.Name="Pokračovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTip="Naváže od místa pozastavení. Nejprve zkontrolujte, že nic nebrání pohybu hlavy">
                         <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobActiveStopButton}"
-                            Command="{Binding GCode.AbortCommand}"
+                            Command="{Binding GCode.AbortCommand}" AutomationProperties.Name="Zastavit"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"
                             ToolTipService.ShowOnDisabled="True"
@@ -747,7 +747,7 @@
                         <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobStartActionButton}"
-                            Command="{Binding GCode.RunJobCommand}"
+                            Command="{Binding GCode.RunJobCommand}" AutomationProperties.Name="Spustit"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0"
                             ToolTipService.ShowOnDisabled="True"

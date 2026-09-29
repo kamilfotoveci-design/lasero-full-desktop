@@ -795,11 +795,34 @@ public partial class SceneViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanUndoExecute))]
-    private void Undo() => _commandStack.Undo();
+    private void Undo()
+    {
+        _commandStack.Undo();
+        ReconcileSelectionWithScene();
+    }
     private bool CanUndoExecute() => CanUndo;
 
     [RelayCommand(CanExecute = nameof(CanRedoExecute))]
-    private void Redo() => _commandStack.Redo();
+    private void Redo()
+    {
+        _commandStack.Redo();
+        ReconcileSelectionWithScene();
+    }
+
+    /// <summary>A node edit, text edit or background removal swaps the object for a new instance with the
+    /// same Id. Undo/redo swap it back, so the selection may name an instance that has left the scene:
+    /// the overlay then draws the retired geometry. Follow the Id to the live instance or drop it.</summary>
+    private void ReconcileSelectionWithScene()
+    {
+        var stale = SelectedObjects.Where(item => !Objects.Contains(item)).ToList();
+        foreach (var item in stale)
+        {
+            var live = Objects.FirstOrDefault(candidate => candidate.Id == item.Id);
+            var index = SelectedObjects.IndexOf(item);
+            if (live is not null && !SelectedObjects.Contains(live) && index >= 0) SelectedObjects[index] = live;
+            else SelectedObjects.Remove(item);
+        }
+    }
     private bool CanRedoExecute() => CanRedo;
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -1896,14 +1919,14 @@ public partial class SceneViewModel : ObservableObject
 
     public double SelectedX
     {
-        get => Selected?.Transform.X ?? 0;
-        set => SetSelectedTransform(t => t with { X = value }, allowRaster: true);
+        get => Selected is null ? 0 : Selected.LocalPivot.X + Selected.Transform.X;
+        set => SetSelectedTransform(t => t with { X = value - (Selected?.LocalPivot.X ?? 0) }, allowRaster: true);
     }
 
     public double SelectedY
     {
-        get => Selected?.Transform.Y ?? 0;
-        set => SetSelectedTransform(t => t with { Y = value }, allowRaster: true);
+        get => Selected is null ? 0 : Selected.LocalPivot.Y + Selected.Transform.Y;
+        set => SetSelectedTransform(t => t with { Y = value - (Selected?.LocalPivot.Y ?? 0) }, allowRaster: true);
     }
 
     public double SelectedRotation

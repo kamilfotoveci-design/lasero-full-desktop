@@ -147,6 +147,10 @@ public partial class GCodeViewModel : ObservableObject
     public double SimulationDurationSeconds => _timeEstimate?.Duration.TotalSeconds ?? 0;
     public double VisualProgressPercent => IsSimulationActive ? SimulationProgressPercent : ProgressPercent;
     public event Action? SimulationStarted;
+
+    /// <summary>Raised (title, reason) when the operator presses Start or Frame and preflight refuses. The status bar text alone
+    /// is easy to miss, so the shell shows the reason in a dialog.</summary>
+    public event Action<string, string>? StartBlocked;
     public event Action? PlacementChanged;
 
     public event EventHandler<JobCompletedEventArgs>? JobCompleted;
@@ -811,6 +815,7 @@ public partial class GCodeViewModel : ObservableObject
             JobState = JobRunState.Ready;
             PreflightMessage = preflight.FirstBlockingIssue?.Message;
             LastMessage = PreflightMessage;
+            if (PreflightMessage is { Length: > 0 } startReason) StartBlocked?.Invoke("Spuštění není možné", startReason);
             RefreshCommands();
             return;
         }
@@ -857,6 +862,7 @@ public partial class GCodeViewModel : ObservableObject
             JobState = JobRunState.Ready;
             PreflightMessage = preflight.FirstBlockingIssue?.Message ?? "Úloha se změnila. Zkontrolujte ji a spusťte znovu.";
             LastMessage = PreflightMessage;
+            if (PreflightMessage is { Length: > 0 } recheckReason) StartBlocked?.Invoke("Spuštění není možné", recheckReason);
             RefreshCommands();
             return;
         }
@@ -909,6 +915,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             PreflightMessage = preflight.FirstBlockingIssue?.Message;
             LastMessage = PreflightMessage;
+            if (PreflightMessage is { Length: > 0 } frameReason) StartBlocked?.Invoke("Rámování není možné", frameReason);
             return;
         }
 

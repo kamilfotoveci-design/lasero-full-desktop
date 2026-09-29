@@ -205,7 +205,11 @@ public partial class SceneCanvas : UserControl
         canvas.UpdateToolCursor();
     }
 
-    private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildAll();
+    private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RebuildAll();
+        ResyncNodeEditAfterExternalChange();
+    }
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
     private void OnViewModelContentChanged() => RepositionAll();
 

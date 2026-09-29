@@ -61,6 +61,7 @@ public partial class SceneCanvas
 
     // --- node edit mode state -------------------------------------------------------------------
     private SceneObject? _nodeEditObject;
+    private bool _committingNodeEdit;
     private VectorPath? _nodeEditWorkingPath;
     private readonly HashSet<(int Subpath, int Node)> _selectedNodeKeys = [];
     private (int Subpath, int Node, bool IsOutHandle)? _draggedHandle;
@@ -892,13 +893,43 @@ public partial class SceneCanvas
         RedrawSelectionOverlay();
     }
 
+    /// <summary>Undo and redo swap the edited object for another instance with the same Id. Without this
+    /// the overlay keeps drawing the retired path (a phantom node where the undone move ended) and the
+    /// next edit would commit that stale working path, bringing the undone change back.</summary>
+    private void ResyncNodeEditAfterExternalChange()
+    {
+        if (_nodeEditObject is null || _committingNodeEdit || ViewModel is null) return;
+        if (ViewModel.Objects.Contains(_nodeEditObject)) return;
+
+        var replacement = ViewModel.Objects.FirstOrDefault(o => o.Id == _nodeEditObject.Id && o.IsVectorPath && !o.IsLocked);
+        if (replacement is null)
+        {
+            ExitNodeEditMode();
+            return;
+        }
+
+        _nodeEditObject = replacement;
+        _nodeEditWorkingPath = replacement.VectorPath;
+        _selectedNodeKeys.Clear();
+        _draggedHandle = null;
+        _draggedSegment = null;
+        _nodeDragOriginalPath = null;
+        _nodeDragSession = null;
+        _hoveredNodeKey = null;
+        _hoveredHandleKey = null;
+        _hoveredSegment = null;
+        RedrawSelectionOverlay();
+    }
+
     /// <summary>Pushes one ReplaceObjectsCommand (one undo step) for a completed node edit and re-syncs
     /// this control's notion of "the object being edited" to the replacement CommitVectorPathEdit
     /// creates — the original `obj` reference is retired from the scene the moment this runs.</summary>
     private void CommitNodeEdit(VectorPath updated)
     {
         if (_nodeEditObject is null || ViewModel is null) return;
-        ViewModel.CommitVectorPathEdit(_nodeEditObject, updated);
+        _committingNodeEdit = true;
+        try { ViewModel.CommitVectorPathEdit(_nodeEditObject, updated); }
+        finally { _committingNodeEdit = false; }
         _nodeEditObject = ViewModel.SelectedObjects.Count == 1 && ViewModel.SelectedObjects[0].IsVectorPath
             ? ViewModel.SelectedObjects[0]
             : null;

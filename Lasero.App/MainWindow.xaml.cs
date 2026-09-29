@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         _backgroundRemovalConsent = backgroundRemovalConsent;
         DataContext = viewModel;
         _viewModel.GCode.SimulationStarted += OnSimulationStarted;
+        _viewModel.GCode.StartBlocked += OnStartBlocked;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
         _viewModel.Scene.BackgroundRemovalRequested += OnBackgroundRemovalRequested;
         _viewModel.Scene.OffsetRequested += OnOffsetRequested;
@@ -313,6 +314,16 @@ public partial class MainWindow : Window
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
         }
+    }
+
+    private void OnStartBlocked(string title, string reason)
+    {
+        Dispatcher.BeginInvoke(() => LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+            title,
+            reason,
+            "Rozumím",
+            CancelText: null,
+            Tone: LaseroDialogTone.Warning)));
     }
 
     private void OnSimulationStarted()

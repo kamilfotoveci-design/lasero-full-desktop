@@ -74,6 +74,27 @@ public class GCodeParserTests
     }
 
     [Fact]
+    public void FirstRapidTravelFromTheImplicitOriginIsNotPartOfTheJobExtent()
+    {
+        var lines = new[]
+        {
+            "G90", "G21", "M5",
+            "G0 X200 Y100",
+            "M4 S500",
+            "G1 X230 Y100 F1000",
+            "G1 X230 Y130",
+            "M5",
+        };
+
+        var doc = GCodeParser.Parse(lines);
+
+        Assert.Equal(200, doc.BoundingBox.MinX);
+        Assert.Equal(100, doc.BoundingBox.MinY);
+        Assert.Equal(30, doc.BoundingBox.Width);
+        Assert.Equal(30, doc.BoundingBox.Height);
+    }
+
+    [Fact]
     public void IgnoresModalOnlyLinesWithNoMotion()
     {
         var lines = new[] { "G21", "G90", "M3 S255" };

@@ -81,6 +81,57 @@ public class SceneViewModelTests
     }
 
     [Fact]
+    public void PositionFieldsReportTheWorldCentreOfADrawnPathAndMoveItThere()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.AddVectorPath(VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(100, 200, 0)),
+            VectorNode.CornerAt(new Position(140, 240, 0)),
+        ]));
+        var path = Assert.Single(viewModel.Objects);
+
+        Assert.Equal(120, viewModel.SelectedX, precision: 6);
+        Assert.Equal(220, viewModel.SelectedY, precision: 6);
+
+        viewModel.SelectedX = 50;
+        viewModel.SelectedY = 60;
+
+        var bounds = path.WorldBounds();
+        Assert.Equal(50, (bounds.MinX + bounds.MaxX) / 2, precision: 6);
+        Assert.Equal(60, (bounds.MinY + bounds.MaxY) / 2, precision: 6);
+    }
+
+    [Fact]
+    public void UndoingANodeEditPointsTheSelectionAtTheRestoredObject()
+    {
+        var viewModel = new SceneViewModel();
+        viewModel.AddVectorPath(VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(0, 0, 0)),
+            VectorNode.CornerAt(new Position(10, 0, 0)),
+        ]));
+        var original = Assert.Single(viewModel.Objects);
+        viewModel.CommitVectorPathEdit(original, VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(0, 0, 0)),
+            VectorNode.CornerAt(new Position(30, 0, 0)),
+        ]));
+        var edited = Assert.Single(viewModel.Objects);
+        Assert.Same(edited, viewModel.Selected);
+
+        viewModel.UndoCommand.Execute(null);
+
+        var restored = Assert.Single(viewModel.Objects);
+        Assert.Same(restored, viewModel.Selected);
+        Assert.Equal(10, restored.WorldBounds().Width, precision: 6);
+
+        viewModel.RedoCommand.Execute(null);
+
+        Assert.Same(Assert.Single(viewModel.Objects), viewModel.Selected);
+    }
+
+    [Fact]
     public void EditableVectorPathSurvivesProjectRoundTrip()
     {
         var viewModel = new SceneViewModel();
