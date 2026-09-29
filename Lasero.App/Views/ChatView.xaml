@@ -140,9 +140,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Ellipse Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                        </Ellipse>
+                        <components:LaseroAvatar Size="40" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="Kamil" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                             <TextBlock Text="Asistent pro materiály, parametry a řešení problémů" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
@@ -157,9 +155,7 @@
                     </Grid.RowDefinitions>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"
                                 Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
-                        <Ellipse Width="72" Height="72" HorizontalAlignment="Center">
-                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                        </Ellipse>
+                        <components:LaseroAvatar Size="72" HorizontalAlignment="Center" />
                         <TextBlock Text="S čím vám Kamil pomůže?" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,7" />
                         <TextBlock Text="Zeptejte se na bezpečné parametry, materiály nebo výsledek gravírování. Doporučení před ostrou úlohou vždy ověřte na odřezku."
                                    TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" LineHeight="20" />
@@ -185,10 +181,7 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Ellipse Width="30" Height="30" Margin="0,3,10,0" VerticalAlignment="Top"
-                                                 Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}">
-                                            <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                                        </Ellipse>
+                                        <components:LaseroAvatar Size="30" Margin="0,3,10,0" VerticalAlignment="Top" Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibility}}" />
                                         <Border Style="{StaticResource ChatBubble}" MaxWidth="720">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
@@ -214,9 +207,7 @@
                                 <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Ellipse Width="28" Height="28" VerticalAlignment="Center">
-                                <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
-                            </Ellipse>
+                            <components:LaseroAvatar Size="28" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="Kamil připravuje odpověď…"
                                        Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
                         </Grid>

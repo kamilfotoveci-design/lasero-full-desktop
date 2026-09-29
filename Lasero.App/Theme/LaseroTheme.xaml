@@ -261,10 +261,6 @@
     <BitmapImage x:Key="Image.LaseroAvatarSource"
                  UriSource="/Lasero.App;component/Assets/LaseroAvatar.png"
                  DecodePixelWidth="256" CacheOption="OnLoad" />
-    <!-- Compatibility alias: MainWindow and ChatView at this commit still paint the avatar through
-         this key. Remove it together with the LaseroAvatar migration of those two views. -->
-    <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/LaseroAvatar.png"
-                 DecodePixelWidth="256" CacheOption="OnLoad" />
 
     <!-- ===================== Base ===================== -->
 

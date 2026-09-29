@@ -374,7 +374,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Ellipse.Style>
-                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.KamilAvatar}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
+                                    <Ellipse.Fill><ImageBrush ImageSource="{StaticResource Image.LaseroAvatarSource}" Stretch="UniformToFill" AlignmentY="Center" RenderOptions.BitmapScalingMode="HighQuality" /></Ellipse.Fill>
                                 </Ellipse>
                                 <TextBlock Text="Lasero Chat" VerticalAlignment="Center"
                                            Visibility="{Binding IsNavCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
