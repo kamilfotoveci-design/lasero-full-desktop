@@ -341,6 +341,7 @@ public sealed record ChatMessageItem(Guid Id, LaseroChatRole Role, string Text, 
     public bool IsUser => Role == LaseroChatRole.User;
     public string Author => IsUser ? "Vy" : "Kamil";
     public string TimeLabel => CreatedAt.ToString("HH:mm");
+    public string DisplayText => IsUser ? Text : ChatResponseNormalizer.Normalize(Text);
 
     /// <summary>
     /// Which operation was selected in the workspace when this message was recorded, if known. Null
