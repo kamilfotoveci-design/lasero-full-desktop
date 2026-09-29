@@ -169,14 +169,20 @@
     <DropShadowEffect x:Key="Shadow.Dropdown" Color="#181818" Opacity="0.16" BlurRadius="18" ShadowDepth="4" Direction="270" />
     <DropShadowEffect x:Key="Shadow.Modal" Color="#181818" Opacity="0.22" BlurRadius="48" ShadowDepth="14" Direction="270" />
 
-    <!-- Motion language: short and ease-out, no bounce or overshoot (DESIGN.md). An overshoot curve
-         on press-release reads as playful, which is wrong for a machine-control workbench. -->
+    <!-- Motion language: responsive at the pointer, slightly slower for spatial change. Spring is
+         deliberately high-damping: it is used only for the final 1-3% settle, never for travel or
+         decorative bounce. This keeps the workbench tactile without making precision controls move. -->
     <Duration x:Key="Motion.VeryFast">0:0:0.09</Duration>
-    <Duration x:Key="Motion.Fast">0:0:0.1</Duration>
-    <Duration x:Key="Motion.Base">0:0:0.18</Duration>
-    <!-- Dialogs and the largest sheet-style overlays only - not ordinary hover/press/popover motion. -->
-    <Duration x:Key="Motion.Panel">0:0:0.2</Duration>
+    <Duration x:Key="Motion.Fast">0:0:0.11</Duration>
+    <Duration x:Key="Motion.Base">0:0:0.17</Duration>
+    <Duration x:Key="Motion.Spatial">0:0:0.26</Duration>
+    <!-- Dialogs and the largest sheet-style overlays only - not ordinary hover/press motion. -->
+    <Duration x:Key="Motion.Panel">0:0:0.34</Duration>
+    <!-- AutoReverse makes the complete breathe cycle 3.2 s. Use only for real activity. -->
+    <Duration x:Key="Motion.Breathe">0:0:1.6</Duration>
     <CubicEase x:Key="Ease.Out" EasingMode="EaseOut" />
+    <SineEase x:Key="Ease.Breathe" EasingMode="EaseInOut" />
+    <BackEase x:Key="Ease.Spring" EasingMode="EaseOut" Amplitude="0.12" />
 
     <!-- 4pt spacing scale (4/8/12/16/20/24/32) — enforced as literal multiples throughout instead of ad hoc margins. -->
 
@@ -250,7 +256,6 @@
     <!-- The dark-ink wordmark, for the light sidebar. LaseroWordmarkLight.png is the same mark cut
          for a dark chrome and stays in the project; this key is the single place to switch. -->
     <BitmapImage x:Key="Image.BrandWordmark" UriSource="/Lasero.App;component/Assets/LaseroWordmark.png" CacheOption="OnLoad" />
-    <BitmapImage x:Key="Image.KamilAvatar" UriSource="/Lasero.App;component/Assets/KamilAvatar.png" CacheOption="OnLoad" />
     <!-- Original 1254px transparent artwork supplied by the user. Decode once at 256px: enough for
          the 72-DIP presentation avatar at 200% DPI while avoiding a full 6MB decode per instance. -->
     <BitmapImage x:Key="Image.LaseroAvatarSource"
@@ -426,9 +431,9 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.05" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.96" Duration="0:0:0.05" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.96" Duration="0:0:0.05" />
+                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0.08" Duration="{StaticResource Motion.VeryFast}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.975" Duration="{StaticResource Motion.VeryFast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.975" Duration="{StaticResource Motion.VeryFast}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -436,8 +441,8 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Spring}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -1350,8 +1355,8 @@
                                 <BeginStoryboard x:Name="PulseLoop">
                                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                                         <DoubleAnimation Storyboard.TargetName="Pulse" Storyboard.TargetProperty="Opacity"
-                                                         From="0.25" To="0.9" Duration="0:0:0.7"
-                                                         EasingFunction="{StaticResource Ease.Out}" />
+                                                         From="0.42" To="0.88" Duration="{StaticResource Motion.Breathe}"
+                                                         EasingFunction="{StaticResource Ease.Breathe}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>

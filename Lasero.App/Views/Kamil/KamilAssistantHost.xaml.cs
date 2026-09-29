@@ -1,12 +1,21 @@
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Lasero.App.ViewModels;
 
 namespace Lasero.App.Views.Kamil;
+
+public sealed class AssistantSizeChangedEventArgs : EventArgs
+{
+    public AssistantSizeChangedEventArgs(double width, double height) => (Width, Height) = (width, height);
+    public double Width { get; }
+    public double Height { get; }
+}
 
 /// <summary>
 /// Drives the assistant's three shapes and the motion between them.
@@ -14,7 +23,7 @@ namespace Lasero.App.Views.Kamil;
 /// The transitions animate one surface rather than swapping three controls, because the whole point
 /// of the interaction is that the pill *is* the composer *is* the panel. Width and height carry the
 /// change of shape; opacity and a small vertical offset carry the change of content. Everything is
-/// short, eased out, and never bounces — this sits on top of a precision tool.
+/// short and high-damping — the final settle is tactile, never a mascot bounce.
 /// </summary>
 public partial class KamilAssistantHost : UserControl
 {
@@ -27,17 +36,30 @@ public partial class KamilAssistantHost : UserControl
     private const double ExpandedWidth = 420;
     private const double ExpandedMaxHeight = 640;
     private const double ExpandedMinHeight = 500;
+    private const double ResizeMinWidth = 320;
+    private const double ResizeMinHeight = 360;
+    private const double ResizeMaxWidth = 720;
+    private const double ResizeMaxHeight = 760;
 
     // Shape duration depends on which pair of states is involved — QuickAsk to/from Expanded is the
     // biggest change of shape and reads better slightly slower than the other two, which both move a
     // 48px badge a comparatively short distance.
-    private static readonly Duration ShapeDurationDefault = TimeSpan.FromMilliseconds(210);
-    private static readonly Duration ShapeDurationToExpanded = TimeSpan.FromMilliseconds(240);
-    private static readonly Duration ContentDuration = TimeSpan.FromMilliseconds(130);
+    private static readonly Duration ShapeDurationDefault = TimeSpan.FromMilliseconds(260);
+    private static readonly Duration ShapeDurationToExpanded = TimeSpan.FromMilliseconds(320);
+    private static readonly Duration ContentDuration = TimeSpan.FromMilliseconds(170);
 
     private KamilAssistantViewModel? _viewModel;
     private INotifyCollectionChanged? _messages;
     private IInputElement? _focusBeforeOpening;
+    private Point _dragStart;
+    private Point _dragOrigin;
+    private PopoverDirection _openDirection = PopoverDirection.Left;
+    private bool _isDragging;
+    private bool _isResizing;
+
+    private const double DragThreshold = 4;
+
+    public event EventHandler<AssistantSizeChangedEventArgs>? AssistantResized;
 
     // The state this control last actually rendered, so a transition can pick its own duration (see
     // <see cref="ShapeDurationFor"/>) instead of every transition running at the same speed.
@@ -69,11 +91,87 @@ public partial class KamilAssistantHost : UserControl
 
         _messages = _viewModel.Chat.Messages;
         _messages.CollectionChanged += OnMessagesChanged;
+        SizeChanged += OnHostSizeChanged;
+
+        if (Window.GetWindow(this) is Window window)
+        {
+            window.SizeChanged += OnWindowSizeChanged;
+            if (window.FindName("DesignerInspector") is FrameworkElement inspector)
+                inspector.SizeChanged += OnBoundarySizeChanged;
+            if (window.FindName("CanvasViewControls") is FrameworkElement controls)
+                controls.SizeChanged += OnBoundarySizeChanged;
+        }
 
         ApplyState(_viewModel.State, animate: false);
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(RepositionForLayout));
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs e) => DetachViewModel();
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        SizeChanged -= OnHostSizeChanged;
+        if (Window.GetWindow(this) is Window window)
+        {
+            window.SizeChanged -= OnWindowSizeChanged;
+            if (window.FindName("DesignerInspector") is FrameworkElement inspector)
+                inspector.SizeChanged -= OnBoundarySizeChanged;
+            if (window.FindName("CanvasViewControls") is FrameworkElement controls)
+                controls.SizeChanged -= OnBoundarySizeChanged;
+        }
+
+        DetachViewModel();
+    }
+
+    /// <summary>The head itself has a fixed home spot and never moves — only the open panel
+    /// (QuickAsk/Expanded) can be dragged, and it always resets to that fixed spot on close.</summary>
+    private void OnDragMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel is null or { State: KamilAssistantState.Minimized or KamilAssistantState.Hidden }) return;
+
+        _dragStart = e.GetPosition(Root);
+        _dragOrigin = CurrentSurfacePosition();
+        _isDragging = false;
+    }
+
+    private void OnDragMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_viewModel is null or { State: KamilAssistantState.Minimized or KamilAssistantState.Hidden }) return;
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+
+        var current = e.GetPosition(Root);
+        var delta = current - _dragStart;
+        if (!_isDragging && delta.Length < DragThreshold) return;
+
+        if (!_isDragging)
+        {
+            _isDragging = true;
+            CaptureMouse();
+        }
+
+        var size = CurrentSurfaceSize();
+        var bounds = GetUsableBounds(size);
+        SetSurfacePosition(ClampPosition(_dragOrigin + delta, size, bounds));
+    }
+
+    private void OnDragMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isDragging) return;
+
+        _isDragging = false;
+        ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    /// <summary>A plain click on the Expanded header's own background minimizes the assistant, the
+    /// same as its Minimize button — the header also doubles as the panel's drag handle
+    /// (<see cref="OnDragMouseLeftButtonDown"/>/<see cref="OnDragMouseMove"/>), so this only fires for
+    /// a real click: <see cref="_isDragging"/> is set the moment the pointer moves past
+    /// <see cref="DragThreshold"/>, and a drag's own MouseUp already marks the event handled before
+    /// bubbling here.</summary>
+    private void OnHeaderClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_isDragging || _viewModel is null) return;
+        _viewModel.MinimizeCommand.Execute(null);
+    }
 
     private void DetachViewModel()
     {
@@ -95,7 +193,11 @@ public partial class KamilAssistantHost : UserControl
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(KamilAssistantViewModel.State) || _viewModel is null) return;
-        ApplyState(_viewModel.State, animate: true);
+        // Expanded is also reached by a rapid double-click (QuickAsk -> Expanded). Starting a
+        // second size animation before the first one settles leaves WPF rendering an intermediate
+        // surface outside the host. Open the full conversation atomically; the small QuickAsk state
+        // may still use its gentle transition.
+        ApplyState(_viewModel.State, animate: _viewModel.State != KamilAssistantState.Expanded);
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -118,10 +220,21 @@ public partial class KamilAssistantHost : UserControl
     private void ApplyState(KamilAssistantState state, bool animate)
     {
         var (width, height) = MeasureState(state);
+        var targetSize = MeasureSurface(width, height);
         var duration = ShapeDurationFor(_lastRenderedState, state);
 
         Root.Visibility = state == KamilAssistantState.Hidden ? Visibility.Collapsed : Visibility.Visible;
         if (state == KamilAssistantState.Hidden) return;
+
+        var anchor = HomeAnchor();
+        SetPersistentAvatarPosition(state != KamilAssistantState.Minimized, anchor);
+
+        var from = _lastRenderedState;
+        var currentPosition = CurrentSurfacePosition();
+
+        var targetPosition = state == KamilAssistantState.Minimized
+            ? anchor
+            : PositionPopover(targetSize, anchor);
 
         SetLayerVisibility(state);
 
@@ -129,24 +242,85 @@ public partial class KamilAssistantHost : UserControl
         {
             Surface.BeginAnimation(WidthProperty, null);
             Surface.BeginAnimation(HeightProperty, null);
+            Surface.BeginAnimation(OpacityProperty, null);
+            SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            SurfaceOffset.BeginAnimation(TranslateTransform.XProperty, null);
+            SurfaceOffset.BeginAnimation(TranslateTransform.YProperty, null);
             Surface.Width = width;
             Surface.Height = height;
+            SetSurfacePosition(targetPosition);
+            Surface.Opacity = 1;
+            SurfaceScale.ScaleX = 1;
+            SurfaceScale.ScaleY = 1;
+            SurfaceOffset.X = 0;
+            SurfaceOffset.Y = 0;
             SetLayerOpacity(state, immediate: true);
             _lastRenderedState = state;
             return;
         }
 
-        AnimateSurface(width, height, duration);
+        var opening = from == KamilAssistantState.Minimized && state != KamilAssistantState.Minimized;
+        var closing = state == KamilAssistantState.Minimized && from != KamilAssistantState.Minimized;
+        SetSurfacePosition(targetPosition);
+        AnimateSurface(width, height, duration, currentPosition, targetPosition, opening, closing);
         SetLayerOpacity(state, immediate: false);
         _lastRenderedState = state;
     }
 
     private (double Width, double Height) MeasureState(KamilAssistantState state) => state switch
     {
-        KamilAssistantState.QuickAsk => (QuickWidth, QuickHeight),
-        KamilAssistantState.Expanded => (ExpandedWidth, AvailableExpandedHeight()),
+        // QuickHeight is a fixed constant, but the room above the avatar is not — clamp it the same
+        // way SavedExpandedHeight() already clamps Expanded, otherwise a modestly-sized window lets
+        // PositionPopover's own clamp silently overlap the avatar instead of shrinking to fit above it.
+        KamilAssistantState.QuickAsk => (QuickWidth, Math.Min(QuickHeight, AvailableHeightAboveAvatar(QuickWidth, QuickHeight))),
+        KamilAssistantState.Expanded => (SavedExpandedWidth(), SavedExpandedHeight()),
         _ => (PillWidth, PillHeight),
     };
+
+    private double SavedExpandedWidth() => Window.GetWindow(this)?.DataContext is MainViewModel main
+        ? Math.Clamp(main.SettingsStore.Current.Workspace.ClampedAssistantWidth, ResizeMinWidth, ResizeMaxWidth)
+        : ExpandedWidth;
+
+    private double SavedExpandedHeight()
+    {
+        var available = AvailableExpandedHeight();
+        var minimum = Math.Min(ResizeMinHeight, available);
+        var maximum = Math.Min(ResizeMaxHeight, available);
+
+        return Window.GetWindow(this)?.DataContext is MainViewModel main
+            ? Math.Clamp(main.SettingsStore.Current.Workspace.ClampedAssistantHeight, minimum, maximum)
+            : available;
+    }
+
+    private void OnResizeDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (_viewModel?.State != KamilAssistantState.Expanded) return;
+        _isResizing = true;
+
+        var current = CurrentSurfaceSize();
+        var bounds = GetUsableBounds(current);
+        var maxWidth = Math.Max(1, bounds.Width);
+        var maxHeight = Math.Max(1, bounds.Height);
+        var minWidth = Math.Min(ResizeMinWidth, maxWidth);
+        var minHeight = Math.Min(ResizeMinHeight, maxHeight);
+        var width = Math.Clamp(current.Width + e.HorizontalChange, minWidth, Math.Min(ResizeMaxWidth, maxWidth));
+        var height = Math.Clamp(current.Height + e.VerticalChange, minHeight, Math.Min(ResizeMaxHeight, maxHeight));
+
+        Surface.BeginAnimation(WidthProperty, null);
+        Surface.BeginAnimation(HeightProperty, null);
+        Surface.Width = width;
+        Surface.Height = height;
+        SetSurfacePosition(PositionPopover(new Size(width, height), HomeAnchor()));
+    }
+
+    private void OnResizeDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        if (!_isResizing) return;
+        _isResizing = false;
+        var size = CurrentSurfaceSize();
+        AssistantResized?.Invoke(this, new AssistantSizeChangedEventArgs(size.Width, size.Height));
+    }
 
     /// <summary>Only QuickAsk &lt;-&gt; Expanded — the biggest change of shape — runs slower than the
     /// other two transitions. Every other pair (including a same-state reapply) uses the default.</summary>
@@ -174,15 +348,57 @@ public partial class KamilAssistantHost : UserControl
     /// </summary>
     private double AvailableExpandedHeight()
     {
-        var workspace = Parent as FrameworkElement;
-        var host = workspace?.ActualHeight > 0 ? workspace.ActualHeight : ExpandedMaxHeight;
-        var room = host - Margin.Top - Margin.Bottom;
-        return Math.Clamp(Math.Min(ExpandedMaxHeight, room), ExpandedMinHeight, ExpandedMaxHeight);
+        var room = Math.Max(1, AvailableHeightAboveAvatar(ExpandedWidth, ExpandedMinHeight));
+        return Math.Min(ExpandedMaxHeight, room);
     }
 
-    private void AnimateSurface(double width, double height, Duration duration)
+    /// <summary>How tall an above-the-avatar popover (QuickAsk or Expanded) may grow before its own
+    /// bottom edge would cross the fixed avatar's top edge (minus <see cref="AnchorGap"/>). Both states
+    /// open from <see cref="PositionPopover"/> anchored above/left of <see cref="HomeAnchor"/>, so the
+    /// real ceiling on their height is the room between the workspace top and that anchor line — not
+    /// <see cref="GetUsableBounds"/>'s own bottom margin, which only fences the avatar's own home
+    /// position and says nothing about a taller panel opening above it. Using the raw canvas bounds
+    /// here let a QuickAsk/Expanded panel taller than that gap get silently pinned to the workspace top
+    /// by <see cref="ClampPosition"/> and overlap the avatar and its own composer instead of stopping
+    /// short of it — this is the fix for that.</summary>
+    private double AvailableHeightAboveAvatar(double width, double minHeightForBoundsProbe)
     {
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var bounds = GetUsableBounds(new Size(width, minHeightForBoundsProbe));
+        return Math.Max(0, bounds.Height - PillHeight - AnchorGap);
+    }
+
+    private Size MeasureSurface(double width, double height)
+    {
+        var oldWidth = Surface.Width;
+        var oldHeight = Surface.Height;
+        // A still-running Width/Height animation from the PREVIOUS transition holds the animated
+        // (base-value-overriding) value through a plain property set — Measure() below would then
+        // report that old, mid-flight size instead of the new target, silently mispositioning a
+        // fast-following transition (e.g. the auto-expand-on-existing-messages path landing while
+        // QuickAsk's own opening animation is still in flight) for the wrong footprint.
+        Surface.BeginAnimation(WidthProperty, null);
+        Surface.BeginAnimation(HeightProperty, null);
+        Surface.Width = width;
+        Surface.Height = height;
+        Surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var measured = new Size(
+            Surface.DesiredSize.Width > 0 ? Surface.DesiredSize.Width : width,
+            Surface.DesiredSize.Height > 0 ? Surface.DesiredSize.Height : height);
+        Surface.Width = oldWidth;
+        Surface.Height = oldHeight;
+        return measured;
+    }
+
+    private void AnimateSurface(
+        double width,
+        double height,
+        Duration duration,
+        Point currentPosition,
+        Point targetPosition,
+        bool opening,
+        bool closing)
+    {
+        var ease = (IEasingFunction)FindResource("Ease.Spring");
 
         Surface.Width = Surface.ActualWidth > 0 ? Surface.ActualWidth : Surface.Width;
         Surface.Height = Surface.ActualHeight > 0 ? Surface.ActualHeight : Surface.Height;
@@ -202,7 +418,245 @@ public partial class KamilAssistantHost : UserControl
             EasingFunction = ease,
             FillBehavior = FillBehavior.HoldEnd,
         });
+
+        var startX = closing
+            ? Math.Clamp(currentPosition.X - targetPosition.X, -4, 4)
+            : opening ? OpeningOffsetX() : 0;
+        var startY = closing
+            ? Math.Clamp(currentPosition.Y - targetPosition.Y, -4, 4)
+            : opening ? OpeningOffsetY() : 0;
+
+        SurfaceOffset.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation
+        {
+            From = startX,
+            To = 0,
+            Duration = duration,
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.HoldEnd,
+        });
+        SurfaceOffset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
+        {
+            From = startY,
+            To = 0,
+            Duration = duration,
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.HoldEnd,
+        });
+
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation
+        {
+            From = opening ? 0.97 : 1,
+            To = closing ? 0.98 : 1,
+            Duration = duration,
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.HoldEnd,
+        });
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation
+        {
+            From = opening ? 0.97 : 1,
+            To = closing ? 0.98 : 1,
+            Duration = duration,
+            EasingFunction = ease,
+            FillBehavior = FillBehavior.HoldEnd,
+        });
+
+        if (opening)
+        {
+            Surface.Opacity = 0;
+            Surface.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = duration,
+                EasingFunction = ease,
+                FillBehavior = FillBehavior.HoldEnd,
+            });
+        }
+        else if (closing)
+        {
+            var fadeOut = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(120),
+                EasingFunction = ease,
+                FillBehavior = FillBehavior.HoldEnd,
+            };
+            fadeOut.Completed += (_, _) =>
+            {
+                if (_viewModel?.State != KamilAssistantState.Minimized) return;
+                Surface.BeginAnimation(OpacityProperty, null);
+                Surface.Opacity = 1;
+                SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                SurfaceOffset.BeginAnimation(TranslateTransform.XProperty, null);
+                SurfaceOffset.BeginAnimation(TranslateTransform.YProperty, null);
+                SurfaceScale.ScaleX = 1;
+                SurfaceScale.ScaleY = 1;
+                SurfaceOffset.X = 0;
+                SurfaceOffset.Y = 0;
+            };
+            Surface.BeginAnimation(OpacityProperty, fadeOut);
+        }
     }
+
+    private double OpeningOffsetX() => _openDirection switch
+    {
+        PopoverDirection.Left => 6,
+        PopoverDirection.Right => -6,
+        _ => 0,
+    };
+
+    private double OpeningOffsetY() => _openDirection switch
+    {
+        PopoverDirection.Above => 6,
+        PopoverDirection.Below => -6,
+        _ => 0,
+    };
+
+    private Point CurrentSurfacePosition() => new(
+        double.IsNaN(Canvas.GetLeft(Surface)) ? 0 : Canvas.GetLeft(Surface),
+        double.IsNaN(Canvas.GetTop(Surface)) ? 0 : Canvas.GetTop(Surface));
+
+    private Size CurrentSurfaceSize() => new(
+        Surface.ActualWidth > 0 ? Surface.ActualWidth : Surface.Width,
+        Surface.ActualHeight > 0 ? Surface.ActualHeight : Surface.Height);
+
+    private void SetSurfacePosition(Point position)
+    {
+        Canvas.SetLeft(Surface, position.X);
+        Canvas.SetTop(Surface, position.Y);
+    }
+
+    private void SetPersistentAvatarPosition(bool visible, Point anchor)
+    {
+        Canvas.SetLeft(PersistentAvatarLayer, anchor.X);
+        Canvas.SetTop(PersistentAvatarLayer, anchor.Y);
+        PersistentAvatarLayer.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private Rect GetUsableBounds(Size surfaceSize)
+    {
+        var width = Root.ActualWidth > 0 ? Root.ActualWidth : ActualWidth;
+        var height = Root.ActualHeight > 0 ? Root.ActualHeight : ActualHeight;
+        var rightReservation = 0d;
+        var bottomReservation = 0d;
+
+        if (Window.GetWindow(this) is Window window)
+        {
+            if (window.FindName("InspectorColumn") is ColumnDefinition inspectorColumn)
+                rightReservation = inspectorColumn.ActualWidth;
+            if (window.FindName("InspectorSplitter") is FrameworkElement splitter && splitter.IsVisible)
+                rightReservation += splitter.ActualWidth;
+            if (window.FindName("CanvasViewControls") is FrameworkElement controls && controls.IsVisible)
+                bottomReservation = controls.ActualHeight + SafeMargin;
+        }
+
+        var right = Math.Max(SafeMargin, width - rightReservation - SafeMargin);
+        var bottom = Math.Max(SafeMargin, height - bottomReservation - SafeMargin);
+        return new Rect(SafeMargin, SafeMargin,
+            Math.Max(0, right - SafeMargin), Math.Max(0, bottom - SafeMargin));
+    }
+
+    private Point ClampPosition(Point position, Size size, Rect bounds)
+    {
+        var maxX = Math.Max(bounds.Left, bounds.Right - size.Width);
+        var maxY = Math.Max(bounds.Top, bounds.Bottom - size.Height);
+        return new Point(Math.Clamp(position.X, bounds.Left, maxX), Math.Clamp(position.Y, bounds.Top, maxY));
+    }
+
+    /// <summary>The head's one fixed position — bottom-right of the usable canvas, clear of the
+    /// inspector and the zoom/undo cluster. Recomputed from live layout rather than stored, so it
+    /// tracks a resize or an inspector-width change without needing to remember anything.</summary>
+    private Point HomeAnchor()
+    {
+        var bounds = GetUsableBounds(new Size(PillWidth, PillHeight));
+        return new Point(bounds.Right - PillWidth, bounds.Bottom - PillHeight);
+    }
+
+    /// <summary>Grows up and to the left of the fixed head, clear of it on both axes by
+    /// <see cref="AnchorGap"/>. The position is intentionally fixed to this direction: the panel
+    /// always grows up and left from the head, so opening it never jumps to a different side of the
+    /// canvas. <paramref name="avatarAnchor"/> must be the SAME point the persistent avatar was (or is
+    /// about to be) positioned at in this same call — recomputing a second, independent
+    /// <see cref="HomeAnchor"/> here let the two silently diverge whenever layout settled between the
+    /// avatar's last reposition and this call (e.g. the zoom/undo cluster or the inspector column
+    /// finishing its own measure a frame later), which is what let the panel overlap the avatar despite
+    /// each individually looking correct.</summary>
+    private Point PositionPopover(Size size, Point avatarAnchor)
+    {
+        var anchor = new Rect(avatarAnchor, new Size(PillWidth, PillHeight));
+        var bounds = GetUsableBounds(size);
+        var bubbleRight = anchor.Left - AnchorGap;
+        _openDirection = PopoverDirection.Above;
+        var position = ClampPosition(new Point(bubbleRight - size.Width, anchor.Top - AnchorGap - size.Height), size, bounds);
+
+        // Final invariant, checked against the avatar's own rect directly rather than trusted a
+        // second time: whatever the arithmetic above produced, the popover must never overlap the
+        // avatar. If bounds-clamping pushed it into an overlap, pull it back clear instead.
+        if (new Rect(position, size).IntersectsWith(anchor))
+        {
+            position.X = Math.Min(position.X, anchor.Left - AnchorGap - size.Width);
+            position.Y = Math.Min(position.Y, anchor.Top - AnchorGap - size.Height);
+            position = ClampPosition(position, size, bounds);
+        }
+
+        return position;
+    }
+
+    private void RepositionForLayout()
+    {
+        if (_viewModel is null || _viewModel.State == KamilAssistantState.Hidden || Root.ActualWidth <= 0) return;
+        if (_isDragging) return;
+
+        // Re-derive size from the ViewModel's current state via MeasureState — the same source of
+        // truth ApplyState itself uses — rather than trusting CurrentSurfaceSize() (the Surface's own
+        // live Width/Height). A SizeChanged event (window/inspector/canvas-controls resize) can
+        // schedule this method via Dispatcher.BeginInvoke and have it run in the narrow window between
+        // the ViewModel's State changing and ApplyState's own Surface.Width/Height assignment landing —
+        // reading the not-yet-updated Surface size at that moment silently positions the panel for the
+        // PREVIOUS state's (smaller) footprint while the surface itself is about to grow into the NEW
+        // state's footprint, which is what let an Expanded panel end up positioned for QuickAsk's
+        // 400×132 box and then visually overlap the avatar once it grew to its real ~420×560 size.
+        // MeasureState/SavedExpandedHeight() already clamp Expanded's height against available room, so
+        // no separate re-check is needed here.
+        var (measuredWidth, measuredHeight) = MeasureState(_viewModel.State);
+        var size = new Size(measuredWidth, measuredHeight);
+        if (Surface.Width != measuredWidth || Surface.Height != measuredHeight)
+        {
+            Surface.BeginAnimation(WidthProperty, null);
+            Surface.BeginAnimation(HeightProperty, null);
+            Surface.Width = measuredWidth;
+            Surface.Height = measuredHeight;
+        }
+
+        var anchor = HomeAnchor();
+        SetPersistentAvatarPosition(_viewModel.State != KamilAssistantState.Minimized, anchor);
+        var position = _viewModel.State == KamilAssistantState.Minimized
+            ? anchor
+            : PositionPopover(size, anchor);
+        SetSurfacePosition(position);
+    }
+
+    private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+
+    private void OnBoundarySizeChanged(object? sender, SizeChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+
+    private enum PopoverDirection
+    {
+        Above,
+        Left,
+        Right,
+        Below,
+    }
+
+    private const double SafeMargin = 16;
+    private const double AnchorGap = 12;
 
     /// <summary>
     /// Which layer is hit-testable. Kept separate from opacity because a fully transparent layer
@@ -245,7 +699,7 @@ public partial class KamilAssistantHost : UserControl
             // Incoming content waits for the surface to be most of the way to its new shape, so text
             // never appears in a box that is still visibly the wrong size.
             BeginTime = visible ? TimeSpan.FromMilliseconds(70) : TimeSpan.Zero,
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            EasingFunction = (IEasingFunction)Application.Current.FindResource("Ease.Out"),
             FillBehavior = FillBehavior.HoldEnd,
         });
 
@@ -255,7 +709,7 @@ public partial class KamilAssistantHost : UserControl
             To = visible ? 0 : 4,
             Duration = ContentDuration,
             BeginTime = visible ? TimeSpan.FromMilliseconds(70) : TimeSpan.Zero,
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            EasingFunction = (IEasingFunction)Application.Current.FindResource("Ease.Spring"),
             FillBehavior = FillBehavior.HoldEnd,
         });
     }

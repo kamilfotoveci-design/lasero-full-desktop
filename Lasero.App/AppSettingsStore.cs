@@ -23,8 +23,16 @@ public sealed class WorkspacePreferences
     /// the same bounds the splitter enforces, so a hand-edited or stale settings file cannot start
     /// the app with the workspace collapsed.</summary>
     public double InspectorWidth { get; set; } = DefaultInspectorWidth;
+    public double AssistantWidth { get; set; } = DefaultAssistantWidth;
+    public double AssistantHeight { get; set; } = DefaultAssistantHeight;
 
     public const double DefaultInspectorWidth = 320;
+    public const double DefaultAssistantWidth = 420;
+    public const double DefaultAssistantHeight = 560;
+    public const double MinAssistantWidth = 320;
+    public const double MinAssistantHeight = 360;
+    public const double MaxAssistantWidth = 720;
+    public const double MaxAssistantHeight = 760;
 
     /// <summary>The lower bound has to match DesignerInspectorView's own MinWidth. When it was
     /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than
@@ -55,6 +63,14 @@ public sealed class WorkspacePreferences
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
         : DefaultInspectorWidth;
+
+    public double ClampedAssistantWidth => double.IsFinite(AssistantWidth)
+        ? Math.Clamp(AssistantWidth, MinAssistantWidth, MaxAssistantWidth)
+        : DefaultAssistantWidth;
+
+    public double ClampedAssistantHeight => double.IsFinite(AssistantHeight)
+        ? Math.Clamp(AssistantHeight, MinAssistantHeight, MaxAssistantHeight)
+        : DefaultAssistantHeight;
 }
 
 public sealed class DevicePreferences
@@ -172,6 +188,8 @@ public sealed class AppSettingsStore
         settings.Machine ??= new MachinePreferences();
         settings.Workspace ??= new WorkspacePreferences();
         settings.Workspace.InspectorWidth = settings.Workspace.ClampedInspectorWidth;
+        settings.Workspace.AssistantWidth = settings.Workspace.ClampedAssistantWidth;
+        settings.Workspace.AssistantHeight = settings.Workspace.ClampedAssistantHeight;
         settings.Machine.Profiles ??= new Dictionary<string, MachineProfilePreferences>(StringComparer.OrdinalIgnoreCase);
         if (settings.Device.BaudRate <= 0) settings.Device.BaudRate = 115200;
         if (settings.Machine.WorkAreaWidthMm <= 0) settings.Machine.WorkAreaWidthMm = 500;
