@@ -435,6 +435,28 @@
                 <views:CanvasViewControls x:Name="CanvasViewControls" VerticalAlignment="Bottom" HorizontalAlignment="Right"
                                           Margin="0,0,20,20" Panel.ZIndex="20"
                                           TargetCanvas="{Binding ElementName=DesignerCanvas}" />
+            <!--
+                Kamil. One instance, shown only while the Designer (Návrh) screen is current: the
+                operator's hands are already on the canvas when they need it, and Home, Materiály,
+                Zařízení, Chat and the dialogs stay free of it. Collapsed rather than unloaded, so the
+                conversation is exactly as they left it on return.
+
+                It lives inside this row rather than over the whole window, so the machine strip below
+                is out of its reach by construction: Rámovat, Spustit, Pauza and Zastavit cannot be
+                covered because the assistant has no layout in that row at all.
+
+                Declared inside the canvas column (WorkspaceArea), so its bounds ARE the canvas: the head can never
+                reach the inspector, the splitter or the status strip, whatever the inspector measures.
+            -->
+            <kamil:KamilAssistantHost x:Name="KamilHost" Panel.ZIndex="30"
+                                      Visibility="{Binding DataContext.CurrentScreen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
+                                      DataContext="{Binding Kamil}">
+                <kamil:KamilAssistantHost.Margin>
+                    <MultiBinding Converter="{StaticResource AssistantClearance}">
+                        <Binding ElementName="CanvasViewControls" Path="ActualHeight" />
+                    </MultiBinding>
+                </kamil:KamilAssistantHost.Margin>
+            </kamil:KamilAssistantHost>
             </Grid>
 
             <!--
@@ -479,24 +501,6 @@
             <views:DesignerInspectorView x:Name="DesignerInspector" Grid.Column="3"
                                          Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}" />
 
-            <!--
-                Kamil. One instance, shown only while the Designer (Návrh) screen is current: the
-                operator's hands are already on the canvas when they need it, and Home, Materiály,
-                Zařízení, Chat and the dialogs stay free of it. Collapsed rather than unloaded, so the
-                conversation is exactly as they left it on return.
-
-                It lives inside this row rather than over the whole window, so the machine strip below
-                is out of its reach by construction: Rámovat, Spustit, Pauza and Zastavit cannot be
-                covered because the assistant has no layout in that row at all.
-
-                The right margin tracks the inspector's live width, parking the panel against the
-                canvas instead of on top of the operation settings its own "Použít na operaci" writes.
-            -->
-            <kamil:KamilAssistantHost x:Name="KamilHost" Grid.Column="1" Grid.ColumnSpan="3" Panel.ZIndex="30"
-                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                      Visibility="{Binding DataContext.CurrentScreen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                                      DataContext="{Binding Kamil}">
-            </kamil:KamilAssistantHost>
         </Grid>
 
         <!--

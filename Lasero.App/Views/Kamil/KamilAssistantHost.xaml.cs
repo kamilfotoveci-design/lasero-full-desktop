@@ -566,8 +566,14 @@ public partial class KamilAssistantHost : UserControl
     private Point HomeAnchor()
     {
         var bounds = GetUsableBounds(new Size(PillWidth, PillHeight));
-        return new Point(bounds.Right - PillWidth, bounds.Bottom - PillHeight);
+        return HeadOrigin(bounds.Right, bounds.Bottom);
     }
+
+    /// <summary>Top-left of the resting head inside a host whose usable area ends at
+    /// (<paramref name="right"/>, <paramref name="bottom"/>). Pure, so the placement is unit-testable.</summary>
+    public static Point HeadOrigin(double right, double bottom) => new(right - PillWidth, bottom - PillHeight);
+
+    public static Size HeadSize => new(PillWidth, PillHeight);
 
     /// <summary>Grows up and to the left of the fixed head, clear of it on both axes by
     /// <see cref="AnchorGap"/>. The position is intentionally fixed to this direction: the panel

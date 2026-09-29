@@ -5,40 +5,28 @@ using System.Windows.Data;
 namespace Lasero.App.Converters;
 
 /// <summary>
-/// Keeps the floating assistant clear of the right inspector and of the canvas's own undo / redo /
-/// pan / zoom cluster (<see cref="Lasero.App.Views.CanvasViewControls"/>), bottom-right of the
-/// workspace.
+/// Margin for the floating assistant host, which is declared inside the canvas column
+/// (<c>WorkspaceArea</c>) and therefore already ends at the splitter. Only the canvas's own
+/// undo / redo / pan / zoom cluster (<see cref="Lasero.App.Views.CanvasViewControls"/>, bottom-right,
+/// 20px in) needs to be cleared: the head shares the cluster's right edge and rests 12px above it,
+/// exactly where the 2c5dcbf build put it.
 ///
-/// The assistant is wider than the inspector, so anchoring it to the window's right edge would bury
-/// the operation panel — including the settings that "Použít na operaci" writes to, which is exactly
-/// what the operator wants to watch change. Offsetting it inward by the inspector's live width parks
-/// it against the canvas instead, and it follows the splitter when the inspector is resized.
-///
-/// The assistant used to sit almost flush on top of the view controls because the only vertical
-/// reservation was a fixed 16px inset, not the controls' actual measured height. Taking that height
-/// as a second input keeps the assistant's Minimized/QuickAsk/Expanded shapes clear of the cluster at
-/// every window size, rather than only on the one size someone happened to test at.
-///
-/// On screens with no inspector, or before <see cref="Lasero.App.Views.CanvasViewControls"/> has
-/// measured, the corresponding input is zero and that term drops out.
+/// Nothing here reads the inspector. An earlier version subtracted the inspector's measured width
+/// from a host that spanned the inspector column too; when the inspector measured 0 (empty or not yet
+/// laid out) the head landed on top of the inspector and the status strip.
 /// </summary>
 public sealed class AssistantClearanceConverter : IMultiValueConverter
 {
-    private const double Inset = 20;
-    private const double BottomInset = 16;
+    public const double RightInset = 20;
+    public const double ClusterBottomInset = 20;
+    public const double ClusterGap = 12;
 
-    public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
-    {
-        var inspectorWidth = MeasureOf(values, 0);
-        var controlsHeight = MeasureOf(values, 1);
-        return new Thickness(0, 0, Inset + inspectorWidth, BottomInset + controlsHeight + BottomInset);
-    }
+    public static Thickness Clearance(double controlsHeight) =>
+        new(0, 0, RightInset, ClusterBottomInset + Math.Max(0, controlsHeight) + ClusterGap);
+
+    public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        Clearance(values.Length > 0 && values[0] is double value && double.IsFinite(value) ? value : 0);
 
     public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
-
-    private static double MeasureOf(object[] values, int index) =>
-        index < values.Length && values[index] is double value && double.IsFinite(value) && value > 0
-            ? value
-            : 0;
 }
