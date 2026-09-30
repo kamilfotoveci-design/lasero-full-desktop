@@ -1,0 +1,102 @@
+09:18:00.253 creating app
+09:18:00.450 app created
+09:18:00.485 resources merged
+09:18:03.658 build Scenario { Name = zoom, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:03.783 showing
+09:18:06.194 shown
+09:18:06.634 build Scenario { Name = zoom, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:06.637 showing
+09:18:06.675 shown
+09:18:06.958 build Scenario { Name = zoom, Text = TEXT, ZoomPercent = 300, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:06.960 showing
+09:18:07.003 shown
+09:18:07.258 build Scenario { Name = stretched-tall, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 1, ScaleY = 3,5, Bold = False, Italic = False }
+09:18:07.260 showing
+09:18:07.295 shown
+09:18:07.505 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:07.508 showing
+09:18:07.592 shown
+09:18:07.839 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 47, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:07.842 showing
+09:18:07.883 shown
+09:18:08.121 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 25, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:08.123 showing
+09:18:08.157 shown
+09:18:08.382 build Scenario { Name = stretched-tall, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 3,5, Bold = False, Italic = False }
+09:18:08.385 showing
+09:18:08.425 shown
+09:18:08.646 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 300, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:08.649 showing
+09:18:08.687 shown
+09:18:08.919 build Scenario { Name = rotated-90, Text = TEXT, ZoomPercent = 100, RotationDeg = 90, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:08.922 showing
+09:18:08.956 shown
+09:18:09.125 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 100, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:09.128 showing
+09:18:09.160 shown
+09:18:09.345 build Scenario { Name = scaled-x3, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 3, ScaleY = 3, Bold = False, Italic = False }
+09:18:09.348 showing
+09:18:09.380 shown
+09:18:09.568 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:09.570 showing
+09:18:09.605 shown
+09:18:09.783 build Scenario { Name = bold-italic, Text = Ahoj svete, ZoomPercent = 300, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = True, Italic = True }
+09:18:09.786 showing
+09:18:09.817 shown
+09:18:10.060 build Scenario { Name = scaled-x3, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 3, ScaleY = 3, Bold = False, Italic = False }
+09:18:10.063 showing
+09:18:10.105 shown
+09:18:10.288 build Scenario { Name = mirrored, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = -1, ScaleY = 1, Bold = False, Italic = False }
+09:18:10.290 showing
+09:18:10.324 shown
+09:18:10.509 build Scenario { Name = bold-italic, Text = Ahoj svete, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = True, Italic = True }
+09:18:10.511 showing
+09:18:10.544 shown
+09:18:10.748 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 300, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:10.750 showing
+09:18:10.789 shown
+09:18:11.015 build Scenario { Name = bold-italic, Text = Ahoj svete, ZoomPercent = 300, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = True, Italic = True }
+09:18:11.017 showing
+09:18:11.049 shown
+09:18:11.344 build Scenario { Name = stretched-tall, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 1, ScaleY = 3,5, Bold = False, Italic = False }
+09:18:11.346 showing
+09:18:11.377 shown
+09:18:11.560 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 25, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:11.562 showing
+09:18:11.594 shown
+09:18:11.760 build Scenario { Name = stretched-tall, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 3,5, Bold = False, Italic = False }
+09:18:11.762 showing
+09:18:11.792 shown
+09:18:11.988 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:11.990 showing
+09:18:12.049 shown
+09:18:12.205 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 100, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:12.207 showing
+09:18:12.235 shown
+09:18:12.391 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 300, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:12.393 showing
+09:18:12.422 shown
+09:18:12.675 build Scenario { Name = rotated-30, Text = TEXT, ZoomPercent = 47, RotationDeg = 30, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:12.677 showing
+09:18:12.734 shown
+09:18:12.896 build Scenario { Name = scaled-x3, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 3, ScaleY = 3, Bold = False, Italic = False }
+09:18:12.902 showing
+09:18:12.939 shown
+09:18:13.122 build Scenario { Name = bold-italic, Text = Ahoj svete, ZoomPercent = 100, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = True, Italic = True }
+09:18:13.124 showing
+09:18:13.154 shown
+09:18:13.372 build Scenario { Name = scaled-x3, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = 3, ScaleY = 3, Bold = False, Italic = False }
+09:18:13.375 showing
+09:18:13.402 shown
+09:18:13.586 build Scenario { Name = rotated-90, Text = TEXT, ZoomPercent = 100, RotationDeg = 90, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:13.588 showing
+09:18:13.618 shown
+09:18:13.820 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 47, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:13.822 showing
+09:18:13.852 shown
+09:18:13.988 build Scenario { Name = mirrored, Text = TEXT, ZoomPercent = 100, RotationDeg = 0, ScaleX = -1, ScaleY = 1, Bold = False, Italic = False }
+09:18:13.989 showing
+09:18:14.018 shown
+09:18:14.177 build Scenario { Name = plain, Text = TEXT, ZoomPercent = 300, RotationDeg = 0, ScaleX = 1, ScaleY = 1, Bold = False, Italic = False }
+09:18:14.178 showing
+09:18:14.206 shown

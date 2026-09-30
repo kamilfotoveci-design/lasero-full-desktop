@@ -140,6 +140,16 @@ public partial class SceneCanvas : UserControl
     private SceneObject? _editingTextObject;
     private TextBox? _inlineTextEditor;
 
+    // Where the edited text's line box starts in the object's local space. Measured once when editing
+    // begins (the wording and type settings cannot change under an open editor), then reused every
+    // time the view moves, so panning or zooming never has to re-run the glyph geometry.
+    private Position _inlineEditorLayoutOrigin;
+
+    // The dashed frame around the editor. It is the selection box for the text being typed: the
+    // object's own box describes the old wording and cannot grow while the operator types, so it is
+    // replaced for the length of the edit by one that is measured from the live editor.
+    private Polygon? _inlineEditorFrame;
+
     public event Action<Position>? TextPlacementRequested;
 
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
@@ -404,8 +414,10 @@ public partial class SceneCanvas : UserControl
         {
             _inlineTextEditor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
             _inlineTextEditor.LostKeyboardFocus -= OnInlineEditorLostFocus;
+            _inlineTextEditor.SizeChanged -= OnInlineEditorSizeChanged;
             _inlineTextEditor = null;
             _editingTextObject = null;
+            _inlineEditorFrame = null;
         }
 
         foreach (var obj in _objectVisuals.Keys.ToList())
@@ -441,6 +453,10 @@ public partial class SceneCanvas : UserControl
             foreach (var obj in ViewModel.Objects)
                 UpdateObjectGeometry(obj);
         RedrawSelectionOverlay();
+
+        // Pan, zoom, fit and resize all end up here. The editor lives on the same canvas as the
+        // artwork, so it has to follow the view exactly as the artwork does.
+        RepositionInlineTextEditor();
     }
 
     private void AddObjectVisuals(SceneObject obj)
@@ -546,6 +562,8 @@ public partial class SceneCanvas : UserControl
         UpdateObjectGeometry(obj);
         if (ViewModel is not null && ViewModel.SelectedObjects.Contains(obj))
             RedrawSelectionOverlay(); // handles/bbox must track live transform changes during a drag
+        if (ReferenceEquals(obj, _editingTextObject))
+            RepositionInlineTextEditor();
     }
 
     private void UpdateObjectGeometry(SceneObject obj)
@@ -606,7 +624,11 @@ public partial class SceneCanvas : UserControl
             paths[i].Fill = fills && group.Any(shape => shape.IsClosed)
                 ? new SolidColorBrush(color)
                 : null;
-            paths[i].Visibility = obj.IsVisible && (ViewModel?.IsLayerVisible(layerId, layerColor) ?? true)
+            // The object under the inline editor stays hidden for as long as the editor is open. This
+            // method runs on every pan and zoom, and it used to put the artwork back each time, so the
+            // wording showed twice: once as the editor and once, at the new zoom, as the object.
+            paths[i].Visibility = obj.IsVisible && (ViewModel?.IsLayerVisible(layerId, layerColor) ?? true) &&
+                !ReferenceEquals(obj, _editingTextObject)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             paths[i].Opacity = opacity;
@@ -867,7 +889,9 @@ public partial class SceneCanvas : UserControl
         if (ViewModel.SelectedObjects.Count == 1)
         {
             var selected = ViewModel.SelectedObjects[0];
-            if (IsObjectVisibleOnCanvas(selected))
+            // Not while its text is being typed: the handles frame the old wording and would sit at
+            // the old extents as the editor grows. The editor's own frame takes their place.
+            if (IsObjectVisibleOnCanvas(selected) && !ReferenceEquals(selected, _editingTextObject))
                 DrawSingleObjectHandles(selected);
         }
         else
@@ -877,7 +901,8 @@ public partial class SceneCanvas : UserControl
         // object the box alone is ambiguous about which shape it belongs to.
         foreach (var obj in ViewModel.SelectedObjects)
         {
-            if (IsObjectVisibleOnCanvas(obj))
+            // Not the text being typed into: its contours would crawl through the live letters.
+            if (IsObjectVisibleOnCanvas(obj) && !ReferenceEquals(obj, _editingTextObject))
                 DrawObjectAnts(obj);
         }
     }
@@ -1469,8 +1494,21 @@ public partial class SceneCanvas : UserControl
             ViewModel.SelectedObjects.Add(obj);
         }
 
+        // Measure where the text starts before touching anything on screen, so a font that cannot
+        // produce outlines leaves the object exactly as it was rather than hidden with no editor.
+        try
+        {
+            _inlineEditorLayoutOrigin = Lasero.App.VectorTextFactory.LayoutOriginLocal(obj.Text);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            Log.Warning(ex, "Inline text editing unavailable for {Name}", obj.Name);
+            return;
+        }
+
         // Swap cleanly: the flattened contours and the live editor must never both be visible, or the
-        // wording would appear to double while typing.
+        // wording would appear to double while typing. UpdateObjectGeometry keeps them hidden for as
+        // long as the editor is open.
         if (_objectVisuals.TryGetValue(obj, out var hiddenPaths))
             foreach (var path in hiddenPaths) path.Visibility = Visibility.Collapsed;
 
@@ -1480,9 +1518,15 @@ public partial class SceneCanvas : UserControl
             AcceptsReturn = true,
             AcceptsTab = false,
             TextWrapping = TextWrapping.NoWrap,
+            // The app-wide TextBox style (chrome, minimum height, padding) would inset the letters from
+            // the line box they have to start on, so opt out of it and use a template that is nothing
+            // but the text.
+            Style = null,
+            Template = BareTextBoxTemplate(),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(0),
             Margin = new Thickness(0),
+            MinHeight = 0,
             Background = Brushes.Transparent,
             SelectionBrush = SelectionBrush,
             Foreground = TextForegroundBrush(obj),
@@ -1490,8 +1534,21 @@ public partial class SceneCanvas : UserControl
             FontStyle = obj.Text.Italic ? FontStyles.Italic : FontStyles.Normal,
             FontWeight = obj.Text.Bold ? FontWeights.Bold : FontWeights.Normal,
             CharacterCasing = obj.Text.Uppercase ? CharacterCasing.Upper : CharacterCasing.Normal,
+            Language = System.Windows.Markup.XmlLanguage.GetLanguage(
+                System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag),
             RenderTransformOrigin = new Point(0, 0),
+            UseLayoutRounding = false,
+            SnapsToDevicePixels = false,
+            FocusVisualStyle = null,
         };
+
+        // The window sets Display formatting and fixed hinting for crisp UI text. That rounds every
+        // glyph advance to whole pixels, so the same wording came out a different width than the
+        // outlines drawn from unhinted design metrics. Ideal metrics with no hinting is what
+        // VectorTextFactory measures with, and what stays true under the scale/rotate transform below.
+        TextOptions.SetTextFormattingMode(editor, TextFormattingMode.Ideal);
+        TextOptions.SetTextHintingMode(editor, TextHintingMode.Animated);
+        TextOptions.SetTextRenderingMode(editor, TextRenderingMode.Grayscale);
 
         try
         {
@@ -1506,12 +1563,23 @@ public partial class SceneCanvas : UserControl
 
         editor.PreviewKeyDown += OnInlineEditorPreviewKeyDown;
         editor.LostKeyboardFocus += OnInlineEditorLostFocus;
+        editor.SizeChanged += OnInlineEditorSizeChanged;
 
         _editingTextObject = obj;
         _inlineTextEditor = editor;
 
+        _inlineEditorFrame = new Polygon
+        {
+            Stroke = SelectionBrush,
+            StrokeThickness = 1.2,
+            Fill = Brushes.Transparent,
+            IsHitTestVisible = false,
+        };
+        ApplyMarchingAnts(_inlineEditorFrame);
+        DrawCanvas.Children.Add(_inlineEditorFrame);
         DrawCanvas.Children.Add(editor);
         PositionInlineTextEditor(obj, editor);
+        RedrawSelectionOverlay(); // drops the box, handles and crawling contours the editor replaces
 
         editor.Focus();
         Keyboard.Focus(editor);
@@ -1520,34 +1588,86 @@ public partial class SceneCanvas : UserControl
         editor.SelectAll();
     }
 
+    private void RepositionInlineTextEditor()
+    {
+        if (_inlineTextEditor is not null && _editingTextObject is not null)
+            PositionInlineTextEditor(_editingTextObject, _inlineTextEditor);
+    }
+
+    /// <summary>
+    /// Lays the editor over the object it is editing. The geometry lives in InlineTextEditorLayout so
+    /// it can be tested without a window; this only applies the result. The box is deliberately not
+    /// given a width or height: it takes the size its own wording needs, so typing more than the
+    /// object currently says still shows all of it instead of scrolling inside a fixed frame.
+    /// </summary>
     private void PositionInlineTextEditor(SceneObject obj, TextBox editor)
     {
-        var pivot = obj.LocalPivot;
-        var topLeftWorld = obj.Transform.Apply(
-            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.TopLeft), pivot);
-        var topRightWorld = obj.Transform.Apply(
-            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.TopRight), pivot);
-        var bottomLeftWorld = obj.Transform.Apply(
-            ObjectTransform.HandleLocalPoint(obj.LocalBounds, pivot, ResizeHandle.BottomLeft), pivot);
+        var view = new CanvasView(_scale, _offsetXMm, _offsetYMm, MarginPx, ActualHeight);
+        var layout = InlineTextEditorLayout.Compute(
+            obj.Transform, obj.LocalPivot, _inlineEditorLayoutOrigin, obj.Text!.HeightMm, view);
 
-        var topLeftScreen = new Point(ToCanvasX(topLeftWorld.X), ToCanvasY(topLeftWorld.Y));
-        var topRightScreen = new Point(ToCanvasX(topRightWorld.X), ToCanvasY(topRightWorld.Y));
-        var bottomLeftScreen = new Point(ToCanvasX(bottomLeftWorld.X), ToCanvasY(bottomLeftWorld.Y));
+        // A very small em (small text, zoomed far out) is laid out at a legible size and shrunk by the
+        // transform instead, so the editor keeps the exact proportions rather than snapping to a floor.
+        var fontSize = Math.Max(layout.FontSizePx, MinEditorFontPx);
+        var matrix = layout.Transform;
+        if (fontSize > layout.FontSizePx)
+        {
+            var shrink = layout.FontSizePx / fontSize;
+            matrix.ScalePrepend(shrink, shrink);
+        }
 
-        var widthPx = Distance(topLeftScreen, topRightScreen);
-        var heightPx = Distance(topLeftScreen, bottomLeftScreen);
-        // Screen-space angle derived from the same rotated corners the selection outline already
-        // draws, rather than negating Transform.RotationDeg by hand - that keeps this correct under
-        // the canvas Y-flip without having to reason about its sign separately.
-        var angleDeg = Math.Atan2(
-            topRightScreen.Y - topLeftScreen.Y, topRightScreen.X - topLeftScreen.X) * 180.0 / Math.PI;
+        editor.FontSize = fontSize;
+        editor.MinWidth = Math.Max(2, fontSize * 0.3);
+        editor.RenderTransform = new MatrixTransform(matrix);
+        Canvas.SetLeft(editor, layout.Origin.X);
+        Canvas.SetTop(editor, layout.Origin.Y);
 
-        editor.Width = Math.Max(widthPx, 24);
-        editor.Height = Math.Max(heightPx, 18);
-        editor.FontSize = Math.Max(4, obj.Text!.HeightMm * Math.Abs(obj.Transform.ScaleY) * _scale);
-        editor.RenderTransform = new RotateTransform(angleDeg);
-        Canvas.SetLeft(editor, topLeftScreen.X);
-        Canvas.SetTop(editor, topLeftScreen.Y);
+        _inlineEditorMatrix = matrix;
+        _inlineEditorOrigin = layout.Origin;
+        UpdateInlineEditorFrame();
+    }
+
+    private Matrix _inlineEditorMatrix = Matrix.Identity;
+    private Point _inlineEditorOrigin;
+
+    private void OnInlineEditorSizeChanged(object sender, SizeChangedEventArgs e) => UpdateInlineEditorFrame();
+
+    /// <summary>Follows the editor's live size: it is measured from the TextBox rather than from the
+    /// object, so the frame grows and shrinks with every keystroke.</summary>
+    private void UpdateInlineEditorFrame()
+    {
+        if (_inlineEditorFrame is null || _inlineTextEditor is null) return;
+
+        var width = _inlineTextEditor.ActualWidth;
+        var height = _inlineTextEditor.ActualHeight;
+        if (width <= 0 || height <= 0) return;
+
+        // About three screen pixels of air around the letters, whatever the object's scale is.
+        var determinant = Math.Abs(_inlineEditorMatrix.Determinant);
+        var pad = 3 / Math.Max(Math.Sqrt(determinant), 1e-6);
+
+        _inlineEditorFrame.Points = new PointCollection(new[]
+        {
+            new Point(-pad, -pad), new Point(width + pad, -pad),
+            new Point(width + pad, height + pad), new Point(-pad, height + pad),
+        }.Select(p =>
+        {
+            var mapped = _inlineEditorMatrix.Transform(p);
+            return new Point(mapped.X + _inlineEditorOrigin.X, mapped.Y + _inlineEditorOrigin.Y);
+        }));
+    }
+
+    private const double MinEditorFontPx = 4;
+
+    /// <summary>A TextBox that is only its text: no border, no padding, no chrome. Anything more shifts
+    /// the letters off the line box they are meant to start on.</summary>
+    private static ControlTemplate BareTextBoxTemplate()
+    {
+        var host = new FrameworkElementFactory(typeof(ScrollViewer)) { Name = "PART_ContentHost" };
+        host.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Hidden);
+        host.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Hidden);
+        host.SetValue(UIElement.FocusableProperty, false);
+        return new ControlTemplate(typeof(TextBox)) { VisualTree = host };
     }
 
     private void OnInlineEditorPreviewKeyDown(object sender, KeyEventArgs e)
@@ -1593,12 +1713,26 @@ public partial class SceneCanvas : UserControl
 
         editor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
         editor.LostKeyboardFocus -= OnInlineEditorLostFocus;
+        editor.SizeChanged -= OnInlineEditorSizeChanged;
         DrawCanvas.Children.Remove(editor);
+        if (_inlineEditorFrame is not null) DrawCanvas.Children.Remove(_inlineEditorFrame);
+        _inlineEditorFrame = null;
 
-        if (_objectVisuals.TryGetValue(obj, out var paths))
-            foreach (var path in paths) path.Visibility = Visibility.Visible;
+        // Through the normal path rather than forcing Visible, so a hidden layer stays hidden.
+        UpdateObjectGeometry(obj);
+        RedrawSelectionOverlay();
 
-        if (applyChanges) ViewModel?.CommitTextEdit(obj, editor.Text);
+        if (!applyChanges) return;
+
+        // CharacterCasing.Upper upper-cases what the box reports, not just what it shows. Committing
+        // that unchanged would overwrite the wording the operator typed with its capitals version and
+        // push an undo step for an edit nobody made.
+        var edited = editor.Text;
+        if (obj.Text is { Uppercase: true } && string.Equals(
+                edited, obj.Text.Text, StringComparison.CurrentCultureIgnoreCase))
+            return;
+
+        ViewModel?.CommitTextEdit(obj, edited);
     }
 
     private static Brush TextForegroundBrush(SceneObject obj)
