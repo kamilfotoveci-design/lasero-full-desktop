@@ -42,6 +42,26 @@ public partial class MainViewModel : ObservableObject
     public KamilAssistantViewModel Kamil { get; }
     public AppSettings Settings => _settingsStore.Current;
 
+    private void OnKamilPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(KamilAssistantViewModel.State)) return;
+        // Hidden is a view-model-only state with no UI path; it says nothing about how the operator
+        // left the panel.
+        if (Kamil.State == KamilAssistantState.Hidden) return;
+        var expanded = Kamil.State == KamilAssistantState.Expanded;
+        if (Settings.Workspace.AssistantExpanded == expanded) return;
+        try
+        {
+            Settings.Workspace.AssistantExpanded = expanded;
+            _settingsStore.Save();
+        }
+        catch (Exception ex)
+        {
+            // Remembering the panel shape is a convenience and must never interrupt the session.
+            Serilog.Log.Warning(ex, "Failed to persist Kamil panel state");
+        }
+    }
+
     [ObservableProperty] private string _projectName = "Nový projekt";
     [ObservableProperty] private string? _projectPath;
     [ObservableProperty] private bool _isDirty;
@@ -200,6 +220,10 @@ public partial class MainViewModel : ObservableObject
         Jog.InvertZAxis = Settings.Machine.InvertZAxis;
         Jog.ZStepSizeMm = Settings.Machine.ZJogStepMm;
         Jog.ZJogFeedRate = Settings.Machine.ZJogFeedRateMmPerMinute;
+        // KAMIL comes back the way the operator left it. Set before any view exists, so the host's
+        // first render already shows the restored shape and no transition plays at startup.
+        if (Settings.Workspace.AssistantExpanded) Kamil.State = KamilAssistantState.Expanded;
+        Kamil.PropertyChanged += OnKamilPropertyChanged;
         Scene.Changed += OnSceneChanged;
         GCode.PlacementChanged += OnSceneChanged;
         Home.OpenRecentProjectRequested += OnOpenRecentProjectRequested;
