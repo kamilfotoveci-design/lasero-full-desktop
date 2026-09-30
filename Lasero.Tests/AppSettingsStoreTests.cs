@@ -29,6 +29,24 @@ public sealed class AppSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void OffsetKeepOriginalDefaultsToOnAndRoundTrips()
+    {
+        var store = new AppSettingsStore(SettingsPath);
+        Assert.True(store.Current.Workspace.OffsetKeepOriginal);
+        store.Current.Workspace.OffsetKeepOriginal = false;
+        store.Save();
+
+        Assert.False(new AppSettingsStore(SettingsPath).Load().Workspace.OffsetKeepOriginal);
+    }
+
+    [Fact]
+    public void SettingsFileWithoutTheOffsetPreferenceStillKeepsTheOriginal()
+    {
+        File.WriteAllText(SettingsPath, "{\"Workspace\":{\"InspectorWidth\":400}}");
+        Assert.True(new AppSettingsStore(SettingsPath).Load().Workspace.OffsetKeepOriginal);
+    }
+
+    [Fact]
     public void CorruptSettingsArePreservedAndDefaultsAreReturned()
     {
         File.WriteAllText(SettingsPath, "{broken");

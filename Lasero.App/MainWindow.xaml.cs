@@ -419,11 +419,21 @@ public partial class MainWindow : Window
     {
         if (sources.Count == 0) return;
 
-        var offsetViewModel = new OffsetPathViewModel(sources);
+        var offsetViewModel = new OffsetPathViewModel(
+            sources, keepOriginal: _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal);
         var window = new OffsetPathWindow(offsetViewModel) { Owner = this };
         if (window.ShowDialog() != true) return;
 
-        _viewModel.Scene.ApplyOffset(sources, offsetViewModel.ResultsBySource);
+        _viewModel.Scene.ApplyOffset(sources, offsetViewModel.ResultsBySource, offsetViewModel.KeepOriginal);
+        try
+        {
+            _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal = offsetViewModel.KeepOriginal;
+            _viewModel.SettingsStore.Save();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to persist offset keep-original preference");
+        }
         if (_viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
             _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
         _viewModel.GCode.LastMessage = "Offset byl použit. Změnu lze vrátit pomocí Ctrl+Z.";

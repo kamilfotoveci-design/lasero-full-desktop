@@ -1316,27 +1316,58 @@ public partial class SceneViewModel : ObservableObject
         return true;
     }
 
+    /// <param name="keepOriginal">True (the default): every source stays exactly as it was and its offset
+    /// is inserted as a new object directly above it. False: each source is replaced by its offset. Both
+    /// are one undo step. A locked source is only ever kept — replacing would modify it.</param>
     public void ApplyOffset(
         IReadOnlyList<SceneObject> sources,
-        IReadOnlyDictionary<SceneObject, VectorPath> resultsBySource)
+        IReadOnlyDictionary<SceneObject, VectorPath> resultsBySource,
+        bool keepOriginal = true)
     {
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(resultsBySource);
 
         var removed = new List<SceneObject>();
         var added = new List<SceneObject>();
+        var anchored = new List<(SceneObject Anchor, SceneObject Added)>();
         foreach (var source in sources)
         {
             if (!Objects.Contains(source)) continue;
             if (!resultsBySource.TryGetValue(source, out var path) || path.Subpaths.Count == 0) continue;
 
-            removed.Add(source);
-            added.Add(BuildOffsetObject(source, path));
+            var offset = BuildOffsetObject(source, path);
+            if (keepOriginal || source.IsLocked)
+            {
+                anchored.Add((source, offset));
+            }
+            else
+            {
+                removed.Add(source);
+            }
+            added.Add(offset);
         }
 
-        if (removed.Count == 0) return;
+        if (added.Count == 0) return;
 
-        Execute(new ReplaceObjectsCommand(Scene, removed, added));
+        if (anchored.Count > 0 && removed.Count > 0)
+        {
+            // A locked source next to unlocked ones in replace mode: keep the locked, replace the rest.
+            var replacement = added.Where(item => !anchored.Any(pair => ReferenceEquals(pair.Added, item))).ToList();
+            Execute(new CompositeSceneCommand(
+            [
+                new ReplaceObjectsCommand(Scene, removed, replacement),
+                new InsertObjectsAboveCommand(Scene, anchored),
+            ]));
+        }
+        else if (anchored.Count > 0)
+        {
+            Execute(new InsertObjectsAboveCommand(Scene, anchored));
+        }
+        else
+        {
+            Execute(new ReplaceObjectsCommand(Scene, removed, added));
+        }
+
         SelectedObjects.Clear();
         foreach (var item in added) SelectedObjects.Add(item);
     }

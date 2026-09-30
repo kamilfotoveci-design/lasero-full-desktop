@@ -36,7 +36,21 @@
                 <Grid>
                     <Viewbox Stretch="Uniform">
                         <Grid Width="{Binding PreviewWidthMm, Mode=OneWay}" Height="{Binding PreviewHeightMm, Mode=OneWay}">
-                            <Path Data="{Binding SourceOutlineGeometry}" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="0.3" Opacity="0.5" Fill="Transparent" />
+                            <!-- Kept original: drawn in the normal ink so both shapes read at once. Replaced original: dimmed, it is going away. -->
+                            <Path Data="{Binding SourceOutlineGeometry}" StrokeThickness="0.3" Fill="Transparent">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Stroke" Value="{StaticResource Brush.TextSecondary}" />
+                                        <Setter Property="Opacity" Value="0.5" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding KeepOriginal}" Value="True">
+                                                <Setter Property="Stroke" Value="{StaticResource Brush.TextPrimary}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
                             <Path Data="{Binding PreviewGeometry}" Stroke="{StaticResource Brush.Accent}" StrokeThickness="0.5" Fill="Transparent" />
                         </Grid>
                     </Viewbox>
@@ -74,13 +88,26 @@
                             </StackPanel>
                         </Border>
 
+                        <CheckBox Content="Ponechat původní tvar" IsChecked="{Binding KeepOriginal}" Margin="2,14,0,0"
+                                  ToolTip="Zapnuto: původní tvar zůstane na místě a offset se přidá jako nový objekt nad něj. Vypnuto: původní tvar se offsetem nahradí." />
+
                         <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,14,0,0">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children
                                  with infinite width, so TextWrapping never engages. -->
                             <DockPanel>
                                 <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.AccentText}" Margin="0,1,9,0" />
-                                <TextBlock Text="Každý vybraný tvar se nahradí vlastní upravitelnou křivkou. Původní stav lze obnovit pomocí Ctrl+Z."
-                                           TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Ke každému vybranému tvaru se přidá vlastní upravitelná křivka. Vše lze vrátit pomocí Ctrl+Z." />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding KeepOriginal}" Value="False">
+                                                    <Setter Property="Text" Value="Každý vybraný tvar se nahradí vlastní upravitelnou křivkou. Původní stav lze obnovit pomocí Ctrl+Z." />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DockPanel>
                         </Border>
 
@@ -92,7 +119,7 @@
 
         <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="20,12">
             <Grid>
-                <TextBlock Text="Modrá čára je výsledek offsetu, šedá je původní tvar." Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+                <TextBlock Text="Modrá čára je výsledek offsetu, druhá čára je původní tvar." Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Click="OnCancelClick" Padding="16,0" Margin="0,0,8,0">Zrušit</Button>
                     <Button IsDefault="True" Style="{StaticResource PrimaryBlue}" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Padding="18,0">

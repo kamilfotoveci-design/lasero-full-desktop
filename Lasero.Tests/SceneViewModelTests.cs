@@ -1986,7 +1986,7 @@ public class SceneViewModelTests
             rectangle, Clipper2VectorOffsetService.Default, 2, VectorJoinType.Miter, 4);
         Assert.NotNull(path);
 
-        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! });
+        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! }, keepOriginal: false);
 
         var result = Assert.Single(viewModel.Objects);
         Assert.True(result.IsVectorPath);
@@ -2017,7 +2017,7 @@ public class SceneViewModelTests
             [second] = VectorOffsetPlanner.ComputeOffset(second, service, 2, VectorJoinType.Round, 2)!,
         };
 
-        viewModel.ApplyOffset([first, second], results);
+        viewModel.ApplyOffset([first, second], results, keepOriginal: false);
 
         Assert.Equal(2, viewModel.Objects.Count);
         Assert.DoesNotContain(first, viewModel.Objects);
@@ -2033,6 +2033,94 @@ public class SceneViewModelTests
         Assert.False(viewModel.CanUndo);
     }
 
+    private static Dictionary<SceneObject, VectorPath> OffsetResults(double distance, params SceneObject[] sources) =>
+        sources.ToDictionary(
+            source => source,
+            source => VectorOffsetPlanner.ComputeOffset(source, Clipper2VectorOffsetService.Default, distance, VectorJoinType.Round, 2)!);
+
+    [Fact]
+    public void ApplyOffsetKeepsTheOriginalAndAddsTheOffsetDirectlyAboveItByDefault()
+    {
+        var viewModel = new SceneViewModel();
+        var below = MakeSquareObject(x: 100);
+        var source = MakeSquareObject();
+        var above = MakeSquareObject(x: 200);
+        foreach (var item in new[] { below, source, above }) viewModel.Objects.Add(item);
+        viewModel.SelectedObjects.Add(source);
+        var sourceBounds = source.WorldBounds();
+
+        viewModel.ApplyOffset([source], OffsetResults(2, source));
+
+        Assert.Equal(4, viewModel.Objects.Count);
+        Assert.Same(below, viewModel.Objects[0]);
+        Assert.Same(source, viewModel.Objects[1]);
+        var offset = viewModel.Objects[2];
+        Assert.True(offset.IsVectorPath);
+        Assert.Same(above, viewModel.Objects[3]);
+        Assert.Equal(sourceBounds, source.WorldBounds());
+        Assert.Same(offset, Assert.Single(viewModel.SelectedObjects));
+        Assert.Equal(source.LocalShapes[0].LayerId, offset.LocalShapes[0].LayerId);
+        Assert.Equal(source.LocalShapes[0].PreferredMode, offset.LocalShapes[0].PreferredMode);
+    }
+
+    [Fact]
+    public void ApplyOffsetWithKeepOriginalAddsOneObjectPerSourceAndUndoRestoresExactly()
+    {
+        var viewModel = new SceneViewModel();
+        var first = MakeSquareObject();
+        var second = MakeSquareObject(x: 40);
+        viewModel.Objects.Add(first);
+        viewModel.Objects.Add(second);
+        var before = viewModel.Objects.ToList();
+
+        viewModel.ApplyOffset([first, second], OffsetResults(2, first, second));
+
+        Assert.Equal(4, viewModel.Objects.Count);
+        Assert.Equal(2, viewModel.SelectedObjects.Count);
+        Assert.Same(first, viewModel.Objects[0]);
+        Assert.Same(second, viewModel.Objects[2]);
+
+        viewModel.UndoCommand.Execute(null);
+
+        Assert.Equal(before, viewModel.Objects.ToList());
+        Assert.False(viewModel.CanUndo);
+    }
+
+    [Fact]
+    public void ApplyOffsetWithKeepOriginalOffAndOnAreBothOneUndoStepAndReplaceRemovesTheSource()
+    {
+        var viewModel = new SceneViewModel();
+        var source = MakeSquareObject();
+        viewModel.Objects.Add(source);
+
+        viewModel.ApplyOffset([source], OffsetResults(2, source), keepOriginal: false);
+
+        Assert.DoesNotContain(source, viewModel.Objects);
+        Assert.Single(viewModel.Objects);
+        viewModel.UndoCommand.Execute(null);
+        Assert.Same(source, Assert.Single(viewModel.Objects));
+        Assert.False(viewModel.CanUndo);
+    }
+
+    [Fact]
+    public void ApplyOffsetNeverReplacesALockedSourceEvenWhenReplaceIsRequested()
+    {
+        var viewModel = new SceneViewModel();
+        var locked = MakeSquareObject();
+        locked.IsLocked = true;
+        var free = MakeSquareObject(x: 40);
+        viewModel.Objects.Add(locked);
+        viewModel.Objects.Add(free);
+
+        viewModel.ApplyOffset([locked, free], OffsetResults(2, locked, free), keepOriginal: false);
+
+        Assert.Contains(locked, viewModel.Objects);
+        Assert.DoesNotContain(free, viewModel.Objects);
+        Assert.Equal(3, viewModel.Objects.Count);
+        viewModel.UndoCommand.Execute(null);
+        Assert.Equal([locked, free], viewModel.Objects.ToList());
+    }
+
     [Fact]
     public void UndoAfterOffsetRestoresTheOriginalObjectExactly()
     {
@@ -2045,7 +2133,7 @@ public class SceneViewModelTests
         var path = VectorOffsetPlanner.ComputeOffset(
             rectangle, Clipper2VectorOffsetService.Default, -2, VectorJoinType.Round, 2);
         Assert.NotNull(path);
-        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! });
+        viewModel.ApplyOffset([rectangle], new Dictionary<SceneObject, VectorPath> { [rectangle] = path! }, keepOriginal: false);
         Assert.NotSame(rectangle, Assert.Single(viewModel.Objects));
 
         viewModel.UndoCommand.Execute(null);

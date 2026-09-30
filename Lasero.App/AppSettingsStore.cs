@@ -30,6 +30,10 @@ public sealed class WorkspacePreferences
     /// restore as the head; the head's own position is fixed by design and is never stored.</summary>
     public bool AssistantExpanded { get; set; }
 
+    /// <summary>Offset Path: keep the original shape and add the offset as a new object (true, the
+    /// default) or replace the original. Remembered from the last time the dialog was applied.</summary>
+    public bool OffsetKeepOriginal { get; set; } = true;
+
     public const double DefaultInspectorWidth = 320;
     public const double DefaultAssistantWidth = 420;
     public const double DefaultAssistantHeight = 560;
