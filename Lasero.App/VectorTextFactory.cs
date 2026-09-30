@@ -157,6 +157,24 @@ public static class VectorTextFactory
         };
     }
 
+    /// <summary>
+    /// Where the top-left of the text's own line box sits in the object's local space, which is the
+    /// point the inline editor has to start from for its letters to fall on this object's letters.
+    ///
+    /// Local geometry is centred on the ink's bounding box, not on where the type was laid out from, so
+    /// the layout origin is simply that centring undone. For freshly created text it is the click point
+    /// once the transform is applied; for any text it is the same measurement Create/Rebuild used, so it
+    /// cannot drift from the contours. Distortion is left out on purpose: it warps the ink after
+    /// measuring, an editor cannot show a warp, and the un-warped wording is centred on the object's
+    /// pivot so the editor opens where the text is.
+    /// </summary>
+    public static Position LayoutOriginLocal(TextSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var render = BuildLocalGeometry(source with { Distortion = TextDistortion.None }, DefaultColor);
+        return new Position(-render.CenterX, -render.CenterY, 0);
+    }
+
     private static string BuildName(TextSource source)
     {
         var text = source.EffectiveText(CultureInfo.CurrentUICulture);
