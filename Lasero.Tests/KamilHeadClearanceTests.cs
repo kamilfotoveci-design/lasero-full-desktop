@@ -33,7 +33,7 @@ public sealed class KamilHeadClearanceTests
 
         var sizes = new[]
         {
-            new Size(400, Math.Min(160, room)),                       // QuickAsk
+            new Size(400, Math.Min(200, room)),                       // QuickAsk
             new Size(420, Math.Min(640, room)),                       // Expanded, default
             new Size(420, Math.Min(500, room)),                       // Expanded, adaptive minimum
             new Size(Math.Min(720, bounds.Width), Math.Min(760, room)), // Expanded, user-resized to the maximum

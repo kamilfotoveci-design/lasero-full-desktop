@@ -32,7 +32,7 @@ public partial class KamilAssistantHost : UserControl
     private const double PillWidth = 48;
     private const double PillHeight = 48;
     private const double QuickWidth = 400;
-    private const double QuickHeight = 160;
+    private const double QuickHeight = 200;
     private const double ExpandedWidth = 420;
     private const double ExpandedMaxHeight = 640;
     private const double ExpandedMinHeight = 500;
