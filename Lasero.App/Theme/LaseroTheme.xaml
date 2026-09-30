@@ -354,6 +354,14 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
     </Style>
 
+    <!-- A Badge that sits in a row with buttons (header actions, toolbars). A plain Badge is text plus 6px of
+         padding, about 32px tall, so beside a 36px button it looked like a smaller sibling. This one takes
+         the button height and centres its content; put VerticalAlignment=Center on the child. -->
+    <Style x:Key="Badge.Aligned" TargetType="Border" BasedOn="{StaticResource Badge}">
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Padding" Value="12,0" />
+    </Style>
+
     <!-- ===================== Buttons ===================== -->
 
     <!--
@@ -998,7 +1006,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+                        <!-- No Padding here or on the host: TextBoxBase applies the control's own Padding to the content host itself,
+                             so also passing it on doubled the inset (text sat 20px in, against 10px in a ComboBox). -->
+                        <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">
@@ -1129,9 +1139,9 @@
         a select in a column of selects, and leaves what it opens to the caller.
     -->
     <Style x:Key="Field.Select" TargetType="Button">
-        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />

@@ -290,8 +290,10 @@
         element that actually takes focus is the inner input, not the shell.
     -->
     <Style x:Key="UnitField.Shell" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+        <!-- Same surface and outline as TextBox and ComboBox (Brush.Field over Brush.PanelBorder). It used to be white over the
+             strong outline, so a numeric field sat next to a grey text field and a grey select in the same inspector. -->
+        <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />

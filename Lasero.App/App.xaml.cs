@@ -33,6 +33,37 @@ public partial class App : Application
             typeof(Window), new FrameworkPropertyMetadata(TextRenderingMode.ClearType, FrameworkPropertyMetadataOptions.Inherits));
         TextOptions.TextHintingModeProperty.OverrideMetadata(
             typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Fixed, FrameworkPropertyMetadataOptions.Inherits));
+
+        // WPF's stock focus visual is a dotted black rectangle. Every Lasero control with its own ring sets
+        // FocusVisualStyle to null and draws it in its template; anything that does not (tab items, list rows,
+        // a focusable host) would otherwise fall back to the dotted rectangle. This makes the fallback the same
+        // 2px ring the rest of the product uses.
+        try
+        {
+            FrameworkElement.FocusVisualStyleProperty.OverrideMetadata(
+                typeof(System.Windows.Controls.Control), new FrameworkPropertyMetadata(CreateFocusVisualFallback()));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            Log.Warning(ex, "Could not replace the default focus visual");
+        }
+    }
+
+    private static Style CreateFocusVisualFallback()
+    {
+        var ring = new FrameworkElementFactory(typeof(System.Windows.Shapes.Rectangle));
+        ring.SetValue(FrameworkElement.MarginProperty, new Thickness(-2));
+        ring.SetValue(System.Windows.Shapes.Shape.StrokeThicknessProperty, 2.0);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusXProperty, 6.0);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusYProperty, 6.0);
+        ring.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        ring.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Brush.FocusRing");
+
+        var style = new Style();
+        style.Setters.Add(new Setter(System.Windows.Controls.Control.TemplateProperty,
+            new System.Windows.Controls.ControlTemplate { VisualTree = ring }));
+        style.Seal();
+        return style;
     }
 
     protected override async void OnStartup(StartupEventArgs e)
