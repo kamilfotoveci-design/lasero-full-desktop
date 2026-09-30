@@ -26,6 +26,13 @@ public partial class MaterialsWindow : Window
             SwatchScrollViewer.ScrollToTop();
         };
 
+        // A new recipe lands with its name selected, so a beginner can type the material straight away.
+        viewModel.Materials.Presets.CollectionChanged += (_, e) =>
+        {
+            if (e.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Add) return;
+            Dispatcher.BeginInvoke(new Action(FocusLastRecipeName), System.Windows.Threading.DispatcherPriority.Loaded);
+        };
+
         var selectedColors = viewModel.Scene.Selected?.LocalShapes
             .Select(shape => shape.LayerColor)
             .Distinct()
@@ -36,6 +43,28 @@ public partial class MaterialsWindow : Window
     }
 
     public IEnumerable<LayerSettings> ProjectLayers => _viewModel.Scene.Layers;
+
+    private void FocusLastRecipeName()
+    {
+        if (RecipeList.ItemContainerGenerator.ContainerFromIndex(RecipeList.Items.Count - 1) is not FrameworkElement row) return;
+        row.BringIntoView();
+        if (FindFirstTextBox(row) is { } box)
+        {
+            box.Focus();
+            box.SelectAll();
+        }
+    }
+
+    private static System.Windows.Controls.TextBox? FindFirstTextBox(DependencyObject parent)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is System.Windows.Controls.TextBox box) return box;
+            if (FindFirstTextBox(child) is { } nested) return nested;
+        }
+        return null;
+    }
 
     private void OnApplySelectedRecipeClick(object sender, RoutedEventArgs e)
     {

@@ -409,40 +409,110 @@
 
             <TabItem Header="Moje recepty">
                 <Grid Margin="0,16,0,0">
-                    <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+
+                    <!-- One plain sentence so a first-time owner knows what a recipe is and where it is used. -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                        <TextBlock x:Name="RecipeHelpText" FontSize="14" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}"
+                                   Text="Recept je uložené nastavení rychlosti, výkonu a počtu průchodů pro jeden materiál. V Návrhu ho použijete přes Použít na operaci." />
+                        <TextBlock FontSize="14" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="{StaticResource Brush.Warning}"
+                                   Text="{Binding CutSafetyHint}"
+                                   Visibility="{Binding HasCutPreset, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <Border Style="{StaticResource InspectorSection}" Visibility="{Binding HasPresets, Converter={StaticResource InverseBoolToVisibility}}">
-                                <StackPanel HorizontalAlignment="Center" Margin="12,22">
+                            <!-- Empty state: one primary action and an example so the row layout is not a surprise. -->
+                            <Border Style="{StaticResource InspectorSection}" Padding="24,20"
+                                    Visibility="{Binding HasPresets, Converter={StaticResource InverseBoolToVisibility}}">
+                                <StackPanel HorizontalAlignment="Center" MaxWidth="560">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
-                                    <TextBlock Text="Zatím nemáte vlastní recept" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                    <TextBlock Text="Uložte doporučený recept nebo vytvořte vlastní parametry." Style="{StaticResource Text.Muted}" Margin="0,5,0,0" />
+                                    <TextBlock Text="Zatím nemáte žádný vlastní recept" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                    <TextBlock Text="Přidejte první recept a upravte ho podle svého materiálu. Hodnoty se ukládají samy."
+                                               FontSize="14" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,14" />
+                                    <Button x:Name="AddFirstRecipeButton" Style="{StaticResource PrimaryBlue}" Command="{Binding AddCommand}"
+                                            HorizontalAlignment="Center" Padding="20,0" ToolTip="Vytvořit první vlastní recept"
+                                            AutomationProperties.Name="Přidat první recept">
+                                        <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Přidat první recept" Foreground="White" />
+                                    </Button>
+                                    <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                                            CornerRadius="{StaticResource Radius.Md}" Padding="14,10" Margin="0,18,0,0" Opacity="0.85">
+                                        <StackPanel>
+                                            <TextBlock Text="Příklad" FontSize="13" FontWeight="SemiBold" Style="{StaticResource Text.Muted}" />
+                                            <TextBlock FontSize="14" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                       Text="Překližka 3 mm  ·  Řezání  ·  300 mm/min  ·  100 %  ·  2 průchody" />
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
-                            <ItemsControl ItemsSource="{Binding Presets}">
+
+                            <ItemsControl x:Name="RecipeList" ItemsSource="{Binding Presets}" KeyboardNavigation.TabNavigation="Continue">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="10,8" Margin="0,0,0,6">
+                                        <Border x:Name="RecipeRow" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+                                                CornerRadius="{StaticResource Radius.Md}" Padding="14,10,10,6" Margin="0,0,0,8">
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="112" /><ColumnDefinition Width="88" />
-                                                    <ColumnDefinition Width="72" /><ColumnDefinition Width="64" /><ColumnDefinition Width="72" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" MaxLength="80" Margin="0,0,8,0" />
-                                                <ComboBox Grid.Column="1" SelectedValue="{Binding Mode}" SelectedValuePath="Tag" Margin="0,0,6,0">
-                                                    <ComboBoxItem Content="Řezání" Tag="{x:Static layers:LayerMode.Cut}" />
-                                                    <ComboBoxItem Content="Gravírování" Tag="{x:Static layers:LayerMode.Fill}" />
-                                                </ComboBox>
-                                                <TextBox Grid.Column="2" Text="{Binding Speed, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" Margin="0,0,6,0" ToolTip="Rychlost v mm/min" />
-                                                <TextBox Grid.Column="3" Text="{Binding Power, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" Margin="0,0,6,0" ToolTip="Výkon v procentech" />
-                                                <TextBox Grid.Column="4" Text="{Binding Passes, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}" Margin="0,0,6,0" ToolTip="Počet průchodů" />
-                                                <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <Button Style="{StaticResource Button.Tool}" Width="30" Height="30" MinHeight="30" Padding="6" ToolTip="Duplikovat recept" Margin="0,0,4,0" Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                                <!-- Fields wrap onto a second line when the window is narrow instead of clipping. -->
+                                                <WrapPanel Grid.Column="0" Orientation="Horizontal">
+                                                    <StackPanel Width="280" Margin="0,0,12,8">
+                                                        <TextBlock Text="Název materiálu" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />
+                                                        <TextBox FontSize="14" Height="{StaticResource Size.Control.Base}" VerticalContentAlignment="Center" MaxLength="80"
+                                                                 Text="{Binding Name, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}"
+                                                                 AutomationProperties.Name="Název materiálu"
+                                                                 ToolTip="Jak recept poznáte v seznamu, například Překližka 3 mm" />
+                                                    </StackPanel>
+                                                    <StackPanel Width="200" Margin="0,0,12,8">
+                                                        <TextBlock Text="Režim" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />
+                                                        <ComboBox FontSize="14" Height="{StaticResource Size.Control.Base}" SelectedValue="{Binding Mode}" SelectedValuePath="Tag"
+                                                                  AutomationProperties.Name="Režim">
+                                                            <ComboBoxItem Content="Gravírování" Tag="{x:Static layers:LayerMode.Fill}" ToolTip="Laser vyplní celou plochu tvaru řádky, vhodné pro logo nebo text." />
+                                                            <ComboBoxItem Content="Řezání" Tag="{x:Static layers:LayerMode.Cut}" ToolTip="Laser projede po obrysu tvaru a materiál prořízne." />
+                                                            <ComboBoxItem Content="Vyplnění s obrysem" Tag="{x:Static layers:LayerMode.FillAndCut}" ToolTip="Laser nejdřív vyplní plochu a potom projede obrys." />
+                                                        </ComboBox>
+                                                    </StackPanel>
+                                                    <StackPanel Width="140" Margin="0,0,12,8">
+                                                        <TextBlock Text="Rychlost (mm/min)" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />
+                                                        <TextBox FontSize="14" Height="{StaticResource Size.Control.Base}" VerticalContentAlignment="Center"
+                                                                 Text="{Binding Speed, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}"
+                                                                 AutomationProperties.Name="Rychlost v milimetrech za minutu"
+                                                                 ToolTip="Jak rychle se laser pohybuje. Pomalu pálí hlouběji, rychle jen lehce. Rozsah 10 až 12000" />
+                                                    </StackPanel>
+                                                    <StackPanel Width="110" Margin="0,0,12,8">
+                                                        <TextBlock Text="Výkon (%)" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />
+                                                        <TextBox FontSize="14" Height="{StaticResource Size.Control.Base}" VerticalContentAlignment="Center"
+                                                                 Text="{Binding Power, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}"
+                                                                 AutomationProperties.Name="Výkon v procentech"
+                                                                 ToolTip="Jak silně laser pálí. Rozsah 0 až 100" />
+                                                    </StackPanel>
+                                                    <StackPanel Width="140" Margin="0,0,12,8">
+                                                        <TextBlock Text="Počet průchodů" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />
+                                                        <TextBox FontSize="14" Height="{StaticResource Size.Control.Base}" VerticalContentAlignment="Center"
+                                                                 Text="{Binding Passes, StringFormat=0, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}"
+                                                                 AutomationProperties.Name="Počet průchodů"
+                                                                 ToolTip="Kolikrát laser projede stejnou dráhu. Rozsah 1 až 100" />
+                                                    </StackPanel>
+                                                </WrapPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,21,0,0">
+                                                    <Button Style="{StaticResource Button.Tool}" Width="{StaticResource Size.Control.Base}" Height="{StaticResource Size.Control.Base}"
+                                                            MinHeight="{StaticResource Size.Control.Base}" Padding="6" Margin="0,0,6,0"
+                                                            ToolTip="Duplikovat recept" AutomationProperties.Name="Duplikovat recept"
+                                                            Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
                                                         <components:IconGlyph IconData="{StaticResource Glyph.Duplicate}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                                     </Button>
-                                                    <Button ToolTip="Odstranit recept" Style="{StaticResource Button.Danger}" Padding="6,2" Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
+                                                    <Button Style="{StaticResource Button.Danger}" Width="{StaticResource Size.Control.Base}" Height="{StaticResource Size.Control.Base}"
+                                                            MinHeight="{StaticResource Size.Control.Base}" Padding="6"
+                                                            ToolTip="Smazat recept" AutomationProperties.Name="Smazat recept"
+                                                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
                                                         <components:IconGlyph IconData="{StaticResource Glyph.Delete}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                                     </Button>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                                                    <TextBlock Text="{Binding ModeHint}" FontSize="13" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" />
+                                                    <TextBlock Text="{Binding ValidationMessage}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                               Foreground="{StaticResource Brush.Danger}" Margin="0,4,0,0"
+                                                               Visibility="{Binding HasValidationMessage, Converter={StaticResource BoolToVisibility}}" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -451,7 +521,8 @@
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
-                    <Button Grid.Row="1" Style="{StaticResource Button.Secondary}" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,12,0,0">
+                    <Button Grid.Row="2" Style="{StaticResource Button.Secondary}" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                            ToolTip="Přidat další vlastní recept" Visibility="{Binding HasPresets, Converter={StaticResource BoolToVisibility}}">
                         <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový vlastní recept" />
                     </Button>
                 </Grid>
