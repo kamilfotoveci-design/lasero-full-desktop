@@ -19,6 +19,22 @@
             <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
         </Style>
 
+        <!-- The Track's two page buttons. The theme's implicit RepeatButton style (LaseroTheme.xaml,
+             MinHeight = Size.Control.Compact, Padding 10,0) still applies to a button that only sets
+             OverridesDefaultStyle, so without this the buttons were 32px tall inside an 18px slider
+             and the 4px fill, centred in them, sat 7px below the groove and the thumb. An explicit
+             Style replaces the implicit one. -->
+        <Style x:Key="Slider.Parameter.Segment" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
         <Style x:Key="Slider.Parameter" TargetType="Slider">
             <Setter Property="Focusable" Value="True" />
             <Setter Property="IsMoveToPointEnabled" Value="True" />
@@ -47,12 +63,18 @@
                                      slider isn't any of those, so its fill and thumb rim use the same
                                      neutral ink as the rest of the inspector's text. -->
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False"
-                                                  OverridesDefaultStyle="True">
+                                    <RepeatButton Style="{StaticResource Slider.Parameter.Segment}"
+                                                  Command="Slider.DecreaseLarge">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Grid Background="Transparent">
-                                                    <Border Height="4" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
+                                                    <!-- The Track hands this button the length up to the thumb's
+                                                         left edge. The fill runs on under the thumb (the thumb
+                                                         is drawn last and is opaque) so it ends at the thumb
+                                                         centre at every value, including the minimum, where the
+                                                         Track's own length is 0. -->
+                                                    <Border Height="4" VerticalAlignment="Center" Margin="0,0,-9,0"
+                                                            CornerRadius="{StaticResource Radius.Xs}"
                                                             Background="{DynamicResource Brush.TextSecondary}" />
                                                 </Grid>
                                             </ControlTemplate>
@@ -60,8 +82,8 @@
                                     </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False"
-                                                  OverridesDefaultStyle="True">
+                                    <RepeatButton Style="{StaticResource Slider.Parameter.Segment}"
+                                                  Command="Slider.IncreaseLarge">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Border Background="Transparent" />
