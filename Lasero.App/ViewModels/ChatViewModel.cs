@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -90,12 +91,16 @@ public partial class ChatViewModel : ObservableObject
             return;
         }
 
-        _sessions.AddRange(_store.Load(_account.UserId)
-            .OrderByDescending(session => session.UpdatedAt)
-            .Take(30));
+        var state = _store.LoadState(_account.UserId);
+        _sessions.AddRange(state.Sessions.OrderByDescending(session => session.UpdatedAt));
         RefreshSessionList();
-        if (_sessions.Count > 0)
-            OpenSession(_sessions[0].Id);
+        // The conversation the operator last had open comes back, not merely the newest one: switching
+        // to an older conversation and restarting must land on that older conversation.
+        var restoredId = state.ActiveSessionId is { } active && _sessions.Any(item => item.Id == active)
+            ? active
+            : _sessions.Count > 0 ? _sessions[0].Id : (Guid?)null;
+        if (restoredId is { } id)
+            OpenSession(id, persistActive: false);
         else
             RefreshState();
     }
@@ -184,6 +189,7 @@ public partial class ChatViewModel : ObservableObject
         _currentSessionId = null;
         Messages.Clear();
         StatusMessage = null;
+        MarkCurrentSession();
         RefreshState();
     }
 
@@ -191,6 +197,21 @@ public partial class ChatViewModel : ObservableObject
     private void OpenChat(ChatSessionItem? session)
     {
         if (session is not null) OpenSession(session.Id);
+    }
+
+    /// <summary>First step of deleting from the switcher: the row asks for confirmation in place.
+    /// Only one row asks at a time.</summary>
+    [RelayCommand]
+    private void RequestDeleteChat(ChatSessionItem? session)
+    {
+        if (session is null) return;
+        foreach (var item in Sessions) item.IsConfirmingDelete = item.Id == session.Id;
+    }
+
+    [RelayCommand]
+    private void CancelDeleteChat()
+    {
+        foreach (var item in Sessions) item.IsConfirmingDelete = false;
     }
 
     [RelayCommand]
@@ -245,7 +266,7 @@ public partial class ChatViewModel : ObservableObject
         RefreshState();
     }
 
-    private void OpenSession(Guid id)
+    private void OpenSession(Guid id, bool persistActive = true)
     {
         var session = _sessions.FirstOrDefault(item => item.Id == id);
         if (session is null) return;
@@ -254,7 +275,14 @@ public partial class ChatViewModel : ObservableObject
         foreach (var message in session.Messages)
             Messages.Add(new ChatMessageItem(message.Id, message.Role, message.Text, message.CreatedAt.ToLocalTime()));
         StatusMessage = null;
+        MarkCurrentSession();
         RefreshState();
+        if (persistActive) PersistAll();
+    }
+
+    private void MarkCurrentSession()
+    {
+        foreach (var item in Sessions) item.IsCurrent = item.Id == _currentSessionId;
     }
 
     private void Persist()
@@ -276,15 +304,26 @@ public partial class ChatViewModel : ObservableObject
 
     private void PersistAll()
     {
-        if (!string.IsNullOrWhiteSpace(_account.UserId))
-            _store.Save(_account.UserId, _sessions.Take(30).ToArray());
+        if (string.IsNullOrWhiteSpace(_account.UserId)) return;
+        try
+        {
+            _store.Save(_account.UserId, _sessions.ToArray(), _currentSessionId);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Remembering a conversation is a convenience; a full disk must not break the chat itself.
+            Log.Warning(exception, "Chat history could not be saved");
+        }
     }
 
     private void RefreshSessionList()
     {
         Sessions.Clear();
         foreach (var session in _sessions.OrderByDescending(item => item.UpdatedAt))
-            Sessions.Add(new ChatSessionItem(session.Id, session.Title, session.UpdatedAt.ToLocalTime()));
+            Sessions.Add(new ChatSessionItem(session.Id, session.Title, session.UpdatedAt.ToLocalTime())
+            {
+                IsCurrent = session.Id == _currentSessionId,
+            });
         RefreshState();
     }
 
@@ -326,22 +365,71 @@ public partial class ChatViewModel : ObservableObject
     private static string CreateTitle(string text) => text.Length <= 44 ? text : text[..43].TrimEnd() + "…";
 }
 
-public sealed record ChatSessionItem(Guid Id, string Title, DateTimeOffset UpdatedAt)
+public sealed class ChatSessionItem(Guid id, string title, DateTimeOffset updatedAt) : ObservableObject
 {
+    public Guid Id { get; } = id;
+    public string Title { get; } = title;
+    public DateTimeOffset UpdatedAt { get; } = updatedAt;
+    private bool _isCurrent;
+    private bool _isConfirmingDelete;
+
+    /// <summary>The conversation shown in the panel right now; highlighted in the switcher.</summary>
+    public bool IsCurrent
+    {
+        get => _isCurrent;
+        set => SetProperty(ref _isCurrent, value);
+    }
+
+    /// <summary>The row asked to delete the conversation and is waiting for the operator to confirm.</summary>
+    public bool IsConfirmingDelete
+    {
+        get => _isConfirmingDelete;
+        set => SetProperty(ref _isConfirmingDelete, value);
+    }
+
     public string UpdatedLabel => UpdatedAt.Date == DateTime.Today
         ? UpdatedAt.ToString("HH:mm")
         : UpdatedAt.ToString("d. M.");
 }
 
-public sealed record ChatMessageItem(Guid Id, LaseroChatRole Role, string Text, DateTimeOffset CreatedAt)
+public sealed class ChatMessageItem(Guid id, LaseroChatRole role, string text, DateTimeOffset createdAt) : ObservableObject
 {
+    public Guid Id { get; } = id;
+    public LaseroChatRole Role { get; } = role;
+    public string Text { get; } = text;
+    public DateTimeOffset CreatedAt { get; } = createdAt;
     private bool _recommendationResolved;
     private ParameterRecommendation? _recommendation;
+    private CondensedResponse? _condensed;
+    private bool _isExpanded;
+    private IRelayCommand? _toggleExpandedCommand;
 
     public bool IsUser => Role == LaseroChatRole.User;
     public string Author => IsUser ? "Vy" : "Kamil";
     public string TimeLabel => CreatedAt.ToString("HH:mm");
-    public string DisplayText => IsUser ? Text : ChatResponseNormalizer.Normalize(Text);
+    private CondensedResponse Condensed => _condensed ??= ChatResponseNormalizer.Condense(Text);
+
+    /// <summary>What the bubble shows. The operator's own words are shown as typed; KAMIL's answer is
+    /// the short version unless it is short already or the operator asked for more.</summary>
+    public string DisplayText => IsUser ? Text : _isExpanded ? Condensed.Full : Condensed.Short;
+
+    /// <summary>The answer ran long and only its first part is showing; "Zobrazit více" reveals the rest.</summary>
+    public bool HasMore => !IsUser && Condensed.IsTruncated;
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        private set
+        {
+            if (!SetProperty(ref _isExpanded, value)) return;
+            OnPropertyChanged(nameof(DisplayText));
+            OnPropertyChanged(nameof(ToggleLabel));
+        }
+    }
+
+    public string ToggleLabel => _isExpanded ? "Zobrazit méně" : "Zobrazit více";
+
+    public IRelayCommand ToggleExpandedCommand => _toggleExpandedCommand ??= new RelayCommand(() => IsExpanded = !IsExpanded);
 
     /// <summary>
     /// Which operation was selected in the workspace when this message was recorded, if known. Null

@@ -26,6 +26,10 @@ public sealed class WorkspacePreferences
     public double AssistantWidth { get; set; } = DefaultAssistantWidth;
     public double AssistantHeight { get; set; } = DefaultAssistantHeight;
 
+    /// <summary>Whether KAMIL was open (Expanded) when the app last ran. QuickAsk and Minimized both
+    /// restore as the head; the head's own position is fixed by design and is never stored.</summary>
+    public bool AssistantExpanded { get; set; }
+
     public const double DefaultInspectorWidth = 320;
     public const double DefaultAssistantWidth = 420;
     public const double DefaultAssistantHeight = 560;
