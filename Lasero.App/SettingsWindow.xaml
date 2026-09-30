@@ -42,11 +42,11 @@
         <!-- Page heading lives outside the ScrollViewer so it can never scroll out of view. -->
         <StackPanel Grid.Column="1" Grid.Row="0" Margin="36,24,36,16">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" Foreground="{StaticResource Brush.AccentText}" />
+                <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" />
                 <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
             </StackPanel>
             <TextBlock Text="Upravte výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení."
-                       Style="{StaticResource Text.Muted}" Margin="37,0,0,0" />
+                       Style="{StaticResource Text.Muted}" Margin="32,0,0,0" />
         </StackPanel>
 
         <ScrollViewer Grid.Column="1" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="36,0,36,18">

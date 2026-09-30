@@ -42,23 +42,30 @@
             </Setter>
         </Style>
         <Style x:Key="MaterialTab" TargetType="TabItem">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <!-- Foreground and weight are set on the header presenter in the template, not here: a TabItem's
+                 content is its logical child and inherits both, which turned the whole tab page red and
+                 semibold on the selected tab. -->
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
-            <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
             <Setter Property="Padding" Value="14,0" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <!-- No Margin here: TabPanel arranges each tab at its desired size that already includes the margin,
+                 then the tab subtracts the margin again, so the pill came out 8px too narrow and clipped its
+                 own text and right edge. The gap lives inside the template instead. -->
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
                         <Border x:Name="TabSurface"
+                                Margin="0,0,8,0"
                                 Background="Transparent"
                                 BorderBrush="Transparent"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource Radius.Md}"
                                 Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header"
+                            <ContentPresenter x:Name="HeaderHost" ContentSource="Header"
+                                              TextElement.Foreground="{DynamicResource Brush.TextSecondary}"
+                                              TextElement.FontWeight="Medium"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True" />
@@ -69,15 +76,15 @@
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.AccentText}" />
                                 <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                             </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+                                <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextDisabled}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -145,7 +152,7 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" Margin="0,2,12,0" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,2,12,0" />
                         <TextBlock Text="Vzorník materiálů" Style="{StaticResource PageTitle}" />
                     </StackPanel>
                     <TextBlock Text="Bezpečné výchozí hodnoty jsou dostupné offline. Před ostrou úlohou je vždy ověřte na odřezku."
@@ -153,9 +160,9 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Border Style="{StaticResource Badge}" Margin="0,0,8,0">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Fill="{StaticResource Brush.Success}" Margin="0,0,7,0" />
+                        <Border Style="{StaticResource Badge.Aligned}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="{StaticResource Brush.Success}" Margin="0,0,8,0" />
                                 <TextBlock Text="Dostupné offline" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>

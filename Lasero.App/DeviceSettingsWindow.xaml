@@ -86,7 +86,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,0,11,0" />
+                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" />
                     <StackPanel>
                         <TextBlock Text="Nastavení zařízení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ViewModel.Connection.ActiveMachineName}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
