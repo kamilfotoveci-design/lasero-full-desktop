@@ -23,7 +23,7 @@
     <Border x:Name="Surface" Height="220" Cursor="Hand" RenderTransformOrigin="0.5,0.5"
             Background="{DynamicResource Brush.Panel}"
             BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Lg}" ClipToBounds="True"
+            CornerRadius="{StaticResource Radius.Lg}"
             Tag="{Binding ElementName=Root}"
             ToolTip="{Binding Path}"
             MouseEnter="OnSurfaceMouseEnter" MouseLeave="OnSurfaceMouseLeave"
@@ -53,7 +53,9 @@
             </ContextMenu>
         </Border.ContextMenu>
 
-        <Grid>
+        <!-- The rows below are square-cornered fills (well, caption). The Border rounds only its own
+             stroke, so without this clip they cover the rounded corners and the card reads as square. -->
+        <Grid components:RoundedClip.ToParentBorder="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="140" />
                 <RowDefinition Height="*" />

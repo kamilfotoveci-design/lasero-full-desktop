@@ -26,7 +26,9 @@
                     <TranslateTransform x:Name="DialogOffset" Y="4" />
                 </TransformGroup>
             </Border.RenderTransform>
-        <Grid>
+        <!-- Clipped to the surface's rounded inner edge: the footer band used to carry a literal 0,0,8,8 radius to fake
+             it, which never matched the 12px surface (a token composite cannot subtract the border). -->
+        <Grid components:RoundedClip.ToParentBorder="True">
             <Grid.RowDefinitions><RowDefinition Height="38" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
             <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="14,0">
@@ -57,7 +59,7 @@
             </Grid>
 
             <Border Grid.Row="2" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                    BorderThickness="0,1,0,0" Padding="16,12" CornerRadius="0,0,8,8">
+                    BorderThickness="0,1,0,0" Padding="16,12">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="CancelButton" Style="{StaticResource Button.Outline}" Click="OnCancelClick" MinWidth="88" Height="{StaticResource Size.Control.Primary}" Margin="0,0,8,0"
                             ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />

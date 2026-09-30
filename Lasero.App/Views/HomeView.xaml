@@ -153,7 +153,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0">
-                        <Grid Margin="0,0,0,16">
+                        <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -165,12 +165,11 @@
                                     ToolTip="Otevřít knihovnu materiálů a přednastavení" />
                         </Grid>
 
-                        <!-- BorderThickness overridden to 0: this is a flat row list (matching the
-                             Designer inspector's OPERACE list), not a gallery of thumbnails, so it
-                             does not need ThumbnailCard's own frame — only its zero padding. -->
-                        <Border Style="{StaticResource ThumbnailCard}" BorderThickness="0"
+                        <!-- A flat row list inside the same framed card as everything else on this screen. The rows paint a
+                             hover wash, which is square, so the list is clipped to the card's rounded inner edge. -->
+                        <Border Style="{StaticResource ThumbnailCard}" MinHeight="152"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource BoolToVisibility}}">
-                            <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}">
+                            <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}" components:RoundedClip.ToParentBorder="True">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <!-- Hairline between rows, none above the first: the card's own
@@ -192,7 +191,7 @@
                             </ItemsControl>
                         </Border>
 
-                        <Border Style="{StaticResource Card}" Padding="24,20"
+                        <Border Style="{StaticResource Card}" Padding="24,20" MinHeight="152"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}">
                             <components:EmptyState IconPrimaryData="{StaticResource Glyph.Materials}"
                                                    Title="Zatím žádné použité materiály"
@@ -201,8 +200,12 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Poslední úloha" Style="{StaticResource PanelTitle}"
-                                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,0,16" />
+                        <!-- Same height as the materials header beside it (its "Vše" link is a 32px control), so the two
+                             section titles share a baseline. -->
+                        <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
+                            <TextBlock Text="Poslední úloha" Style="{StaticResource PanelTitle}"
+                                       HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0" />
+                        </Grid>
 
                         <Border Style="{StaticResource Card}" Padding="16" MinHeight="152"
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource BoolToVisibility}}">

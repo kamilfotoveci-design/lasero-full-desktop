@@ -133,7 +133,7 @@
                 </TransformGroup>
             </Border.RenderTransform>
 
-            <Grid>
+            <Grid components:RoundedClip.ToParentBorder="True">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -568,7 +568,7 @@
                 <!-- Footer. Shared across steps rather than animated per-layer: it is functional
                      chrome, not the part of this screen carrying the motion. -->
                 <Border Grid.Row="1" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0"
-                        Padding="36,18" CornerRadius="0,0,12,12" Background="{StaticResource Brush.Panel}">
+                        Padding="36,18" Background="{StaticResource Brush.Panel}">
                     <Grid>
                         <Button HorizontalAlignment="Left" VerticalAlignment="Center" Command="{Binding BackCommand}"
                                 Visibility="{Binding IsResults, Converter={StaticResource BoolToVisibility}}"
