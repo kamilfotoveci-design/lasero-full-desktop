@@ -1,0 +1,41 @@
+using Lasero.Core.Jobs;
+
+namespace Lasero.App.ViewModels;
+
+/// <summary>
+/// Which persistent controls belong on which screen. The single source for the rules written up in
+/// docs/screen-controls-matrix.md, so the XAML bindings and the tests read the same decisions.
+///
+/// The principle: job controls belong to the design workspace. Elsewhere they appear only while a job
+/// is actually active, because stopping a running job must be reachable from anywhere. Machine
+/// connection state stays global because "is my laser connected" matters on every screen.
+/// </summary>
+public static class ScreenChrome
+{
+    /// <summary>Rámovat and Spustit start something, so they exist only where the design is visible.</summary>
+    public static bool ShowLaunchControls(AppScreen screen) => screen == AppScreen.Designer;
+
+    /// <summary>The layer colour palette assigns a laser operation to the selected object.</summary>
+    public static bool ShowLayerPalette(AppScreen screen) => screen == AppScreen.Designer;
+
+    /// <summary>
+    /// Job badge, file name and strip message. Idle and Ready say nothing a non-design screen needs;
+    /// every other state (active, finished, cancelled, faulted) is a result the operator must be able
+    /// to see wherever they are.
+    /// </summary>
+    public static bool ShowJobDetails(AppScreen screen, JobRunState state)
+        => screen == AppScreen.Designer || state is not (JobRunState.Idle or JobRunState.Ready);
+
+    /// <summary>Pozastavit, Pokračovat and Zastavit (plus the progress bar): only while a job is active,
+    /// on every screen. This mirrors the JobState triggers on the button styles.</summary>
+    public static bool ShowActiveJobControls(JobRunState state)
+        => state is JobRunState.Preparing or JobRunState.Framing or JobRunState.Running or JobRunState.Paused;
+
+    /// <summary>The right-hand zone of the strip (and the divider before it) has content at all.</summary>
+    public static bool ShowJobActionZone(AppScreen screen, JobRunState state)
+        => ShowLaunchControls(screen) || ShowActiveJobControls(state);
+
+    /// <summary>The title bar's machine settings shortcut. The Device screen carries its own button,
+    /// Home and Chat have no use for it.</summary>
+    public static bool ShowDeviceSettingsShortcut(AppScreen screen) => screen == AppScreen.Designer;
+}

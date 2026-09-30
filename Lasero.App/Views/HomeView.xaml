@@ -53,13 +53,6 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
-        <!-- Stacked icon-over-label, for the pair of machine actions at the foot of the rail. -->
-        <Style x:Key="RailStackedAction" TargetType="Button" BasedOn="{StaticResource Button.Regular}">
-            <Setter Property="Height" Value="56" />
-            <Setter Property="MinHeight" Value="56" />
-            <Setter Property="Padding" Value="4,0" />
-            <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
-        </Style>
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource Brush.Background}">
@@ -96,8 +89,8 @@
                     </Button>
                     <!-- Deliberately generic: LoadFileCommand accepts SVG, bitmaps and G-code. Lasero
                          has no DXF importer, so the label must not promise one. -->
-                    <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding GCode.LoadFileCommand}" Margin="0,0,16,0"
-                            ToolTip="Načíst SVG, obrázek nebo G-code do návrhu" AutomationProperties.Name="Importovat">
+                    <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding ImportFromHomeCommand}" Margin="0,0,16,0"
+                            ToolTip="Načíst SVG, obrázek nebo G-code a otevřít je v návrhu" AutomationProperties.Name="Importovat">
                         <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat"
                                               IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                     </Button>
@@ -117,9 +110,7 @@
                         Margin="0,0,0,32">
                     <components:EmptyState IconPrimaryData="{StaticResource Glyph.Project}"
                                            Title="Zatím tu nic není"
-                                           Description="Projekty, které uložíte nebo otevřete, se objeví tady."
-                                           CtaText="Založit nový projekt"
-                                           CtaCommand="{Binding NewProjectCommand}" />
+                                           Description="Projekty, které uložíte nebo otevřete, se objeví tady." />
                 </Border>
 
                 <!-- Three per row, matching the mockup's lg:grid-cols-3. The recent list holds at most
@@ -343,10 +334,9 @@
                             </Border>
                         </Grid>
 
-                        <!-- Actions. Only commands that already exist and already carry their own
-                             preflight: navigation to the machine workspace, GRBL homing and framing.
-                             The positioning beam is not here — it is a press-and-hold safety control
-                             and lives on the Device screen where its power setting is. -->
+                        <!-- The one action Home's machine card needs: connect. Homing, framing, jogging and
+                             the positioning beam are machine and job controls; they live on Zařízení and
+                             Návrh (docs/screen-controls-matrix.md). -->
                         <Button Style="{StaticResource PrimaryBlue}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
                                 Command="{Binding OpenDeviceWizardCommand}"
                                 Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
@@ -355,38 +345,6 @@
                                                   Foreground="White" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
                         </Button>
 
-                        <Button Style="{StaticResource Button.Regular}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
-                                Height="{StaticResource Size.Control.Primary}" MinHeight="{StaticResource Size.Control.Primary}"
-                                Command="{Binding ShowDeviceCommand}"
-                                ToolTip="Připojení, poloha a ruční ovládání gravírky">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Ovládání stroje"
-                                                  IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
-                        </Button>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <Button Style="{StaticResource RailStackedAction}" Command="{Binding Jog.HomeCommand}"
-                                    ToolTipService.ShowOnDisabled="True"
-                                    ToolTip="Hlava se přesune do výchozí polohy (příkaz $H). Uvolněte pracovní prostor. Vyžaduje připojenou gravírku v klidu"
-                                    automation:AutomationProperties.Name="Najet do výchozí polohy">
-                                <components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Výchozí poloha" Stacked="True"
-                                                      IconSize="{StaticResource Size.Icon.Md}" />
-                            </Button>
-
-                            <Button Grid.Column="2" Style="{StaticResource RailStackedAction}"
-                                    Command="{Binding GCode.RunFramingCommand}"
-                                    ToolTipService.ShowOnDisabled="True"
-                                    ToolTip="{Binding GCode.FrameActionTooltip}"
-                                    automation:AutomationProperties.Name="Rámovat">
-                                <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat" Stacked="True"
-                                                      IconSize="{StaticResource Size.Icon.Lg}" />
-                            </Button>
-                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

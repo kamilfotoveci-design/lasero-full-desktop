@@ -235,6 +235,7 @@
                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
                             Margin="16,0,12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="14,0"
+                            Visibility="{Binding ShowDeviceSettingsShortcut, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="Otevřít nastavení gravírky — pracovní plocha, osa Z, bezpečnost"
                             AutomationProperties.Name="Nastavení zařízení">
                         <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
@@ -564,6 +565,10 @@
                                     ToolTip="Připojí naposledy vybraný laser, aniž byste museli opustit návrh"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
+                            <!-- Job badge, file and message: on Návrh always, elsewhere only once a job has
+                                 left Idle/Ready (see ScreenChrome.ShowJobDetails). -->
+                            <StackPanel Orientation="Horizontal"
+                                        Visibility="{Binding ShowStripJobDetails, Converter={StaticResource BoolToVisibility}}">
                             <components:StatusBadge Margin="10,0,0,0"
                                                     StatusText="{Binding GCode.JobBadgeLabel}"
                                                     Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
@@ -606,6 +611,7 @@
                                        TextTrimming="CharacterEllipsis"
                                        ToolTip="{Binding GCode.StatusStripMessage}" VerticalAlignment="Center"
                                        Visibility="{Binding GCode.StatusStripMessage, Converter={StaticResource NotNullToVisibility}}" />
+                            </StackPanel>
                     </StackPanel>
                     <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,6,0,0"
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
@@ -623,6 +629,9 @@
                     <Border.Style>
                         <Style TargetType="Border" BasedOn="{StaticResource BarDivider}">
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowStripJobActionZone}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
@@ -668,7 +677,8 @@
                     is danger-red because it begins a physical operation; Frame stays secondary.
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,0,0">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,0,0"
+                            Visibility="{Binding ShowStripJobActionZone, Converter={StaticResource BoolToVisibility}}">
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}" AutomationProperties.Name="Rámovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,10,0"

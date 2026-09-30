@@ -81,7 +81,23 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>The assistant's context follows the shell. Switching screens updates what Kamil is
     /// told, and never touches the conversation.</summary>
-    partial void OnCurrentScreenChanged(AppScreen value) => Kamil.ScreenLabel = DescribeScreen(value);
+    partial void OnCurrentScreenChanged(AppScreen value)
+    {
+        Kamil.ScreenLabel = DescribeScreen(value);
+        NotifyScreenChrome();
+    }
+
+    /// <summary>Strip and title-bar visibility per screen; the rules live in <see cref="ScreenChrome"/>.</summary>
+    public bool ShowStripJobDetails => ScreenChrome.ShowJobDetails(CurrentScreen, GCode.JobState);
+    public bool ShowStripJobActionZone => ScreenChrome.ShowJobActionZone(CurrentScreen, GCode.JobState);
+    public bool ShowDeviceSettingsShortcut => ScreenChrome.ShowDeviceSettingsShortcut(CurrentScreen);
+
+    private void NotifyScreenChrome()
+    {
+        OnPropertyChanged(nameof(ShowStripJobDetails));
+        OnPropertyChanged(nameof(ShowStripJobActionZone));
+        OnPropertyChanged(nameof(ShowDeviceSettingsShortcut));
+    }
 
     private static string DescribeScreen(AppScreen screen) => screen switch
     {
@@ -134,6 +150,10 @@ public partial class MainViewModel : ObservableObject
             Connection.SelectedPort,
             Lasero.Core.Grbl.VirtualGrblTransport.IsVirtualPort(Connection.SelectedPort));
         Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
+        GCode.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(GCodeViewModel.JobState)) NotifyScreenChrome();
+        };
         MachineStatus.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MachineStatusViewModel.DisplayState)) NotifyMachineBadge();
@@ -191,6 +211,23 @@ public partial class MainViewModel : ObservableObject
     {
         Scene.ActiveTool = DesignerTool.Select;
         CurrentScreen = AppScreen.Designer;
+    }
+
+    /// <summary>
+    /// The Home "Importovat" button. Import puts the file on the canvas, which Home cannot show, so
+    /// a successful import continues into the design workspace. A cancelled dialog changes nothing
+    /// and leaves the operator on Home.
+    /// </summary>
+    [RelayCommand]
+    private void ImportFromHome()
+    {
+        var changed = false;
+        var labelBefore = GCode.FileLabel;
+        void OnChanged() => changed = true;
+        Scene.Changed += OnChanged;
+        try { GCode.LoadFileCommand.Execute(null); }
+        finally { Scene.Changed -= OnChanged; }
+        if (changed || GCode.FileLabel != labelBefore) ShowDesigner();
     }
 
     [RelayCommand]

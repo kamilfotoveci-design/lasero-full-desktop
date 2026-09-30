@@ -386,7 +386,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Příprava gravírování" Style="{StaticResource PanelTitle}" Margin="0" />
-                                    <TextBlock Text="Vyberte návrh a před spuštěním zkontrolujte jeho umístění." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                                    <TextBlock Text="Před spuštěním zkontrolujte umístění návrhu na materiálu." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <Border Grid.Column="1" Style="{StaticResource Badge}" Padding="9,4" VerticalAlignment="Top">
                                     <TextBlock Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" FontWeight="SemiBold" />
@@ -400,9 +400,6 @@
                                         <TextBlock Text="Návrh k výrobě" Style="{StaticResource Text.Muted}" />
                                         <TextBlock Text="{Binding GCode.FileLabel}" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding GCode.FileLabel}" />
                                     </StackPanel>
-                                <Button Grid.Column="1" Style="{StaticResource Button.Secondary}" Command="{Binding GCode.LoadFileCommand}" Margin="12,0,0,0" Padding="12,0" ToolTip="Načíst SVG, obrázek nebo G-code">
-                                        <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Vybrat návrh" />
-                                    </Button>
                                 </Grid>
                             </Border>
 
