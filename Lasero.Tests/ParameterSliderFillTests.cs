@@ -26,15 +26,16 @@ public class ParameterSliderFillTests
         }
     }
 
-    [Theory]
-    [MemberData(nameof(Cases))]
-    public void FillIsCentredOnTheTrackAndEndsUnderTheThumbCentre(double min, double max, double tick, double value, bool enabled)
+
+    [Fact]
+    public void FillIsCentredOnTheTrackAndEndsUnderTheThumbCentre()
     {
         Sta(() =>
         {
+            foreach (var c in Cases())
+            {
+            var (min, max, tick, value, enabled) = ((double)c[0], (double)c[1], (double)c[2], (double)c[3], (bool)c[4]);
             var host = new Border { Width = 396, Child = new ParameterSlider { Minimum = min, Maximum = max, TickFrequency = tick, Value = value, FieldWidth = 112, IsEnabled = enabled } };
-            foreach (var s in new[] { "Theme/LaseroTheme.xaml", "Theme/SharedUiStyles.xaml" })
-                host.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"pack://application:,,,/Lasero.App;component/{s}") });
             host.Measure(new Size(396, 400));
             host.Arrange(new Rect(host.DesiredSize));
             host.UpdateLayout();
@@ -56,6 +57,7 @@ public class ParameterSliderFillTests
             Assert.Equal(0, bounds.Left, 0.01);
             Assert.True(bounds.Right >= thumbCentre - 0.01, $"fill ends at {bounds.Right}, thumb centre {thumbCentre}");
             Assert.True(bounds.Right <= thumb.Right + 0.01, "fill must stay under the thumb, not poke out past it");
+            }
         });
     }
 
@@ -90,16 +92,36 @@ public class ParameterSliderFillTests
         }
     }
 
+    // Runs on a private STA thread that owns a WPF Application carrying the real theme, so the
+    // control's StaticResource lookups resolve as in the running app. The Application is shut down
+    // afterwards: view models marshal through Application.Current when it exists, and leaving one
+    // alive changed the timing of unrelated tests. Only one Application can exist per process, hence
+    // a single test method drives every case.
     private static void Sta(Action a)
     {
         Exception? error = null;
-        var t = new Thread(() => { try { a(); } catch (Exception e) { error = e; } });
+        var t = new Thread(() =>
+        {
+            var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            try
+            {
+                foreach (var s in new[] { "Theme/LaseroTheme.xaml", "Theme/SharedUiStyles.xaml" })
+                    app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"pack://application:,,,/Lasero.App;component/{s}") });
+                a();
+            }
+            catch (Exception e) { error = e; }
+            finally
+            {
+                // Shutdown is queued on the dispatcher; pump it so Application.Current is really cleared.
+                app.Dispatcher.BeginInvoke(new Action(app.Shutdown));
+                System.Windows.Threading.Dispatcher.Run();
+            }
+        });
         t.SetApartmentState(ApartmentState.STA);
         t.Start();
         t.Join();
         if (error is not null) throw new Exception(error.Message, error);
     }
-
     private static string Root()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
