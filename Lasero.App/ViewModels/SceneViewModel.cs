@@ -2067,7 +2067,11 @@ public partial class SceneViewModel : ObservableObject
         SceneObject replacement;
         try
         {
-            replacement = VectorTextFactory.Rebuild(item, source);
+            // New wording keeps the point the text starts from; a change of look (font, size, style)
+            // keeps the middle, which is where the operator is looking while they pick it.
+            replacement = source.Text != item.Text.Text
+                ? VectorTextFactory.RebuildKeepingStart(item, source)
+                : VectorTextFactory.Rebuild(item, source);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException)
         {
@@ -2113,7 +2117,8 @@ public partial class SceneViewModel : ObservableObject
         SceneObject replacement;
         try
         {
-            replacement = VectorTextFactory.Rebuild(item, source);
+            // The editor grew from where the text starts, so the committed text starts there too.
+            replacement = VectorTextFactory.RebuildKeepingStart(item, source);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException)
         {

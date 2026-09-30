@@ -158,6 +158,35 @@ public static class VectorTextFactory
     }
 
     /// <summary>
+    /// <see cref="Rebuild"/> for a change of wording: the point the text starts from stays put instead
+    /// of the middle of the ink.
+    ///
+    /// Rebuild keeps Transform, and the local geometry is centred on the ink, so a longer wording grows
+    /// to both sides of the old centre. The inline editor grows to the right from where the text starts,
+    /// so on commit the letters would jump left by half of whatever was typed. Keeping the start fixed
+    /// makes the committed text land exactly where the editor showed it, and is how type behaves in every
+    /// text editor. Scale, rotation and mirroring are untouched, so the type size cannot change here.
+    ///
+    /// Warped text is left to Rebuild: its ink is bent around the unwarped box, so there is no line box
+    /// start to hold still.
+    /// </summary>
+    public static SceneObject RebuildKeepingStart(SceneObject existing, TextSource source)
+    {
+        var rebuilt = Rebuild(existing, source);
+        var before = existing.Text!;
+        if (!before.Distortion.IsIdentity || !source.Distortion.IsIdentity) return rebuilt;
+
+        var startBefore = existing.Transform.Apply(LayoutOriginLocal(before), existing.LocalPivot);
+        var startAfter = rebuilt.Transform.Apply(LayoutOriginLocal(source), rebuilt.LocalPivot);
+        rebuilt.Transform = rebuilt.Transform with
+        {
+            X = rebuilt.Transform.X + (startBefore.X - startAfter.X),
+            Y = rebuilt.Transform.Y + (startBefore.Y - startAfter.Y),
+        };
+        return rebuilt;
+    }
+
+    /// <summary>
     /// Where the top-left of the text's own line box sits in the object's local space, which is the
     /// point the inline editor has to start from for its letters to fall on this object's letters.
     ///
