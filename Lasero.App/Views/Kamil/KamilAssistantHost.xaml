@@ -293,6 +293,13 @@
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                 </Button>
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
+                                        Command="{Binding OpenFullChatCommand}"
+                                        ToolTip="Otevřít v plném chatu"
+                                        automation:AutomationProperties.Name="Otevřít v plném chatu">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Maximize}"
+                                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                </Button>
+                                <Button Style="{StaticResource Kamil.HeaderButton}"
                                         Command="{Binding MinimizeCommand}"
                                         ToolTip="Zmenšit na odznak · Esc"
                                         automation:AutomationProperties.Name="Zmenšit asistenta">

@@ -436,8 +436,8 @@
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Device}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Click="OnChatClick"
-                        ToolTip="Lasero Chat — pomoc s návrhem, materiály a gravírováním"
-                        AutomationProperties.Name="Lasero Chat">
+                        ToolTip="Kamil — asistent v návrhu"
+                        AutomationProperties.Name="Kamil">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Chat}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Click="OnSettingsClick"

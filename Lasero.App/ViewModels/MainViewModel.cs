@@ -164,6 +164,7 @@ public partial class MainViewModel : ObservableObject
         Materials = materials;
         Chat = chat;
         Kamil = kamil;
+        Kamil.FullChatRequested += ShowChat;
         // Questions now carry the workspace with them: selected material, operation and the connected
         // machine, instead of the nulls the send path used to hardcode.
         Chat.ContextProvider = Kamil.BuildContext;

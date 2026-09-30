@@ -130,6 +130,17 @@ public partial class KamilAssistantViewModel : ObservableObject
         ComposerFocusRequested?.Invoke();
     }
 
+    /// <summary>Raised when the operator asks to continue in the full-screen Chat. The conversation is
+    /// the same <see cref="Chat"/> instance, so nothing has to be copied across.</summary>
+    public event Action? FullChatRequested;
+
+    [RelayCommand]
+    private void OpenFullChat()
+    {
+        State = KamilAssistantState.Minimized;
+        FullChatRequested?.Invoke();
+    }
+
     [RelayCommand]
     private void Minimize()
     {

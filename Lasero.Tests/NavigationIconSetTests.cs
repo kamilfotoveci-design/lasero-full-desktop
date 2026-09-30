@@ -63,5 +63,16 @@ public sealed class NavigationIconSetTests
             Assert.Contains("Size.Icon.Lg", entry.Value);
     }
 
+    [Fact]
+    public void ChatHasItsOwnNavEntryThatOpensTheFullChatScreen()
+    {
+        var main = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "MainWindow.xaml"));
+        var chat = Regex.Match(main, @"<Button Style=""\{StaticResource NavButton\.Chat\}""[\s\S]*?</Button>").Value;
+        Assert.Contains("Command=\"{Binding ShowChatCommand}\"", chat);
+        Assert.Contains("AutomationProperties.Name=\"Chat\"", chat);
+        Assert.Contains("Glyph.Chat", chat);
+        Assert.Contains("Text=\"Chat\"", chat);
+    }
+
     public static IEnumerable<object[]> Keys() => RailSet.Select(k => new object[] { k });
 }

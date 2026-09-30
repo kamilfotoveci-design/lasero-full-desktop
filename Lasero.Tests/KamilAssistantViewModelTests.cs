@@ -281,6 +281,21 @@ public sealed class KamilAssistantViewModelTests : IDisposable
         Assert.Equal(layer.Id, kamil.Chat.SelectedLayerIdProvider?.Invoke());
     }
 
+    [Fact]
+    public void OpenFullChatMinimizesKamilAndAsksForTheFullChatOnTheSameConversation()
+    {
+        var kamil = CreateViewModel();
+        kamil.ExpandCommand.Execute(null);
+        var requested = 0;
+        kamil.FullChatRequested += () => requested++;
+
+        kamil.OpenFullChatCommand.Execute(null);
+
+        Assert.Equal(1, requested);
+        Assert.Equal(KamilAssistantState.Minimized, kamil.State);
+        Assert.NotNull(kamil.Chat);
+    }
+
     private static void AddMessages(KamilAssistantViewModel kamil, params string[] texts)
     {
         foreach (var text in texts)
