@@ -29,7 +29,7 @@ public sealed class InlineTextEditorRenderTests
     private const double DefaultScale = 4; // px per mm at "100 %", see SceneCanvas.DefaultScale
 
 
-    private static readonly Dispatcher Ui = StartUi();
+    internal static readonly Dispatcher Ui = StartUi();
 
     private static Dispatcher StartUi()
     {

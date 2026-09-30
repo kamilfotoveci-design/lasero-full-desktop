@@ -49,7 +49,11 @@ public partial class OffsetPathViewModel : ObservableObject, IDisposable
     /// settings — gates the dialog's OK button, matching BitmapTraceViewModel.HasResult.</summary>
     public bool HasResult => _resultsBySource.Count > 0 && !IsComputing;
 
-    public sealed record JoinTypeOption(VectorJoinType Value, string Label);
+    public sealed record JoinTypeOption(VectorJoinType Value, string Label)
+    {
+        /// <summary>Text-only presenters fall back to ToString(); never let the record dump reach the operator.</summary>
+        public override string ToString() => Label;
+    }
 
     /// <summary>Backs OffsetPathWindow's join-style ComboBox — DisplayMemberPath="Label",
     /// SelectedValuePath="Value", SelectedValue bound straight to JoinType.</summary>
@@ -60,8 +64,13 @@ public partial class OffsetPathViewModel : ObservableObject, IDisposable
         new(VectorJoinType.Bevel, "Zkosený"),
     ];
 
-    public OffsetPathViewModel(IReadOnlyList<SceneObject> sources, IVectorOffsetService? service = null)
+    /// <summary>Keep the original shape and add the offset as a new object (default), or replace it.</summary>
+    [ObservableProperty]
+    private bool _keepOriginal = true;
+
+    public OffsetPathViewModel(IReadOnlyList<SceneObject> sources, IVectorOffsetService? service = null, bool keepOriginal = true)
     {
+        _keepOriginal = keepOriginal;
         ArgumentNullException.ThrowIfNull(sources);
         if (sources.Count == 0) throw new ArgumentException("Offset needs at least one selected object.", nameof(sources));
 

@@ -1116,8 +1116,13 @@
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
+                        <!-- ContentTemplateSelector must be bound to ItemTemplateSelector (the stock template does): when a
+                             ComboBox has a DisplayMemberPath, WPF stores it as an internal ItemTemplateSelector, and
+                             without this binding the closed box printed the raw record
+                             (JoinTypeOption { Value = Round, ... }) while the popup rows were fine. -->
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                           ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <Popup x:Name="Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
