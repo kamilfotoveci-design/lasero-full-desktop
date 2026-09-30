@@ -178,12 +178,33 @@ public sealed class AutoConnectTests : IDisposable
         var scanner = new FakeScanner(new GrblPortScanResult([Found("COM3"), Found("COM4")], []));
         var (connection, _, machine) = Create(scanner);
         var handovers = 0;
-        connection.AutoConnectNeedsWizard += () => handovers++;
+        GrblPortScanResult? handed = null;
+        connection.AutoConnectNeedsWizard += scan => { handovers++; handed = scan; };
 
         await connection.SmartConnectCommand.ExecuteAsync(null);
 
         Assert.Equal(1, handovers);
+        Assert.Equal(2, handed?.Grbl.Count);
         Assert.False(connection.IsConnected);
+        machine.Dispose();
+    }
+
+    [Fact]
+    public async Task TheWizardShowsTheStripsSearchResultInsteadOfOpeningEveryPortAgain()
+    {
+        var scanner = new FakeScanner();
+        var (connection, _, machine) = Create(scanner);
+        var settings = new AppSettingsStore(Path.Combine(_directory, "wizard.json"));
+        var wizard = CreateWizard(connection, machine, settings);
+        wizard.AutoStartRequested = true;
+        wizard.PreScanResult = new GrblPortScanResult([Found("COM3"), Found("COM4")], []);
+
+        await wizard.AutoConnectCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, scanner.Calls);
+        Assert.Equal(2, wizard.FoundMachines.Count);
+        Assert.Equal(DeviceWizardStep.Results, wizard.Step);
+        Assert.Null(wizard.PreScanResult);
         machine.Dispose();
     }
 

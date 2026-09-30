@@ -48,7 +48,7 @@ public partial class ConnectionViewModel : ObservableObject
 
     /// <summary>Raised when the automatic connect could not decide alone (several controllers or none)
     /// and the guided wizard has to take over from there.</summary>
-    public event Action? AutoConnectNeedsWizard;
+    public event Action<GrblPortScanResult?>? AutoConnectNeedsWizard;
 
     /// <summary>How long the OS gets to release a port the probe just closed before it is reopened for
     /// the real connection. Internal so tests do not sleep.</summary>
@@ -311,14 +311,14 @@ public partial class ConnectionViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Warning(ex, "Automatic GRBL detection failed");
-            AutoConnectNeedsWizard?.Invoke();
+            AutoConnectNeedsWizard?.Invoke(null);
             return;
         }
 
         if (result is { Grbl.Count: 1 })
             await ConnectDetectedAsync(result.Grbl[0]).ConfigureAwait(true);
         else
-            AutoConnectNeedsWizard?.Invoke();
+            AutoConnectNeedsWizard?.Invoke(result);
     }
 
     private bool CanSmartConnect() => !IsConnected && !IsConnecting && !IsDetecting;

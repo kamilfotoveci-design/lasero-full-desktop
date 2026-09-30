@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lasero.App.Thumbnails;
 using Lasero.Core.History;
+using Lasero.Core.Machines;
 using Microsoft.Win32;
 
 namespace Lasero.App.ViewModels;
@@ -83,11 +84,16 @@ public partial class MainViewModel : ObservableObject
         // The status-strip Připojit hands over here when it could not choose a controller alone; the
         // wizard then starts the search itself so the operator does not have to click twice.
         wizard.AutoStartRequested = _autoStartNextWizard;
+        // The strip already probed the ports; the wizard shows that result rather than opening every
+        // port a second time.
+        wizard.PreScanResult = _pendingScan;
         _autoStartNextWizard = false;
+        _pendingScan = null;
         return wizard;
     }
 
     private bool _autoStartNextWizard;
+    private GrblPortScanResult? _pendingScan;
 
     /// <summary>The assistant's context follows the shell. Switching screens updates what Kamil is
     /// told, and never touches the conversation.</summary>
@@ -141,9 +147,10 @@ public partial class MainViewModel : ObservableObject
     {
         Connection = connection;
         DeviceSetup = new DeviceSetupViewModel(connection, () => DeviceWizardRequested?.Invoke());
-        connection.AutoConnectNeedsWizard += () =>
+        connection.AutoConnectNeedsWizard += scan =>
         {
             _autoStartNextWizard = true;
+            _pendingScan = scan;
             DeviceWizardRequested?.Invoke();
         };
         MachineStatus = machineStatus;

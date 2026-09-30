@@ -52,6 +52,10 @@ public partial class DeviceWizardViewModel : ObservableObject
     /// search immediately instead of waiting for a second click.</summary>
     public bool AutoStartRequested { get; set; }
 
+    /// <summary>A search the shell already ran (the status-strip Připojit). When set, the automatic
+    /// connect uses it instead of opening every port again.</summary>
+    public GrblPortScanResult? PreScanResult { get; set; }
+
     /// <summary>One line per serial port the last automatic search examined, with the reason it was not
     /// used. Shown when nothing was found so the operator can see what was tried.</summary>
     [ObservableProperty] private string? _scanReport;
@@ -129,10 +133,11 @@ public partial class DeviceWizardViewModel : ObservableObject
         var progress = new Progress<GrblPortScanProgress>(report =>
             ScanStatus = $"Hledám GRBL na portech COM… Zkouším {report.PortName} rychlostí {report.BaudRate} Bd ({report.PortIndex + 1} z {report.PortCount})");
 
-        GrblPortScanResult? result = null;
+        GrblPortScanResult? result = PreScanResult;
+        PreScanResult = null;
         try
         {
-            result = await _connection.DetectAsync(progress, cancellationToken).ConfigureAwait(true);
+            result ??= await _connection.DetectAsync(progress, cancellationToken).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {

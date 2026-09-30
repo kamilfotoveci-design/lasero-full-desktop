@@ -239,22 +239,9 @@
                                 <components:IconGlyph IconData="{StaticResource Glyph.Search}"
                                                       Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                       Foreground="{StaticResource Brush.AccentText}" />
-                                <Grid.Triggers>
-                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="ScanRingOuter" Storyboard.TargetProperty="Opacity"
-                                                                 From="0.35" To="0.08" Duration="0:0:1.6" RepeatBehavior="Forever" AutoReverse="True">
-                                                    <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                                </DoubleAnimation>
-                                                <DoubleAnimation Storyboard.TargetName="ScanRingInner" Storyboard.TargetProperty="Opacity"
-                                                                 From="0.5" To="0.15" Duration="0:0:1.6" RepeatBehavior="Forever" AutoReverse="True" BeginTime="0:0:0.3">
-                                                    <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
-                                                </DoubleAnimation>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Grid.Triggers>
+                                <!-- The pulse on ScanRingOuter/ScanRingInner is started and stopped from code-behind
+                     (DeviceWizardOverlay.UpdateScanPulse) so it runs only while a search is in progress and is
+                     skipped when the system disables animations. Intentional exception to the no-decorative-motion rule. -->
                             </Grid>
 
                             <TextBlock Text="Hledání laseru…" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />

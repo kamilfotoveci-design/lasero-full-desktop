@@ -210,8 +210,39 @@ public partial class DeviceWizardOverlay : UserControl
         SheetOffset.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
     }
 
+    /// <summary>The concentric rings around the magnifier breathe while the port search and GRBL
+    /// handshake are running, and stop the moment the step changes (found, not found, cancelled) or the
+    /// overlay closes. This is real activity, which is what the Motion.Breathe token is reserved for, and
+    /// an intentional exception to the app's no-decorative-animation rule. With system animations off
+    /// the rings stay as static rings.</summary>
+    private void UpdateScanPulse(bool scanning)
+    {
+        if (scanning && AnimationsEnabled)
+        {
+            var duration = (Duration)FindResource("Motion.Breathe");
+            var ease = (IEasingFunction)FindResource("Ease.Breathe");
+            ScanRingOuter.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+                From = 0.35, To = 0.08, Duration = duration, EasingFunction = ease,
+                AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever,
+            });
+            ScanRingInner.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+                From = 0.5, To = 0.15, Duration = duration, EasingFunction = ease,
+                BeginTime = TimeSpan.FromMilliseconds(300),
+                AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever,
+            });
+        }
+        else
+        {
+            ScanRingOuter.BeginAnimation(OpacityProperty, null);
+            ScanRingInner.BeginAnimation(OpacityProperty, null);
+        }
+    }
+
     private void HideImmediate()
     {
+        UpdateScanPulse(false);
         Visibility = Visibility.Collapsed;
         DetachViewModel();
         DataContext = null;
@@ -237,6 +268,7 @@ public partial class DeviceWizardOverlay : UserControl
         SetLayer(ResultsLayer, ResultsOffset, step == DeviceWizardStep.Results, animate);
         SetLayer(SetupLayer, SetupOffset, step == DeviceWizardStep.Setup, animate);
         SetLayer(DoneLayer, DoneOffset, step == DeviceWizardStep.Done, animate);
+        UpdateScanPulse(step == DeviceWizardStep.Scanning);
 
         if (step == DeviceWizardStep.Setup)
         {
