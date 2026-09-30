@@ -149,7 +149,9 @@ public partial class KamilAssistantHost : UserControl
 
         var size = CurrentSurfaceSize();
         var bounds = GetUsableBounds(size);
-        SetSurfacePosition(ClampPosition(_dragOrigin + delta, size, bounds));
+        // The panel may be dragged anywhere on the canvas except onto the head: dropping it there
+        // would cover the send button and the head itself.
+        SetSurfacePosition(AvoidHead(ClampPosition(_dragOrigin + delta, size, bounds), size, HomeAnchor(), bounds));
     }
 
     private void OnDragMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -172,6 +174,25 @@ public partial class KamilAssistantHost : UserControl
         if (_isDragging || _viewModel is null) return;
         _viewModel.MinimizeCommand.Execute(null);
     }
+
+    // A click on the switcher button while its popup is open first closes the popup (StaysOpen=False
+    // treats it as an outside click); without this the same click would reopen it at once.
+    private DateTime _sessionsClosedAt = DateTime.MinValue;
+
+    private void OnSessionsButtonClick(object sender, RoutedEventArgs e)
+    {
+        if ((DateTime.UtcNow - _sessionsClosedAt).TotalMilliseconds < 250) return;
+        _viewModel?.Chat.CancelDeleteChatCommand.Execute(null);
+        SessionsPopup.IsOpen = true;
+    }
+
+    private void OnSessionsPopupClosed(object? sender, EventArgs e)
+    {
+        _sessionsClosedAt = DateTime.UtcNow;
+        _viewModel?.Chat.CancelDeleteChatCommand.Execute(null);
+    }
+
+    private void OnSessionRowClick(object sender, RoutedEventArgs e) => SessionsPopup.IsOpen = false;
 
     private void DetachViewModel()
     {
@@ -553,7 +574,7 @@ public partial class KamilAssistantHost : UserControl
             Math.Max(0, width - SafeMargin), Math.Max(0, height - ContextBarClearance));
     }
 
-    private Point ClampPosition(Point position, Size size, Rect bounds)
+    public static Point ClampPosition(Point position, Size size, Rect bounds)
     {
         var maxX = Math.Max(bounds.Left, bounds.Right - size.Width);
         var maxY = Math.Max(bounds.Top, bounds.Bottom - size.Height);
@@ -586,24 +607,44 @@ public partial class KamilAssistantHost : UserControl
     /// each individually looking correct.</summary>
     private Point PositionPopover(Size size, Point avatarAnchor)
     {
-        var anchor = new Rect(avatarAnchor, new Size(PillWidth, PillHeight));
-        var bounds = GetUsableBounds(size);
-        var bubbleRight = anchor.Left - AnchorGap;
         _openDirection = PopoverDirection.Above;
-        var position = ClampPosition(new Point(bubbleRight - size.Width, anchor.Top - AnchorGap - size.Height), size, bounds);
-
-        // Final invariant, checked against the avatar's own rect directly rather than trusted a
-        // second time: whatever the arithmetic above produced, the popover must never overlap the
-        // avatar. If bounds-clamping pushed it into an overlap, pull it back clear instead.
-        if (new Rect(position, size).IntersectsWith(anchor))
-        {
-            position.X = Math.Min(position.X, anchor.Left - AnchorGap - size.Width);
-            position.Y = Math.Min(position.Y, anchor.Top - AnchorGap - size.Height);
-            position = ClampPosition(position, size, bounds);
-        }
-
-        return position;
+        return ComputePopoverPosition(size, avatarAnchor, GetUsableBounds(size));
     }
+
+    /// <summary>Where the open panel rests: up and to the left of the head, clear of it by
+    /// <see cref="AnchorGap"/>. Pure, so the "never covers the head" guarantee is unit-testable for
+    /// every window size and panel size.</summary>
+    public static Point ComputePopoverPosition(Size size, Point headOrigin, Rect bounds)
+    {
+        var head = new Rect(headOrigin, HeadSize);
+        var position = ClampPosition(new Point(head.Left - AnchorGap - size.Width, head.Top - AnchorGap - size.Height), size, bounds);
+        return AvoidHead(position, size, headOrigin, bounds);
+    }
+
+    /// <summary>Final invariant, checked against the head's own rect (plus the gap) rather than
+    /// trusted from the arithmetic that produced <paramref name="position"/>: the panel never overlaps
+    /// the head, whether it got there by layout, a stale measure or a drag. The smaller of "move up
+    /// above the head" and "move left of the head" wins; if neither fits the bounds the panel is
+    /// pinned to the edge, which cannot happen while the height stays within <see cref="AvailableHeightAboveAvatar"/>.</summary>
+    public static Point AvoidHead(Point position, Size size, Point headOrigin, Rect bounds)
+    {
+        var zone = new Rect(headOrigin.X - AnchorGap, headOrigin.Y - AnchorGap, PillWidth + 2 * AnchorGap, PillHeight + 2 * AnchorGap);
+        var panel = new Rect(position, size);
+        if (!Overlaps(panel, zone)) return position;
+
+        var up = new Point(position.X, zone.Top - size.Height);
+        var left = new Point(zone.Left - size.Width, position.Y);
+        var upFits = up.Y >= bounds.Top;
+        var leftFits = left.X >= bounds.Left;
+        if (upFits && (!leftFits || Math.Abs(up.Y - position.Y) <= Math.Abs(left.X - position.X))) return up;
+        if (leftFits) return left;
+        return ClampPosition(up, size, bounds);
+    }
+
+    /// <summary>Overlap with positive area; Rect.IntersectsWith also counts shared edges, and sitting
+    /// exactly on the gap line is the resting position, not an overlap.</summary>
+    public static bool Overlaps(Rect a, Rect b) =>
+        a.Left < b.Right - 0.01 && a.Right > b.Left + 0.01 && a.Top < b.Bottom - 0.01 && a.Bottom > b.Top + 0.01;
 
     private void RepositionForLayout()
     {
@@ -639,14 +680,37 @@ public partial class KamilAssistantHost : UserControl
         SetSurfacePosition(position);
     }
 
-    private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+    /// <summary>Last line of defence, run after every layout-driven and animation-driven placement:
+    /// if the surface as actually laid out still touches the head, move it clear. Reads the live
+    /// position and size, so it also repairs a placement made from a stale measure.</summary>
+    private void EnforceClearOfHead()
+    {
+        if (_viewModel is null or { State: KamilAssistantState.Minimized or KamilAssistantState.Hidden }) return;
+        if (Root.ActualWidth <= 0 || _isDragging) return;
 
-    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+        var size = new Size(
+            double.IsNaN(Surface.Width) ? CurrentSurfaceSize().Width : Surface.Width,
+            double.IsNaN(Surface.Height) ? CurrentSurfaceSize().Height : Surface.Height);
+        var current = CurrentSurfaceSize();
+        if (current.Width > 0 && current.Height > 0) size = new Size(Math.Max(size.Width, current.Width), Math.Max(size.Height, current.Height));
+        var bounds = GetUsableBounds(size);
+        var anchor = HomeAnchor();
+        var corrected = AvoidHead(CurrentSurfacePosition(), size, anchor, bounds);
+        if (corrected != CurrentSurfacePosition()) SetSurfacePosition(corrected);
+    }
 
-    private void OnBoundarySizeChanged(object? sender, SizeChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RepositionForLayout));
+    private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e) => ScheduleReposition();
+
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e) => ScheduleReposition();
+
+    private void OnBoundarySizeChanged(object? sender, SizeChangedEventArgs e) => ScheduleReposition();
+
+    private void ScheduleReposition() =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            RepositionForLayout();
+            EnforceClearOfHead();
+        }));
 
     private enum PopoverDirection
     {

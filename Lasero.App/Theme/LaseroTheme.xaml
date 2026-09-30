@@ -204,6 +204,18 @@
     <system:Double x:Key="Size.Text.Meta">12</system:Double>
 
     <!--
+        KAMIL reading sizes. The assistant is read, not scanned, and its reader may be a first-time
+        owner or a grandparent, so it does not use the dense editor scale above. Body is 16 with a
+        1.45 line height (16 x 1.45 = 23.2), meta 14, and the smallest interactive target is 36.
+        Nothing on the panel goes below Assistant.Meta.
+    -->
+    <system:Double x:Key="Size.Text.Assistant.Body">16</system:Double>
+    <system:Double x:Key="Size.Text.Assistant.LineHeight">23</system:Double>
+    <system:Double x:Key="Size.Text.Assistant.Meta">14</system:Double>
+    <system:Double x:Key="Size.Control.Assistant.Chip">36</system:Double>
+    <system:Double x:Key="Size.Control.Assistant.Send">40</system:Double>
+
+    <!--
         Icon sizes. Five steps, each with a job. Before these existed the app rendered icons at 10,
         12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25, 28 and 30 across 112 sites, and Glyph.Close alone
         appeared at four different sizes in the same dismiss role.

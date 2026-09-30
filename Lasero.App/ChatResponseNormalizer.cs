@@ -103,8 +103,10 @@ public static partial class ChatResponseNormalizer
             break;
         }
 
-        // A lead-in such as "Postup:" with its steps cut away reads as broken.
-        while (kept.Count > 0 && (kept[^1].Text.Length == 0 || (!kept[^1].IsCode && kept[^1].Text.EndsWith(':'))))
+        // A lead-in such as "Postup:" with its steps cut away, or a bare marker such as "1." whose text
+        // was on the next line, reads as broken.
+        while (kept.Count > 0 && (kept[^1].Text.Length == 0
+            || (!kept[^1].IsCode && (kept[^1].Text.EndsWith(':') || BareMarkerRegex().IsMatch(kept[^1].Text)))))
             kept.RemoveAt(kept.Count - 1);
 
         var shortText = Join(kept);
@@ -222,6 +224,7 @@ public static partial class ChatResponseNormalizer
     [GeneratedRegex("^\\s*[-*+]\\s+")] private static partial Regex BulletRegex();
     [GeneratedRegex("^\\s*(\\d+[.)])\\s+")] private static partial Regex NumberRegex();
     [GeneratedRegex("^\\d+[.)]\\s")] private static partial Regex NumberedItemRegex();
+    [GeneratedRegex("^([0-9]+[.)]|•)$")] private static partial Regex BareMarkerRegex();
     [GeneratedRegex("`([^`]+)`")] private static partial Regex InlineCodeRegex();
     [GeneratedRegex("\\*\\*([^*]+)\\*\\*")] private static partial Regex StrongRegex();
     [GeneratedRegex("(?<!\\*)\\*([^*]+)\\*(?!\\*)|_([^_]+)_")] private static partial Regex EmphasisRegex();

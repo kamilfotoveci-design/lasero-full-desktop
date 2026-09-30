@@ -45,11 +45,12 @@
 
             <Grid Margin="8,0,6,0" VerticalAlignment="Center">
                 <TextBox x:Name="Input"
-                         Background="Transparent" BorderThickness="0" Padding="0,6"
+                         Background="Transparent" BorderThickness="0" Padding="0,8"
+                         FontSize="{StaticResource Size.Text.Assistant.Body}"
                          MaxLength="4000"
                          TextWrapping="Wrap" AcceptsReturn="True"
                          VerticalContentAlignment="Center"
-                         MaxHeight="96"
+                         MaxHeight="128"
                          VerticalScrollBarVisibility="Auto"
                          PreviewKeyDown="OnInputPreviewKeyDown"
                          automation:AutomationProperties.Name="Dotaz pro Kamila"
@@ -60,7 +61,8 @@
                            IsHitTestVisible="False"
                            VerticalAlignment="Center" Margin="1,0,0,0">
                     <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Kamil.MetaText}">
+                            <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Body}" />
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Text, ElementName=Input}" Value="">
@@ -98,7 +100,7 @@
                 </Button.ToolTip>
                 <Grid>
                     <components:IconGlyph IconData="{StaticResource Glyph.Send}"
-                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                          Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                           Foreground="White">
                         <components:IconGlyph.Style>
                             <Style TargetType="components:IconGlyph">

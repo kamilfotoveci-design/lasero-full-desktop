@@ -17,7 +17,7 @@
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
                                       VerticalAlignment="Center" Margin="0,0,5,0" />
-                <TextBlock Text="{Binding ScreenLabel}" Style="{StaticResource Text.Muted}"
+                <TextBlock Text="{Binding ScreenLabel}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" />
             </StackPanel>
         </Border>
@@ -29,7 +29,7 @@
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
                                       VerticalAlignment="Center" Margin="0,0,5,0" />
-                <TextBlock Text="{Binding MaterialContext}" Style="{StaticResource Text.Muted}"
+                <TextBlock Text="{Binding MaterialContext}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </Border>
@@ -41,7 +41,7 @@
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
                                       VerticalAlignment="Center" Margin="0,0,5,0" />
-                <TextBlock Text="{Binding MachineContext}" Style="{StaticResource Text.Muted}"
+                <TextBlock Text="{Binding MachineContext}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </Border>

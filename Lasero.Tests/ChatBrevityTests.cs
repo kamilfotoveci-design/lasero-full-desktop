@@ -28,6 +28,33 @@ public sealed class ChatBrevityTests
     }
 
     [Fact]
+    public void PromptForbidsInformalAndFormalAddressWithAGoodAndBadExample()
+    {
+        var instruction = Instruction();
+
+        Assert.Contains("Neutrální forma", instruction, StringComparison.Ordinal);
+        Assert.Contains("netykej ani nevykej", instruction, StringComparison.Ordinal);
+        foreach (var word in new[] { "ty, vy, ti, tě, tvůj, váš" })
+            Assert.Contains(word, instruction, StringComparison.Ordinal);
+        Assert.Contains("Špatně: Rád ti pomohu", instruction, StringComparison.Ordinal);
+        Assert.Contains("Správně: Doporučené nastavení", instruction, StringComparison.Ordinal);
+
+        // The prompt's own examples outside the single "Špatně" pair are themselves in neutral form.
+        var withoutBadExample = instruction[..instruction.IndexOf("Špatně:", StringComparison.Ordinal)];
+        Assert.DoesNotContain("napiš", withoutBadExample.Replace("jako nastav, zkus, napiš", string.Empty), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vyzkoušej", instruction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NormalizerDoesNotRewriteTheWordingOfAnAnswer()
+    {
+        const string reply = "Rád ti pomohu, tvůj první pokus vyjde.";
+
+        Assert.Equal(reply, ChatResponseNormalizer.Normalize(reply));
+        Assert.Equal(reply, ChatResponseNormalizer.Condense(reply).Short);
+    }
+
+    [Fact]
     public void ShortAnswerIsLeftAlone()
     {
         var reply = "Výkon: 60 %\nRychlost: 3000 mm/min\nPrůchody: 2\nNejdřív vyzkoušej na odřezku.";

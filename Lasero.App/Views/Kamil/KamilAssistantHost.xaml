@@ -24,9 +24,7 @@
         which clamps the panel's height to the room actually available).
     -->
     <UserControl.Resources>
-        <Style x:Key="MessageText" TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="LineHeight" Value="19" />
+        <Style x:Key="MessageText" TargetType="TextBlock" BasedOn="{StaticResource Kamil.MessageText}">
             <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
             <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
         </Style>
@@ -278,11 +276,19 @@
                             </Grid>
 
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="KAMIL" FontWeight="SemiBold" />
-                                <TextBlock Text="AI laserový asistent" Style="{StaticResource Text.Muted}" Margin="0,1,0,0" />
+                                <TextBlock Text="KAMIL" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Assistant.Body}" />
+                                <TextBlock Text="AI laserový asistent" Style="{StaticResource Kamil.MetaText}" Margin="0,1,0,0" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Conversation switcher. The list itself is a popup so the header stays one line. -->
+                                <Button x:Name="SessionsButton" Style="{StaticResource Kamil.HeaderButton}"
+                                        Click="OnSessionsButtonClick"
+                                        ToolTip="Dřívější konverzace"
+                                        automation:AutomationProperties.Name="Dřívější konverzace">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.History}"
+                                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                </Button>
                                 <!-- Minimize is the only way out of the panel: there is deliberately no Close,
                                      the avatar is the permanent anchor. It keeps the conversation. -->
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
@@ -331,7 +337,7 @@
                                                 facing each other would halve the usable width of a 420px
                                                 panel and make every answer twice as tall.
                                             -->
-                                            <Border HorizontalAlignment="Right" MaxWidth="300"
+                                            <Border HorizontalAlignment="Right" MaxWidth="340"
                                                     Background="{DynamicResource Brush.SelectedSurface}"
                                                     CornerRadius="{StaticResource Radius.Md}" Padding="11,8"
                                                     Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibilityShared}}">
@@ -346,6 +352,12 @@
                                                 <components:LaseroAvatar Size="28" VerticalAlignment="Top" Margin="0,1,9,0" />
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock Text="{Binding DisplayText}" Style="{StaticResource MessageText}" />
+                                                    <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Left"
+                                                            Margin="0,4,0,0" Padding="0,0,8,0" MinHeight="{StaticResource Size.Control.Compact}"
+                                                            FontSize="{StaticResource Size.Text.Assistant.Meta}"
+                                                            Content="{Binding ToggleLabel}"
+                                                            Command="{Binding ToggleExpandedCommand}"
+                                                            Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibilityShared}}" />
                                                     <components:ParameterRecommendationCard
                                                         DataContext="{Binding Recommendation}"
                                                         Visibility="{Binding RelativeSource={RelativeSource Self}, Path=DataContext, Converter={StaticResource NotNullToVisibilityShared}}"
@@ -364,9 +376,10 @@
                         <StackPanel VerticalAlignment="Center" Margin="20,0"
                                     Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibilityShared}}">
                             <TextBlock Text="Kamil pomůže s návrhem a nastavením" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" />
+                                       FontSize="{StaticResource Size.Text.Assistant.Body}"
+                                       HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                             <TextBlock Text="Doporučení vždy ověřte na odřezku, než pustíte ostrou úlohu."
-                                       Style="{StaticResource Text.Muted}" TextWrapping="Wrap"
+                                       Style="{StaticResource Kamil.MetaText}" TextWrapping="Wrap"
                                        TextAlignment="Center" Margin="0,5,0,0" />
                             <ItemsControl ItemsSource="{Binding QuickPrompts}" Margin="0,14,0,0"
                                           HorizontalAlignment="Center">
@@ -404,7 +417,7 @@
                                                           Foreground="{DynamicResource Brush.Warning}"
                                                           VerticalAlignment="Top" Margin="0,1,8,0" />
                                     <TextBlock Grid.Column="1" Text="{Binding Chat.StatusMessage}" TextWrapping="Wrap"
-                                               FontSize="{StaticResource Size.Text.Meta}" />
+                                               FontSize="{StaticResource Size.Text.Assistant.Meta}" />
                                     <Button Grid.Column="2" Style="{StaticResource Button.Link}" Padding="6,0"
                                             Content="Zkusit znovu" Command="{Binding Chat.SendCommand}"
                                             VerticalAlignment="Top" />
@@ -444,5 +457,117 @@
                 Width="48" Height="48"
                 ToolTip="Kamil — otevřít chat"
                 automation:AutomationProperties.Name="Kamil — otevřít chat" />
+
+        <!-- Conversation switcher: earlier conversations, newest first. Deleting asks in place. -->
+        <Popup x:Name="SessionsPopup" PlacementTarget="{Binding ElementName=SessionsButton}"
+               Placement="Bottom" HorizontalOffset="-288" VerticalOffset="4"
+               StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+               Closed="OnSessionsPopupClosed">
+            <Border Width="320" MaxHeight="360" Margin="8"
+                    Background="{DynamicResource Brush.Panel}"
+                    BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                    CornerRadius="{StaticResource Radius.Md}" Effect="{StaticResource Shadow.Dropdown}"
+                    automation:AutomationProperties.Name="Dřívější konverzace">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Konverzace" FontWeight="SemiBold" Margin="14,10,14,6"
+                               FontSize="{StaticResource Size.Text.Assistant.Body}" />
+                    <TextBlock Grid.Row="1" Text="Zatím tu nic není" Margin="14,4,14,14"
+                               Style="{StaticResource Kamil.MetaText}"
+                               Visibility="{Binding DataContext.Chat.HasSessions, ElementName=Host, Converter={StaticResource InverseBoolToVisibilityShared}}" />
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="6,0,6,6">
+                        <ItemsControl ItemsSource="{Binding DataContext.Chat.Sessions, ElementName=Host}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ChatSessionItem}">
+                                    <Grid MinHeight="44">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
+                                        <!-- Normal row -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsConfirmingDelete}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Button Style="{StaticResource Button.Ghost}" HorizontalContentAlignment="Stretch"
+                                                    MinHeight="44" Padding="8,4"
+                                                    Command="{Binding DataContext.Chat.OpenChatCommand, ElementName=Host}"
+                                                    CommandParameter="{Binding}"
+                                                    Click="OnSessionRowClick">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                               FontSize="{StaticResource Size.Text.Assistant.Body}"
+                                                               Foreground="{DynamicResource Brush.TextPrimary}" />
+                                                    <TextBlock Text="{Binding UpdatedLabel}" Style="{StaticResource Kamil.MetaText}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="1" Style="{StaticResource Kamil.HeaderButton}"
+                                                    Width="{StaticResource Size.Control.Assistant.Chip}" Height="{StaticResource Size.Control.Assistant.Chip}"
+                                                    Margin="2,0,2,0"
+                                                    Command="{Binding DataContext.Chat.RequestDeleteChatCommand, ElementName=Host}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Smazat konverzaci"
+                                                    automation:AutomationProperties.Name="Smazat konverzaci">
+                                                <components:IconGlyph IconData="{StaticResource Glyph.Delete}"
+                                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                            </Button>
+                                        </Grid>
+                                        <!-- Confirmation row -->
+                                        <Grid Margin="8,0,2,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsConfirmingDelete}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <TextBlock Text="Smazat konverzaci" VerticalAlignment="Center"
+                                                       FontSize="{StaticResource Size.Text.Assistant.Meta}"
+                                                       Foreground="{DynamicResource Brush.TextPrimary}" />
+                                            <Button Grid.Column="1" Style="{StaticResource Button.Danger}" Content="Smazat" Margin="4,0"
+                                                    MinHeight="{StaticResource Size.Control.Assistant.Chip}"
+                                                    FontSize="{StaticResource Size.Text.Assistant.Meta}"
+                                                    Command="{Binding DataContext.Chat.DeleteChatCommand, ElementName=Host}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Grid.Column="2" Style="{StaticResource Button.Ghost}" Content="Zrušit"
+                                                    MinHeight="{StaticResource Size.Control.Assistant.Chip}"
+                                                    FontSize="{StaticResource Size.Text.Assistant.Meta}"
+                                                    Command="{Binding DataContext.Chat.CancelDeleteChatCommand, ElementName=Host}" />
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Popup>
         </Canvas>
 </UserControl>

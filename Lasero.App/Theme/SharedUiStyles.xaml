@@ -493,18 +493,18 @@
     <!-- Send. Square-ish and accent-filled, sized to sit inside the composer's 4px padding without
          making the composer taller than a standard control. -->
     <Style x:Key="Kamil.SendButton" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-        <Setter Property="Width" Value="32" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Assistant.Send}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Assistant.Send}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Assistant.Send}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="0" />
     </Style>
 
     <!-- Header actions: new chat, minimize, close. Ghost until hovered, so the header stays quiet. -->
     <Style x:Key="Kamil.HeaderButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
-        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="2,0,0,0" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
@@ -515,9 +515,26 @@
     <Style x:Key="Kamil.ContextChip" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-        <Setter Property="Padding" Value="8,3" />
-        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Margin" Value="0,0,6,4" />
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- KAMIL message text: the reading size, with breathing room between lines. -->
+    <Style x:Key="Kamil.MessageText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Body}" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+        <Setter Property="LineHeight" Value="{StaticResource Size.Text.Assistant.LineHeight}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Secondary KAMIL text (subtitle, hints). Secondary ink, not the fainter muted ink, so it keeps
+         WCAG AA contrast at 14px. -->
+    <Style x:Key="Kamil.MetaText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Meta}" />
     </Style>
 
     <!-- A follow-up or starter prompt. This one *is* pressable, so it carries a border — hover/press
@@ -528,10 +545,10 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
-        <Setter Property="Height" Value="28" />
-        <Setter Property="MinHeight" Value="28" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Meta}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Assistant.Chip}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Assistant.Chip}" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="Margin" Value="0,0,6,6" />
     </Style>
 </ResourceDictionary>

@@ -37,7 +37,7 @@ public sealed class KamilPlacementTests
 
         var start = code.IndexOf("private Rect GetUsableBounds", StringComparison.Ordinal);
         Assert.True(start >= 0);
-        var body = code[start..code.IndexOf("private Point ClampPosition", start, StringComparison.Ordinal)];
+        var body = code[start..code.IndexOf("public static Point ClampPosition", start, StringComparison.Ordinal)];
 
         // MainWindow's AssistantClearance margin already accounts for both. Counting them again here
         // is what moved the head from the bottom-right corner into the middle of the canvas.
