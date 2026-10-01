@@ -387,6 +387,8 @@ public partial class GCodeViewModel : ObservableObject
         if (ImportKind == ImportKind.GCode) return;
         _sceneDocumentDirty = true;
         IsCurrentDocumentFramed = false;
+        if (!IsJobActive && JobState is (JobRunState.Ready or JobRunState.Completed))
+            JobState = JobRunState.Idle;
     }
 
     private void EnsureSceneDocumentCurrent(bool refreshCurrentPosition = false)
@@ -897,6 +899,10 @@ public partial class GCodeViewModel : ObservableObject
                 DurationSeconds = _runStopwatch.Elapsed.TotalSeconds,
                 CompletedUtc = DateTime.UtcNow,
             });
+            // The machine completed the streamed document, but the operator may have edited the
+            // canvas while it was running. Keep the completion record and message while clearing
+            // the green badge for a document that is no longer the one just engraved.
+            if (_sceneDocumentDirty) JobState = JobRunState.Idle;
         }
     }
 
@@ -939,14 +945,18 @@ public partial class GCodeViewModel : ObservableObject
         try
         {
             await RunLinesAsync(frameLines, abortOnError: true);
-            IsCurrentDocumentFramed = _activeRunner?.State == JobRunState.Completed;
+            IsCurrentDocumentFramed = !_sceneDocumentDirty && _activeRunner?.State == JobRunState.Completed;
         }
         finally
         {
             _isFramingOperation = false;
-            JobState = IsCurrentDocumentFramed ? JobRunState.Ready : _activeRunner?.State ?? JobRunState.Error;
+            JobState = IsCurrentDocumentFramed
+                ? JobRunState.Ready
+                : _sceneDocumentDirty ? JobRunState.Idle : _activeRunner?.State ?? JobRunState.Error;
             LastMessage = IsCurrentDocumentFramed
                 ? "Rámování bylo dokončeno. Umístění úlohy je ověřené."
+                : _sceneDocumentDirty
+                    ? "Návrh se během rámování změnil. Rámování je nutné zopakovat."
                 : "Rámování nebylo dokončeno.";
             RefreshCommands();
         }

@@ -29,6 +29,14 @@ public partial class MaterialsViewModel : ObservableObject
     public IReadOnlyList<int> PowerClasses { get; } = MaterialCatalog.PowerClasses;
     public IReadOnlyList<LayerMode> Operations { get; } = [LayerMode.Fill, LayerMode.Cut];
     public bool HasPresets => Presets.Count > 0;
+    /// <summary>True while at least one personal recipe cuts, so the scrap-test hint is shown once above the list.</summary>
+    public bool HasCutPreset => Presets.Any(preset => preset.Mode == LayerMode.Cut);
+    public string CutSafetyHint => MaterialRecipeRules.CutSafetyHint;
+
+    /// <summary>Asks whether a recipe may be deleted. Replaced in tests; the default is the shared dialog.</summary>
+    public Func<MaterialPreset, bool> ConfirmDelete { get; set; } = ConfirmDeleteWithDialog;
+
+    private readonly Dictionary<Guid, LayerMode> _lastModes = new();
     public bool HasRecommendedRecipes => RecommendedRecipes.Count > 0;
     public bool HasSwatchCards => SwatchCards.Count > 0;
     public string ActiveProfileLabel => $"{TechnologyLabel(SelectedTechnology)} · {SelectedPowerWatts} W";
@@ -57,8 +65,30 @@ public partial class MaterialsViewModel : ObservableObject
         {
             Presets.Add(preset);
             preset.PropertyChanged += OnPresetPropertyChanged;
+            _lastModes[preset.Id] = preset.Mode;
         }
+        RefreshDuplicateNames();
         RefreshRecommendedRecipes();
+    }
+
+    /// <summary>Marks every recipe whose name repeats an earlier one (case-insensitive). The first keeps
+    /// its name and stays valid, so already-saved recipes are never blocked by a newcomer.</summary>
+    private void RefreshDuplicateNames()
+    {
+        var seen = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+        foreach (var preset in Presets)
+        {
+            var name = (preset.Name ?? string.Empty).Trim();
+            preset.HasDuplicateName = name.Length > 0 && !seen.Add(name);
+        }
+    }
+
+    private void NotifyPresetListChanged()
+    {
+        foreach (var item in Presets) _lastModes.TryAdd(item.Id, item.Mode);
+        RefreshDuplicateNames();
+        OnPropertyChanged(nameof(HasPresets));
+        OnPropertyChanged(nameof(HasCutPreset));
     }
 
     partial void OnSelectedTechnologyChanged(LaserTechnology value)
@@ -159,7 +189,7 @@ public partial class MaterialsViewModel : ObservableObject
             preset.PropertyChanged += OnPresetPropertyChanged;
             Presets.Add(preset);
         }
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 
     private void OnAccountPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -174,12 +204,13 @@ public partial class MaterialsViewModel : ObservableObject
     private void SaveAsPersonal(MaterialRecipe? recipe)
     {
         if (recipe is null) return;
-        var preset = MaterialPreset.Create($"{recipe.MaterialName} – {recipe.OperationName}", recipe.Mode,
+        var name = MaterialRecipeRules.UniqueName($"{recipe.MaterialName} – {recipe.OperationName}", Presets.Select(item => item.Name));
+        var preset = MaterialPreset.Create(name, recipe.Mode,
             recipe.SpeedMmPerMinute, recipe.PowerPercent, recipe.Passes, recipe.FillLineIntervalMm);
         _store.Add(preset);
         preset.PropertyChanged += OnPresetPropertyChanged;
         Presets.Add(preset);
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 
     public static string TechnologyLabel(LaserTechnology technology) => technology switch
@@ -261,7 +292,7 @@ public partial class MaterialsViewModel : ObservableObject
             preset.PropertyChanged += OnPresetPropertyChanged;
             Presets.Add(preset);
         }
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 
     private static IReadOnlyCollection<MaterialSyncItem> ToSyncItems(IEnumerable<MaterialPreset> presets) => presets
@@ -284,46 +315,86 @@ public partial class MaterialsViewModel : ObservableObject
 
     private void OnPresetPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is MaterialPreset preset && string.IsNullOrEmpty(preset.Error)) _store.Update(preset);
+        if (sender is not MaterialPreset preset) return;
+        if (e.PropertyName is nameof(MaterialPreset.ValidationMessage) or nameof(MaterialPreset.HasValidationMessage)
+            or nameof(MaterialPreset.ModeHint) or nameof(MaterialPreset.HasDuplicateName)) return;
+
+        if (e.PropertyName == nameof(MaterialPreset.Mode))
+        {
+            // A recipe still on the untouched defaults of its old mode gets the new mode's defaults, so a
+            // beginner switching Gravírování to Řezání does not keep an engraving speed. Edited values stay.
+            if (_lastModes.TryGetValue(preset.Id, out var previous) && previous != preset.Mode && HasDefaultsOf(preset, previous))
+            {
+                var (speed, power, passes) = MaterialRecipeRules.DefaultsFor(preset.Mode, SelectedPowerWatts);
+                preset.Speed = speed;
+                preset.Power = power;
+                preset.Passes = passes;
+            }
+            _lastModes[preset.Id] = preset.Mode;
+            OnPropertyChanged(nameof(HasCutPreset));
+        }
+        if (e.PropertyName == nameof(MaterialPreset.Name)) RefreshDuplicateNames();
+
+        if (string.IsNullOrEmpty(preset.Error)) _store.Update(preset);
     }
+
+    private bool HasDefaultsOf(MaterialPreset preset, LayerMode mode)
+    {
+        var (speed, power, passes) = MaterialRecipeRules.DefaultsFor(mode, SelectedPowerWatts);
+        return Math.Abs(preset.Speed - speed) < 0.5 && Math.Abs(preset.Power - power) < 0.5 && preset.Passes == passes;
+    }
+
+    private static bool ConfirmDeleteWithDialog(MaterialPreset preset) => LaseroDialogWindow.Show(
+        Application.Current.MainWindow, new LaseroDialogOptions(
+            "Smazat recept",
+            $"Recept „{preset.Name}“ bude smazán z vašich receptů. Vrátit ho lze jen vytvořením znovu.",
+            "Smazat recept",
+            CancelText: "Ponechat",
+            Tone: LaseroDialogTone.Danger,
+            DestructivePrimary: true)) == LaseroDialogChoice.Primary;
 
     [RelayCommand]
     private void Add()
     {
-        var preset = MaterialPreset.Create("Nový materiál", LayerMode.Cut, speed: 300, power: 80, passes: 1);
+        var mode = LayerMode.Fill;
+        var (speed, power, passes) = MaterialRecipeRules.DefaultsFor(mode, SelectedPowerWatts);
+        var name = MaterialRecipeRules.UniqueName(MaterialRecipeRules.BaseName, Presets.Select(item => item.Name));
+        var preset = MaterialPreset.Create(name, mode, speed, power, passes);
+        _lastModes[preset.Id] = mode;
         _store.Add(preset);
         preset.PropertyChanged += OnPresetPropertyChanged;
         Presets.Add(preset);
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 
     [RelayCommand]
     private void Duplicate(MaterialPreset? preset)
     {
         if (preset is null) return;
-        var copy = preset.Clone(preset.Name + " (kopie)");
+        var copy = preset.Clone(MaterialRecipeRules.UniqueName(preset.Name.Trim() + " (kopie)", Presets.Select(item => item.Name)));
+        copy.Speed = MaterialRecipeRules.ClampSpeed(copy.Speed);
+        copy.Power = MaterialRecipeRules.ClampPower(copy.Power);
+        copy.Passes = MaterialRecipeRules.ClampPasses(copy.Passes);
+        if (!double.IsFinite(copy.FillLineIntervalMm) || copy.FillLineIntervalMm <= 0)
+            copy.FillLineIntervalMm = 25.4 / 254;
+        _lastModes[copy.Id] = copy.Mode;
         _store.Add(copy);
         copy.PropertyChanged += OnPresetPropertyChanged;
         Presets.Add(copy);
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 
     [RelayCommand]
     private void Delete(MaterialPreset? preset)
     {
         if (preset is null) return;
-        var confirmed = LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
-            "Odstranit materiál",
-            $"Materiál „{preset.Name}“ bude odstraněn z vašeho vzorníku. Tuto akci lze vrátit pouze jeho opětovným vytvořením.",
-            "Odstranit materiál",
-            CancelText: "Ponechat",
-            Tone: LaseroDialogTone.Danger,
-            DestructivePrimary: true)) == LaseroDialogChoice.Primary;
+        var confirmed = ConfirmDelete(preset);
         if (!confirmed) return;
 
         preset.PropertyChanged -= OnPresetPropertyChanged;
         _store.Remove(preset.Id);
+        _lastModes.Remove(preset.Id);
         Presets.Remove(preset);
-        OnPropertyChanged(nameof(HasPresets));
+        NotifyPresetListChanged();
     }
 }

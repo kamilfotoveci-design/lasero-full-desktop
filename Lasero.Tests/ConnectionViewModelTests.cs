@@ -23,6 +23,19 @@ public sealed class ConnectionViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ConnectedStatusDoesNotRemainInDeviceIdentificationProgress()
+    {
+        using var machine = new GrblConnection(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
+        var settings = new AppSettingsStore(Path.Combine(_directory, "status-settings.json"));
+        var viewModel = new ConnectionViewModel(machine, settings);
+
+        machine.Connect(VirtualGrblTransport.PortName);
+
+        Assert.StartsWith("Připojeno", viewModel.StatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("zjišťuje se typ", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ManualMotionRequiresFreshIdleStateButSafetyResetRemainsAvailable()
     {
         var transport = new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero };

@@ -309,6 +309,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         var gcode = new GCodeViewModel(machine, scene, new AppSettingsStore(Path.Combine(_directory, "badge.json")));
 
         Assert.Equal("Bez úlohy", gcode.JobBadgeLabel);
+        gcode.JobState = JobRunState.Completed;
 
         scene.Execute(new AddObjectCommand(scene.Scene, new SceneObject
         {
@@ -318,6 +319,15 @@ public sealed class FirstRunGuidanceTests : IDisposable
             Name = "Objekt",
         }, []));
 
+        Assert.Equal("Návrh neodeslán", gcode.JobBadgeLabel);
+        gcode.JobState = JobRunState.Ready;
+        scene.Execute(new AddObjectCommand(scene.Scene, new SceneObject
+        {
+            LocalShapes = [],
+            LocalPivot = Position.Zero,
+            LocalBounds = BoundingBox2D.Empty,
+            Name = "Druhý objekt",
+        }, []));
         Assert.Equal("Návrh neodeslán", gcode.JobBadgeLabel);
         Assert.NotEqual("Připraveno", JobRunStateToLabelConverter.Label(JobRunState.Ready));
         Assert.Equal("Úloha připravena", JobRunStateToLabelConverter.Label(JobRunState.Ready));

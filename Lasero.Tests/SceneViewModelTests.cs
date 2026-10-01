@@ -1917,6 +1917,103 @@ public class SceneViewModelTests
     }
 
     [Fact]
+    public void MultiSelectionPositionFieldsUseAggregateCenterAndMoveTogetherWithOneUndoStep()
+    {
+        var viewModel = new SceneViewModel();
+        var left = MakeSquareObject();
+        var right = MakeSquareObject(x: 40);
+        right.Transform = right.Transform with { ScaleX = 2, ScaleY = 0.5 };
+        viewModel.Objects.Add(left);
+        viewModel.Objects.Add(right);
+        viewModel.SelectedObjects.Add(left);
+        viewModel.SelectedObjects.Add(right);
+
+        Assert.Null(viewModel.Selected); // multi-selection fields must not expose a primary object's values
+        Assert.Equal(35, viewModel.SelectedX, precision: 6);
+        Assert.Equal(5, viewModel.SelectedY, precision: 6);
+        Assert.Equal(70, viewModel.SelectedWidth, precision: 6);
+        Assert.Equal(10, viewModel.SelectedHeight, precision: 6);
+
+        viewModel.SelectedX = 100;
+
+        Assert.Equal(100, viewModel.SelectedX, precision: 6);
+        Assert.Equal(5, viewModel.SelectedY, precision: 6);
+        Assert.Equal(65, left.Transform.X, precision: 6);
+        Assert.Equal(105, right.Transform.X, precision: 6);
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Equal(35, viewModel.SelectedX, precision: 6);
+        Assert.Equal(5, viewModel.SelectedY, precision: 6);
+        Assert.Equal(0, left.Transform.X, precision: 6);
+        Assert.Equal(40, right.Transform.X, precision: 6);
+
+        viewModel.RedoCommand.Execute(null);
+        Assert.Equal(100, viewModel.SelectedX, precision: 6);
+        Assert.Equal(5, viewModel.SelectedY, precision: 6);
+        Assert.Equal(65, left.Transform.X, precision: 6);
+        Assert.Equal(105, right.Transform.X, precision: 6);
+    }
+
+    [Fact]
+    public void MultiSelectionWidthScalesAggregateBoundsAboutTheirCenterAndIsOneUndoStep()
+    {
+        var viewModel = new SceneViewModel { LockAspectRatio = false };
+        var left = MakeSquareObject();
+        var right = MakeSquareObject(x: 40);
+        right.Transform = right.Transform with { ScaleX = 2, ScaleY = 0.5 };
+        viewModel.Objects.Add(left);
+        viewModel.Objects.Add(right);
+        viewModel.SelectedObjects.Add(left);
+        viewModel.SelectedObjects.Add(right);
+
+        viewModel.SelectedWidth = 140;
+
+        Assert.Equal(140, viewModel.SelectedWidth, precision: 6);
+        Assert.Equal(10, viewModel.SelectedHeight, precision: 6);
+        Assert.Equal(35, viewModel.SelectedX, precision: 6);
+        Assert.Equal(-25, left.Transform.X, precision: 6);
+        Assert.Equal(55, right.Transform.X, precision: 6);
+        Assert.Equal(2, left.Transform.ScaleX, precision: 6);
+        Assert.Equal(4, right.Transform.ScaleX, precision: 6);
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Equal(70, viewModel.SelectedWidth, precision: 6);
+        Assert.Equal(10, viewModel.SelectedHeight, precision: 6);
+        Assert.Equal(0, left.Transform.X, precision: 6);
+        Assert.Equal(40, right.Transform.X, precision: 6);
+        Assert.Equal(1, left.Transform.ScaleX, precision: 6);
+        Assert.Equal(2, right.Transform.ScaleX, precision: 6);
+
+        viewModel.RedoCommand.Execute(null);
+        Assert.Equal(140, viewModel.SelectedWidth, precision: 6);
+        Assert.Equal(-25, left.Transform.X, precision: 6);
+        Assert.Equal(55, right.Transform.X, precision: 6);
+    }
+
+    [Fact]
+    public void NonUniformMultiSelectionResizeRejectsRotatedObjectsThatWouldNeedShear()
+    {
+        var viewModel = new SceneViewModel { LockAspectRatio = false };
+        var left = MakeSquareObject();
+        var rotated = MakeSquareObject(x: 40);
+        rotated.Transform = rotated.Transform with { RotationDeg = 30 };
+        viewModel.Objects.Add(left);
+        viewModel.Objects.Add(rotated);
+        viewModel.SelectedObjects.Add(left);
+        viewModel.SelectedObjects.Add(rotated);
+        var leftBefore = left.Transform;
+        var rotatedBefore = rotated.Transform;
+        var widthBefore = viewModel.SelectedWidth;
+
+        viewModel.SelectedWidth = widthBefore * 1.5;
+
+        Assert.Equal(leftBefore, left.Transform);
+        Assert.Equal(rotatedBefore, rotated.Transform);
+        Assert.Equal(widthBefore, viewModel.SelectedWidth, precision: 6);
+        Assert.False(viewModel.CanUndo);
+    }
+
+    [Fact]
     public void RasterCanBeResizedButNotRotatedAndResizeIsUndoable()
     {
         var viewModel = new SceneViewModel();

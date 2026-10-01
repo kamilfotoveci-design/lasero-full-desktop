@@ -73,6 +73,7 @@ public partial class SceneViewModel : ObservableObject
     [ObservableProperty] private string? _backgroundRemovalStatus;
     [ObservableProperty] private string? _backgroundRemovalError;
     [ObservableProperty] private double _backgroundRemovalProgress;
+    private readonly HashSet<SceneObject> _observedSelection = [];
 
     public bool HasSelection => SelectedObjects.Count > 0;
     public bool HasMultipleSelection => SelectedObjects.Count > 1;
@@ -84,8 +85,8 @@ public partial class SceneViewModel : ObservableObject
         >= 2 and <= 4 => $"{SelectedObjects.Count} objekty ve výběru",
         _ => $"{SelectedObjects.Count} objektů ve výběru",
     };
-    public bool CanEditSelectedPosition => Selected is { IsLocked: false };
-    public bool CanTransformSelectedObject => Selected is { IsLocked: false };
+    public bool CanEditSelectedPosition => HasSelection && SelectedObjects.All(item => !item.IsLocked);
+    public bool CanTransformSelectedObject => CanEditSelectedPosition;
     public bool CanRotateSelectedObject => Selected is { IsLocked: false, IsRaster: false };
     public bool IsSelectedLocked => Selected?.IsLocked == true;
     public bool CanGroupSelection => SelectedObjects.Count >= 2 && SelectedObjects.All(item => !item.IsRaster && !item.IsLocked);
@@ -203,6 +204,13 @@ public partial class SceneViewModel : ObservableObject
 
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        foreach (var item in _observedSelection.Except(SelectedObjects).ToList())
+        {
+            item.PropertyChanged -= OnSelectedObjectPropertyChanged;
+            _observedSelection.Remove(item);
+        }
+        foreach (var item in SelectedObjects.Where(item => _observedSelection.Add(item)))
+            item.PropertyChanged += OnSelectedObjectPropertyChanged;
         Selected = SelectedObjects.Count == 1 ? SelectedObjects[0] : null;
         var selectedColors = SelectedObjects
             .SelectMany(item => item.LocalShapes)
@@ -1951,19 +1959,23 @@ public partial class SceneViewModel : ObservableObject
     partial void OnSelectedLayerChanged(LayerSettings? value) => NotifyLayerStateChanged();
 
     // --- Property-panel wrapper properties: ObjectTransform is a readonly struct, so binding a TextBox
-    // straight to "Selected.Transform.X" has no settable path — these translate a set into one
-    // TransformObjectCommand each, same as a completed drag gesture. Round 1 is single-selection only. ---
+    // straight to "Selected.Transform.X" has no settable path. Position and size describe the whole
+    // selection; rotation remains a single-object property because a multi-selection has no single angle. ---
 
     public double SelectedX
     {
-        get => Selected is null ? 0 : Selected.LocalPivot.X + Selected.Transform.X;
-        set => SetSelectedTransform(t => t with { X = value - (Selected?.LocalPivot.X ?? 0) }, allowRaster: true);
+        get => Selected is { } item
+            ? item.LocalPivot.X + item.Transform.X
+            : SelectionBounds() is { } bounds && !bounds.IsEmpty ? (bounds.MinX + bounds.MaxX) / 2 : 0;
+        set => MoveSelectionTo(value, SelectedY);
     }
 
     public double SelectedY
     {
-        get => Selected is null ? 0 : Selected.LocalPivot.Y + Selected.Transform.Y;
-        set => SetSelectedTransform(t => t with { Y = value - (Selected?.LocalPivot.Y ?? 0) }, allowRaster: true);
+        get => Selected is { } item
+            ? item.LocalPivot.Y + item.Transform.Y
+            : SelectionBounds() is { } bounds && !bounds.IsEmpty ? (bounds.MinY + bounds.MaxY) / 2 : 0;
+        set => MoveSelectionTo(SelectedX, value);
     }
 
     public double SelectedRotation
@@ -1974,38 +1986,91 @@ public partial class SceneViewModel : ObservableObject
 
     public double SelectedWidth
     {
-        get => Selected is null ? 0 : Selected.LocalBounds.Width * Math.Abs(Selected.Transform.ScaleX);
+        get => SelectionBounds() is { } bounds && !bounds.IsEmpty ? bounds.Width : 0;
         set => SetSelectedSize(value, isWidth: true);
     }
 
     public double SelectedHeight
     {
-        get => Selected is null ? 0 : Selected.LocalBounds.Height * Math.Abs(Selected.Transform.ScaleY);
+        get => SelectionBounds() is { } bounds && !bounds.IsEmpty ? bounds.Height : 0;
         set => SetSelectedSize(value, isWidth: false);
+    }
+
+    private BoundingBox2D SelectionBounds()
+    {
+        var bounds = BoundingBox2D.Empty;
+        foreach (var item in SelectedObjects)
+        {
+            var itemBounds = item.WorldBounds();
+            if (itemBounds.IsEmpty) continue;
+            bounds = bounds.Include(itemBounds.MinX, itemBounds.MinY).Include(itemBounds.MaxX, itemBounds.MaxY);
+        }
+        return bounds;
+    }
+
+    private void MoveSelectionTo(double x, double y)
+    {
+        if (!CanEditSelectedPosition || !double.IsFinite(x) || !double.IsFinite(y)) return;
+        var dx = x - SelectedX;
+        var dy = y - SelectedY;
+        if (Math.Abs(dx) < 0.0001 && Math.Abs(dy) < 0.0001) return;
+        var commands = SelectedObjects.Select(item => (ISceneCommand)new TransformObjectCommand(
+            item, item.Transform, item.Transform with { X = item.Transform.X + dx, Y = item.Transform.Y + dy })).ToList();
+        if (commands.Count > 0) Execute(new CompositeSceneCommand(commands));
     }
 
     private void SetSelectedSize(double value, bool isWidth)
     {
-        if (!double.IsFinite(value) || value <= 0 || Selected is not { IsLocked: false } item)
+        if (!double.IsFinite(value) || value <= 0 || !CanTransformSelectedObject)
             return;
 
-        var before = item.Transform;
         var current = isWidth ? SelectedWidth : SelectedHeight;
         if (current <= 0 || Math.Abs(current - value) < 0.0001) return;
 
         var factor = value / current;
-        var after = isWidth
-            ? before with
+        var bounds = SelectionBounds();
+        if (bounds.IsEmpty) return;
+        var centerX = (bounds.MinX + bounds.MaxX) / 2;
+        var centerY = (bounds.MinY + bounds.MaxY) / 2;
+        var commands = new List<ISceneCommand>();
+        foreach (var item in SelectedObjects)
+        {
+            var before = item.Transform;
+            var pivotWorldX = item.LocalPivot.X + before.X;
+            var pivotWorldY = item.LocalPivot.Y + before.Y;
+            var afterPivotX = centerX + (pivotWorldX - centerX) * (isWidth ? factor : LockAspectRatio ? factor : 1);
+            var afterPivotY = centerY + (pivotWorldY - centerY) * (!isWidth && !LockAspectRatio ? factor : LockAspectRatio ? factor : 1);
+            var scaleX = before.ScaleX;
+            var scaleY = before.ScaleY;
+
+            if (LockAspectRatio)
             {
-                ScaleX = before.ScaleX * factor,
-                ScaleY = LockAspectRatio ? before.ScaleY * factor : before.ScaleY,
+                scaleX *= factor;
+                scaleY *= factor;
             }
-            : before with
+            else
             {
-                ScaleX = LockAspectRatio ? before.ScaleX * factor : before.ScaleX,
-                ScaleY = before.ScaleY * factor,
+                // World-axis nonuniform scaling of a rotated object would require shear. For axis-aligned
+                // rotations, map the requested world axis to the corresponding local scale axis.
+                var quarterTurns = (int)Math.Round(before.RotationDeg / 90d);
+                var axisAligned = Math.Abs(before.RotationDeg - quarterTurns * 90d) < 1e-8;
+                if (!axisAligned) return;
+                var localX = (Math.Abs(quarterTurns) % 2 == 0) == isWidth;
+                if (localX) scaleX *= factor; else scaleY *= factor;
+                if (isWidth) afterPivotX = centerX + (pivotWorldX - centerX) * factor;
+                else afterPivotY = centerY + (pivotWorldY - centerY) * factor;
+            }
+
+            var after = before with
+            {
+                X = afterPivotX - item.LocalPivot.X,
+                Y = afterPivotY - item.LocalPivot.Y,
+                ScaleX = scaleX,
+                ScaleY = scaleY,
             };
-        Execute(new TransformObjectCommand(item, before, after));
+            if (!before.Equals(after)) commands.Add(new TransformObjectCommand(item, before, after));
+        }
+        if (commands.Count > 0) Execute(new CompositeSceneCommand(commands));
     }
 
     // ===================== Editable text =====================
@@ -2190,12 +2255,6 @@ public partial class SceneViewModel : ObservableObject
         Execute(new TransformObjectCommand(item, before, after));
     }
 
-    partial void OnSelectedChanging(SceneObject? oldValue, SceneObject? newValue)
-    {
-        if (oldValue is not null) oldValue.PropertyChanged -= OnSelectedObjectPropertyChanged;
-        if (newValue is not null) newValue.PropertyChanged += OnSelectedObjectPropertyChanged;
-    }
-
     private void OnSelectedObjectPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SceneObject.Transform))
@@ -2205,9 +2264,13 @@ public partial class SceneViewModel : ObservableObject
             OnPropertyChanged(nameof(SelectedRotation));
             OnPropertyChanged(nameof(SelectedWidth));
             OnPropertyChanged(nameof(SelectedHeight));
+            OnPropertyChanged(nameof(CanEditSelectedPosition));
+            OnPropertyChanged(nameof(CanTransformSelectedObject));
         }
         else if (e.PropertyName == nameof(SceneObject.IsLocked))
         {
+            OnPropertyChanged(nameof(CanEditSelectedPosition));
+            OnPropertyChanged(nameof(CanTransformSelectedObject));
             NotifySelectionStateChanged();
             RefreshCommands();
         }

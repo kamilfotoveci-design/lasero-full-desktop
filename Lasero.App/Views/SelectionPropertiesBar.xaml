@@ -114,9 +114,9 @@
                 <!-- ============ Poloha ============ -->
                 <StackPanel Orientation="Horizontal"
                             IsEnabled="{Binding Scene.CanEditSelectedPosition}"
-                            Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                    Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="X" Style="{StaticResource BarLabel}" />
-                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose X">
+                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu výběru na ose X">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
                             <TextBox Style="{StaticResource UnitField.Input}"
@@ -125,7 +125,7 @@
                         </DockPanel>
                     </Border>
                     <TextBlock Text="Y" Style="{StaticResource BarLabel}" Margin="10,0,5,0" />
-                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu objektu na ose Y">
+                    <Border Style="{StaticResource BarField}" ToolTip="Poloha středu výběru na ose Y">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
                             <TextBox Style="{StaticResource UnitField.Input}"
@@ -136,16 +136,16 @@
                 </StackPanel>
 
                 <Border Style="{StaticResource BarDivider}"
-                        Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}" />
+                        Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}" />
 
                 <!-- ============ Rozměr ============ -->
                 <!-- The aspect lock sits between width and height because it ties the two together;
                      its position says so without needing a caption. -->
                 <StackPanel Orientation="Horizontal"
                             IsEnabled="{Binding Scene.CanTransformSelectedObject}"
-                            Visibility="{Binding Scene.Selected, Converter={StaticResource NotNullToVisibility}}">
+                    Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="Š" Style="{StaticResource BarLabel}" ToolTip="Šířka" />
-                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná šířka objektu">
+                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná šířka výběru">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
                             <TextBox Style="{StaticResource UnitField.Input}"
@@ -166,7 +166,7 @@
                                               IconData="{StaticResource Glyph.Link}" />
                     </ToggleButton>
                     <TextBlock Text="V" Style="{StaticResource BarLabel}" ToolTip="Výška" />
-                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná výška objektu">
+                    <Border Style="{StaticResource BarField}" ToolTip="Výsledná výška výběru">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
                             <TextBox Style="{StaticResource UnitField.Input}"

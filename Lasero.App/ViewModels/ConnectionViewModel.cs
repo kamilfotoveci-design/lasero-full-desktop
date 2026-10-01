@@ -96,7 +96,10 @@ public partial class ConnectionViewModel : ObservableObject
             StatusText = state switch
             {
                 GrblConnectionState.Connecting => "Připojování zařízení…",
-                GrblConnectionState.Connected => "Připojeno - zjišťuje se typ zařízení",
+                // Connection is a confirmed transport state. Device identification is separate and
+                // reports its result through IdentificationMessage; never leave a progress sentence
+                // in a persistent status badge after the connection event ordering settles.
+                GrblConnectionState.Connected => "Připojeno",
                 _ => "Nepřipojeno",
             };
             if (state == GrblConnectionState.Connected)

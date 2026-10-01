@@ -24,6 +24,28 @@ public sealed partial class MaterialPreset : ObservableObject, System.ComponentM
     /// <summary>Fill-mode scan line spacing in mm (25.4 / DPI) — irrelevant for Cut presets.</summary>
     [ObservableProperty] private double _fillLineIntervalMm = 25.4 / 254;
 
+    /// <summary>Set by the owning list when another recipe already uses this name (not persisted).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    [ObservableProperty] private bool _hasDuplicateName;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ValidationMessage => Error;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasValidationMessage => !string.IsNullOrEmpty(Error);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ModeHint => MaterialRecipeRules.ModeHint(Mode);
+
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName is nameof(ValidationMessage) or nameof(HasValidationMessage) or nameof(ModeHint)) return;
+        if (e.PropertyName == nameof(Mode)) OnPropertyChanged(nameof(ModeHint));
+        OnPropertyChanged(nameof(ValidationMessage));
+        OnPropertyChanged(nameof(HasValidationMessage));
+    }
+
     public string Error
     {
         get
@@ -37,9 +59,13 @@ public sealed partial class MaterialPreset : ObservableObject, System.ComponentM
     {
         nameof(Name) when string.IsNullOrWhiteSpace(Name) => "Zadejte název materiálu.",
         nameof(Name) when Name.Trim().Length > 80 => "Název může mít nejvýše 80 znaků.",
-        nameof(Speed) when !double.IsFinite(Speed) || Speed <= 0 => "Rychlost musí být větší než 0 mm/min.",
-        nameof(Power) when !double.IsFinite(Power) || Power is < 0 or > 100 => "Výkon musí být v rozsahu 0 až 100 %.",
-        nameof(Passes) when Passes is < 1 or > 100 => "Počet průchodů musí být v rozsahu 1 až 100.",
+        nameof(Name) when HasDuplicateName => "Recept s tímto názvem už máte. Zvolte jiný název.",
+        nameof(Speed) when !double.IsFinite(Speed) || Speed is < MaterialRecipeRules.MinSpeed or > MaterialRecipeRules.MaxSpeed =>
+            "Rychlost musí být mezi 10 a 12000 mm/min.",
+        nameof(Power) when !double.IsFinite(Power) || Power is < MaterialRecipeRules.MinPower or > MaterialRecipeRules.MaxPower =>
+            "Výkon musí být mezi 0 a 100 %.",
+        nameof(Passes) when Passes is < MaterialRecipeRules.MinPasses or > MaterialRecipeRules.MaxPasses =>
+            "Počet průchodů musí být alespoň 1 a nejvýše 100.",
         nameof(FillLineIntervalMm) when !double.IsFinite(FillLineIntervalMm) || FillLineIntervalMm <= 0 => "Rozteč řádků musí být větší než 0 mm.",
         _ => string.Empty,
     };
