@@ -130,6 +130,15 @@ public class CanvasContextMenuTests
     }
 
     [Fact]
+    public void BasicShapeOffersConvertToCurvesBeforeClipboardActions()
+    {
+        var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanConvertToCurves = true });
+
+        Assert.Equal(ContextAction.ConvertToCurves, rows[0].Action);
+        Assert.Equal("Převést na křivky", rows[0].Header);
+    }
+
+    [Fact]
     public void SingleVectorHasNoMultiSelectionCommands()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState());
@@ -495,6 +504,18 @@ public class CanvasContextMenuTests
         });
 
         Assert.True(CanvasContextMenuStates.ForSelection(scene).CanEditNodes);
+    }
+
+    [Fact]
+    public void StateForPrimitiveAllowsConversionToCurves()
+    {
+        var scene = new SceneViewModel();
+        Rectangle(scene, 0);
+
+        var state = CanvasContextMenuStates.ForSelection(scene);
+
+        Assert.True(state.CanConvertToCurves);
+        Assert.False(state.CanEditNodes);
     }
 
     [Fact]

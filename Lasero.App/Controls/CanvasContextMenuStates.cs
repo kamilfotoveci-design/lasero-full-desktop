@@ -27,6 +27,9 @@ public static class CanvasContextMenuStates
             AnyUnlocked = selection.Any(item => !item.IsLocked),
             CanPaste = scene.PasteCommand.CanExecute(null),
             CanEditNodes = single is { IsVectorPath: true, IsLocked: false },
+            CanConvertToCurves = single is { IsVectorPath: false, IsText: false, IsRaster: false, IsLocked: false }
+                && single.LocalShapes.Count == 1
+                && single.LocalShapes[0].Points.Count >= (single.LocalShapes[0].IsClosed ? 3 : 2),
             CanEditText = scene.CanEditSelectedText && single is { IsText: true },
             CanGroup = scene.CanGroupSelection,
             // Splitting text into contours would silently throw away the editable wording, and the

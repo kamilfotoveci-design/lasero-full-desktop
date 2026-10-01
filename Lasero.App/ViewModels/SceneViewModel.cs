@@ -481,6 +481,47 @@ public partial class SceneViewModel : ObservableObject
         }
     }
 
+    /// <summary>Converts one simple vector outline into an editable path without changing its
+    /// rendered geometry, placement, layer, or output settings. The conversion is one undoable
+    /// replacement; the caller may then enter Node Edit mode on the returned object.</summary>
+    public SceneObject? ConvertSelectedObjectToCurves()
+    {
+        if (Selected is not { IsLocked: false, IsRaster: false, IsText: false, IsVectorPath: false } source
+            || source.LocalShapes.Count != 1)
+            return null;
+
+        var shape = source.LocalShapes[0];
+        var points = shape.Points;
+        if (points.Count < (shape.IsClosed ? 3 : 2)) return null;
+        var uniqueCount = points.Count;
+        if (shape.IsClosed && uniqueCount > 1 && points[0] == points[^1]) uniqueCount--;
+        if (uniqueCount < (shape.IsClosed ? 3 : 2)) return null;
+
+        var nodes = points.Take(uniqueCount).Select(VectorNode.CornerAt).ToArray();
+        var path = new VectorPath
+        {
+            Subpaths = [new VectorSubpath { Nodes = nodes, IsClosed = shape.IsClosed }],
+        };
+        var replacement = new SceneObject
+        {
+            Id = source.Id,
+            Name = source.Name,
+            LocalShapes = source.LocalShapes,
+            LocalPivot = source.LocalPivot,
+            LocalBounds = source.LocalBounds,
+            Transform = source.Transform,
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
+            IncludeInOutput = source.IncludeInOutput,
+            VectorPath = path,
+        };
+
+        Execute(new ReplaceObjectsCommand(Scene, [source], [replacement]));
+        SelectedObjects.Clear();
+        SelectedObjects.Add(replacement);
+        return replacement;
+    }
+
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
     /// their own kind of content edit, so Ctrl+Z restores the original file and Ctrl+Y reapplies the

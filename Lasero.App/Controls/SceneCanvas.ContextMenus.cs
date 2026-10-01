@@ -367,6 +367,9 @@ public partial class SceneCanvas
             case ContextAction.EditNodes:
                 if (scene.Selected is { IsVectorPath: true, IsLocked: false } path) EnterNodeEditMode(path);
                 break;
+            case ContextAction.ConvertToCurves:
+                if (scene.ConvertSelectedObjectToCurves() is { } converted) EnterNodeEditMode(converted);
+                break;
             case ContextAction.EditText:
                 if (scene.Selected is { IsText: true, IsLocked: false } text) BeginInlineTextEdit(text);
                 break;

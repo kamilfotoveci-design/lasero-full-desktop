@@ -2014,6 +2014,39 @@ public class SceneViewModelTests
     }
 
     [Fact]
+    public void ConvertingPrimitiveToCurvesPreservesGeometryAndIsUndoable()
+    {
+        var viewModel = new SceneViewModel();
+        var rectangle = MakeSquareObject(x: 35, y: 42);
+        rectangle.Name = "Obdélník";
+        rectangle.LocalShapes = rectangle.LocalShapes.Select(shape => shape with
+        {
+            LayerId = Guid.NewGuid(),
+            PreferredMode = LayerMode.Fill,
+        }).ToList();
+        viewModel.Objects.Add(rectangle);
+        viewModel.SelectedObjects.Add(rectangle);
+        var originalShape = Assert.Single(rectangle.LocalShapes);
+
+        var converted = Assert.IsType<SceneObject>(viewModel.ConvertSelectedObjectToCurves());
+
+        Assert.NotSame(rectangle, converted);
+        Assert.True(converted.IsVectorPath);
+        Assert.Equal(rectangle.Id, converted.Id);
+        Assert.Equal(rectangle.Transform, converted.Transform);
+        Assert.Equal(originalShape, Assert.Single(converted.LocalShapes));
+        Assert.Equal(4, Assert.Single(converted.VectorPath!.Subpaths).Nodes.Count);
+        Assert.Same(converted, Assert.Single(viewModel.SelectedObjects));
+
+        viewModel.UndoCommand.Execute(null);
+        Assert.Same(rectangle, Assert.Single(viewModel.Objects));
+        Assert.False(Assert.Single(viewModel.Objects).IsVectorPath);
+
+        viewModel.RedoCommand.Execute(null);
+        Assert.True(Assert.Single(viewModel.Objects).IsVectorPath);
+    }
+
+    [Fact]
     public void RasterCanBeResizedButNotRotatedAndResizeIsUndoable()
     {
         var viewModel = new SceneViewModel();

@@ -8,7 +8,7 @@ public enum ContextAction
     // Clipboard and selection
     Cut, Copy, Paste, Duplicate, Delete, SelectAll, DeselectAll,
     // Object structure
-    EditNodes, EditText, Group, Ungroup, ToggleLock,
+    EditNodes, EditText, ConvertToCurves, Group, Ungroup, ToggleLock,
     // Boolean and path operations
     Unite, Subtract, Intersect, Exclude, Offset,
     // Raster
@@ -89,6 +89,7 @@ public sealed record ObjectContextState
 
     public bool CanPaste { get; init; }
     public bool CanEditNodes { get; init; }
+    public bool CanConvertToCurves { get; init; }
     public bool CanEditText { get; init; }
     public bool CanGroup { get; init; }
     public bool CanUngroup { get; init; }
@@ -173,6 +174,8 @@ public static class CanvasContextMenuBuilder
             specific.Add(ContextMenuItemModel.Command(ContextAction.EditText, "Upravit text", icon: "Glyph.Text"));
         if (s.CanEditNodes)
             specific.Add(ContextMenuItemModel.Command(ContextAction.EditNodes, "Upravit uzly", icon: "Glyph.Vector"));
+        if (s.CanConvertToCurves)
+            specific.Add(ContextMenuItemModel.Command(ContextAction.ConvertToCurves, "Převést na křivky", icon: "Glyph.Vector"));
         if (s.CanTrace)
             specific.Add(ContextMenuItemModel.Command(ContextAction.TraceBitmap, "Trasovat bitmapu", "Alt+T", "Glyph.Vector"));
         if (s.CanRemoveBackground)
