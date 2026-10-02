@@ -83,7 +83,8 @@ public static class GCodeParser
             if (s.HasValue) power = s.Value;
             if (f.HasValue) feedRatePerMinute = f.Value;
 
-            if (!sawX && !sawY && !sawZ)
+            var hasArcDefinition = motionMode is 2 or 3 && (i.HasValue || j.HasValue || r.HasValue);
+            if (!sawX && !sawY && !sawZ && !hasArcDefinition)
                 continue; // A pure modal/setting line (e.g. "G21", "M3 S255" alone) — no motion to record.
 
             var target = new Position(
@@ -120,8 +121,8 @@ public static class GCodeParser
                     SourceLine = lineIndex,
                 });
 
-                foreach (var sample in ArcMath.Sample(pos, target, center, clockwise, 16))
-                    bbox = bbox.Include(sample.X, sample.Y);
+                foreach (var point in ArcMath.BoundsPoints(pos, target, center, clockwise))
+                    bbox = bbox.Include(point.X, point.Y);
             }
             else
             {

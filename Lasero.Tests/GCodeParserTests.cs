@@ -104,4 +104,29 @@ public class GCodeParserTests
         Assert.Empty(doc.Segments);
         Assert.True(doc.BoundingBox.IsEmpty);
     }
+
+    [Fact]
+    public void ArcBoundingBoxIncludesExactCardinalExtremaBetweenPreviewSamples()
+    {
+        var doc = GCodeParser.Parse([
+            "G0 X-9.3969262079 Y3.4202014333",
+            "G2 X-8.6602540378 Y-5 I9.3969262079 J-3.4202014333",
+        ]);
+
+        Assert.Equal(10, doc.BoundingBox.MaxX, precision: 6);
+        Assert.Equal(-10, doc.BoundingBox.MinY, precision: 6);
+    }
+
+    [Fact]
+    public void ArcWithCoincidentEndpointAndCenterOffsetIsParsedAsFullCircle()
+    {
+        var doc = GCodeParser.Parse(["G0 X5 Y0", "G2 I-5 J0"]);
+
+        Assert.Equal(2, doc.Segments.Count);
+        Assert.True(doc.Segments[1].IsArc);
+        Assert.Equal(-5, doc.BoundingBox.MinX, precision: 6);
+        Assert.Equal(5, doc.BoundingBox.MaxX, precision: 6);
+        Assert.Equal(-5, doc.BoundingBox.MinY, precision: 6);
+        Assert.Equal(5, doc.BoundingBox.MaxY, precision: 6);
+    }
 }

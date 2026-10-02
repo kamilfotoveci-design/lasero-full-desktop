@@ -100,6 +100,57 @@ public sealed class JobPreflightTests
     }
 
     [Theory]
+    [InlineData("G53 G0 X600 Y10")]
+    [InlineData("G10 L2 P1 X600")]
+    [InlineData("G92 X600")]
+    public void RawGCodeWithCoordinateCommandsOutsidePreviewSubsetIsBlocked(string command)
+    {
+        var document = GCodeParser.Parse(["G0 X10 Y10", command, "M5"], "raw");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            IsRawGCode = true,
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = true,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.unsupported-gcode-command");
+    }
+
+    [Fact]
+    public void RawGCodeCannotMoveRapidlyWithLaserEnabled()
+    {
+        var document = GCodeParser.Parse(["M3 S500", "G0 X20 Y10", "M5"], "raw");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            IsRawGCode = true,
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = true,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.laser-on-rapid");
+    }
+
+    [Fact]
+    public void RawGCodeWithOnlySupportedCommandsCanPassExistingPreflight()
+    {
+        var document = GCodeParser.Parse(["G21 G90", "G0 X0 Y0", "M4 S500", "G1 X10 Y10 F1000", "M5"], "raw");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            IsRawGCode = true,
+            MaxSpindleSpeed = 1000,
+            LaserModeEnabled = true,
+        });
+
+        Assert.True(result.CanStart);
+        Assert.Empty(result.Issues);
+    }
+
+    [Theory]
     [InlineData(GrblMachineMode.Alarm)]
     [InlineData(GrblMachineMode.Door)]
     [InlineData(GrblMachineMode.Hold)]

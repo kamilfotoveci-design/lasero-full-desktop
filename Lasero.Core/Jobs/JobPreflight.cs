@@ -45,6 +45,7 @@ public static class JobPreflight
     public const string DisconnectedMessage = "Připojte laser, aby bylo možné úlohu připravit a odeslat.";
 
     private static readonly Regex GCodeWordPattern = new(@"([A-Za-z])\s*(-?\d+\.?\d*)", RegexOptions.Compiled);
+    private static readonly Regex RawGCodeTokenPattern = new(@"[A-Za-z]\s*-?\d+\.?\d*", RegexOptions.Compiled);
 
     public static JobPreflightResult Evaluate(JobPreflightContext context)
     {
@@ -101,6 +102,7 @@ public static class JobPreflight
     {
         double? currentPower = null;
         var spindleOn = false;
+        var motionMode = 0;
         var anyPoweredCommand = false;
         var maxS = context.MaxSpindleSpeed;
 
@@ -109,28 +111,86 @@ public static class JobPreflight
             var line = rawLine.Split(';', 2)[0];
             line = Regex.Replace(line, @"\([^)]*\)", string.Empty).Trim();
             if (line.Length == 0) continue;
+
             if (line.StartsWith('$'))
             {
                 issues.Add(Block("job.controller-command-not-allowed", "Importovaný G-code obsahuje přímý příkaz pro řadič. Takové příkazy odesílejte přes ovládací prvky zařízení."));
                 continue;
             }
 
+            // Preview/bounds validation only models this small 2D subset. Reject syntax the
+            // tokenizer cannot account for as well as recognized but unsupported commands;
+            // otherwise the controller could execute a path that was never previewed.
+            var residue = RawGCodeTokenPattern.Replace(line, string.Empty);
+            if (!string.IsNullOrWhiteSpace(residue))
+            {
+                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje nepodporovaný zápis. Lze spustit jen příkazy G0–G3, G20–G21, G90–G91, M3–M5 a souřadnice X/Y/Z/I/J/R/S/F."));
+                continue;
+            }
             var spindleEnable = false;
             var spindleDisable = false;
+            int? blockMotionCode = null;
+            int? blockSpindleCode = null;
+            var lineHasAxis = false;
+            var unsupportedCommand = false;
             foreach (Match match in GCodeWordPattern.Matches(line))
             {
                 var letter = char.ToUpperInvariant(match.Groups[1].Value[0]);
-                if (letter == 'S' && double.TryParse(match.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedPower))
-                    currentPower = parsedPower;
-                else if (letter == 'M' && int.TryParse(match.Groups[2].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mCode))
+                if (!double.TryParse(match.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
                 {
-                    spindleEnable |= mCode is 3 or 4;
-                    spindleDisable |= mCode == 5;
+                    unsupportedCommand = true;
+                    continue;
                 }
+
+                switch (letter)
+                {
+                    case 'G':
+                        if (value != Math.Truncate(value) || value is not (0 or 1 or 2 or 3 or 20 or 21 or 90 or 91))
+                            unsupportedCommand = true;
+                        else if (value is 0 or 1 or 2 or 3)
+                        {
+                            var code = (int)value;
+                            if (blockMotionCode is { } previousMotion && previousMotion != code)
+                                unsupportedCommand = true;
+                            blockMotionCode = code;
+                            motionMode = code;
+                        }
+                        break;
+                    case 'M':
+                        if (value != Math.Truncate(value) || value is not (3 or 4 or 5))
+                            unsupportedCommand = true;
+                        else
+                        {
+                            var code = (int)value;
+                            if (blockSpindleCode is { } previousSpindle && previousSpindle != code)
+                                unsupportedCommand = true;
+                            blockSpindleCode = code;
+                            spindleEnable |= value is 3 or 4;
+                            spindleDisable |= value == 5;
+                        }
+                        break;
+                    case 'S': currentPower = value; break;
+                    case 'F': case 'X': case 'Y': case 'Z': case 'I': case 'J': case 'R':
+                        lineHasAxis |= letter is 'X' or 'Y' or 'Z';
+                        break;
+                    case 'N': // Optional source line number.
+                        break;
+                    default:
+                        unsupportedCommand = true;
+                        break;
+                }
+            }
+
+            if (unsupportedCommand)
+            {
+                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje příkaz mimo bezpečně podporovanou podmnožinu. Souřadnicové transformace, změny souřadnicového systému a další CNC příkazy nejsou podporované."));
+                continue;
             }
 
             if (spindleDisable) spindleOn = false;
             if (spindleEnable) spindleOn = true;
+            if (spindleOn && currentPower is > 0 && motionMode == 0 && lineHasAxis)
+                issues.Add(Block("job.laser-on-rapid", "Importovaný G-code přesouvá hlavu rychloposuvem při zapnutém laseru. Vypněte laser před příkazem G0."));
             if (!spindleOn) continue;
 
             if (currentPower is null)
