@@ -25,6 +25,8 @@ public sealed record JobPreflightContext
     public required bool HasFramedCurrentDocument { get; init; }
     public required double WorkAreaWidthMm { get; init; }
     public required double WorkAreaHeightMm { get; init; }
+    public double? MachineMaxTravelXmm { get; init; }
+    public double? MachineMaxTravelYmm { get; init; }
     public IReadOnlyList<LayerSettings>? Layers { get; init; }
     public IReadOnlyList<RasterImportOptions>? RasterOptions { get; init; }
     public double? MaxSpindleSpeed { get; init; }
@@ -234,6 +236,16 @@ public static class JobPreflight
             issues.Add(Block(
                 "job.outside-work-area",
                 $"Návrh přesahuje pracovní plochu {context.WorkAreaWidthMm:0.#} × {context.WorkAreaHeightMm:0.#} mm. Přesuňte jej dovnitř plochy nebo zmenšete."));
+        }
+
+        var exceedsReportedTravel =
+            context.MachineMaxTravelXmm is { } maxX && double.IsFinite(maxX) && maxX > 0 && bounds.MaxX > maxX + tolerance ||
+            context.MachineMaxTravelYmm is { } maxY && double.IsFinite(maxY) && maxY > 0 && bounds.MaxY > maxY + tolerance;
+        if (exceedsReportedTravel)
+        {
+            issues.Add(Block(
+                "job.exceeds-reported-machine-travel",
+                "Návrh přesahuje maximální zdvih nahlášený řadičem. Upravte pracovní plochu nebo přesuňte návrh dovnitř rozsahu stroje."));
         }
     }
 

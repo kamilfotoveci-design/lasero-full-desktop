@@ -560,6 +560,8 @@ public partial class GCodeViewModel : ObservableObject
         HasFramedCurrentDocument = IsCurrentDocumentFramed,
         WorkAreaWidthMm = _settingsStore.Current.Machine.WorkAreaWidthMm,
         WorkAreaHeightMm = _settingsStore.Current.Machine.WorkAreaHeightMm,
+        MachineMaxTravelXmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelXmm,
+        MachineMaxTravelYmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelYmm,
         Layers = ImportKind == ImportKind.GCode ? null : Layers.ToList(),
         RasterOptions = BuildEffectiveRasterOptionsForPreflight(),
         MaxSpindleSpeed = ReadControllerMaximumS(),

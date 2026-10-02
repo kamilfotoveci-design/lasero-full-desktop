@@ -184,6 +184,41 @@ public sealed class JobPreflightTests
     }
 
     [Fact]
+    public void SavedWorkspaceCannotExceedReportedMachineTravel()
+    {
+        var document = GCodeParser.Parse(["G0 X0 Y0", "G1 X160 Y100"], "within-saved-area");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            WorkAreaWidthMm = 500,
+            WorkAreaHeightMm = 400,
+            MachineMaxTravelXmm = 150,
+            MachineMaxTravelYmm = 200,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.exceeds-reported-machine-travel");
+    }
+
+    [Fact]
+    public void ReportedMachineTravelDoesNotExpandSmallerSavedWorkspace()
+    {
+        var document = GCodeParser.Parse(["G0 X0 Y0", "G1 X120 Y80"], "outside-saved-area");
+        var result = JobPreflight.Evaluate(Context() with
+        {
+            Document = document,
+            WorkAreaWidthMm = 100,
+            WorkAreaHeightMm = 100,
+            MachineMaxTravelXmm = 500,
+            MachineMaxTravelYmm = 400,
+        });
+
+        Assert.False(result.CanStart);
+        Assert.Contains(result.Issues, issue => issue.Code == "job.outside-work-area");
+        Assert.DoesNotContain(result.Issues, issue => issue.Code == "job.exceeds-reported-machine-travel");
+    }
+
+    [Fact]
     public void DoorOrLimitInputBlocksEvenWhenModeIsIdle()
     {
         var result = JobPreflight.Evaluate(Context() with { MachineStatus = Status(GrblMachineMode.Idle, "XD") });
