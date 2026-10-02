@@ -92,36 +92,9 @@ public class ParameterSliderFillTests
         }
     }
 
-    // Runs on a private STA thread that owns a WPF Application carrying the real theme, so the
-    // control's StaticResource lookups resolve as in the running app. The Application is shut down
-    // afterwards: view models marshal through Application.Current when it exists, and leaving one
-    // alive changed the timing of unrelated tests. Only one Application can exist per process, hence
-    // a single test method drives every case.
-    private static void Sta(Action a)
-    {
-        Exception? error = null;
-        var t = new Thread(() =>
-        {
-            var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-            try
-            {
-                foreach (var s in new[] { "Theme/LaseroTheme.xaml", "Theme/SharedUiStyles.xaml" })
-                    app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"pack://application:,,,/Lasero.App;component/{s}") });
-                a();
-            }
-            catch (Exception e) { error = e; }
-            finally
-            {
-                // Shutdown is queued on the dispatcher; pump it so Application.Current is really cleared.
-                app.Dispatcher.BeginInvoke(new Action(app.Shutdown));
-                System.Windows.Threading.Dispatcher.Run();
-            }
-        });
-        t.SetApartmentState(ApartmentState.STA);
-        t.Start();
-        t.Join();
-        if (error is not null) throw new Exception(error.Message, error);
-    }
+    // Reuse the process-wide themed WPF test dispatcher. WPF permits only one Application per
+    // AppDomain, and separate STA helpers race when xUnit runs UI test classes in parallel.
+    private static void Sta(Action a) => InlineTextEditorRenderTests.Ui.Invoke(a);
     private static string Root()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

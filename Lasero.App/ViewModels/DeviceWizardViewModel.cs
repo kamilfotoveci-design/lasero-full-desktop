@@ -315,12 +315,16 @@ public partial class DeviceWizardViewModel : ObservableObject
 
     private Task<bool> WaitForIdentificationAsync(TimeSpan timeout)
     {
-        if (_connection.DetectedDevice is not null) return Task.FromResult(true);
+        // DetectedDevice is populated by the transport as soon as $$ is parsed; the public
+        // work-area fields are applied just after that. Wait for the completed identification
+        // message so Setup never reads the still-stale dimensions from before the query.
+        if (!string.IsNullOrWhiteSpace(_connection.IdentificationMessage)) return Task.FromResult(true);
 
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         void OnConnectionChanged(object? sender, PropertyChangedEventArgs args)
         {
-            if (args.PropertyName == nameof(ConnectionViewModel.DetectedDevice) && _connection.DetectedDevice is not null)
+            if (args.PropertyName == nameof(ConnectionViewModel.IdentificationMessage)
+                && !string.IsNullOrWhiteSpace(_connection.IdentificationMessage))
                 completion.TrySetResult(true);
             else if (args.PropertyName == nameof(ConnectionViewModel.IsConnected) && !_connection.IsConnected)
                 completion.TrySetResult(false);

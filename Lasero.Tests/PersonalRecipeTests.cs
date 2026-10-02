@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using Lasero.App;
 using Lasero.App.ViewModels;
 using Lasero.Core.LaseroApi;
@@ -166,8 +167,10 @@ public sealed class PersonalRecipeTests
         using var dir = new TemporaryDirectory();
         var vm = Create(dir);
         vm.AddCommand.Execute(null);
-        vm.Presets[0].Speed = double.NaN;
-        vm.Presets[0].FillLineIntervalMm = double.NaN;
+        typeof(MaterialPreset).GetField("_speed", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(vm.Presets[0], double.NaN);
+        typeof(MaterialPreset).GetField("_fillLineIntervalMm", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(vm.Presets[0], double.NaN);
 
         vm.DuplicateCommand.Execute(vm.Presets[0]);
 
@@ -212,7 +215,7 @@ public sealed class PersonalRecipeTests
         Assert.Contains("ToolTip=\"Smazat recept\"", xaml);
         Assert.Contains("<WrapPanel", xaml);
         Assert.DoesNotContain("Odstranit recept", xaml);
-        Assert.Contains("FontSize=\"14\" Height=\"{StaticResource Size.Control.Base}\"", xaml);
+        Assert.Contains("FontSize=\"{StaticResource Size.Text.Body}\" Height=\"{StaticResource Size.Control.Base}\"", xaml);
         Assert.DoesNotMatch(@"FontSize=""(9|10|11|12)""", xaml);
     }
 
@@ -233,5 +236,18 @@ public sealed class PersonalRecipeTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "Lasero.App"))) dir = dir.Parent;
         return Path.Combine(dir!.FullName, "Lasero.App");
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        public string Root { get; } = Path.Combine(Path.GetTempPath(), $"lasero-recipes-{Guid.NewGuid():N}");
+
+        public TemporaryDirectory() => Directory.CreateDirectory(Root);
+
+        public void Dispose()
+        {
+            try { Directory.Delete(Root, recursive: true); }
+            catch (IOException) { }
+        }
     }
 }

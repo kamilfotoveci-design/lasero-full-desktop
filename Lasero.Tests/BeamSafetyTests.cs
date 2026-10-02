@@ -213,6 +213,9 @@ public sealed class BeamSafetyTests : IDisposable
         machine.Disconnect();
 
         Assert.False(transport.Sim.IsBeamOn);
+        // ConnectionStateChanged is marshalled to the WPF dispatcher; the simulator beam is
+        // synchronously off before Disconnect returns, while the bound view-model flag settles next.
+        await WaitUntilAsync(() => !jog.IsPositioningLaserOn, TimeSpan.FromSeconds(1));
         Assert.False(jog.IsPositioningLaserOn);
     }
 

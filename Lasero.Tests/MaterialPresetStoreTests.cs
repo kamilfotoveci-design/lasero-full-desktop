@@ -100,8 +100,8 @@ public sealed class MaterialPresetStoreTests : IDisposable
 
         Assert.Contains("název", preset[nameof(MaterialPreset.Name)], StringComparison.OrdinalIgnoreCase);
         Assert.Contains("rychlost", preset[nameof(MaterialPreset.Speed)], StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("0 až 100", preset[nameof(MaterialPreset.Power)]);
-        Assert.Contains("1 až 100", preset[nameof(MaterialPreset.Passes)]);
+        Assert.Contains("0 a 100", preset[nameof(MaterialPreset.Power)]);
+        Assert.Contains("alespoň 1 a nejvýše 100", preset[nameof(MaterialPreset.Passes)]);
         Assert.False(string.IsNullOrWhiteSpace(preset.Error));
 
         preset.Name = "Březová překližka 3 mm";

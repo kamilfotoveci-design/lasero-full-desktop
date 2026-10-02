@@ -9,7 +9,7 @@ public sealed class SceneCanvasInteractionTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml"));
-        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs"));
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
 
         Assert.Contains("LostMouseCapture=\"OnDrawCanvasLostMouseCapture\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Loaded=\"OnSceneCanvasLoaded\"", xaml, StringComparison.Ordinal);
@@ -28,7 +28,7 @@ public sealed class SceneCanvasInteractionTests
     public void NodeDragCoalescesPointerUpdatesAndFlushesLatestPointBeforeCommit()
     {
         var root = FindRepositoryRoot();
-        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs"));
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
         var mouseMove = codeBehind[
             codeBehind.IndexOf("private void OnDrawCanvasMouseMove", StringComparison.Ordinal)..
             codeBehind.IndexOf("private void OnDrawCanvasMouseLeftButtonUp", StringComparison.Ordinal)];
@@ -50,8 +50,8 @@ public sealed class SceneCanvasInteractionTests
     public void NormalMouseUpReleasesCaptureOnlyAfterNodeDragBecomesIdle()
     {
         var root = FindRepositoryRoot();
-        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs"));
-        var vectorTool = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.VectorPathTool.cs"));
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
+        var vectorTool = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.VectorPathTool.cs")).Replace("\r\n", "\n");
         var mouseUp = codeBehind[
             codeBehind.IndexOf("private void OnDrawCanvasMouseLeftButtonUp", StringComparison.Ordinal)..
             codeBehind.IndexOf("private void FinishDraw", StringComparison.Ordinal)];

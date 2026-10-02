@@ -371,17 +371,25 @@ public partial class MaterialsViewModel : ObservableObject
     private void Duplicate(MaterialPreset? preset)
     {
         if (preset is null) return;
+        // A value can become non-finite in memory (for example after an interrupted edit). The
+        // preset store serializes the whole list, so sanitize the source before saving its copy too.
+        NormalizeNumericValues(preset);
         var copy = preset.Clone(MaterialRecipeRules.UniqueName(preset.Name.Trim() + " (kopie)", Presets.Select(item => item.Name)));
-        copy.Speed = MaterialRecipeRules.ClampSpeed(copy.Speed);
-        copy.Power = MaterialRecipeRules.ClampPower(copy.Power);
-        copy.Passes = MaterialRecipeRules.ClampPasses(copy.Passes);
-        if (!double.IsFinite(copy.FillLineIntervalMm) || copy.FillLineIntervalMm <= 0)
-            copy.FillLineIntervalMm = 25.4 / 254;
+        NormalizeNumericValues(copy);
         _lastModes[copy.Id] = copy.Mode;
         _store.Add(copy);
         copy.PropertyChanged += OnPresetPropertyChanged;
         Presets.Add(copy);
         NotifyPresetListChanged();
+    }
+
+    private static void NormalizeNumericValues(MaterialPreset preset)
+    {
+        preset.Speed = MaterialRecipeRules.ClampSpeed(preset.Speed);
+        preset.Power = MaterialRecipeRules.ClampPower(preset.Power);
+        preset.Passes = MaterialRecipeRules.ClampPasses(preset.Passes);
+        if (!double.IsFinite(preset.FillLineIntervalMm) || preset.FillLineIntervalMm <= 0)
+            preset.FillLineIntervalMm = 25.4 / 254;
     }
 
     [RelayCommand]

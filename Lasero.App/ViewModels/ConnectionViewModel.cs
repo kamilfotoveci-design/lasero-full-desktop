@@ -105,6 +105,7 @@ public partial class ConnectionViewModel : ObservableObject
             if (state == GrblConnectionState.Connected)
             {
                 RememberConnectedPort();
+                IdentificationMessage = null;
                 _identificationCancellation?.Cancel();
                 _identificationCancellation = new CancellationTokenSource();
                 _ = IdentifyDeviceAsync(_identificationCancellation.Token);
@@ -149,7 +150,6 @@ public partial class ConnectionViewModel : ObservableObject
                     IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Zkontrolujte, zda je vybrán správný model a port, a zda zařízení používá firmware GRBL.";
                     return;
                 }
-                DetectedDevice = profile;
                 var knownMachine = KnownMachineProfiles.Match(profile);
                 ActiveMachineName = knownMachine?.DisplayName ??
                     (string.IsNullOrWhiteSpace(profile.FirmwareBanner)
@@ -172,6 +172,9 @@ public partial class ConnectionViewModel : ObservableObject
                 }
 
                 IdentificationMessage = DescribeIdentification(profile);
+                // Publish the completion marker only after all properties consumed by the
+                // Device Wizard have been updated; WaitForIdentificationAsync resumes from this.
+                DetectedDevice = profile;
                 SaveWorkspaceAsDefaultCommand.NotifyCanExecuteChanged();
             });
         }

@@ -217,7 +217,7 @@ public sealed class ThemeTokenTests
     {
         // The comment block above Brush.HoverWash names both retired keys to explain why they are
         // absent, so the markup has to be stripped of comments before asserting they are unused.
-        var theme = XmlComment.Replace(File.ReadAllText(ThemePath("LaseroTheme.xaml")), string.Empty);
+        var theme = XmlComment.Replace(File.ReadAllText(ThemePath("LaseroTheme.xaml")), string.Empty).Replace("\r\n", "\n");
 
         // One brush for both states.
         Assert.Contains("<Border x:Name=\"Hover\"\n                                Background=\"{StaticResource Brush.HoverWash}\"", theme, StringComparison.Ordinal);
