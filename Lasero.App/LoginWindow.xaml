@@ -4,45 +4,141 @@
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Přihlášení do Lasero" Width="780" Height="570" MinWidth="780" MinHeight="570"
+        Title="Přihlášení do Lasero" Width="780" Height="572" MinWidth="780" MinHeight="572"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+    <!-- 780 x 572 and the 288 / 44 splits are all multiples of 4 on purpose: at 125 percent (and 175)
+         a multiple of 4 is a whole number of device pixels, so the window, the column divider and the
+         title bar rule land on pixel boundaries. The previous 570 high window was 712.5 px at 125 percent,
+         a half pixel the compositor smeared across the bottom edge. -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="0" CornerRadius="0" GlassFrameThickness="0" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
 
-        <!-- 44px brings the two fields up to the same height as the primary button below them
-             (which was already 44 — a literal, not a token; the fields were the ones off at the
-             default 36px Size.Control.Base). Focus is strengthened locally, not globally: the shared
-             implicit TextBox/PasswordBox style already swaps BorderBrush to Brush.Accent on focus via
-             its ControlTemplate trigger, which still fires normally through BasedOn — this only adds
-             a second Style-level trigger thickening the border on top of that, so every other text
-             field in the app keeps its existing, thinner focus treatment. -->
-        <Style x:Key="LoginTextField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Height" Value="44" />
-            <Style.Triggers>
+        <!--
+            Sign-in field chrome. The shared TextBox and PasswordBox templates paint their focus border
+            in Brush.Accent, which is laser red now; on a form that reads as an error, and the first
+            field is focused the moment the window opens, so a blank form looked already failed. Here
+            focus is the graphite primary-action colour and red (Brush.Danger) belongs to the error
+            message only. The border stays 1px in every state so nothing shifts when focus moves.
+            Fields are Size.Control.Primary tall, the same as the button under them.
+        -->
+        <ControlTemplate x:Key="LoginTextBoxTemplate" TargetType="TextBox">
+            <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
+                <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
                 <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.PrimaryAction}" />
                 </Trigger>
+                <Trigger Property="Tag" Value="error">
+                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <ControlTemplate x:Key="LoginPasswordBoxTemplate" TargetType="PasswordBox">
+            <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Md}">
+                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.PrimaryAction}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="error">
+                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <Style x:Key="LoginTextField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="Template" Value="{StaticResource LoginTextBoxTemplate}" />
+        </Style>
+        <Style x:Key="LoginEmailField" TargetType="TextBox" BasedOn="{StaticResource LoginTextField}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding EmailError, Converter={StaticResource NotNullToVisibility}}" Value="Visible">
+                    <Setter Property="Tag" Value="error" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LoginPasswordRevealField" TargetType="TextBox" BasedOn="{StaticResource LoginTextField}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PasswordError, Converter={StaticResource NotNullToVisibility}}" Value="Visible">
+                    <Setter Property="Tag" Value="error" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="LoginPasswordField" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
-            <Setter Property="Height" Value="44" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="Template" Value="{StaticResource LoginPasswordBoxTemplate}" />
             <Style.Triggers>
-                <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="BorderThickness" Value="2" />
-                </Trigger>
+                <DataTrigger Binding="{Binding PasswordError, Converter={StaticResource NotNullToVisibility}}" Value="Visible">
+                    <Setter Property="Tag" Value="error" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
-        <!-- Busy state renders inside the button itself — the same thin indeterminate bar the app
-             already uses elsewhere (BitmapTraceWindow's "Počítám obrysy…" indicator), just sized to
-             sit beside a line of text instead of floating above the whole form as a second,
-             disconnected loading affordance. -->
+        <!-- Show/hide password. Toggle.Icon paints its checked state in the selection tint and red,
+             which read as an error inside a field; this one only darkens the glyph. -->
+        <Style x:Key="LoginRevealToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}"
+                                    BorderBrush="Transparent" BorderThickness="2" />
+                            <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0"
+                                    IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                            <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0"
+                                    IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hover" Property="Opacity" Value="0.06" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Press" Property="Opacity" Value="0.08" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary link: the shared Button.Link is laser red, which beside a graphite button is a
+             second red thing on a small form. Quiet text, the standard hover wash. -->
+        <Style x:Key="LoginLink" TargetType="Button" BasedOn="{StaticResource Button.Link}">
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        </Style>
+
+        <!-- Busy state renders inside the button itself - the same thin indeterminate bar the app
+             already uses elsewhere (BitmapTraceWindow's counting indicator), just sized to sit beside
+             a line of text instead of floating above the whole form. -->
         <Style x:Key="LoginPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryBlue}">
             <Setter Property="Content" Value="Přihlásit se" />
+            <Setter Property="Padding" Value="28,0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsBusy}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
@@ -65,116 +161,113 @@
                                     CloseButtonName="Zavřít přihlášení" />
     <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="286" />
+            <ColumnDefinition Width="288" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!-- Brand column: wordmark at the top, the promise centred in the free space, benefits and the
+             one-line note anchored to the bottom, so the three groups share the height evenly instead of
+             leaving a dead band between them. -->
         <Border Background="{StaticResource Brush.Sidebar}"
                 BorderBrush="{StaticResource Brush.PanelBorder}"
                 BorderThickness="0,0,1,0"
-                Padding="32,36">
+                Padding="32,32">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Image Source="{StaticResource Image.BrandWordmark}" Width="138" Height="{StaticResource Size.Control.Base}" Stretch="Uniform"
-                               HorizontalAlignment="Left" AutomationProperties.Name="Lasero" />
-                        <TextBlock Text="DESKTOP" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}"
-                                   FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    </StackPanel>
-                    <TextBlock Text="Tvořte s jistotou."
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                    <Image Source="{StaticResource Image.BrandWordmark}" Width="116" Height="36" Stretch="Uniform"
+                           HorizontalAlignment="Left" AutomationProperties.Name="Lasero" />
+                    <TextBlock Text="DESKTOP" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}"
+                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <TextBlock Text="Tvorba s jistotou."
                                FontFamily="{StaticResource Font.Display}"
                                FontSize="{StaticResource Size.Text.Title}"
                                FontWeight="SemiBold"
-                               TextWrapping="Wrap"
-                               Margin="0,34,0,12" />
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Návrh, doporučené parametry a bezpečné ovládání gravírky na jednom místě."
                                Foreground="{StaticResource Brush.TextSecondary}"
                                TextWrapping="Wrap"
-                               LineHeight="20" />
+                               Margin="0,12,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                <StackPanel Grid.Row="2">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,12,0" Foreground="{StaticResource Brush.TextSecondary}" />
                         <TextBlock Text="Přehledný návrh a náhled práce" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,12,0" Foreground="{StaticResource Brush.TextSecondary}" />
                         <TextBlock Text="Doporučené hodnoty pro materiály" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Chat}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,10,0" Foreground="{StaticResource Brush.Info}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                        <components:IconGlyph IconData="{StaticResource Glyph.Chat}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,12,0" Foreground="{StaticResource Brush.TextSecondary}" />
                         <TextBlock Text="Pomoc od Kamila v Lasero Chatu" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </StackPanel>
+                    <TextBlock Text="Po prvním přihlášení zůstane účet v tomto počítači uložený."
+                               Style="{StaticResource Text.Muted}"
+                               FontSize="{StaticResource Size.Text.Meta}"
+                               TextWrapping="Wrap" />
                 </StackPanel>
-
-                <TextBlock Grid.Row="2"
-                           Text="Po prvním přihlášení si vás Lasero zapamatuje."
-                           Style="{StaticResource Text.Muted}"
-                           TextWrapping="Wrap" />
             </Grid>
         </Border>
 
-        <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" Padding="48,38">
+        <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" Padding="48,40,48,32">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel>
-                    <TextBlock Text="Vítejte zpět"
+                <!-- Top-aligned rather than centred, so the status banner appearing under the button
+                     never moves the fields. -->
+                <StackPanel Grid.Row="0" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <TextBlock Text="Přihlášení"
                                FontFamily="{StaticResource Font.Display}"
                                FontSize="{StaticResource Size.Text.Title}"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="Přihlaste se stejným účtem jako na lasero.net."
+                    <TextBlock Text="Stejný účet jako na lasero.net"
                                Foreground="{StaticResource Brush.TextSecondary}"
-                               Margin="0,6,0,0" />
-                </StackPanel>
+                               Margin="0,4,0,32" />
 
-                <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                    <TextBlock Text="E-mailová adresa" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
+                    <TextBlock Text="E-mailová adresa" FontWeight="Medium" FontSize="{StaticResource Size.Text.Meta}" />
                     <TextBox x:Name="EmailInput"
-                             Style="{StaticResource LoginTextField}"
+                             Style="{StaticResource LoginEmailField}"
                              Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
                              MaxLength="254"
-                             Margin="0,8,0,4"
+                             Margin="0,8,0,0"
                              AutomationProperties.Name="E-mail" />
                     <TextBlock Text="{Binding EmailError}"
                                Foreground="{StaticResource Brush.Danger}"
                                FontSize="{StaticResource Size.Text.Meta}"
                                TextWrapping="Wrap"
-                               Margin="2,0,0,8"
+                               Margin="0,4,0,8"
                                MinHeight="16" />
 
-                    <TextBlock Text="Heslo" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
-                    <Grid Margin="0,8,0,4">
+                    <TextBlock Text="Heslo" FontWeight="Medium" FontSize="{StaticResource Size.Text.Meta}" />
+                    <Grid Margin="0,8,0,0">
                         <PasswordBox x:Name="PasswordInput"
                                      Style="{StaticResource LoginPasswordField}"
                                      PasswordChanged="OnPasswordChanged"
                                      MaxLength="256"
-                                     Padding="10,0,40,0"
+                                     Padding="10,0,44,0"
                                      AutomationProperties.Name="Heslo" />
                         <TextBox x:Name="PasswordRevealInput"
-                                 Style="{StaticResource LoginTextField}"
+                                 Style="{StaticResource LoginPasswordRevealField}"
                                  TextChanged="OnPasswordRevealChanged"
                                  MaxLength="256"
-                                 Padding="10,0,40,0"
+                                 Padding="10,0,44,0"
                                  Visibility="Collapsed"
                                  AutomationProperties.Name="Heslo (viditelné)" />
-                        <!-- Toggle.Icon is the app's existing icon-toggle chrome (used for the
-                             enable/visibility columns in the Designer's own operation list) — reused
-                             here rather than a one-off button style. -->
                         <ToggleButton x:Name="PasswordVisibilityToggle"
-                                      Style="{StaticResource Toggle.Icon}"
-                                      Width="36" Height="36"
-                                      HorizontalAlignment="Right" Margin="0,0,4,0"
+                                      Style="{StaticResource LoginRevealToggle}"
+                                      HorizontalAlignment="Right" Margin="0,0,3,0"
                                       Click="OnTogglePasswordVisibility"
                                       ToolTip="Zobrazit heslo"
                                       AutomationProperties.Name="Zobrazit heslo">
@@ -196,28 +289,34 @@
                                Foreground="{StaticResource Brush.Danger}"
                                FontSize="{StaticResource Size.Text.Meta}"
                                TextWrapping="Wrap"
-                               Margin="2,0,0,8"
+                               Margin="0,4,0,8"
                                MinHeight="16" />
 
-                    <Button Content="Zapomenuté heslo"
-                            Command="{Binding RequestPasswordResetCommand}"
-                            Style="{StaticResource Button.Link}"
-                            HorizontalAlignment="Left"
-                            Padding="0,0"
-                            Margin="0,0,0,16" />
-
-                    <Button Click="OnSignInClick"
-                            IsDefault="True"
-                            Style="{StaticResource LoginPrimary}"
-                            Height="44"
-                            AutomationProperties.Name="Přihlásit se do Lasero" />
+                    <!-- Visual order is tab order: field, field, reveal, then the button, then the link. -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Click="OnSignInClick"
+                                IsDefault="True"
+                                Style="{StaticResource LoginPrimary}"
+                                MinWidth="148"
+                                AutomationProperties.Name="Přihlásit se do Lasero" />
+                        <Button Grid.Column="1"
+                                Content="Zapomenuté heslo"
+                                Command="{Binding RequestPasswordResetCommand}"
+                                Style="{StaticResource LoginLink}"
+                                HorizontalAlignment="Right" />
+                    </Grid>
 
                     <Border Background="{StaticResource Brush.Field}"
                             BorderBrush="{StaticResource Brush.PanelBorder}"
                             BorderThickness="1"
                             CornerRadius="{StaticResource Radius.Md}"
-                            Padding="11"
-                            Margin="0,14,0,0"
+                            Padding="12"
+                            Margin="0,16,0,0"
                             Visibility="{Binding StatusMessage, Converter={StaticResource NotNullToVisibility}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -226,7 +325,7 @@
                             </Grid.ColumnDefinitions>
                             <components:IconGlyph IconData="{StaticResource Glyph.Info}"
                                                   Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                                  Margin="0,1,9,0"
+                                                  Margin="0,1,12,0" VerticalAlignment="Top"
                                                   Foreground="{StaticResource Brush.TextSecondary}" />
                             <TextBlock Grid.Column="1"
                                        Text="{Binding StatusMessage}"
@@ -237,9 +336,10 @@
                     </Border>
                 </StackPanel>
 
-                <TextBlock Grid.Row="2"
-                           Text="První přihlášení vyžaduje internet. Potom můžete editor používat i offline."
+                <TextBlock Grid.Row="1"
+                           Text="První přihlášení vyžaduje internet, potom editor funguje i offline."
                            Style="{StaticResource Text.Muted}"
+                           FontSize="{StaticResource Size.Text.Meta}"
                            TextWrapping="Wrap" />
             </Grid>
         </Border>

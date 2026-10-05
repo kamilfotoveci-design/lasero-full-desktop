@@ -75,7 +75,7 @@ public partial class AccountViewModel : ObservableObject
             UserId = null;
             IsSignedIn = false;
             IsOffline = false;
-            StatusMessage = "Platnost přihlášení skončila. Přihlaste se prosím znovu.";
+            StatusMessage = "Platnost přihlášení skončila. Je potřeba se přihlásit znovu.";
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -90,7 +90,7 @@ public partial class AccountViewModel : ObservableObject
             Log.Warning(ex, "Stored session could not be restored");
             IsSignedIn = false;
             IsOffline = false;
-            StatusMessage = "Přihlášení se nepodařilo obnovit. Přihlaste se prosím znovu.";
+            StatusMessage = "Přihlášení se nepodařilo obnovit. Je potřeba se přihlásit znovu.";
         }
     }
 
@@ -102,12 +102,12 @@ public partial class AccountViewModel : ObservableObject
         PasswordError = null;
 
         if (string.IsNullOrWhiteSpace(Email))
-            EmailError = "Zadejte e-mailovou adresu.";
+            EmailError = "Je potřeba zadat e-mailovou adresu.";
         else if (!MailAddress.TryCreate(Email.Trim(), out _))
-            EmailError = "Zadejte platnou e-mailovou adresu.";
+            EmailError = "E-mailová adresa nemá platný tvar.";
 
         if (string.IsNullOrWhiteSpace(Password))
-            PasswordError = "Zadejte heslo.";
+            PasswordError = "Je potřeba zadat heslo.";
 
         return EmailError is null && PasswordError is null;
     }
@@ -134,16 +134,16 @@ public partial class AccountViewModel : ObservableObject
         }
         catch (TaskCanceledException)
         {
-            StatusMessage = "Připojení trvalo příliš dlouho. Zkontrolujte internet a zkuste to znovu.";
+            StatusMessage = "Připojení trvalo příliš dlouho. Je třeba zkontrolovat internet a zkusit to znovu.";
         }
         catch (HttpRequestException)
         {
-            StatusMessage = "Nelze se připojit k Lasero účtu. Zkontrolujte internetové připojení.";
+            StatusMessage = "Nelze se připojit k účtu Lasero. Je třeba zkontrolovat internetové připojení.";
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "Sign-in request failed");
-            StatusMessage = "Přihlášení se nezdařilo. Zkontrolujte údaje a zkuste to znovu.";
+            StatusMessage = "Přihlášení se nezdařilo. Je třeba zkontrolovat údaje a zkusit to znovu.";
         }
         finally
         {
@@ -161,7 +161,7 @@ public partial class AccountViewModel : ObservableObject
         try
         {
             await _authClient.SendPasswordResetAsync(Email.Trim());
-            StatusMessage = "Odkaz pro obnovu hesla byl odeslán na váš e-mail.";
+            StatusMessage = "Odkaz pro obnovu hesla byl odeslán na zadaný e-mail.";
         }
         catch (LaseroAuthException ex)
         {
@@ -170,7 +170,7 @@ public partial class AccountViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Warning(ex, "Password reset request failed");
-            StatusMessage = "Odkaz pro obnovu se nepodařilo odeslat. Zkuste to znovu později.";
+            StatusMessage = "Odkaz pro obnovu se nepodařilo odeslat. Je možné to zkusit znovu později.";
         }
         finally
         {
@@ -213,16 +213,16 @@ public partial class AccountViewModel : ObservableObject
         }
         catch (LaseroAuthException)
         {
-            StatusMessage = "Platnost přihlášení skončila. Přihlaste se prosím znovu.";
+            StatusMessage = "Platnost přihlášení skončila. Je potřeba se přihlásit znovu.";
         }
         catch (HttpRequestException)
         {
-            StatusMessage = "Licenci nyní nelze ověřit. Zkontrolujte internetové připojení.";
+            StatusMessage = "Licenci nyní nelze ověřit. Je třeba zkontrolovat internetové připojení.";
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "License redemption failed");
-            StatusMessage = "Licenci se nepodařilo aktivovat. Zkuste to později.";
+            StatusMessage = "Licenci se nepodařilo aktivovat. Je možné to zkusit později.";
         }
         finally
         {
