@@ -138,7 +138,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "
 
 [Registry]
 ; HKA = HKCU for a per-user install, HKLM for an all-users install.
-Root: HKA; Subkey: "Software\Classes\.lasero"; ValueType: string; ValueName: ""; ValueData: "Lasero.Project"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.lasero"; ValueType: string; ValueName: ""; ValueData: "Lasero.Project"; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
 Root: HKA; Subkey: "Software\Classes\Lasero.Project"; ValueType: string; ValueName: ""; ValueData: "Projekt LASERO"; Flags: uninsdeletekey; Tasks: fileassoc
 Root: HKA; Subkey: "Software\Classes\Lasero.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},0"; Tasks: fileassoc
 Root: HKA; Subkey: "Software\Classes\Lasero.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
