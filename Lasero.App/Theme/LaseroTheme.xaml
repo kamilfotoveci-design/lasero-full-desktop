@@ -299,6 +299,17 @@
     </Style>
 
     <!--
+        Bitmaps are always drawn smaller or larger than their pixel size on a 125/150/175 percent
+        monitor, and WPF's default scaling mode is bilinear: a 660 px wordmark shown at 116 px keeps
+        every other source row and comes out stair-stepped and soft. HighQuality is the Fant resampler,
+        which averages the source pixels each device pixel covers. An image that wants hard pixels
+        (a raster preview at high zoom) sets NearestNeighbor locally, which beats this style.
+    -->
+    <Style TargetType="Image">
+        <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+    </Style>
+
+    <!--
         There is deliberately no implicit TextBlock style here.
 
         It used to set Foreground to TextPrimary, and that one Setter broke every control that paints

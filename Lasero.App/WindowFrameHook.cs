@@ -32,6 +32,16 @@ internal static class WindowFrameHook
     private const int DwmwaBorderColour = 34;
     private const int DwmwcpRound = 2;
 
+    /// <summary>First Windows 11 build. DWM only understands the corner-preference and border-colour
+    /// attributes from here on; older builds fail the call, so nothing is requested there and the
+    /// window keeps its square look instead of half-applying a frame.</summary>
+    internal const int RoundedCornersMinimumBuild = 22000;
+
+    /// <summary>The corner preference to ask DWM for on a given OS build: round on Windows 11, nothing
+    /// (<c>null</c>) on anything older. Pure so it can be tested without a window handle.</summary>
+    internal static int? ChooseCornerPreference(int osBuild) =>
+        osBuild >= RoundedCornersMinimumBuild ? DwmwcpRound : null;
+
     public static void Attach(Window window, Brush? borderBrush = null)
     {
         ArgumentNullException.ThrowIfNull(window);
@@ -87,7 +97,7 @@ internal static class WindowFrameHook
     {
         if (handle == IntPtr.Zero) return;
 
-        var preference = DwmwcpRound;
+        if (ChooseCornerPreference(Environment.OSVersion.Version.Build) is not { } preference) return;
         _ = DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref preference, sizeof(int));
 
         if (borderBrush is not SolidColorBrush solid) return;
