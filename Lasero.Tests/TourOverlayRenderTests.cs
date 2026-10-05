@@ -312,6 +312,9 @@ public sealed class TourOverlayRenderTests
     {
         Ui.Invoke(() =>
         {
+            // The overlay reads the physical modifier state; a held Ctrl/Alt/Shift on a shared QA
+            // desktop would change the routing under test, so such a run is not meaningful.
+            if (Keyboard.Modifiers != ModifierKeys.None) return;
             var h = Build(1366, 768);
             try
             {
@@ -355,6 +358,7 @@ public sealed class TourOverlayRenderTests
     {
         Ui.Invoke(() =>
         {
+            if (Keyboard.Modifiers != ModifierKeys.None) return; // see the arrow-key test
             var h = Build(1366, 768);
             try
             {
