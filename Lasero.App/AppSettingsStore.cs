@@ -11,6 +11,10 @@ public sealed class AppSettings
     public SafetyPreferences Safety { get; set; } = new();
     public MachinePreferences Machine { get; set; } = new();
     public WorkspacePreferences Workspace { get; set; } = new();
+
+    /// <summary>First-run guidance progress (welcome, tour, micro-tips), kept per account. Additive:
+    /// a settings file from before the tour existed has no such section and loads with defaults.</summary>
+    public Lasero.App.Tour.GuidancePreferences Guidance { get; set; } = new();
 }
 
 /// <summary>
@@ -178,6 +182,13 @@ public sealed class AppSettingsStore
         settings.Safety ??= new SafetyPreferences();
         settings.Machine ??= new MachinePreferences();
         settings.Workspace ??= new WorkspacePreferences();
+        settings.Guidance ??= new Lasero.App.Tour.GuidancePreferences();
+        settings.Guidance.Accounts ??= new Dictionary<string, Lasero.App.Tour.AccountGuidance>(StringComparer.Ordinal);
+        foreach (var key in settings.Guidance.Accounts.Keys.ToList())
+        {
+            var entry = settings.Guidance.Accounts[key] ??= new Lasero.App.Tour.AccountGuidance();
+            entry.SeenTips ??= new List<string>();
+        }
         settings.Workspace.InspectorWidth = settings.Workspace.ClampedInspectorWidth;
         settings.Workspace.AssistantWidth = settings.Workspace.ClampedAssistantWidth;
         settings.Workspace.AssistantHeight = settings.Workspace.ClampedAssistantHeight;

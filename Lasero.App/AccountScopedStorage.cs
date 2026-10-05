@@ -9,10 +9,13 @@ namespace Lasero.App;
 /// every other account-scoped store reuses it here instead of inventing its own.</summary>
 internal static class AccountScopedStorage
 {
-    public static string FileNameFor(string userId)
+    public static string FileNameFor(string userId) => $"{KeyFor(userId)}.json";
+
+    /// <summary>The same hash without the extension, for per-account entries kept inside one shared
+    /// file (guidance progress in settings.json) rather than in a file of their own.</summary>
+    public static string KeyFor(string userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId)))[..24];
-        return $"{hash}.json";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId)))[..24];
     }
 }
