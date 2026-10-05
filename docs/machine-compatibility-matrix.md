@@ -1,5 +1,7 @@
 # Machine compatibility — 2026-09-10
 
+> **Scope update (2026-10-05):** The release priority is all AlgoLaser engravers, then Ortur, Two Trees and Creality. xTool is outside this release target. The xTool rows below are historical research only; they do not imply current priority or support. See the [manufacturer and model inventory](machine-priority-research-2026-10-05.md). No newly listed family is directly supported or hardware verified.
+
 No priority target is hardware verified. A catalog entry, another application's configuration and offline tests do not establish direct integration. New priority selections fail closed before opening a transport. The existing manually selected generic GRBL/simulator workflow remains available, without a model-specific compatibility claim. Saved profile keys and workspace data were not migrated.
 
 | Exact identity | Module / firmware scope | Interface evidence | LASERO implementation and offline status | GUI / hardware | Limitation / next step |

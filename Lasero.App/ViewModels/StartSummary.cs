@@ -13,7 +13,8 @@ public sealed record StartSummaryInput(
     string PlacementLabel,
     string SettingsSummary,
     string EstimatedTime,
-    bool IsFramed);
+    bool IsFramed,
+    bool HasCutLayerWithoutRecipe = false);
 
 /// <summary>
 /// The wording of the Start confirmation. Start must never be ambiguous, so the dialog answers the
@@ -47,7 +48,9 @@ public static class StartSummary
             string.Format(culture, "Rozměr: {0:0.#} × {1:0.#} mm", input.WidthMm, input.HeightMm),
             $"Umístění: {input.PlacementLabel}",
             $"Rámování: {framing}",
-            input.SettingsSummary,
+            input.SettingsSummary + (input.HasCutLayerWithoutRecipe
+                ? "\nPozor: řezací vrstva nemá přiřazený materiálový recept. Ověřte výkon a rychlost na vzorku."
+                : string.Empty),
             $"Odhadovaný čas: {input.EstimatedTime}",
             string.Empty,
             input.IsSimulator

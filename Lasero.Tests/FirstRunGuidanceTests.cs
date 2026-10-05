@@ -375,6 +375,16 @@ public sealed class FirstRunGuidanceTests : IDisposable
         Assert.DoesNotContain("okamžitě začne pracovat", text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void StartSummaryWarnsAboutCutWithoutMaterialRecipe()
+    {
+        var text = StartSummary.Build(Summary() with { HasCutLayerWithoutRecipe = true });
+
+        Assert.Contains("řezací vrstva nemá přiřazený materiálový recept", text, StringComparison.Ordinal);
+        Assert.Contains("Ověřte výkon a rychlost na vzorku", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("materiálový recept", StartSummary.Build(Summary()), StringComparison.Ordinal);
+    }
+
     // ------------------------------------------------------------------ actionable errors
 
     [Fact]

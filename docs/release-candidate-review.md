@@ -1,5 +1,7 @@
 # Release-candidate usability review
 
+> Historical UI review from 2026-09-29. Its issue counts and open-item list are not the current release status. See [current release readiness](release-readiness-2026-10-05.md) for the 2026-10-05 recheck and [current machine scope](machine-priority-research-2026-10-05.md).
+
 Date: 2026-09-29. Reviewer: final agent, fresh-eyes pass on origin/design-system-tokens (73dbb8f) built in an isolated worktree, driven through the .uiqa scripts with the virtual GRBL simulator. No real hardware was connected. Screenshots: `E:\rc-shots\` (01-launch, 02-designer, 03-rect, 06-ctx, 07-ctx-obj, 08-device, 09-connected, 10-frame, 11-start-confirm, 13/16/17-nodeedit, 14-overflow, 15-path-draw, 18-undo (before) vs 25/26-undo-fixed (after), 19-materials, 20-settings, 24-xy-fixed, 27-start-size (before) vs 29-start-size-fixed (after), 31-size-1366, 31-size-1920, 32-size-min, 33-selectall, 35-blocked-dialog).
 
 Personas walked: A first-time beginner (launch, new project, draw, connect, start), B LightBurn maker (shortcuts, node edit, layers panel, frame, start dialog), C fast pro (V/R/E/L/T keys, Ctrl+A, arrows, Ctrl+Z, right-click, Save, reopen).

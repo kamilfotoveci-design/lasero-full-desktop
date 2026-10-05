@@ -6,7 +6,7 @@ Software work and offline tests do not authorize physical tests. No physical con
 
 Model / module / serial or local identity / firmware / transport / LASERO build or commit+dirty patch / approval scope / operator / expected result / observed result / logs / pass-fail-blocked.
 
-Create separate records for Alpha MK2, PIXI, standard F2, S1 and DIY KIT MK2. Never transfer a badge to another module or firmware. Current status for all: BLOCKED, no hardware approval and incomplete protocol evidence.
+Create separate records for every selected AlgoLaser, Ortur, Two Trees and Creality model/module/firmware configuration in the [priority inventory](machine-priority-research-2026-10-05.md). xTool is outside the current release target. Never transfer a badge to another module or firmware. Current status for all priority configurations: BLOCKED, no physical validation and incomplete protocol evidence.
 
 ## Stages requiring separate approval
 
@@ -17,12 +17,12 @@ Create separate records for Alpha MK2, PIXI, standard F2, S1 and DIY KIT MK2. Ne
 5. Separately approve minimal processing on suitable material with enclosure/extraction and supervision. Confirm parameters, physical start, progress, actual completion and cancellation. Software stop is not emergency stop; observe actual output state.
 6. Fault/disconnect/reset scenarios remain simulated unless an explicit manufacturer-supported supervised procedure is approved. No unattended tests or automatic replay.
 
-For F2 direct control remains unavailable pending manufacturer interface access. Studio artwork import can be checked separately without processing, on an authorized isolated session.
+Do not infer direct control of a new family from another application's compatibility claim. Falcon T1 and other non-GRBL or mixed-source machines require a separate protocol and safety design.
 
 ## Manual WPF checklist — not performed
 
 - Launch with hardware auto-connect disabled in an actually isolated Windows session, not another window/virtual desktop of the active user.
-- Open existing Ovládání stroje sidebar and setup overlay. All five priority entries show honest limitations; no floating control window.
+- Open existing Ovládání stroje sidebar and setup overlay. Current named entries must show honest limitations; newly researched families must not be represented as verified or connected.
 - Verify model selection, unavailable connect explanation, simulator labeling, explicit port/baud, firmware unknown state and preserved settings.
 - Check keyboard focus, light/dark token colors, vertical scrolling and no horizontal clipping at narrow inspector widths.
 - Switch inspector modes and return; verify selection/status preserved. Select unavailable model then explicitly choose simulator; simulator must work with no physical port access.

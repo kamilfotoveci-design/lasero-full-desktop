@@ -847,7 +847,10 @@ public partial class GCodeViewModel : ObservableObject
                 PlacementLabel,
                 settingsSummary,
                 EstimatedTimeLabel,
-                IsCurrentDocumentFramed)),
+                IsCurrentDocumentFramed,
+                enabledLayers.Any(layer => !layer.IsRaster &&
+                                           (layer.Mode is LayerMode.Cut or LayerMode.FillAndCut) &&
+                                           string.IsNullOrWhiteSpace(layer.MaterialLabel)))),
             "Spustit úlohu",
             CancelText: "Ještě zkontrolovat",
             Tone: LaseroDialogTone.Warning)) == LaseroDialogChoice.Primary;
