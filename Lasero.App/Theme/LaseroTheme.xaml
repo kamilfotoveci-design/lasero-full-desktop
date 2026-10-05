@@ -202,6 +202,8 @@
     <system:Double x:Key="Size.Text.Section">16</system:Double>
     <system:Double x:Key="Size.Text.Body">13</system:Double>
     <system:Double x:Key="Size.Text.Meta">12</system:Double>
+    <!-- Explanatory empty-state sentences: larger than body so a first-time owner reads them without effort. -->
+    <system:Double x:Key="Size.Text.Explain">14</system:Double>
 
     <!--
         KAMIL reading sizes. The assistant is read, not scanned, and its reader may be a first-time

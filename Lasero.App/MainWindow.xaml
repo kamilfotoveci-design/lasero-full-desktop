@@ -570,6 +570,9 @@
                                 </components:StatusBadge.Style>
                             </components:StatusBadge>
 
+                            <!-- Home and Zařízení carry their own connect call-to-action, so the strip repeats it only on
+                                 Návrh and Chat (docs/screen-controls-matrix.md, Redundant entry points). -->
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowStripConnect, Converter={StaticResource BoolToVisibility}}">
                             <Button Style="{StaticResource Button.Ghost}" Command="{Binding Connection.SmartConnectCommand}"
                                     Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
                                     Foreground="{StaticResource Brush.AccentText}"
@@ -577,6 +580,7 @@
                                     ToolTip="Připojí naposledy použitý laser, jinak jej najde automaticky na portech COM"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}" />
 
+                            </StackPanel>
                             <!-- Job badge, file and message: on Návrh always, elsewhere only once a job has
                                  left Idle/Ready (see ScreenChrome.ShowJobDetails). -->
                             <StackPanel Orientation="Horizontal"

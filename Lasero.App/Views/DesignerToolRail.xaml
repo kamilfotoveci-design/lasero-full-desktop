@@ -415,7 +415,7 @@
                 <!-- Import is a tool, not a destination: it adds content to the design in front of
                      you, which is why it belongs in this group and not with the screens. -->
                 <Button Style="{StaticResource RailButton}" Command="{Binding GCode.LoadFileCommand}"
-                        ToolTip="Importovat — načíst SVG, obrázek nebo G-code do návrhu"
+                        ToolTip="Importovat SVG, obrázek nebo G-code"
                         AutomationProperties.Name="Importovat grafiku">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Import}" />
                 </Button>

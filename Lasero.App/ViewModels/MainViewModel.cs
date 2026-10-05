@@ -127,12 +127,14 @@ public partial class MainViewModel : ObservableObject
     public bool ShowStripJobDetails => ScreenChrome.ShowJobDetails(CurrentScreen, GCode.JobState);
     public bool ShowStripJobActionZone => ScreenChrome.ShowJobActionZone(CurrentScreen, GCode.JobState);
     public bool ShowDeviceSettingsShortcut => ScreenChrome.ShowDeviceSettingsShortcut(CurrentScreen);
+    public bool ShowStripConnect => ScreenChrome.ShowStripConnect(CurrentScreen);
 
     private void NotifyScreenChrome()
     {
         OnPropertyChanged(nameof(ShowStripJobDetails));
         OnPropertyChanged(nameof(ShowStripJobActionZone));
         OnPropertyChanged(nameof(ShowDeviceSettingsShortcut));
+        OnPropertyChanged(nameof(ShowStripConnect));
     }
 
     private static string DescribeScreen(AppScreen screen) => screen switch

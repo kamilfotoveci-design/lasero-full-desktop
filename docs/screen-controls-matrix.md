@@ -26,7 +26,7 @@ while a job is active.
 | Nastavení zařízení (title bar) | H | K | H | H | Work area, Z axis and safety matter while placing artwork. Zařízení has its own identical button in its page header, Home shows the work area read-only |
 | Minimalizovat, Maximalizovat, Zavřít | K | K | K | K | Window |
 | Nav rail: Domů, Návrh, Materiály, Zařízení, Lasero Chat, Nastavení, Účet | K | rail | K | K | Navigation. Návrh swaps in its 56 px tool rail, which repeats Domů, Import, Materiály, Zařízení, Chat, Nastavení |
-| Tool rail (Vybrat, Text, Tvary, Čára), Importovat grafiku | n/a | K | n/a | n/a | Drawing and import act on the canvas |
+| Tool rail (Vybrat, Text, Tvary, Čára), Importovat grafiku | n/a | K | n/a | n/a | Drawing and import act on the canvas. Import is the persistent tool; the empty-canvas card is the single call-to-action |
 | Selection bar, node-edit toolbar | n/a | K | n/a | n/a | Contextual to a selection |
 | Zpět, Znovu | n/a | K | n/a | n/a | Undo applies to the design; Ctrl+Z is already Designer-only |
 | Zoom cluster, Vycentrovat, Přizpůsobit oknu | n/a | K | n/a | n/a | Canvas view |
@@ -39,7 +39,7 @@ while a job is active.
 | Control | Home | Návrh | Zařízení | Chat | Reason |
 |---|---|---|---|---|---|
 | Machine badge | K | K | K | K | "Is my laser connected" matters everywhere |
-| Připojit (only when disconnected) | K | K | K | K | Connect action travels with the state it fixes |
+| Připojit (only when disconnected) | H | K | H | K | Home (device rail) and Zařízení (status card) carry their own connect call-to-action in the same state, so the strip repeats it only on Návrh and Chat |
 | Job badge, file name, strip message | H (idle) | K | H (idle) | H (idle) | Idle and Ready say nothing off Návrh. Any other state (active, Completed, Cancelled, Error, Aborted, Faulted) is shown on every screen so an outcome is never hidden |
 | Progress bar | only-active | only-active | only-active | only-active | A running job is visible from anywhere |
 | Rámovat | H | K | H | H | Moves the head; needs a visible design. Already hidden while a job is active |
@@ -97,3 +97,45 @@ correct: settings and materials never need Start.
 
 - Machine-safety semantics of Rámovat, Spustit, Pozastavit, Zastavit (only visibility moved).
 - Keyboard shortcuts (already Designer-only via `OnPreviewKeyDown`).
+
+## Redundant entry points
+
+Trigger (owner, 2026-10-05): "Importovat grafiku" appeared three times on the empty Návrh screen.
+
+Decision framework, applied app-wide:
+
+1. One primary call-to-action per screen state, in one place.
+2. A secondary entry point is allowed only where it is a persistent tool (rail, menu, shortcut), never
+   repeated as a button inside an explanatory empty state.
+3. Explanatory text explains. It does not carry a button for something the screen already offers.
+4. Never removed: Pozastavit, Pokračovat, Zastavit and progress while a job is active, and the only
+   keyboard-reachable route to any command.
+
+Pinned by `Lasero.Tests/RedundantEntryPointsTests.cs`, which also scans every view for the same command
+bound to two buttons (allow-list with reasons).
+
+| # | Duplicate (screen state) | Decision | Reason |
+|---|---|---|---|
+| 1 | Importovat grafiku: rail tool, empty-canvas card, inspector Operace empty state (Návrh, empty design) | Keep rail tool and card. Removed the inspector button | Rail is the persistent, discoverable tool (tooltip "Importovat SVG, obrázek nebo G-code"; no Ctrl+I exists, so the tooltip names none). The card is where the eye lands on a new design and is the one call-to-action. The inspector now only explains: "Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek" (14 px). The card disappears with the first object, the rail tool stays |
+| 2 | Připojit: strip button plus Home device rail "Připojit zařízení" (Home, disconnected) | Removed the strip button on Home | Same intent twice on one screen. The rail card is the explanatory connect state |
+| 3 | Připojit: strip button plus status card "Připojit laser automaticky", both `SmartConnectCommand` (Zařízení, disconnected) | Removed the strip button on Zařízení | Identical command and label meaning. Návrh and Chat keep the strip button, they have no connect of their own |
+| 4 | Připojit zařízení (port card) next to the status card primary (Zařízení, disconnected) | Converted: now a Secondary button labelled "Připojit k vybranému portu" | Two primary connect buttons competed. The status card is the primary path; the port card is the manual path for a known port |
+| 5 | Odpojit: status card secondary plus port card Odpojit (Zařízení, connected) | Removed the port card button | Same `DisconnectCommand` twice. The status card slot always offers it while connected (Progress and Success) |
+| 6 | Nastavení zařízení: title bar plus Zařízení page header | Already resolved (title bar hidden on Zařízení and Home) | Kept as is |
+| 7 | Rámovat / Spustit: strip plus machine panel | No duplicate | Strip is Návrh-only; Zařízení has "Zkontrolovat oblast" while the strip button is hidden there. Machine panel in the inspector is unreachable today (`IsMachineControlMode` is never set) |
+| 8 | Nový projekt, Otevřít projekt: Home buttons plus Projekt menu | Keep both | The menu is persistent chrome and the only home of Ctrl+N and Ctrl+O discovery; Home buttons are that screen's start CTAs. A closed menu is not a second button |
+| 9 | Importovat: Home button, rail tool, card (different screens) | Keep | Never visible together. Home import continues to Návrh |
+| 10 | Materiály: nav item plus Home "Vše →" | Keep | The link is scoped to the recent-materials list |
+| 11 | Selection bar menus Zarovnat, Zrcadlit, Otočit repeated inside "Více" | Keep | Overflow menu, closed by default |
+| 12 | Odstranit pozadí: selection bar "Více" item plus inspector button | Keep | Menu item is a closed overflow; inspector button is contextual to a raster |
+| 13 | Home rail machine badge plus strip machine badge | Keep | Status indicator, not an action. |
+| 14 | Pozastavit, Zastavit, progress | Untouched | Safety |
+
+### Owner decision
+
+| Item | Options | Recommendation |
+|---|---|---|
+| KAMIL launchers on Návrh: floating head plus tool rail "Kamil" | Keep both, or drop the rail entry | Keep the head (it is the assistant's presence); the rail entry is the keyboard-reachable route today, so it stays until the head is focusable |
+| Nastavení and Účet in the nav rail (both open Settings) | Keep Účet as identity, or make it display only | Keep: the card shows who is signed in, a different job from the Nastavení label |
+| Najet domů twice on Zařízení (jog pad centre icon plus labelled button) | Keep both, or remove the labelled one | Keep both for now: homing moves the machine, so safety review should decide, not a layout pass |
+| Zařízení: "Připojit k vybranému portu" next to the status card CTA | Keep as Secondary, or fold into "Upřesnit" disclosure like the wizard | Fold into a disclosure once the status card is validated with a first-time owner |

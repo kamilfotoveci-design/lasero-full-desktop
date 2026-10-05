@@ -487,8 +487,9 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- No operations yet: say why there are none and offer the one action that makes
-                         one appear. -->
+                    <!-- No operations yet: only explain when one appears. No action here; the import
+                         call-to-action lives once, in the empty-canvas card, plus the persistent
+                         tool-rail import tool (docs/screen-controls-matrix.md, Redundant entry points). -->
                     <StackPanel Margin="0,6,0,0">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -500,14 +501,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="Zatím žádné operace" FontWeight="Medium" />
-                        <TextBlock Text="Operace určuje, jak laser objekty zpracuje: výkon, rychlost a počet průchodů. Vytvoří se sama, jakmile do návrhu přidáte tvar, text nebo obrázek."
-                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,0" />
-                        <Button Style="{StaticResource Button.Regular}" Command="{Binding GCode.LoadFileCommand}"
-                                HorizontalAlignment="Left" Margin="0,12,0,0" Padding="12,0">
-                            <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat grafiku"
-                                                  IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                        </Button>
+                        <TextBlock Text="Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek"
+                                   Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Explain}" TextWrapping="Wrap" />
                     </StackPanel>
                 </StackPanel>
 

@@ -246,19 +246,15 @@
                                 </DockPanel>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                <Button Style="{StaticResource Button.Primary}"
+                                <Button Style="{StaticResource Button.Secondary}"
                                         Command="{Binding Connection.ConnectCommand}" Margin="0,0,8,0"
                                         Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
                                     <Grid>
-                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení" Foreground="White"
+                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit k vybranému portu"
                                                               Visibility="{Binding Connection.IsConnecting, Converter={StaticResource InverseBoolToVisibility}}" />
-                                        <TextBlock Text="Připojování…" Foreground="White" FontWeight="SemiBold"
+                                        <TextBlock Text="Připojování…" FontWeight="SemiBold"
                                                    Visibility="{Binding Connection.IsConnecting, Converter={StaticResource BoolToVisibility}}" />
                                     </Grid>
-                                </Button>
-                                <Button Style="{StaticResource Button.Outline}" Command="{Binding Connection.DisconnectCommand}"
-                                        Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
-                                    <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit" />
                                 </Button>
                             </StackPanel>
                             <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Numeric}"
