@@ -1,0 +1,20 @@
+﻿LASERO Desktop - testovací verze
+
+Tento instalátor připraví aplikaci LASERO Desktop pro návrh, přípravu a ovládání laserových gravírek s řadičem GRBL.
+
+Co instalace dělá
+- nainstaluje aplikaci včetně potřebných součástí; samostatná instalace .NET není nutná
+- vytvoří položku v nabídce Start a na přání zástupce na ploše
+- přiřadí příponu .lasero, aby se projekty otevíraly dvojklikem
+- LightBurn ani jiný software nijak nemění
+
+Jde o testovací verzi
+Aplikace je ve fázi uzavřeného testování. Může obsahovat chyby a některé funkce se ještě mění. Podporu konkrétních modelů strojů zatím nikdo fyzicky neověřil, takže žádný model nelze označit jako ověřený.
+
+Bezpečnost před prvním skutečným úkolem
+- první úlohu vždy vyzkoušet na odpadním kusu materiálu
+- po celou dobu zkoušky mít nasazené ochranné brýle pro příslušnou vlnovou délku laseru
+- u stroje zůstat, mít po ruce nouzové zastavení a dohlížet na materiál
+- tlačítko Stop v aplikaci není nouzové zastavení stroje
+
+Přihlášení při prvním spuštění vyžaduje připojení k internetu. Poté fungují návrh, vzorník i ovládání připojené gravírky také bez internetu.

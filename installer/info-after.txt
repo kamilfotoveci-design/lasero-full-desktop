@@ -1,0 +1,16 @@
+﻿Instalace je hotová - několik poznámek k testování
+
+Testovací verze
+LASERO Desktop je v uzavřeném testování. Obsah, vzhled i chování se mohou mezi verzemi měnit.
+
+Bezpečnost
+- před první skutečnou úlohou vyzkoušet postup na odpadním kusu materiálu a při tom mít nasazené ochranné brýle
+- kompatibilita s konkrétními modely strojů zatím není ověřená; případné spojení se strojem je na vlastní odpovědnost obsluhy a pod dohledem
+- doporučené hodnoty rychlosti a výkonu nejsou ověřeny pro konkrétní kombinaci stroje a materiálu; vždy je potvrdit zkouškou na vzorku
+- nikdy nenechávat běžící úlohu bez dohledu
+
+Hlášení problémů
+Popis chyby, postup, který k ní vedl, model stroje a firmware zasílat kontaktu, od kterého byl instalátor předán, případně přes https://lasero.net. Hodí se i soubory z adresáře %LOCALAPPDATA%\Lasero\logs. Obsahují provozní záznam aplikace; před odesláním je lze prohlédnout.
+
+Ovladač USB
+Pokud se gravírka po připojení kabelem neobjeví jako port COM, může chybět ovladač USB převodníku. Na další stránce je krátký přehled.

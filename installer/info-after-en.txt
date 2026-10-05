@@ -1,0 +1,16 @@
+﻿Setup is complete - a few notes for testing
+
+Test version
+LASERO Desktop is in closed testing. Content, look and behaviour may change between versions.
+
+Safety
+- before the first real job, rehearse on a scrap piece of material while wearing laser safety glasses
+- compatibility with specific machine models is not yet validated; connecting to a machine is at the operator's own risk and under supervision
+- recommended speed and power values are not validated for a particular machine and material combination; always confirm them on a sample
+- never leave a running job unattended
+
+Reporting problems
+Send a description, the steps that led to it, the machine model and firmware to the person who gave you this installer, or via https://lasero.net. Files from %LOCALAPPDATA%\Lasero\logs help too. They contain the application's operating log; you can review them before sending.
+
+USB driver
+If the engraver does not show up as a COM port after connecting the cable, the USB serial driver may be missing. The next page has a short overview.

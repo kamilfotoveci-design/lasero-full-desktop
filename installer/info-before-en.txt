@@ -1,0 +1,20 @@
+﻿LASERO Desktop - test version
+
+This installer sets up LASERO Desktop for designing, preparing and running laser engravers with a GRBL controller.
+
+What setup does
+- installs the application with everything it needs; no separate .NET installation is required
+- adds a Start menu entry and, optionally, a desktop shortcut
+- associates the .lasero extension so projects open by double-click
+- does not change LightBurn or any other software
+
+This is a test version
+The application is in closed testing. It may contain bugs and some features are still changing. No specific machine model has been physically validated yet, so none can be called verified.
+
+Safety before the first real job
+- always try the first job on a scrap piece of material
+- wear laser safety glasses rated for the laser wavelength during the whole test
+- stay at the machine, keep the emergency stop within reach and watch the material
+- the Stop button in the application is not the machine's emergency stop
+
+The first sign-in needs an internet connection. Afterwards, design, the material library and control of a connected engraver also work offline.

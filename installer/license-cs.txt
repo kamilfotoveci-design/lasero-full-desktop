@@ -1,0 +1,26 @@
+﻿NÁVRH - licenční podmínky LASERO Desktop (testovací verze)
+
+Toto je pracovní návrh textu pro uzavřené testování. Nejde o právně posouzené podmínky a před veřejným vydáním musí být nahrazen schválenou verzí.
+
+1. Předmět
+Software LASERO Desktop (dále jen software) je poskytován zdarma jako testovací verze vybraným testerům za účelem ověření funkcí a odhalení chyb.
+
+2. Oprávnění
+Tester smí software nainstalovat na vlastní počítače a používat jej k testování. Software nesmí šířit dále, upravovat ani zpětně analyzovat, pokud to právní předpisy výslovně nedovolují.
+
+3. Testovací charakter
+Software je ve vývoji, může obsahovat chyby a může být kdykoli změněn nebo ukončen. Funkce spojené s ovládáním strojů nejsou ověřeny pro konkrétní modely.
+
+4. Bezpečnost a odpovědnost
+Software ovládá zařízení, které může způsobit zranění nebo požár. Obsluha odpovídá za bezpečný provoz stroje, za ochranné pomůcky, za dohled nad provozem a za předchozí zkoušku na odpadním materiálu. Software je poskytován tak, jak je, bez záruky jakéhokoli druhu v rozsahu, který právo připouští.
+
+5. Data
+Aplikace ukládá nastavení, projekty a provozní záznamy v uživatelském profilu na počítači testera. Přihlášení probíhá proti službě LASERO.
+
+6. Třetí strany
+Součásti třetích stran podléhají vlastním licencím, viz soubor THIRD_PARTY_NOTICES.md v instalačním adresáři.
+
+7. Ukončení
+Oprávnění zaniká ukončením testování nebo odinstalováním softwaru.
+
+Konečné znění podmínek, rozhodné právo a kontaktní údaje poskytovatele doplní provozovatel před veřejným vydáním.

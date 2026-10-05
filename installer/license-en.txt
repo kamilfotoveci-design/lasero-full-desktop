@@ -1,0 +1,26 @@
+﻿DRAFT - LASERO Desktop licence terms (test version)
+
+This is a working draft for closed testing. It has not been legally reviewed and must be replaced by an approved version before any public release. The Czech text is authoritative for this draft.
+
+1. Subject
+LASERO Desktop (the software) is provided free of charge as a test version to selected testers in order to verify functions and find defects.
+
+2. Permission
+The tester may install the software on their own computers and use it for testing. The software must not be redistributed, modified or reverse engineered unless law expressly permits it.
+
+3. Test nature
+The software is under development, may contain defects and may be changed or discontinued at any time. Functions that control machines are not validated for specific models.
+
+4. Safety and responsibility
+The software controls equipment that can cause injury or fire. The operator is responsible for safe operation, protective equipment, supervision and for trying the job on scrap material first. The software is provided as is, without warranty of any kind to the extent permitted by law.
+
+5. Data
+The application stores settings, projects and operating logs in the tester's user profile. Sign-in is performed against the LASERO service.
+
+6. Third parties
+Third-party components are subject to their own licences, see THIRD_PARTY_NOTICES.md in the installation folder.
+
+7. Termination
+Permission ends when testing ends or the software is uninstalled.
+
+The final wording, governing law and provider contact details will be added by the operator before a public release.
