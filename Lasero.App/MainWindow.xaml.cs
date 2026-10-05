@@ -250,10 +250,17 @@ public partial class MainWindow : Window
     /// <summary>Public so the Designer rail can reach it — same route the sidebar's own entry takes.</summary>
     public void OpenSettings()
     {
-        var dialog = new SettingsWindow(_viewModel) { Owner = this };
+        var dialog = new SettingsWindow(_viewModel, PrepareForSignOut) { Owner = this };
         dialog.ShowDialog();
         if (!dialog.SignOutRequested) return;
 
+        _viewModel.Connection.CancelDetection();
+        if (_viewModel.Connection.DisconnectCommand.CanExecute(null))
+            _viewModel.Connection.DisconnectCommand.Execute(null);
+        // These non-modal windows can retain the previous account's project or material data.
+        _previewWindow?.Close();
+        _materialsWindow?.Close();
+        _viewModel.ClearWorkspaceForAccountSwitch();
         Hide();
         // No explicit reload call needed here, for either branch: SignOutCommand (run inside
         // SettingsWindow, before dialog.ShowDialog() above returned) already cleared every
@@ -265,11 +272,52 @@ public partial class MainWindow : Window
         {
             Show();
             Activate();
+            PromptRecoverySnapshot();
         }
         else
         {
             Close();
         }
+    }
+
+    private bool PrepareForSignOut(Window owner)
+    {
+        if (_viewModel.Connection.IsConnecting)
+        {
+            LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
+                "Připojování zařízení",
+                "Počkejte na dokončení připojování a odhlášení opakujte.",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Warning));
+            return false;
+        }
+        if (_viewModel.GCode.IsJobActive)
+        {
+            LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
+                "Probíhající úloha",
+                "Před odhlášením bezpečně dokončete nebo zastavte probíhající úlohu.",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Warning));
+            return false;
+        }
+
+        if (!_viewModel.IsDirty) return true;
+        var decision = LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
+            "Neuložené změny",
+            "Před odhlášením uložte projekt, jinak budou neuložené změny zahozeny.",
+            "Uložit projekt",
+            SecondaryText: "Zahodit změny",
+            CancelText: "Zrušit odhlášení",
+            Tone: LaseroDialogTone.Warning));
+        if (decision == LaseroDialogChoice.Primary)
+            return _viewModel.TrySaveProject();
+        if (decision != LaseroDialogChoice.Secondary)
+            return false;
+
+        _viewModel.DiscardRecoverySnapshot();
+        return true;
     }
 
     private bool TryActivateDesignerTool(Key key)
@@ -649,6 +697,22 @@ public partial class MainWindow : Window
         if (Width > workArea.Width) Width = workArea.Width;
         if (Height > workArea.Height) Height = workArea.Height;
 
+        PromptRecoverySnapshot();
+
+        var marker = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "onboarding-seen");
+        if (File.Exists(marker)) return;
+
+        var onboarding = new OnboardingWindow { Owner = this };
+        onboarding.ShowDialog();
+        if (onboarding.DontShowAgainChecked)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
+            File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
+        }
+    }
+
+    private void PromptRecoverySnapshot()
+    {
         if (_viewModel.HasRecoverySnapshot)
         {
             var restored = LaseroDialogWindow.Show(this, new LaseroDialogOptions(
@@ -662,17 +726,6 @@ public partial class MainWindow : Window
                 _viewModel.TryRestoreRecoverySnapshot();
             else if (restored == LaseroDialogChoice.Secondary)
                 _viewModel.DiscardRecoverySnapshot();
-        }
-
-        var marker = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "onboarding-seen");
-        if (File.Exists(marker)) return;
-
-        var onboarding = new OnboardingWindow { Owner = this };
-        onboarding.ShowDialog();
-        if (onboarding.DontShowAgainChecked)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
-            File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
         }
     }
 }

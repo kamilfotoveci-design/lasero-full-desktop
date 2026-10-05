@@ -71,6 +71,7 @@ public sealed class ProjectFileSerializerTests : IDisposable
     public void RecoveryStore_CanReplaceAndRestoreSnapshot()
     {
         var store = new ProjectRecoveryStore(_directory);
+        store.SwitchAccount("account-a");
         store.Save(new LaseroProjectFile { Name = "První" });
         store.Save(new LaseroProjectFile { Name = "Druhý" });
 
@@ -79,6 +80,47 @@ public sealed class ProjectFileSerializerTests : IDisposable
 
         store.Discard();
         Assert.False(store.HasSnapshot);
+    }
+
+    [Fact]
+    public void RecoveryStore_SwitchingAccountsKeepsSnapshotsIsolated()
+    {
+        var store = new ProjectRecoveryStore(_directory);
+        store.SwitchAccount("account-a");
+        store.Save(new LaseroProjectFile { Name = "První účet" });
+
+        store.SwitchAccount("account-b");
+        Assert.False(store.HasSnapshot);
+        store.Save(new LaseroProjectFile { Name = "Druhý účet" });
+
+        store.SwitchAccount("account-a");
+        Assert.Equal("První účet", store.TryLoad()!.Name);
+        store.Discard();
+
+        store.SwitchAccount("account-b");
+        Assert.Equal("Druhý účet", store.TryLoad()!.Name);
+    }
+
+    [Fact]
+    public void RecoveryStore_LeavesLegacySharedSnapshotUntouchedAndHidesItWithoutAccount()
+    {
+        var legacyPath = Path.Combine(_directory, "autosave.lasero");
+        ProjectFileSerializer.Save(legacyPath, new LaseroProjectFile { Name = "Starší záloha" });
+        var store = new ProjectRecoveryStore(_directory);
+
+        Assert.False(store.HasSnapshot);
+        store.SwitchAccount("account-a");
+        Assert.False(store.HasSnapshot);
+        store.Save(new LaseroProjectFile { Name = "Účet A" });
+        store.SwitchAccount(null);
+        Assert.False(store.HasSnapshot);
+        Assert.Null(store.TryLoad());
+        store.Discard();
+
+        Assert.True(File.Exists(legacyPath));
+        Assert.Equal("Starší záloha", ProjectFileSerializer.Load(legacyPath).Name);
+        store.SwitchAccount("account-a");
+        Assert.Equal("Účet A", store.TryLoad()!.Name);
     }
 
     [Fact]
@@ -257,7 +299,7 @@ public sealed class ProjectFileSerializerTests : IDisposable
         ProjectFileSerializer.Save(path, project);
         var loaded = ProjectFileSerializer.Load(path);
 
-        Assert.Equal(6, loaded.Version);
+        Assert.Equal(ProjectFileSerializer.CurrentVersion, loaded.Version);
         Assert.Collection(loaded.Layers,
             layer => Assert.Equal((firstId, "Nejdřív čára"), (layer.Id, layer.Name)),
             layer => Assert.Equal((secondId, "Potom výplň"), (layer.Id, layer.Name)));
@@ -314,7 +356,7 @@ public sealed class ProjectFileSerializerTests : IDisposable
         ProjectFileSerializer.Save(path, project);
         var loaded = ProjectFileSerializer.Load(path);
 
-        Assert.Equal(6, loaded.Version);
+        Assert.Equal(ProjectFileSerializer.CurrentVersion, loaded.Version);
         Assert.Equal(layerId, loaded.Objects[0].Shapes[0].LayerId);
     }
 
@@ -382,8 +424,17 @@ public sealed class ProjectFileSerializerTests : IDisposable
 
         var loaded = ProjectFileSerializer.Deserialize(json);
 
-        Assert.Equal(6, loaded.Version);
+        Assert.Equal(ProjectFileSerializer.CurrentVersion, loaded.Version);
         Assert.Equal(layerId, loaded.Objects[0].Shapes[0].LayerId);
+    }
+
+    [Fact]
+    public void ProjectFromNewerVersionIsRejectedInsteadOfSilentlyDowngraded()
+    {
+        var json = $$"""{"Version":{{ProjectFileSerializer.CurrentVersion + 1}},"Name":"Budoucí projekt"}""";
+
+        var error = Assert.Throws<InvalidDataException>(() => ProjectFileSerializer.Deserialize(json));
+        Assert.Contains("novější verzí", error.Message, StringComparison.Ordinal);
     }
 
     public void Dispose()

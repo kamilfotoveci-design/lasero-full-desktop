@@ -208,6 +208,12 @@ public partial class MainViewModel : ObservableObject
                 NotifyMachineBadge();
         };
         _recoveryStore = recoveryStore;
+        _recoveryStore.SwitchAccount(Account.UserId);
+        Account.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(AccountViewModel.UserId))
+                _recoveryStore.SwitchAccount(Account.UserId);
+        };
         _settingsStore = settingsStore;
         _recentProjectsStore = recentProjectsStore;
         _jobHistoryStore = jobHistoryStore;
@@ -346,6 +352,19 @@ public partial class MainViewModel : ObservableObject
     }
 
     private void OnSceneChanged() => IsDirty = true;
+
+    /// <summary>Clear the prior account's live document after sign-out has resolved unsaved work.
+    /// The caller must not invoke this while a physical job is active.</summary>
+    public void ClearWorkspaceForAccountSwitch()
+    {
+        Scene.ResetDocument();
+        GCode.ClearDocument();
+        ProjectName = "Nový projekt";
+        ProjectPath = null;
+        MaterialName = null;
+        IsDirty = false;
+        CurrentScreen = AppScreen.Home;
+    }
 
     [RelayCommand]
     private void NewProject()

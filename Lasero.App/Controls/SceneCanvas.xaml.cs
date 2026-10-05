@@ -842,6 +842,7 @@ public partial class SceneCanvas : UserControl
 
             var label = new TextBlock { Text = FormatTickMm(y), FontSize = 11, FontFamily = labelFont, Foreground = labelBrush };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (!RulerLabelLayout.FitsVertically(py, label.DesiredSize.Height, LeftRuler.ActualHeight)) continue;
             Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - label.DesiredSize.Width));
             Canvas.SetTop(label, py - label.DesiredSize.Height / 2);
             LeftRuler.Children.Add(label);

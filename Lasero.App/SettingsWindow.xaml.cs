@@ -7,12 +7,14 @@ namespace Lasero.App;
 public partial class SettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private readonly Func<Window, bool> _prepareSignOut;
     public bool SignOutRequested { get; private set; }
 
-    public SettingsWindow(MainViewModel viewModel)
+    public SettingsWindow(MainViewModel viewModel, Func<Window, bool> prepareSignOut)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _prepareSignOut = prepareSignOut;
         DataContext = viewModel;
         RequireFramingToggle.IsChecked = viewModel.Settings.Safety.RequireFramingBeforeStart;
         ConfirmResetToggle.IsChecked = viewModel.Settings.Safety.ConfirmSoftReset;
@@ -46,6 +48,7 @@ public partial class SettingsWindow : Window
             CancelText: "Zůstat přihlášený",
             Tone: LaseroDialogTone.Warning)) == LaseroDialogChoice.Primary;
         if (!confirmed) return;
+        if (!_prepareSignOut(this)) return;
 
         _viewModel.Account.SignOutCommand.Execute(null);
         SignOutRequested = true;

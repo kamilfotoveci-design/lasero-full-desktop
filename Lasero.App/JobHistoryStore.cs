@@ -12,14 +12,16 @@ public sealed class JobHistoryStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private readonly string _path;
+    private readonly string _accountsDirectory;
+    private string? _path;
     private List<JobHistoryEntry> _entries;
 
     public JobHistoryStore(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        _path = Path.GetFullPath(path);
-        _entries = LoadFromDisk();
+        var legacyPath = Path.GetFullPath(path);
+        _accountsDirectory = Path.Combine(Path.GetDirectoryName(legacyPath)!, "job-history");
+        _entries = [];
     }
 
     public static JobHistoryStore CreateDefault() => new(Path.Combine(
@@ -30,9 +32,21 @@ public sealed class JobHistoryStore
 
     public event Action? Changed;
 
+    /// <summary>The pre-account-scoping shared history cannot be attributed to a user. Leave it
+    /// on disk, but show and write only the current account's history.</summary>
+    public void SwitchAccount(string? userId)
+    {
+        _path = string.IsNullOrWhiteSpace(userId)
+            ? null
+            : Path.Combine(_accountsDirectory, AccountScopedStorage.FileNameFor(userId));
+        _entries = LoadFromDisk();
+        Changed?.Invoke();
+    }
+
     public void Append(JobHistoryEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
+        if (_path is null) return;
         _entries.Add(entry);
         Save();
         Changed?.Invoke();
@@ -40,7 +54,7 @@ public sealed class JobHistoryStore
 
     private List<JobHistoryEntry> LoadFromDisk()
     {
-        if (!File.Exists(_path)) return [];
+        if (_path is null || !File.Exists(_path)) return [];
         try
         {
             return JsonSerializer.Deserialize<List<JobHistoryEntry>>(File.ReadAllText(_path), JsonOptions) ?? [];
@@ -54,6 +68,7 @@ public sealed class JobHistoryStore
 
     private void Save()
     {
+        if (_path is null) return;
         var directory = Path.GetDirectoryName(_path)
             ?? throw new InvalidOperationException("Historie úloh nemá platnou cílovou složku.");
         Directory.CreateDirectory(directory);

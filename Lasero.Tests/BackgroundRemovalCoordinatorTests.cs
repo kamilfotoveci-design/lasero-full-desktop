@@ -84,9 +84,10 @@ public sealed class BackgroundRemovalCoordinatorTests : IDisposable
         var outcome = await coordinator.RunAsync(source);
 
         Assert.Equal(BackgroundRemovalOutcome.Failed, outcome);
-        Assert.Equal(BackgroundRemovalCoordinator.GenericFailureMessage, scene.BackgroundRemovalError);
-        Assert.DoesNotContain('?', scene.BackgroundRemovalError);
-        Assert.DoesNotContain('!', scene.BackgroundRemovalError);
+        var error = Assert.IsType<string>(scene.BackgroundRemovalError);
+        Assert.Equal(BackgroundRemovalCoordinator.GenericFailureMessage, error);
+        Assert.DoesNotContain('?', error);
+        Assert.DoesNotContain('!', error);
         Assert.False(scene.CanUndo);
     }
 

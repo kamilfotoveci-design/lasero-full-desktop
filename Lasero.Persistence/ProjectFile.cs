@@ -95,6 +95,7 @@ public sealed class ProjectLayer
 
 public static class ProjectFileSerializer
 {
+    public const int CurrentVersion = 7;
     private const string ManifestEntryName = "project.json";
 
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.General)
@@ -167,15 +168,17 @@ public static class ProjectFileSerializer
     {
         var project = JsonSerializer.Deserialize<LaseroProjectFile>(json, Options)
             ?? throw new InvalidDataException("Projekt je prázdný nebo poškozený.");
+        if (project.Version > CurrentVersion)
+            throw new InvalidDataException("Projekt byl vytvořen novější verzí aplikace LASERO.");
         MigrateLayerIds(project);
-        project.Version = 6;
+        project.Version = CurrentVersion;
         return project;
     }
 
     private static LaseroProjectFile CreateArchiveSnapshot(LaseroProjectFile source, ZipArchive archive)
     {
         var snapshot = Deserialize(Serialize(source));
-        snapshot.Version = 6;
+        snapshot.Version = CurrentVersion;
 
         for (var index = 0; index < snapshot.Objects.Count; index++)
         {

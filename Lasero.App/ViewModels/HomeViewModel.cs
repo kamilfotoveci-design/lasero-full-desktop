@@ -120,6 +120,7 @@ public partial class HomeViewModel : ObservableObject
         GCode.PropertyChanged += OnGCodePropertyChanged;
         _account.PropertyChanged += OnAccountPropertyChanged;
 
+        _jobHistoryStore.SwitchAccount(_account.UserId);
         RefreshRecentProjects();
         RefreshJobHistory();
     }
@@ -131,7 +132,10 @@ public partial class HomeViewModel : ObservableObject
     private void OnAccountPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AccountViewModel.UserId))
+        {
             _recentProjectsStore.SwitchAccount(_account.UserId);
+            _jobHistoryStore.SwitchAccount(_account.UserId);
+        }
     }
 
     private void OnGCodePropertyChanged(object? sender, PropertyChangedEventArgs e)
