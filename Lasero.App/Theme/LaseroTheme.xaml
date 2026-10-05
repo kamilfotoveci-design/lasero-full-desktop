@@ -151,6 +151,9 @@
         0.96 press-scale transform carries most of the felt feedback there. See Button.Primary below.
     -->
     <SolidColorBrush x:Key="Brush.HoverWash" Color="#181818" po:Freeze="False" />
+    <!-- Dimming behind a guided-tour spotlight. Warm graphite, not black, so the cut-out target reads
+         as lit rather than the rest reading as switched off. -->
+    <SolidColorBrush x:Key="Brush.Scrim" Color="#8F181818" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E6E3DC" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D3CFC5" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D3CFC5" po:Freeze="False" />

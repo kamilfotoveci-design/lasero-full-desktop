@@ -218,6 +218,44 @@
         still a real Button, so it keeps keyboard focus and the accessible name a link would lose.
     -->
 
+    <!--
+        A quiet text action: graphite at rest, the brand red only on hover, no fill, no outline. The ring
+        appears for keyboard focus only (FocusVisual.IsVisible), never after a click, and the stock dotted
+        FocusVisualStyle is switched off so nothing is drawn at rest. Used by the tips ("Další tip", the
+        chip's close button).
+    -->
+    <Style x:Key="Button.Quiet" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Ring" Background="Transparent" BorderBrush="Transparent" BorderThickness="2"
+                            CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}"
+                            UseLayoutRounding="True" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                        </Trigger>
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Button.Link" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
         <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
         <Setter Property="FontWeight" Value="Medium" />
