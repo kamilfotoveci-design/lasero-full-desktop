@@ -80,8 +80,22 @@
             <StackPanel Margin="24">
 
                 <!-- Primary actions -->
-                <TextBlock Text="Začněte novým návrhem" Style="{StaticResource PageTitle}" Margin="0,0,0,24" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,32">
+                <Grid Margin="0,0,0,24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Začněte novým návrhem" Style="{StaticResource PageTitle}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.Regular}" Command="{Binding ReplayTourCommand}"
+                            VerticalAlignment="Center" Padding="14,0"
+                            ToolTip="Krátká prohlídka aplikace krok za krokem"
+                            AutomationProperties.Name="Prohlídka aplikace">
+                        <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
+                                              IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+                    </Button>
+                </Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,20"
+                            AutomationProperties.AutomationId="HomeActions">
                     <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,16,0"
                             ToolTip="Založit prázdný projekt · Ctrl+N" AutomationProperties.Name="Nový projekt">
                         <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt"
@@ -98,6 +112,42 @@
                             ToolTip="Otevřít uložený projekt · Ctrl+O" AutomationProperties.Name="Otevřít projekt">
                         <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt"
                                               IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Tip dne: one rotating, dismissal-free hint. "Další tip" steps through the list. -->
+                <!-- A quiet line on the page background: red dot, muted label, hairline, sentence. No card. -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,32" HorizontalAlignment="Left"
+                            UseLayoutRounding="True" SnapsToDevicePixels="True"
+                            AutomationProperties.AutomationId="HomeTipOfDay">
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Brand}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="TIP DNE" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
+                               Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center" />
+                    <Rectangle Width="1" Height="18" Fill="{StaticResource Brush.PanelBorderStrong}" Margin="14,0,14,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="TipOfDayText" Text="{Binding Home.TipOfDay, NotifyOnTargetUpdated=True}"
+                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="640"
+                               FontSize="{StaticResource Size.Text.Section}" RenderTransformOrigin="0,0.5">
+                        <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="6" To="0" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
+                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Margin="12,0,0,0"
+                            FontSize="{StaticResource Size.Text.Section}" VerticalAlignment="Center"
+                            AutomationProperties.Name="Další tip">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Další tip" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            <components:IconGlyph IconData="{StaticResource Glyph.ChevronRight}" Margin="4,1,0,0"
+                                                  Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
+                                                  Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
 

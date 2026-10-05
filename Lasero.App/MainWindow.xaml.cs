@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows.Shell;
 using Lasero.App.Input;
+using Lasero.App.Tour;
 using Lasero.App.ViewModels;
 using Lasero.App.Views.Kamil;
 using Lasero.App.Views.DeviceSetup;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
         KamilHost.AssistantResized += OnAssistantResized;
         DeviceWizardOverlayHost.SettingsRequested += (_, _) => OpenSettings();
+        InitializeGuidance();
         Loaded += OnLoaded;
         Closing += OnClosing;
         // Without this the maximized window is inflated by the resize border, which pushed the
@@ -70,6 +72,10 @@ public partial class MainWindow : Window
     // would fire even while a TextBox has keyboard focus (e.g. typing "feed" into a field).
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // While the welcome or the tour is open, the overlay owns the keyboard (Enter, arrows, Esc) and
+        // swallows the rest, so no tool letter or Ctrl shortcut may reach the design underneath.
+        if (TourHost.IsOpen) return;
+
         var isTextInput = Keyboard.FocusedElement is TextBox or PasswordBox or ComboBox;
 
         // Shortcuts that act on the design belong to the Designer screen. The bindings in
@@ -252,6 +258,11 @@ public partial class MainWindow : Window
     {
         var dialog = new SettingsWindow(_viewModel, PrepareForSignOut) { Owner = this };
         dialog.ShowDialog();
+        if (dialog.ReplayIntroRequested)
+        {
+            _viewModel.Guidance.ResetIntro();
+            BeginIntro(welcome: true);
+        }
         if (!dialog.SignOutRequested) return;
 
         _viewModel.Connection.CancelDetection();
@@ -272,7 +283,9 @@ public partial class MainWindow : Window
         {
             Show();
             Activate();
+            EvaluateGuidance();
             PromptRecoverySnapshot();
+            ShowWelcomeIfOwed();
         }
         else
         {
@@ -742,18 +755,69 @@ public partial class MainWindow : Window
         if (Width > workArea.Width) Width = workArea.Width;
         if (Height > workArea.Height) Height = workArea.Height;
 
+        // Decide new-or-existing before the recovery prompt: a snapshot is itself a sign of earlier use.
+        EvaluateGuidance();
         PromptRecoverySnapshot();
+        ShowWelcomeIfOwed();
+    }
 
-        var marker = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "onboarding-seen");
-        if (File.Exists(marker)) return;
+    // ---------------------------------------------------------------- first-run guidance
 
-        var onboarding = new OnboardingWindow { Owner = this };
-        onboarding.ShowDialog();
-        if (onboarding.DontShowAgainChecked)
+    private static string LegacyOnboardingMarkerPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "onboarding-seen");
+
+    /// <summary>Wires the welcome, the tour and the tip chip. The overlay only presents; every decision
+    /// (who is owed the welcome, which tips were shown) lives in <see cref="GuidanceService"/>.</summary>
+    private void InitializeGuidance()
+    {
+        var guidance = _viewModel.Guidance;
+        TourHost.Navigate = screen => _viewModel.CurrentScreen = screen;
+        TourHost.CurrentScreen = () => _viewModel.CurrentScreen;
+        TourHost.FocusFallback = FocusAfterTour;
+        TourHost.WelcomeAnswered += guidance.RecordWelcome;
+        TourHost.TourEnded += guidance.RecordTour;
+        TourHost.Closed += UpdateGuidanceSuspension;
+        DeviceWizardOverlayHost.IsVisibleChanged += (_, _) => UpdateGuidanceSuspension();
+        TipChipHost.Attach(guidance);
+        new GuidanceTriggers(guidance, Dispatcher).Attach(_viewModel, DesignerCanvas);
+        _viewModel.TourRequested += () => BeginIntro(welcome: false);
+        // A job that becomes active while the overlay is open must never stay hidden behind it:
+        // Pozastavit and Zastavit have to be reachable.
+        _viewModel.GCode.PropertyChanged += (_, e) =>
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
-            File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
-        }
+            if (e.PropertyName == nameof(GCodeViewModel.IsJobActive) && _viewModel.GCode.IsJobActive)
+                TourHost.Cancel();
+        };
+    }
+
+    private void EvaluateGuidance() =>
+        _viewModel.EvaluateGuidanceForAccount(File.Exists(LegacyOnboardingMarkerPath));
+
+    private void ShowWelcomeIfOwed()
+    {
+        if (_viewModel.Guidance.ShouldOfferWelcome) BeginIntro(welcome: true);
+    }
+
+    /// <summary>Opens the welcome (first run, Settings "Znovu zobrazit úvod") or goes straight to the
+    /// tour (Home "Prohlídka aplikace"). Refused while a job is active or the device wizard is open.</summary>
+    private void BeginIntro(bool welcome)
+    {
+        if (TourHost.IsOpen || _viewModel.GCode.IsJobActive || DeviceWizardOverlayHost.IsVisible) return;
+        _viewModel.Guidance.Suspended = true;
+        if (welcome) TourHost.ShowWelcome();
+        else TourHost.StartTour();
+        UpdateGuidanceSuspension();
+    }
+
+    private void UpdateGuidanceSuspension() =>
+        _viewModel.Guidance.Suspended = TourHost.IsOpen || DeviceWizardOverlayHost.IsVisible;
+
+    /// <summary>The control that had focus before the tour may be on a screen that is not showing any
+    /// more; the canvas is the right place to land, so its shortcuts work straight away.</summary>
+    private void FocusAfterTour()
+    {
+        if (_viewModel.CurrentScreen == AppScreen.Designer) DesignerCanvas.Focus();
+        else Focus();
     }
 
     private void PromptRecoverySnapshot()

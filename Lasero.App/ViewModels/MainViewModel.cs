@@ -96,6 +96,31 @@ public partial class MainViewModel : ObservableObject
     /// still personalizes the hero even before its first save.</summary>
     public bool HasOpenProject => IsDirty || !string.IsNullOrWhiteSpace(ProjectPath);
 
+    /// <summary>First-run guidance for the signed-in account: welcome, tour progress, micro-tips.</summary>
+    public Lasero.App.Tour.GuidanceService Guidance { get; }
+
+    /// <summary>Raised when the operator asks for the guided tour again (Home, Settings). The window owns
+    /// the overlay; the view model only carries the request, same idiom as DeviceWizardRequested.</summary>
+    public event Action? TourRequested;
+
+    [RelayCommand]
+    private void ReplayTour() => TourRequested?.Invoke();
+
+    /// <summary>
+    /// Points the guidance service at the current account and decides, once, whether this is somebody
+    /// new (welcome owed) or somebody who has been here before. "Been here" means any sign of earlier
+    /// use: recent project history, a recovery snapshot, an open project, or the old onboarding marker.
+    /// Call it when a window opens for an account and after every sign-in, before the recovery prompt.
+    /// </summary>
+    public void EvaluateGuidanceForAccount(bool legacyOnboardingMarkerPresent)
+    {
+        var hasPriorWork = _recentProjectsStore.Recent.Count > 0
+            || HasRecoverySnapshot
+            || HasOpenProject
+            || legacyOnboardingMarkerPresent;
+        Guidance.SwitchAccount(Account.UserId, hasPriorWork);
+    }
+
     /// <summary>A fresh wizard per run — it holds scan results and a step position, and reopening it
     /// should start over rather than resume wherever the operator abandoned it last time.</summary>
     public DeviceWizardViewModel CreateDeviceWizard()
@@ -217,6 +242,7 @@ public partial class MainViewModel : ObservableObject
                 _recoveryStore.SwitchAccount(Account.UserId);
         };
         _settingsStore = settingsStore;
+        Guidance = new Lasero.App.Tour.GuidanceService(settingsStore);
         _recentProjectsStore = recentProjectsStore;
         _jobHistoryStore = jobHistoryStore;
         _deviceWizardFactory = deviceWizardFactory;

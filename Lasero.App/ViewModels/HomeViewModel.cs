@@ -63,6 +63,18 @@ public partial class HomeViewModel : ObservableObject
     public bool IsJobRunning => GCode.JobState is JobRunState.Running or JobRunState.Paused;
 
     [ObservableProperty] private string _totalEngravingTimeLabel = "0 h 0 min";
+    private int _tipOffset;
+
+    /// <summary>The rotating "Tip dne": one per calendar day, "Další tip" steps through the list.</summary>
+    [ObservableProperty] private string _tipOfDay = Lasero.App.Tour.TipOfDay.For(DateTime.Today);
+
+    [RelayCommand]
+    private void NextTip()
+    {
+        _tipOffset++;
+        TipOfDay = Lasero.App.Tour.TipOfDay.For(DateTime.Today, _tipOffset);
+    }
+
     [ObservableProperty] private int _completedJobsCount;
     [ObservableProperty] private int _materialsUsedCount;
     [ObservableProperty] private string _mostUsedMaterialLabel = "Zatím žádný";

@@ -311,7 +311,12 @@ public partial class SceneViewModel : ObservableObject
         var doc = SvgImporter.Import(svgText, targetWidthMm, Path.GetFileName(path));
         var obj = SceneObjectFactory.FromImportedDocument(doc, doc.SourceFileName ?? Path.GetFileName(path));
         PlaceAndAdd(obj, doc.Layers);
+        FileImported?.Invoke();
     }
+
+    /// <summary>Raised after a graphics file (SVG or bitmap) has been placed on the canvas. Only the
+    /// first-run tips listen; it carries no data and changes nothing.</summary>
+    public event Action? FileImported;
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void ImportRasterFile(string path, RasterImportOptions options)
@@ -319,6 +324,7 @@ public partial class SceneViewModel : ObservableObject
         var layer = SceneObjectFactory.CreateRasterLayer(options);
         var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path), layer);
         PlaceAndAdd(obj, [layer]);
+        FileImported?.Invoke();
     }
 
     [RelayCommand(CanExecute = nameof(CanTraceSelectedRaster))]

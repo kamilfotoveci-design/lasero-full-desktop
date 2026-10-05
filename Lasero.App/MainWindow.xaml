@@ -7,6 +7,7 @@
         xmlns:views="clr-namespace:Lasero.App.Views"
         xmlns:kamil="clr-namespace:Lasero.App.Views.Kamil"
         xmlns:devicesetup="clr-namespace:Lasero.App.Views.DeviceSetup"
+        xmlns:tour="clr-namespace:Lasero.App.Tour"
         xmlns:vm="clr-namespace:Lasero.App.ViewModels"
         xmlns:jobs="clr-namespace:Lasero.Core.Jobs;assembly=Lasero.Core"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -543,7 +544,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" AutomationProperties.AutomationId="StripMachineZone">
                             <!-- State is told by glyph, word and semantic colour — never colour alone. -->
                             <!-- The machine's resolved state (not merely "the port is open"): disconnected, connecting,
                                  ready, working, paused, door open, alarm, error. The tooltip carries the full
@@ -694,6 +695,7 @@
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,0,0"
+                            AutomationProperties.AutomationId="StripJobActions"
                             Visibility="{Binding ShowStripJobActionZone, Converter={StaticResource BoolToVisibility}}">
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}" AutomationProperties.Name="Rámovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
@@ -744,5 +746,16 @@
         -->
         <devicesetup:DeviceWizardOverlay x:Name="DeviceWizardOverlayHost" Grid.Row="0" Grid.RowSpan="3"
                                          Panel.ZIndex="90" />
+
+        <!--
+            One dismissible Tip chip at a time, bottom centre of the workspace row. It sits above the
+            canvas hint and below every overlay, and is not hit-testable outside its own card.
+        -->
+        <tour:TipChip x:Name="TipChipHost" Grid.Row="1" Panel.ZIndex="60"
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,76" />
+
+        <!-- First-run welcome and guided tour. Above the wizard, and the only layer that blocks the
+             whole window while it is open; see TourOverlay. -->
+        <tour:TourOverlay x:Name="TourHost" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="95" />
     </Grid>
 </Window>

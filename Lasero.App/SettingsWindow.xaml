@@ -66,6 +66,26 @@
                         </Border>
                         <Border Style="{StaticResource InspectorSection}">
                             <StackPanel>
+                                <TextBlock Text="Úvod a tipy" Style="{StaticResource PanelTitle}" />
+                                <TextBlock Text="Prohlídka aplikace a krátké tipy při první práci."
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,12" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Click="OnReplayIntroClick" Margin="0,0,10,0"
+                                            ToolTip="Uloží nastavení a znovu otevře úvodní obrazovku s prohlídkou"
+                                            AutomationProperties.Name="Znovu zobrazit úvod">
+                                        <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Znovu zobrazit úvod" />
+                                    </Button>
+                                    <Button Click="OnResetTipsClick"
+                                            ToolTip="Kontextové tipy se znovu zobrazí při první příležitosti"
+                                            AutomationProperties.Name="Obnovit tipy">
+                                        <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Obnovit tipy" />
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="TipsResetText" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource InspectorSection}">
+                            <StackPanel>
                                 <TextBlock Text="Účet Lasero" Style="{StaticResource PanelTitle}" />
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

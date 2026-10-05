@@ -427,7 +427,7 @@
             <StackPanel Grid.Row="5">
                 <Button Style="{StaticResource RailButton}" Click="OnMaterialsClick"
                         ToolTip="Materiály — knihovna a doporučené parametry"
-                        AutomationProperties.Name="Materiály">
+                        AutomationProperties.Name="Materiály" AutomationProperties.AutomationId="RailMaterialsButton">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Materials}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Command="{Binding ShowDeviceCommand}"
