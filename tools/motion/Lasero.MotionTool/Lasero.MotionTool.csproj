@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Developer tool, not shipped. It links the SAME source files the app uses for the brand
+       animation (Lasero.App/Controls/Motion), so the video, the installer frames and the in-app
+       control can never drift apart. See tools/motion/README.md. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>Lasero.MotionTool</AssemblyName>
+    <RootNamespace>Lasero.MotionTool</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <StartupObject>Lasero.MotionTool.Program</StartupObject>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\Lasero.App\Controls\Motion\*.cs" Link="Motion\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
