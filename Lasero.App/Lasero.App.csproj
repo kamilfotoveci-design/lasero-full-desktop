@@ -12,6 +12,16 @@
     <Resource Include="Assets\LaseroWordmarkLight.png" />
     <Resource Include="Assets\LaseroAvatar.png" />
     <Resource Include="Assets\LaseroDesignIcon.png" />
+    <!-- Brand motion videos for LaseroIntroVideo (a MediaElement needs a real file, not a pack resource).
+         Only the 720p variants ship; 1080p and the poster stay in the repo for the owner's use.
+         Regenerate with tools/motion/Render-Intro.ps1. If missing or undecodable the control falls back
+         to the vector LaseroIntroAnimation. -->
+    <None Include="Assets\Motion\lasero-intro-720.mp4"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\Motion\lasero-loop-720.mp4"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
     <None Include="Assets\Iconoir-LICENSE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
