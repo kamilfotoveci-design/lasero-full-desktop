@@ -544,7 +544,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel Orientation="Horizontal" AutomationProperties.AutomationId="StripMachineZone">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" AutomationProperties.AutomationId="StripMachineZone">
                             <!-- State is told by glyph, word and semantic colour — never colour alone. -->
                             <!-- The machine's resolved state (not merely "the port is open"): disconnected, connecting,
                                  ready, working, paused, door open, alarm, error. The tooltip carries the full

@@ -16,6 +16,7 @@ namespace Lasero.Tests;
 /// shows the target undimmed. Run at the three window sizes the app is verified at and at 100, 125 and
 /// 150 percent scaling. Set LASERO_RENDER_OUT to a folder to keep the PNGs.
 /// </summary>
+[Collection("WpfUi")]
 public sealed class TourOverlayRenderTests
 {
     private static Dispatcher Ui => InlineTextEditorRenderTests.Ui;
@@ -72,7 +73,7 @@ public sealed class TourOverlayRenderTests
     {
         var harness = new Harness();
         harness.Root = new Grid { Background = new SolidColorBrush(Surface) };
-        harness.Overlay = new TourOverlay { ForceStatic = true };
+        harness.Overlay = new TourOverlay { ForceStatic = true, ManageFocus = false };
         harness.Root.Children.Add(harness.Overlay);
         harness.Window = new Window
         {
@@ -135,7 +136,6 @@ public sealed class TourOverlayRenderTests
             var h = Build(width, height);
             try
             {
-                Keyboard.ClearFocus();
                 h.Overlay.StartTour();
                 Flush();
 
@@ -315,7 +315,6 @@ public sealed class TourOverlayRenderTests
             var h = Build(1366, 768);
             try
             {
-                Keyboard.ClearFocus();
                 var ended = new List<TourOutcome>();
                 var fallbacks = 0;
                 h.Overlay.TourEnded += ended.Add;
@@ -479,6 +478,7 @@ public sealed class TourOverlayRenderTests
     }
 }
 
+[Collection("WpfUi")]
 public sealed class TipChipRenderTests
 {
     private static Dispatcher Ui => InlineTextEditorRenderTests.Ui;

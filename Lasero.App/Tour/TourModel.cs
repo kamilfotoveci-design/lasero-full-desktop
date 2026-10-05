@@ -70,7 +70,7 @@ public static class TourSteps
             "Rámovat obkreslí okraj práce slabým svítícím bodem o výkonu 1 %, takže je vidět, kam laser dosáhne. Spustit pak zahájí vlastní práci.",
             SafetyNote: "Nejdřív zkouška na odřezku, vždy s ochrannými brýlemi."),
 
-        new("kamil", AppScreen.Designer, ["PersistentAvatarLayer"], TourPlacement.Left, "Glyph.Chat",
+        new("kamil", AppScreen.Designer, ["PersistentAvatarLayer", "PillLayer"], TourPlacement.Left, "Glyph.Chat",
             "Asistent Kamil",
             "Kamil poradí s materiálem, nastavením i chybami. Stačí se zeptat, odpovědi jsou stručné."),
     ];

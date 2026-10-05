@@ -15,6 +15,7 @@ namespace Lasero.Tests;
 /// <summary>Renders the real themed ComboBox and reads back what the CLOSED selection box shows. The
 /// bug this pins: DisplayMemberPath worked in the popup but the closed box printed the record dump.
 /// Set LASERO_COMBO_SHOTS to a folder to also get PNGs of the closed windows.</summary>
+[Collection("WpfUi")]
 public sealed class ComboBoxClosedBoxRenderTests
 {
     private sealed record NoToString(int Id, string Label); // compiler ToString is the record dump

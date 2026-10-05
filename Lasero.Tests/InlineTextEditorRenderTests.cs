@@ -22,6 +22,7 @@ namespace Lasero.Tests;
 /// TextBox style and the window's Display text formatting are all in play exactly as they are in the
 /// running application. Set LASERO_RENDER_OUT to a folder to keep the comparison images.
 /// </summary>
+[Collection("WpfUi")]
 public sealed class InlineTextEditorRenderTests
 {
     private const int CanvasWidth = 900;

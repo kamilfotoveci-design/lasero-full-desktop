@@ -268,7 +268,7 @@ public sealed class TourSourceTests
         Assert.Contains("components:FocusVisual.IsVisible", quiet);
         Assert.DoesNotContain("IsKeyboardFocused", quiet);
         Assert.Contains("Brush.AccentText", quiet);                 // red only in the hover trigger
-        Assert.Equal(1, Regex.Matches(quiet, "Brush[.]AccentText").Count);
+        Assert.Single(Regex.Matches(quiet, "Brush[.]AccentText"));
         Assert.DoesNotMatch("CornerRadius=\"[0-9]", quiet);
     }
 

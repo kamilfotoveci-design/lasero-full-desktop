@@ -244,6 +244,9 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentHover}" />
+                        </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                         </Trigger>

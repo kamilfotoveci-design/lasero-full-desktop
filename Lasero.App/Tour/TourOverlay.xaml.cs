@@ -71,6 +71,10 @@ public partial class TourOverlay : UserControl
     /// <summary>Tests and screenshot runs set this to get static end states regardless of the machine.</summary>
     public bool ForceStatic { get; set; }
 
+    /// <summary>Off in tests that share one dispatcher with other window tests: moving keyboard focus
+    /// there would change what the next test sees. Production leaves it on.</summary>
+    public bool ManageFocus { get; set; } = true;
+
     public bool IsOpen => _open;
     public bool IsWelcomeVisible => _open && WelcomeLayer.Visibility == Visibility.Visible;
     public bool IsCoachVisible => _open && CoachLayer.Visibility == Visibility.Visible;
@@ -171,7 +175,7 @@ public partial class TourOverlay : UserControl
     {
         var previous = _previousFocus as UIElement;
         _previousFocus = null;
-        if (previous is { IsVisible: true, Focusable: true, IsEnabled: true } && previous != this)
+        if (ManageFocus && previous is { IsVisible: true, Focusable: true, IsEnabled: true } && previous != this)
         {
             Keyboard.Focus(previous);
             if (previous.IsKeyboardFocused) return;
@@ -700,7 +704,7 @@ public partial class TourOverlay : UserControl
     {
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
-            if (_open && element.IsVisible) Keyboard.Focus(element);
+            if (ManageFocus && _open && element.IsVisible) Keyboard.Focus(element);
         }));
     }
 
