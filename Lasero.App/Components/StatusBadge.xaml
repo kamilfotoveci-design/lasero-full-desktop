@@ -8,8 +8,8 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
     </UserControl.Resources>
     <!--
-        One state pill for the whole product: connection, job run state, device panels. Tinted
-        surface plus a dot or a glyph plus a label, at pill geometry — no border, because a pill sitting on a
+        One state pill for the whole product: connection, job run state, device panels. Neutral
+        gray surface, graphite label and a 6px coloured dot (or a small coloured glyph), at pill geometry — no border, because a pill sitting on a
         panel that already has one reads as a control you can press.
 
         Kind is the only input for colour. Callers that hold a bool or a JobRunState convert to a
@@ -27,20 +27,7 @@
         <Border.Style>
             <Style TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Brush.Field}" />
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Ready}">
-                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessMuted}" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                        <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
-                        <Setter Property="Background" Value="{DynamicResource Brush.WarningMuted}" />
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Error}">
-                        <Setter Property="Background" Value="{DynamicResource Brush.DangerMuted}" />
-                    </DataTrigger>
-                </Style.Triggers>
+
             </Style>
         </Border.Style>
 
@@ -57,7 +44,7 @@
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Signal}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
@@ -70,7 +57,7 @@
                 </components:IconGlyph.Style>
             </components:IconGlyph>
 
-            <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
+            <Ellipse Width="6" Height="6" Margin="0,0,7,0" VerticalAlignment="Center"
                      Visibility="{Binding IconData, ElementName=Root, Converter={StaticResource NotNullToVisibility}, ConverterParameter=Invert}">
                 <Ellipse.Style>
                     <Style TargetType="Ellipse">
@@ -80,7 +67,7 @@
                                 <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                                <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Signal}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
                                 <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
@@ -99,19 +86,10 @@
                        VerticalAlignment="Center">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Ready}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Busy}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Warning}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Error}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                            <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static components:StatePillKind.Neutral}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

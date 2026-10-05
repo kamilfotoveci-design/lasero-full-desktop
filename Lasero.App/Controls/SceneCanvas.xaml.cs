@@ -44,7 +44,9 @@ public partial class SceneCanvas : UserControl
     private const double DefaultScale = 4;
 
     private static readonly ResizeHandle[] AllResizeHandles = Enum.GetValues<ResizeHandle>();
-    private Brush SelectionBrush => (Brush)FindResource("Brush.Accent");
+    // Selection outlines and handles are the one place the canvas uses the signal red: a red
+    // hairline with a white core, so it reads against both the sheet and any artwork colour.
+    private Brush SelectionBrush => (Brush)FindResource("Brush.Signal");
     private Brush SelectionHandleFill => (Brush)FindResource("Brush.OnAccent");
 
     // ------------------------------------------------------------------
@@ -1529,7 +1531,7 @@ public partial class SceneCanvas : UserControl
             Margin = new Thickness(0),
             MinHeight = 0,
             Background = Brushes.Transparent,
-            SelectionBrush = SelectionBrush,
+            SelectionBrush = (Brush)FindResource("Brush.TextSelection"),
             Foreground = TextForegroundBrush(obj),
             CaretBrush = TextForegroundBrush(obj),
             FontStyle = obj.Text.Italic ? FontStyles.Italic : FontStyles.Normal,
@@ -2072,8 +2074,9 @@ public partial class SceneCanvas : UserControl
 
     private Brush CreateSelectionFill()
     {
-        var accent = SelectionBrush is SolidColorBrush solid ? solid.Color : Colors.DodgerBlue;
-        return new SolidColorBrush(Color.FromArgb(0x22, accent.R, accent.G, accent.B));
+        // Neutral ink wash, not a tint of the selection colour: the marquee outline is the signal,
+        // the fill is only there to show what is enclosed.
+        return (Brush)FindResource("Brush.Pressed");
     }
 
     private void UpdateRubberBand(Point current)

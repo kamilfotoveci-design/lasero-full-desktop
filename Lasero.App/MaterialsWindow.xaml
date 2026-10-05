@@ -382,7 +382,7 @@
                                                            FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,3,0,0" />
                                             </StackPanel>
                                         </Border>
-                                        <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.Warning}"
+                                        <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
                                                 Visibility="{Binding HasSelectedWarning, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="{Binding SelectedRecipe.Warning}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                                         </Border>

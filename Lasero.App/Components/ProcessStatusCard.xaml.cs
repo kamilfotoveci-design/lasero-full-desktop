@@ -97,8 +97,8 @@ public partial class ProcessStatusCard : UserControl
 
     public static readonly DependencyProperty HasActionsProperty = HasActionsPropertyKey.DependencyProperty;
 
-    private readonly SolidColorBrush _chipBrush = new(Color.FromRgb(0xF3, 0xF4, 0xF2));
-    private readonly SolidColorBrush _glyphBrush = new(Color.FromRgb(0x92, 0x97, 0x93));
+    private readonly SolidColorBrush _chipBrush = new(Colors.Transparent);
+    private readonly SolidColorBrush _glyphBrush = new(Colors.Transparent);
     private bool _colorsInitialized;
 
     public ProcessStatusCard()
@@ -134,21 +134,24 @@ public partial class ProcessStatusCard : UserControl
     /// across every other consumer of that brush, the same reasoning already documented on the Button
     /// template in SharedUiStyles.xaml.
     ///
-    /// The colours mirror Brush.Field/InfoMuted/SuccessMuted/WarningMuted/DangerMuted and
-    /// Brush.TextMuted/AccentText/Success/Warning/Danger in LaseroTheme.xaml. There is no runtime
-    /// theme switcher in this app today; if one is added later this mapping needs to move to a
-    /// resource lookup instead of these literals.
+    /// The chip is always the neutral field gray: status is carried by the glyph colour alone, never
+    /// by a pastel chip. Colours are read from the theme (Brush.Field, Brush.TextPrimary,
+    /// Brush.Success, Brush.Warning, Brush.Danger, Brush.TextMuted) at the moment of the change.
     /// </summary>
+    private Color ThemeColor(string key) =>
+        TryFindResource(key) is SolidColorBrush brush ? brush.Color : Colors.Gray;
+
     private void ApplyStatusColors(ProcessStatus status, bool animate)
     {
-        var (chip, glyph) = status switch
+        var chip = ThemeColor("Brush.Field");
+        var glyph = ThemeColor(status switch
         {
-            ProcessStatus.Progress => (Color.FromRgb(0xEF, 0xF6, 0xFF), Color.FromRgb(0x25, 0x63, 0xEB)),
-            ProcessStatus.Success => (Color.FromRgb(0xF0, 0xFD, 0xF4), Color.FromRgb(0x15, 0x80, 0x3D)),
-            ProcessStatus.Warning => (Color.FromRgb(0xFF, 0xFB, 0xEB), Color.FromRgb(0xD9, 0x77, 0x06)),
-            ProcessStatus.Error => (Color.FromRgb(0xFE, 0xF2, 0xF2), Color.FromRgb(0xDC, 0x26, 0x26)),
-            _ => (Color.FromRgb(0xF3, 0xF4, 0xF2), Color.FromRgb(0x92, 0x97, 0x93)),
-        };
+            ProcessStatus.Progress => "Brush.TextPrimary",
+            ProcessStatus.Success => "Brush.Success",
+            ProcessStatus.Warning => "Brush.Warning",
+            ProcessStatus.Error => "Brush.Danger",
+            _ => "Brush.TextMuted",
+        });
 
         if (!animate || !AnimationsEnabled)
         {

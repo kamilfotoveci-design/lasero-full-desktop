@@ -404,6 +404,7 @@
                             <!-- Failures are shown inline with the retry the operator needs, rather
                                  than as a toast that disappears before it can be acted on. -->
                             <Border Background="{DynamicResource Brush.WarningMuted}"
+                                    BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
                                     CornerRadius="{StaticResource Radius.Sm}" Padding="9,7" Margin="0,0,0,8"
                                     Visibility="{Binding Chat.StatusMessage, Converter={StaticResource NotNullToVisibilityShared}}">
                                 <Grid>

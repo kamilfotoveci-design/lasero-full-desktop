@@ -54,12 +54,7 @@
         <Style x:Key="ProgressFill" TargetType="ProgressBar">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Success}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Warning}">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
-                </DataTrigger>
+                <!-- Graphite fill for every state; red only when the process failed. -->
                 <DataTrigger Binding="{Binding Status, ElementName=Root}" Value="{x:Static components:ProcessStatus.Error}">
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
                 </DataTrigger>

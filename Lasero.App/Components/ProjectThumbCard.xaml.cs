@@ -43,7 +43,7 @@ public partial class ProjectThumbCard : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _surfaceBorderBrush.Color = ResolveColor("Brush.PanelBorder", Color.FromRgb(0xE4, 0xE5, 0xE2));
+        _surfaceBorderBrush.Color = ResolveColor("Brush.PanelBorder", Colors.Gainsboro);
         Surface.BorderBrush = _surfaceBorderBrush;
     }
 
@@ -51,14 +51,14 @@ public partial class ProjectThumbCard : UserControl
 
     private void OnSurfaceMouseLeave(object sender, MouseEventArgs e) => AnimateHover(hovering: false);
 
-    /// <summary>Clickable-card hover feedback: a border-colour transition toward the accent plus a
+    /// <summary>Clickable-card hover feedback: a border-colour transition toward the strong hairline plus a
     /// -1 DIP lift, in place of the old instant BorderBrush swap. Kept off Width/Height/Margin per the
     /// performance rule - only Color and a TranslateTransform move.</summary>
     private void AnimateHover(bool hovering)
     {
         var targetColor = hovering
-            ? ResolveColor("Brush.Accent", Color.FromRgb(0x25, 0x63, 0xEB))
-            : ResolveColor("Brush.PanelBorder", Color.FromRgb(0xE4, 0xE5, 0xE2));
+            ? ResolveColor("Brush.PanelBorderStrong", Colors.Silver)
+            : ResolveColor("Brush.PanelBorder", Colors.Gainsboro);
 
         if (!AnimationsEnabled)
         {

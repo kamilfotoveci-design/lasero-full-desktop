@@ -39,138 +39,158 @@
     <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
 
     <!--
-        Graphite + warm white + laser red. Migrated 2026-09 from the previous neutral-graphite +
-        cobalt-blue palette (see git history / DESIGN.md for the superseded table).
+        Neutral-first palette (2026-10). Superseded the graphite + warm-white + laser-red palette of
+        2026-09, whose red interaction colour, pink "selected" tint and beige surfaces read as a
+        faded, generic skin rather than a modern Apple-like one.
 
-        Two roles that used to share one colour are now deliberately different colours:
-        Brush.PrimaryAction (graphite, #181818) is ordinary buttons — Nový projekt, Připojit
-        zařízení, Potvrdit. Brush.Accent (laser red, #E4513D) is the interaction/selection signal —
-        canvas selection, keyboard focus, the active tool, active navigation. Painting both the same
-        colour would make every button read as "selected," and painting every button red would burn
-        out the one colour meant to mean "this is the thing you are on." This reverses an earlier,
-        now-wrong simplification: Brush.PrimaryAction/PrimaryActionHover/OnPrimaryAction were removed
-        in 2026-08 as duplicate names for Accent at *identical* values — that reasoning no longer
-        holds now that the two roles carry genuinely different colours.
+        Rules, in the order they matter:
+          1. Surfaces are pure white (Brush.Surface/Panel). The app background and the canvas
+             surround are one cool neutral gray (Brush.Canvas/Background #F5F5F7). No warm beige.
+          2. Text is graphite #1D1D1F, secondary #6E6E73, muted #747478. Muted is a deliberate step
+             darker than Apple's #8E8E93, which is only 3.3:1 on white and fails body text; #8E8E93
+             survives as Brush.TextDisabled, where 3:1 is the bar.
+          3. Interaction is graphite: primary button, active tool, active navigation, checked
+             controls, focus ring, caret. Brush.Accent* therefore resolve to graphite; the names stay
+             so no view needs editing, but they no longer mean "red".
+          4. Red (Brush.Signal #E5302B) is a SIGNAL only: the brand dot, laser/beam markers and
+             selection handles on the canvas, error/danger, destructive buttons, the live-job
+             indicator and tiny badge dots. It is never a surface, a wash, a tint or a text-selection
+             colour. The allow-list is enforced in ThemeTokenTests.
+          5. Hover/pressed/selected are neutral ink washes. There is no tinted wash anywhere:
+             Brush.*Muted exist only as aliases of one neutral gray, and banners are gray surface +
+             hairline + a small coloured icon.
+          6. Semantic text colours are chosen so they pass 4.5:1 on white (Success #1F7F37,
+             Warning #B25E09, Danger #D92B27). The brighter #E5302B / #248A3D reds and greens live
+             in Brush.Signal and the dots, where only 3:1 is required.
 
-        Budget: roughly 75% neutral surfaces and text, 15-20% graphite, 2-5% laser red. Red is a
-        controlled technical/brand accent, not a second UI background colour — no red cards, no red
-        panels, no red gradients.
+        Budget: ~90% neutral, ~8% graphite, ~2% signal red.
     -->
 
-    <!-- Primary action: ordinary buttons. Graphite, not the interaction colour. -->
-    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#181818" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PrimaryActionHover" Color="#2E2E2E" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PrimaryActionPressed" Color="#0F0F0F" po:Freeze="False" />
+    <!-- Primary action: ordinary buttons. Graphite fill, white text. -->
+    <SolidColorBrush x:Key="Brush.PrimaryAction" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryActionHover" Color="#3A3A3C" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PrimaryActionPressed" Color="#0B0B0C" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
 
-    <!-- Interaction: selection, focus, the active tool, active navigation. Laser red — small,
-         controlled, and never the fill of an ordinary button. -->
-    <SolidColorBrush x:Key="Brush.Accent" Color="#E4513D" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentHover" Color="#CC402E" po:Freeze="False" />
-    <!-- Foreground/fill for anything drawn on top of the accent — including the scene canvas's
-         resize and rotate handles (red outline, white core). SceneCanvas resolved this key with
-         FindResource and it was never defined, so building the selection adorner threw
-         ResourceReferenceKeyNotFoundException and took the whole app down via the global handler. -->
+    <!-- Interaction: active tool, active navigation, checked controls, caret. Graphite. The key names
+         predate the 2026-10 palette; they are kept as aliases so views do not need editing. -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#3A3A3C" po:Freeze="False" />
+    <!-- Foreground for anything drawn on top of Brush.Accent or Brush.Signal fills — including the
+         scene canvas's resize and rotate handles (red outline, white core). SceneCanvas resolves this
+         key with FindResource, so it must exist or building the selection adorner throws. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
-    <!--
-        Accent text. Same red as the fill on this light theme, but it is its own token because the
-        two roles diverge the moment the chrome goes dark. Anything that *writes* in the accent
-        colour binds here; fills, borders, focus rings and canvas selection bind to Brush.Accent.
-    -->
-    <SolidColorBrush x:Key="Brush.AccentText" Color="#E4513D" po:Freeze="False" />
-    <!-- A very small warm-red tint, not a saturated fill — "selected" should read as a quiet tint
-         plus a red border, the same relationship the old cobalt selection had to its own fill. -->
-    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#FCECEA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#F3C2B9" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.FocusRing" Color="#E4513D" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#1D1D1F" po:Freeze="False" />
 
-    <!-- Brand. The wordmark's red dot, and now also Brush.Accent's value — the brand identity pair
-         is graphite (Brush.PrimaryAction) plus this red, per the 2026-09 brand direction. -->
-    <SolidColorBrush x:Key="Brush.Brand" Color="#E4513D" po:Freeze="False" />
+    <!-- The active tool: a graphite pill with a white icon. -->
+    <SolidColorBrush x:Key="Brush.ActiveTool" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.OnActiveTool" Color="#FFFFFF" po:Freeze="False" />
 
-    <!-- Surfaces. Warm neutrals derived from #F7F6F3, not the previous cooler #F7F7F5 family. -->
-    <SolidColorBrush x:Key="Brush.Background" Color="#F7F6F3" po:Freeze="False" />
+    <!-- Selected rows, tabs and segments: a very light neutral wash (6%) plus a hairline. Never a tint.
+         SelectedSurface is the original name; Selected is the semantic one. Same value. -->
+    <SolidColorBrush x:Key="Brush.Selected" Color="#0F1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#0F1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#D2D2D7" po:Freeze="False" />
+    <!-- The 2px indicator on a selected row or active navigation item. -->
+    <SolidColorBrush x:Key="Brush.SelectedIndicator" Color="#1D1D1F" po:Freeze="False" />
+    <!-- Keyboard focus: graphite, 2px, with a white gap on filled controls (Brush.FocusGap). -->
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.FocusGap" Color="#FFFFFF" po:Freeze="False" />
+    <!-- Text selection inside a field. Neutral ink at 18%, so selected text stays black on gray. -->
+    <SolidColorBrush x:Key="Brush.TextSelection" Color="#2E1D1D1F" po:Freeze="False" />
+
+    <!-- LASERO signal red. The only saturated colour in the chrome. -->
+    <SolidColorBrush x:Key="Brush.Signal" Color="#E5302B" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SignalHover" Color="#CF2A26" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SignalPressed" Color="#B9231F" po:Freeze="False" />
+    <!-- Brand. The wordmark's red dot. -->
+    <SolidColorBrush x:Key="Brush.Brand" Color="#E5302B" po:Freeze="False" />
+
+    <!-- Surfaces. White cards and panels on a cool neutral gray canvas. -->
+    <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas" Color="#F5F5F7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Background" Color="#F5F5F7" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.TitleBar" Color="#FFFFFF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Sidebar" Color="#FFFFFF" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F1EFEA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Field" Color="#F1EFEA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#E6E3DC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D3CFC5" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F2F2F4" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Field" Color="#F2F2F4" po:Freeze="False" />
+    <!-- Hairline: ink at 8%. Strong is the opaque #D2D2D7 for field outlines and resize grips. -->
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#141D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D2D2D7" po:Freeze="False" />
 
     <!--
         Canvas. Its own tokens rather than the panel ones, because the bed does not follow the chrome:
         it stays white whatever the theme does, since the operator judges burn contrast against real
-        material. The surround is the neutral field colour, so the bed reads as a sheet on a table.
-
-        Grid no longer echoes the interaction colour (the old minor/major grid were both cobalt-tinted
-        to match Brush.Accent). A red grid would compete with red-toned artwork and read as alarm
-        colour on a calm technical surface, so both steps are warm neutral gray instead — major only
-        slightly stronger than minor, never accent-coloured.
+        material. The surround is the neutral canvas gray, so the bed reads as a sheet on a desk.
+        The grid is neutral ink at two strengths, never the signal colour.
     -->
-    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#F1EFEA" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.Surround" Color="#F5F5F7" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Canvas.WorkArea" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#E6E3DC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#288A857C" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#3D8A857C" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.WorkAreaBorder" Color="#D2D2D7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMinor" Color="#141D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Canvas.GridMajor" Color="#261D1D1F" po:Freeze="False" />
 
-    <!-- Text. TextPrimary now matches the brand graphite exactly. -->
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#181818" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#5C5A54" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#8B887F" po:Freeze="False" />
+    <!-- Text -->
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6E6E73" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#747478" po:Freeze="False" />
 
     <!-- Disabled -->
-    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#F0EEE8" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#A6A29A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#EDEDF0" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#8E8E93" po:Freeze="False" />
 
-    <!-- Semantic. Used for state, never for decoration. Unchanged by the 2026-09 palette migration
-         on purpose: Brush.Danger must stay visually distinct from Brush.Accent/Brush.Brand now that
-         the brand accent is also a red, so machine error/danger states are never mistaken for a
-         brand moment. Brush.Info no longer borrows the interaction colour's value (it used to equal
-         Brush.Accent by coincidence, back when Accent was cobalt) — information does not need its
-         own hue, so it is graphite-neutral instead of either accent red or a third colour. -->
-    <SolidColorBrush x:Key="Brush.Success" Color="#15803D" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#F0FDF4" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Warning" Color="#D97706" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.WarningMuted" Color="#FFFBEB" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#FEF2F2" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.Info" Color="#4A473F" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#F1EFEA" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#E6E3DC" po:Freeze="False" />
+    <!--
+        Semantic. State, never decoration, and never a pastel: the *Muted keys are kept so no view
+        needs editing, but they are all one neutral gray now. A banner is a gray surface, a hairline
+        and a small coloured icon; the colour is in the icon and the text, not the background.
+        Brush.Danger is also the destructive-button fill and the error text, so it is the slightly
+        deeper #D92B27 (4.86:1 on white) rather than the brand #E5302B (4.38:1).
+    -->
+    <SolidColorBrush x:Key="Brush.Success" Color="#1F7F37" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SuccessMuted" Color="#F5F5F7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#B25E09" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.WarningMuted" Color="#F5F5F7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#D92B27" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerMuted" Color="#F5F5F7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#D2D2D7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Info" Color="#6E6E73" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoMuted" Color="#F5F5F7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.InfoBorder" Color="#D2D2D7" po:Freeze="False" />
 
     <!-- Component-level neutrals -->
     <!--
         Hover and press are one mechanic, not two: an ink wash over whatever the control already is,
-        at 6% for hover and 14% for press (see the Button template). That is why there is no
+        at 5% for hover and 8% for press (see the Button template). That is why there is no
         Brush.AccentPressed or Brush.DangerPressed — a per-kind pressed colour would be a second
-        mechanic for the same state, and it would have to be re-derived for every new button kind.
-        The wash works on a red fill, a graphite fill, a white surface and a transparent ghost alike
-        — though on Brush.PrimaryAction's near-black fill the dark wash is necessarily subtle; the
-        0.96 press-scale transform carries most of the felt feedback there. See Button.Primary below.
+        mechanic for the same state. The wash is neutral graphite ink and never tinted.
+
+        Brush.Hover / Brush.Pressed are the same two strengths baked into alpha brushes, for rows and
+        menu items that paint a background directly instead of stacking a wash layer.
     -->
-    <SolidColorBrush x:Key="Brush.HoverWash" Color="#181818" po:Freeze="False" />
-    <!-- Dimming behind a guided-tour spotlight. Warm graphite, not black, so the cut-out target reads
-         as lit rather than the rest reading as switched off. -->
-    <SolidColorBrush x:Key="Brush.Scrim" Color="#8F181818" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E6E3DC" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D3CFC5" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#D3CFC5" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#A6A29A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.HoverWash" Color="#1D1D1F" po:Freeze="False" />
+    <!-- Dimming behind a guided-tour spotlight and the device wizard sheet. Neutral graphite ink, not
+         black and never a tint, so the cut-out target reads as lit rather than the rest as switched
+         off. -->
+    <SolidColorBrush x:Key="Brush.Scrim" Color="#8F1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Hover" Color="#0D1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Pressed" Color="#141D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOff" Color="#E3E3E8" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ToggleTrackOffBorder" Color="#D2D2D7" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="#C7C7CC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="#8E8E93" po:Freeze="False" />
 
     <!--
         Elevation ladder. Docked panels get a border, never a shadow — the canvas stays the focus.
-        A single Shadow.Panel at opacity 0.32 / blur 34 used to serve all four jobs below, which made
-        a dropdown as heavy as a modal and put a 34px blur under the canvas sheet.
+        Soft, neutral and low-opacity; never a coloured glow.
 
-        Sheet is paper on a desk, not a floating surface. Tooltip barely lifts. Dropdown is light.
-        Modal is the only real one.
+        Sheet is paper on a desk, not a floating surface. Tooltip barely lifts. Dropdown is
+        0 8px 24px at 8%. Modal is the only real one.
     -->
-    <DropShadowEffect x:Key="Shadow.Sheet" Color="#181818" Opacity="0.10" BlurRadius="6" ShadowDepth="1" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Tooltip" Color="#181818" Opacity="0.14" BlurRadius="12" ShadowDepth="2" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#181818" Opacity="0.16" BlurRadius="18" ShadowDepth="4" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Modal" Color="#181818" Opacity="0.22" BlurRadius="48" ShadowDepth="14" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Sheet" Color="#1D1D1F" Opacity="0.06" BlurRadius="4" ShadowDepth="1" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Tooltip" Color="#1D1D1F" Opacity="0.08" BlurRadius="8" ShadowDepth="2" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#1D1D1F" Opacity="0.08" BlurRadius="24" ShadowDepth="8" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Modal" Color="#1D1D1F" Opacity="0.14" BlurRadius="48" ShadowDepth="16" Direction="270" />
 
     <!-- Motion language: responsive at the pointer, slightly slower for spatial change. Spring is
          deliberately high-damping: it is used only for the final 1-3% settle, never for travel or
@@ -442,10 +462,17 @@
                                 Background="{StaticResource Brush.HoverWash}"
                                 Opacity="0"
                                 CornerRadius="{StaticResource Radius.Md}" />
+                        <!-- Graphite 2px ring with a 1px white gap just inside it, so the ring stays
+                             visible on a graphite-filled primary button as well as on a white one. -->
                         <Border x:Name="FocusRing"
                                 BorderBrush="{StaticResource Brush.FocusRing}"
                                 BorderThickness="0"
                                 CornerRadius="{StaticResource Radius.Md}" />
+                        <Border x:Name="FocusGap"
+                                BorderBrush="{StaticResource Brush.FocusGap}"
+                                BorderThickness="0"
+                                Margin="2"
+                                CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="{TemplateBinding Padding}" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -453,7 +480,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -487,6 +514,7 @@
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="FocusGap" Property="BorderThickness" Value="1" />
                         </Trigger>
                         <!--
                             Disabled is a described state, not a faded one. Opacity 0.35 made a
@@ -621,7 +649,7 @@
                     <Grid>
                         <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1" />
                         <!-- The same two wash layers the Button template uses, so a toggle answers the
-                             pointer exactly like a button does: hover 6 percent, press 8, no border change. -->
+                             pointer exactly like a button does: hover 5 percent, press 8, no border change. -->
                         <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -634,7 +662,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -675,7 +703,7 @@
                     <Grid>
                         <Border x:Name="Surface" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" BorderBrush="Transparent" BorderThickness="1" />
                         <!-- The same two wash layers the Button template uses, so a toggle answers the
-                             pointer exactly like a button does: hover 6 percent, press 8, no border change. -->
+                             pointer exactly like a button does: hover 5 percent, press 8, no border change. -->
                         <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0" IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -685,7 +713,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.06" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -701,9 +729,9 @@
                             <Setter TargetName="Press" Property="Opacity" Value="0.08" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.ActiveTool}" />
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.ActiveTool}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.OnActiveTool}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
@@ -739,8 +767,8 @@
     -->
     <Style x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-        <Setter Property="Background" Value="{StaticResource Brush.DangerMuted}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.DangerBorder}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
@@ -839,11 +867,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Danger}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Signal}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AccentHover}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SignalPressed}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
@@ -965,11 +993,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorder}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Hover}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.PanelBorderStrong}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Pressed}" />
                         </Trigger>
                         <!--
                             Declared after hover so a hovered selected segment still reads as selected.
@@ -985,9 +1013,9 @@
                             selected layer row, so one visual idea means selected everywhere.
                         -->
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Surface}" />
                             <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                             <Setter Property="FontWeight" Value="Medium" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
@@ -1027,8 +1055,8 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
-        <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -1059,8 +1087,8 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
-        <Setter Property="CaretBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource Brush.SelectedSurface}" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="PasswordChar" Value="●" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -1234,7 +1262,7 @@
                              It used to wear the cobalt selection tint, so hovering a dropdown looked
                              exactly like having picked something. Hover is a neutral wash. -->
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Field}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Hover}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
@@ -1317,7 +1345,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Field}" />
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Hover}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
@@ -1443,16 +1471,21 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="RowBg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter />
-                    </Border>
+                    <Grid>
+                        <Border x:Name="RowBg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <Border x:Name="Indicator" Width="2" HorizontalAlignment="Left" Margin="0,6"
+                                Background="{StaticResource Brush.SelectedIndicator}" Visibility="Collapsed" />
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.Field}" />
+                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.Hover}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
+                            <Setter TargetName="RowBg" Property="Background" Value="{StaticResource Brush.Selected}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
@@ -1628,8 +1661,8 @@
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.06" /></Trigger>
-                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.1" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.05" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.08" /></Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.DisabledSurface}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
@@ -1665,10 +1698,10 @@
                                         <Trigger Property="IsChecked" Value="True">
                                             <Setter TargetName="Chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="0" /></Setter.Value></Setter>
                                         </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.06" /></Trigger>
-                                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.1" /></Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.05" /></Trigger>
+                                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.08" /></Trigger>
                                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
-                                            <Setter TargetName="Hover" Property="Opacity" Value="0.1" />
+                                            <Setter TargetName="Hover" Property="Opacity" Value="0.08" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

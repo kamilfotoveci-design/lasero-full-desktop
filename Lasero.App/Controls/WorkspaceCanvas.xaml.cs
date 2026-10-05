@@ -26,9 +26,9 @@ public partial class WorkspaceCanvas : UserControl
     private Path? _partialCompletedPath;
     private int _visibleCompletedChunks;
     private int _completedSegmentCount;
-    private static readonly Brush CompletedStroke = CreateFrozenBrush(Color.FromRgb(0x2F, 0x6F, 0xC9));
-    private static readonly Brush BurnStroke = CreateFrozenBrush(Color.FromArgb(0xA0, 0xFE, 0x00, 0x00));
-    private static readonly Brush TravelStroke = CreateFrozenBrush(Color.FromArgb(0x70, 0x88, 0x8B, 0x9A));
+    private static readonly Brush CompletedStroke = CreateFrozenBrush(Color.FromRgb(0x1D, 0x1D, 0x1F));
+    private static readonly Brush BurnStroke = CreateFrozenBrush(Color.FromArgb(0xB0, 0xE5, 0x30, 0x2B));
+    private static readonly Brush TravelStroke = CreateFrozenBrush(Color.FromArgb(0x70, 0x8E, 0x8E, 0x93));
 
     public static readonly DependencyProperty DocumentProperty = DependencyProperty.Register(
         nameof(Document), typeof(GCodeDocument), typeof(WorkspaceCanvas),
@@ -327,8 +327,8 @@ public partial class WorkspaceCanvas : UserControl
     {
         var step = RulerMath.PickStep(_scale);
 
-        var gridBrush = new SolidColorBrush(Color.FromArgb(0x28, 0x65, 0x70, 0x82));
-        var axisBrush = new SolidColorBrush(Color.FromArgb(0x68, 0x2F, 0x6F, 0xC9));
+        var gridBrush = new SolidColorBrush(Color.FromArgb(0x14, 0x1D, 0x1D, 0x1F));
+        var axisBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x1D, 0x1D, 0x1F));
 
         var firstX = RulerMath.FirstTick(_offsetXMm, step);
         for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
@@ -410,14 +410,17 @@ public partial class WorkspaceCanvas : UserControl
         {
             Width = 22,
             Height = 22,
-            Fill = new SolidColorBrush(Color.FromArgb(0x30, 0x3D, 0xBE, 0x64)),
+            // A hairline ring, not a soft coloured glow.
+            Stroke = new SolidColorBrush(Color.FromArgb(0x60, 0xE5, 0x30, 0x2B)),
+            StrokeThickness = 1,
         };
         _marker = new Ellipse
         {
             Width = 10,
             Height = 10,
-            Fill = new SolidColorBrush(Color.FromRgb(0x3D, 0xBE, 0x64)),
-            Stroke = new SolidColorBrush(Color.FromRgb(0x0F, 0x10, 0x15)),
+            // The laser position is a beam marker, so it is the signal red with a white keyline.
+            Fill = new SolidColorBrush(Color.FromRgb(0xE5, 0x30, 0x2B)),
+            Stroke = new SolidColorBrush(Colors.White),
             StrokeThickness = 1.5,
         };
         DrawCanvas.Children.Add(_markerGlow);

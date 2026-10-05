@@ -421,7 +421,7 @@
                                     <TextBlock Text="Rychlost rámování (mm/min)" Style="{StaticResource Text.Muted}" />
                                     <TextBox Text="{Binding GCode.FramingFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" Margin="0,5,0,0" />
                                 </StackPanel>
-                                <Border Grid.Column="2" Background="{StaticResource Brush.SuccessMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" VerticalAlignment="Bottom">
+                                <Border Grid.Column="2" Background="{StaticResource Brush.SuccessMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="10" VerticalAlignment="Bottom">
                                     <StackPanel Orientation="Horizontal">
                                         <components:IconGlyph IconData="{StaticResource Glyph.Check}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.Success}" Margin="0,0,7,0" />
                                         <TextBlock Text="Laser zůstane vypnutý" Foreground="{StaticResource Brush.Success}" VerticalAlignment="Center" />
@@ -432,7 +432,7 @@
                                 <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Zkontrolovat oblast" />
                             </Button>
 
-                            <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10" Margin="0,0,0,12">
+                            <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="10" Margin="0,0,0,12">
                                 <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->

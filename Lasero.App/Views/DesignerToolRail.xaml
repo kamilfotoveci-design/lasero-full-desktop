@@ -58,8 +58,8 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="{StaticResource Radius.Sm}" />
-                            <Border x:Name="Selected" Background="{DynamicResource Brush.PanelRaised}"
-                                    BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.ActiveTool}"
+                                    BorderBrush="{DynamicResource Brush.ActiveTool}" BorderThickness="1"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
                             <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
@@ -90,8 +90,7 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Selected" Property="Opacity" Value="1" />
-                                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.OnActiveTool}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
@@ -134,8 +133,8 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="{StaticResource Radius.Sm}" />
-                            <Border x:Name="Selected" Background="{DynamicResource Brush.PanelRaised}"
-                                    BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.ActiveTool}"
+                                    BorderBrush="{DynamicResource Brush.ActiveTool}" BorderThickness="1"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
                             <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
@@ -166,8 +165,7 @@
                             </Trigger>
                             <Trigger Property="Tag" Value="True">
                                 <Setter TargetName="Selected" Property="Opacity" Value="1" />
-                                <Setter TargetName="Marker" Property="Visibility" Value="Visible" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.OnActiveTool}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />

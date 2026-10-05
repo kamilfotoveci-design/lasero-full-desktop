@@ -91,7 +91,7 @@
                         <CheckBox Content="Ponechat původní tvar" IsChecked="{Binding KeepOriginal}" Margin="2,14,0,0"
                                   ToolTip="Zapnuto: původní tvar zůstane na místě a offset se přidá jako nový objekt nad něj. Vypnuto: původní tvar se offsetem nahradí." />
 
-                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,14,0,0">
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,14,0,0">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children
                                  with infinite width, so TextWrapping never engages. -->
                             <DockPanel>

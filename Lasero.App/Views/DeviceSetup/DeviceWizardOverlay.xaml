@@ -114,7 +114,7 @@
     <Grid x:Name="Root" shell:WindowChrome.IsHitTestVisibleInChrome="True">
         <!-- Scrim. Dims the whole window behind the sheet; never closes on its own click, since a
              misclick must not silently drop an in-progress scan or connection. -->
-        <Border x:Name="Scrim" Background="#8A171918" Opacity="0" />
+        <Border x:Name="Scrim" Background="{StaticResource Brush.Scrim}" Opacity="0" />
 
         <!-- The sheet. MaxWidth keeps it a comfortable reading width at any window size rather than
              stretching a card across a maximized monitor. -->
@@ -513,7 +513,7 @@
                             <!-- Only shown when the connected controller genuinely reports $32 off —
                                  LaserModeNeedsAttention already exists on DeviceWizardViewModel and is not
                                  duplicated here. -->
-                            <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.Warning}"
+                            <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
                                     Visibility="{Binding LaserModeNeedsAttention, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">

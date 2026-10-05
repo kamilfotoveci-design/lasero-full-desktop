@@ -349,7 +349,7 @@ public sealed class InteractionRulesTests
             var start = theme.IndexOf($"<Style x:Key=\"{key}\"", StringComparison.Ordinal);
             var style = theme[start..theme.IndexOf("</Style>", start, StringComparison.Ordinal)];
             Assert.Contains("Brush.HoverWash", style, StringComparison.Ordinal);
-            Assert.Contains("To=\"0.06\"", style, StringComparison.Ordinal);
+            Assert.Contains("To=\"0.05\"", style, StringComparison.Ordinal);
             Assert.Contains("Value=\"0.08\"", style, StringComparison.Ordinal);
             // Hover never borrows the interaction colour: no cobalt text, no selected tint.
             var hover = style[style.IndexOf("Property=\"IsMouseOver\"", StringComparison.Ordinal)..];

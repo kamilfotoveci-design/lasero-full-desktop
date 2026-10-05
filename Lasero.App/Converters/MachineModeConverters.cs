@@ -5,10 +5,20 @@ using Lasero.Core.Grbl;
 
 namespace Lasero.App.Converters;
 
+/// <summary>
+/// Resolves the semantic brushes from the theme at conversion time, so no status colour is
+/// hard-coded here and the palette stays in LaseroTheme.xaml.
+/// </summary>
+internal static class ThemeBrushes
+{
+    public static Brush Resolve(string key) =>
+        System.Windows.Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
+}
+
 public sealed class MachineAlertKindToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush Warn = new(Color.FromRgb(0xE6, 0xA9, 0x3E));
-    private static readonly SolidColorBrush Danger = new(Color.FromRgb(0xD9, 0x34, 0x2B));
+    private static Brush Warn => ThemeBrushes.Resolve("Brush.Warning");
+    private static Brush Danger => ThemeBrushes.Resolve("Brush.Danger");
 
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture) => value switch
     {
@@ -45,8 +55,8 @@ public sealed class MachineModeToLabelConverter : IValueConverter
 
 public sealed class BooleanToConnectionBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush Connected = new(Color.FromRgb(0x3D, 0xBE, 0x64));
-    private static readonly SolidColorBrush Disconnected = new(Color.FromRgb(0x6B, 0x6B, 0x73));
+    private static Brush Connected => ThemeBrushes.Resolve("Brush.Success");
+    private static Brush Disconnected => ThemeBrushes.Resolve("Brush.TextMuted");
 
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture) =>
         value is true ? Connected : Disconnected;
@@ -57,11 +67,13 @@ public sealed class BooleanToConnectionBrushConverter : IValueConverter
 
 public sealed class MachineModeToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush Idle = new(Color.FromRgb(0x3D, 0xBE, 0x64));
-    private static readonly SolidColorBrush Run = new(Color.FromRgb(0x3D, 0x9B, 0xE6));
-    private static readonly SolidColorBrush Warn = new(Color.FromRgb(0xE6, 0xA9, 0x3E));
-    private static readonly SolidColorBrush Danger = new(Color.FromRgb(0xFE, 0x00, 0x00));
-    private static readonly SolidColorBrush Neutral = new(Color.FromRgb(0x6B, 0x6B, 0x73));
+    // A running or jogging machine is the live-job indicator, which is one of the few things the
+    // signal red is reserved for.
+    private static Brush Idle => ThemeBrushes.Resolve("Brush.Success");
+    private static Brush Run => ThemeBrushes.Resolve("Brush.Signal");
+    private static Brush Warn => ThemeBrushes.Resolve("Brush.Warning");
+    private static Brush Danger => ThemeBrushes.Resolve("Brush.Danger");
+    private static Brush Neutral => ThemeBrushes.Resolve("Brush.TextMuted");
 
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture) => value switch
     {

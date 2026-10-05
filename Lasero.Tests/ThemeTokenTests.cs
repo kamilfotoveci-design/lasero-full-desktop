@@ -223,7 +223,7 @@ public sealed class ThemeTokenTests
         Assert.Contains("<Border x:Name=\"Hover\"\n                                Background=\"{StaticResource Brush.HoverWash}\"", theme, StringComparison.Ordinal);
         Assert.Contains("<Border x:Name=\"Press\"\n                                Background=\"{StaticResource Brush.HoverWash}\"", theme, StringComparison.Ordinal);
 
-        Assert.Contains("Storyboard.TargetName=\"Hover\" Storyboard.TargetProperty=\"Opacity\" To=\"0.06\"", theme, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetName=\"Hover\" Storyboard.TargetProperty=\"Opacity\" To=\"0.05\"", theme, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetName=\"Press\" Storyboard.TargetProperty=\"Opacity\" To=\"0.08\"", theme, StringComparison.Ordinal);
 
         // Every wash that goes up has to come back down, or the state is strandable again.
@@ -250,7 +250,7 @@ public sealed class ThemeTokenTests
         var selected = template.IndexOf("Property=\"IsSelected\"", StringComparison.Ordinal);
         Assert.True(highlighted >= 0 && selected >= 0, "both IsHighlighted and IsSelected triggers are expected");
 
-        Assert.Contains("Brush.Field", template[highlighted..selected], StringComparison.Ordinal);
+        Assert.Contains("Brush.Hover", template[highlighted..selected], StringComparison.Ordinal);
         Assert.Contains("Brush.SelectedSurface", template[selected..], StringComparison.Ordinal);
     }
 

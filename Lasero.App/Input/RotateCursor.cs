@@ -39,7 +39,7 @@ public static class RotateCursor
     {
         var geometry = Geometry.Parse("M 9,21 A 10,10 0 0 1 9,11 M 23,11 A 10,10 0 0 1 23,21");
         var arrowHeads = Geometry.Parse("M 5,11 L 9,8 L 10,13 Z M 27,21 L 23,24 L 22,19 Z");
-        var dark = new SolidColorBrush(Color.FromRgb(0x17, 0x19, 0x18));
+        var dark = new SolidColorBrush(Color.FromRgb(0x1D, 0x1D, 0x1F));
         var light = Brushes.White;
         dark.Freeze();
 

@@ -188,7 +188,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->

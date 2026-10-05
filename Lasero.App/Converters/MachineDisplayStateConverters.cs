@@ -77,7 +77,7 @@ public sealed class MachineDisplayStateToBrushConverter : IValueConverter
             ? state switch
             {
                 LaserMachineDisplayState.Idle => "Brush.Success",
-                LaserMachineDisplayState.Run or LaserMachineDisplayState.Jog or LaserMachineDisplayState.Home => "Brush.Accent",
+                LaserMachineDisplayState.Run or LaserMachineDisplayState.Jog or LaserMachineDisplayState.Home => "Brush.Signal",
                 LaserMachineDisplayState.Hold or LaserMachineDisplayState.Door or LaserMachineDisplayState.Check => "Brush.Warning",
                 LaserMachineDisplayState.Alarm or LaserMachineDisplayState.Error => "Brush.Danger",
                 _ => "Brush.TextMuted",

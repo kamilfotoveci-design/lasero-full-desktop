@@ -234,9 +234,9 @@
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="18,14">
                     <StackPanel>
                         <Border Visibility="{Binding Chat.StatusMessage, Converter={StaticResource NullToVisibility}}"
-                                Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.Warning}"
+                                Background="{DynamicResource Brush.PanelRaised}" BorderBrush="{DynamicResource Brush.PanelBorderStrong}"
                                 BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="10,7" Margin="0,0,0,10">
-                            <TextBlock Text="{Binding Chat.StatusMessage}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}" />
+                            <TextBlock Text="{Binding Chat.StatusMessage}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextPrimary}" />
                         </Border>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -251,7 +251,6 @@
                                      AutomationProperties.Name="Zpráva pro Lasero Chat" />
                             <Button Grid.Column="1" Width="46" Height="46" Margin="10,0,0,0" Padding="12"
                                     Style="{StaticResource Button.Primary}"
-                                    Background="{StaticResource Brush.Brand}" BorderBrush="{StaticResource Brush.Brand}"
                                     Command="{Binding Chat.SendCommand}"
                                     ToolTip="Odeslat zprávu" AutomationProperties.Name="Odeslat zprávu">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Send}" Foreground="White" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" />

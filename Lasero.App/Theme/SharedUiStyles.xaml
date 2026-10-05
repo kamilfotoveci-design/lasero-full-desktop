@@ -32,12 +32,10 @@
                                           Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                           ContentStringFormat="{TemplateBinding ContentStringFormat}" />
                         <!--
-                            Active-screen marker. The selected item is told by a tinted surface,
-                            accent text, a heavier weight and the icon it already carries. The leading
-                            bar this used to draw was a fourth cue on the same row, and it is the one
-                            the design system does not have.
+                            Active-screen marker. The selected item is a neutral wash, graphite text, a
+                            heavier weight and a 2px graphite indicator on the leading edge.
                         -->
-                        <Border x:Name="ActiveBar" Width="0" HorizontalAlignment="Left" Margin="0"
+                        <Border x:Name="ActiveBar" Width="2" HorizontalAlignment="Left" Margin="0,8"
                                 Background="Transparent" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -45,7 +43,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="NavHover" Storyboard.TargetProperty="Opacity" To="0.06"
+                                        <DoubleAnimation Storyboard.TargetName="NavHover" Storyboard.TargetProperty="Opacity" To="0.05"
                                                          Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
@@ -66,7 +64,7 @@
                              Style trigger, so they flag the active item through Tag and the template
                              turns that into the marker bar. -->
                         <Trigger Property="Tag" Value="Active">
-                            <Setter TargetName="ActiveBar" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="ActiveBar" Property="Background" Value="{DynamicResource Brush.SelectedIndicator}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="NavBackground" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
@@ -372,8 +370,8 @@
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="TextAlignment" Value="Right" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Accent}" />
-        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.SelectedSurface}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.TextSelection}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
