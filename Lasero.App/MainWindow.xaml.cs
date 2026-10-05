@@ -555,6 +555,51 @@ public partial class MainWindow : Window
         }
     }
 
+    private DateTime _projectMenuClosedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// The whole project-name button (name, unsaved dot, chevron) opens the file menu. A press on the
+    /// button while the menu is open first closes the menu through WPF's outside-click handling, and
+    /// the click that follows would reopen it; the timestamp makes that click a plain close.
+    /// </summary>
+    private void OnProjectNameButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (DateTime.UtcNow - _projectMenuClosedAt < TimeSpan.FromMilliseconds(400))
+        {
+            ProjectNameButton.IsChecked = false;
+            return;
+        }
+
+        OpenProjectMenu();
+    }
+
+    /// <summary>Alt+Down and F4 open the menu like on a combo box. Enter and Space click natively.</summary>
+    private void OnProjectNameButtonKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var altDown = key == Key.Down && (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+        if (altDown || key == Key.F4)
+        {
+            OpenProjectMenu();
+            e.Handled = true;
+        }
+    }
+
+    private void OpenProjectMenu()
+    {
+        ProjectMenu.PlacementTarget = ProjectNameButton;
+        ProjectMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        ProjectMenu.IsOpen = true;
+    }
+
+    private void OnProjectMenuOpened(object sender, RoutedEventArgs e) => ProjectNameButton.IsChecked = true;
+
+    private void OnProjectMenuClosed(object sender, RoutedEventArgs e)
+    {
+        _projectMenuClosedAt = DateTime.UtcNow;
+        ProjectNameButton.IsChecked = false;
+    }
+
     /// <summary>
     /// Opens device settings. This used to switch to the Designer screen and flip the inspector to
     /// its machine tab — which, if the operator was already there, changed nothing visible and read

@@ -30,50 +30,49 @@
         <conv:RgbColorToNameConverter x:Key="RgbColorToName" />
         <conv:RgbColorMatchesConverter x:Key="RgbColorMatches" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-
         <!--
-            The project/file menu in the title bar. Shaped like a caption control, not like a menu
-            bar item: a single chevron next to the project name that drops the four file commands.
+            The project button in the title bar: project name, unsaved dot and chevron are ONE
+            hit target, so the whole group answers the pointer like any other secondary text button
+            (HoverWash 6 percent, pressed 8, keyboard ring, Radius.Sm). The chevron is only the
+            affordance; it used to be the only clickable part. The open state keeps the pressed wash.
         -->
-        <Style x:Key="ProjectMenuButton" TargetType="MenuItem">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Style x:Key="ProjectNameButton" TargetType="ToggleButton">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="MenuItem">
-                        <Grid>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Background="Transparent" SnapsToDevicePixels="True">
                             <Border x:Name="Surface" Background="Transparent"
                                     BorderBrush="Transparent" BorderThickness="1"
-                                    CornerRadius="{StaticResource Radius.Sm}">
-                                <ContentPresenter ContentSource="Header"
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
-                                   IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Bottom"
-                                   PopupAnimation="Fade">
-                                <Border Background="{DynamicResource Brush.Panel}"
-                                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-                                        CornerRadius="{StaticResource Radius.Md}" Padding="4"
-                                        Effect="{StaticResource Shadow.Dropdown}">
-                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
-                                </Border>
-                            </Popup>
+                                    CornerRadius="{StaticResource Radius.Sm}" />
+                            <Border x:Name="Hover" Background="{StaticResource Brush.HoverWash}" Opacity="0"
+                                    IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                            <Border x:Name="Press" Background="{StaticResource Brush.HoverWash}" Opacity="0"
+                                    IsHitTestVisible="False" CornerRadius="{StaticResource Radius.Sm}" />
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                                <Setter TargetName="Hover" Property="Opacity" Value="0.06" />
                             </Trigger>
-                            <Trigger Property="IsSubmenuOpen" Value="True">
-                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Press" Property="Opacity" Value="0.08" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Press" Property="Opacity" Value="0.08" />
                             </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
                                 <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -187,29 +186,34 @@
                 <!-- Project identity on one line. "Pracovní návrh" was a constant second line that said
                      the same thing on every project and cost 18px of header height to say it. The
                      unsaved-changes dot carries the only state this area actually has. -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,12,0" VerticalAlignment="Center"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                               ToolTip="{Binding ProjectName}" />
-                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Accent}" Margin="8,0,0,0" VerticalAlignment="Center"
-                             Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" ToolTip="Projekt obsahuje neuložené změny" />
-
+                <!-- Margin left is 6, not 16: the button carries 10px of its own padding, so the
+                     name text stays exactly where it was and the hover wash reaches 10px past it. -->
+                <ToggleButton x:Name="ProjectNameButton" Grid.Column="1" Margin="6,0,2,0" VerticalAlignment="Center"
+                              Style="{StaticResource ProjectNameButton}"
+                              shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                              ContextMenuService.IsEnabled="False"
+                              Click="OnProjectNameButtonClick" PreviewKeyDown="OnProjectNameButtonKeyDown"
+                              AutomationProperties.Name="Projekt"
+                              AutomationProperties.HelpText="Projekt - nový, otevřít, uložit">
+                    <ToggleButton.ToolTip>
+                        <StackPanel>
+                            <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" MaxWidth="360" TextWrapping="Wrap" />
+                            <TextBlock Text="Projekt - nový, otevřít, uložit" />
+                            <TextBlock Text="Projekt obsahuje neuložené změny"
+                                       Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </ToggleButton.ToolTip>
                     <!--
                         The file commands. They used to sit in the wide command strip above the canvas,
                         which is gone; keyboard shortcuts alone would hide New/Open/Save from anyone
-                        who has not learned them yet, so they get a visible home instead — attached to
-                        the project name, which is the thing they act on. Not a menu bar: one button,
-                        four entries, no second row of window chrome.
+                        who has not learned them yet, so they get a visible home instead - attached to
+                        the project name, which is the thing they act on. One button, four entries.
+                        The menu is the button's own ContextMenu, opened under its left edge from code
+                        (WPF flips it to stay on screen).
                     -->
-                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="6,0,0,0" Padding="0">
-                        <MenuItem Style="{StaticResource ProjectMenuButton}"
-                                  ToolTip="Nový, otevřít a uložit projekt"
-                                  AutomationProperties.Name="Projekt">
-                            <MenuItem.Header>
-                                <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}"
-                                                      Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                            </MenuItem.Header>
+                    <ToggleButton.ContextMenu>
+                        <ContextMenu x:Name="ProjectMenu" Placement="Bottom"
+                                     Opened="OnProjectMenuOpened" Closed="OnProjectMenuClosed">
                             <MenuItem Header="Nový projekt" InputGestureText="Ctrl+N" Command="{Binding NewProjectCommand}">
                                 <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.New}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
@@ -221,10 +225,18 @@
                                 <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.Save}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Uložit jako…" Command="{Binding SaveProjectAsCommand}" />
-                        </MenuItem>
-                    </Menu>
-                </StackPanel>
-
+                        </ContextMenu>
+                    </ToggleButton.ContextMenu>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="200" VerticalAlignment="Center" />
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Accent}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}" Margin="8,1,0,0" VerticalAlignment="Center"
+                                              Foreground="{DynamicResource Brush.TextSecondary}"
+                                              Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                    </StackPanel>
+                </ToggleButton>
                 <!-- File and history commands moved down to the one command row above the canvas.
                      The title bar is identity: wordmark, project, unsaved state, window buttons. -->
 

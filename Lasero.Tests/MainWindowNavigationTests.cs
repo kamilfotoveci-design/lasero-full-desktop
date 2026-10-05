@@ -103,7 +103,7 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("Command=\"{Binding OpenProjectCommand}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SaveProjectCommand}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SaveProjectAsCommand}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("x:Key=\"ProjectMenuButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ProjectNameButton\"", xaml, StringComparison.Ordinal);
 
         // The menu sits in the caption area, which swallows clicks unless the chrome is told not to.
         Assert.Contains("shell:WindowChrome.IsHitTestVisibleInChrome=\"True\"", xaml, StringComparison.Ordinal);
