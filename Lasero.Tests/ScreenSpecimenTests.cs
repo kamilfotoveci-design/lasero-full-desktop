@@ -79,6 +79,14 @@ public sealed class ScreenSpecimenTests
     public void HomeAt1080x640Renders() => Ui.Invoke(() => Render(new HomeView(), "screen-home-1080x640", 896, 524));
 
     [Fact]
+    public void InspectorRenders() => Ui.Invoke(() =>
+        Render(new DesignerInspectorView(), "screen-inspector", 360, 640, (Brush)Application.Current.FindResource("Brush.Surface")));
+
+    [Fact]
+    public void MachinePanelRenders() => Ui.Invoke(() =>
+        Render(new MachinePanelView(), "screen-machine-panel", 360, 640, (Brush)Application.Current.FindResource("Brush.Surface")));
+
+    [Fact]
     public void DeviceScreenRenders() => Ui.Invoke(() => Render(new DeviceView(), "screen-device", 1100, 768));
 
     [Fact]
