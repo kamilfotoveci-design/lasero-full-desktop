@@ -84,8 +84,9 @@ public sealed class RedundantEntryPointsTests
         var device = Read("Views", "DeviceView.xaml");
         // Disconnect lives in the status card (DeviceSetup.SecondaryCommand), not again in the port card.
         Assert.DoesNotContain("Connection.DisconnectCommand", device, StringComparison.Ordinal);
-        // The manual connect button is the quiet path next to the port picker, never a second primary.
-        var at = device.IndexOf("Connection.ConnectCommand", StringComparison.Ordinal);
+        // The manual connect button is the quiet path next to the port picker, never a second primary. It is one
+        // command for both flows: Automaticky scans every port, a chosen port connects to it.
+        var at = device.IndexOf("Connection.ConnectSelectedCommand", StringComparison.Ordinal);
         var start = device.LastIndexOf("<Button", at, StringComparison.Ordinal);
         Assert.DoesNotContain("Button.Primary", device.Substring(start, at - start), StringComparison.Ordinal);
     }

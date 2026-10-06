@@ -197,11 +197,11 @@
                             <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Margin="0,14,0,0"
                                     Visibility="{Binding IsChecked, ElementName=ManualToggle, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="Upřesnit model (volitelné)" FontWeight="SemiBold" />
-                                    <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
-                                              SelectedItem="{Binding Connection.SelectedCompatibility}" DisplayMemberPath="DisplayName" Margin="0,8,0,0"
-                                              automation:AutomationProperties.Name="Upřesnit model" />
-                                    <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                                    <!-- No machine model to pick: the machine is recognised from the controller after
+                                         the connection exists, and the generic GRBL profile is the fallback. -->
+                                    <TextBlock Text="Ruční připojení" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Connection.DetectedMachineText}" Style="{StaticResource Text.Muted}" Margin="0,4,0,8"
+                                               automation:AutomationProperties.Name="Zjištěné zařízení" />
                                     <TextBlock Text="Ruční připojení je určeno pro řadič, který automatické hledání nenašlo. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,12" />
                                     <Grid>
@@ -209,8 +209,8 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="130" />
                                         </Grid.ColumnDefinitions>
-                                        <ComboBox ItemsSource="{Binding Connection.AvailablePorts}"
-                                                  SelectedItem="{Binding Connection.SelectedPort}"
+                                        <ComboBox ItemsSource="{Binding Connection.ManualPortOptions}"
+                                                  SelectedItem="{Binding Connection.SelectedManualPortOption}" DisplayMemberPath="Display"
                                                   Height="{StaticResource Size.Control.Base}" Margin="0,0,8,0"
                                                   automation:AutomationProperties.Name="Sériový port" />
                                         <ComboBox Grid.Column="1" ItemsSource="{Binding Connection.CommonBaudRates}"
