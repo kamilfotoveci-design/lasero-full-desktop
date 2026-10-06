@@ -79,62 +79,57 @@
                 </Grid.ColumnDefinitions>
             <StackPanel Margin="24">
 
-                <!-- Primary actions -->
+                <!-- Primary actions. Exactly one dominant action: Nový projekt. Importovat and Otevřít projekt are
+                     clearly secondary, the tour is a quiet text button, the tip is a quiet line below. -->
                 <Grid Margin="0,0,0,24">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Začněte novým návrhem" Style="{StaticResource PageTitle}" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.Regular}" Command="{Binding ReplayTourCommand}"
-                            VerticalAlignment="Center" Padding="8,0,14,0"
+                    <Button Grid.Column="1" Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}"
+                            VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Body}"
                             ToolTip="Krátká prohlídka aplikace krok za krokem"
                             AutomationProperties.Name="Prohlídka aplikace">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <components:IconTile IconData="{StaticResource Glyph.Help}" Tone="Indigo" Size="28" />
-                            <TextBlock Text="Prohlídka aplikace" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
+                        <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
+                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
                     </Button>
                 </Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,20"
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,16"
                             AutomationProperties.AutomationId="HomeActions">
-                    <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Padding="10,0,18,0" Margin="0,0,16,0"
+                    <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,12,0"
+                            Padding="22,0" FontSize="{StaticResource Size.Text.Section}"
                             ToolTip="Založit prázdný projekt · Ctrl+N" AutomationProperties.Name="Nový projekt">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <components:IconTile IconData="{StaticResource Glyph.New}" Tone="Red" Size="28" />
-                            <TextBlock Text="Nový projekt" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
+                        <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt"
+                                              Foreground="White" IconSize="{StaticResource Size.Icon.Xl}" TextMargin="10,0,0,0" />
                     </Button>
                     <!-- Deliberately generic: LoadFileCommand accepts SVG, bitmaps and G-code. Lasero
                          has no DXF importer, so the label must not promise one. -->
-                    <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding ImportFromHomeCommand}" Padding="10,0,18,0" Margin="0,0,16,0"
+                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding ImportFromHomeCommand}" Margin="0,0,12,0"
+                            Height="{StaticResource Size.Control.Base}" Padding="16,0" VerticalAlignment="Center"
                             ToolTip="Načíst SVG, obrázek nebo G-code a otevřít je v návrhu" AutomationProperties.Name="Importovat">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <components:IconTile IconData="{StaticResource Glyph.Import}" Tone="Blue" Size="28" />
-                            <TextBlock Text="Importovat" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
+                        <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat"
+                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
                     </Button>
-                    <Button Style="{StaticResource Button.LargeSecondary}" Command="{Binding OpenProjectCommand}" Padding="10,0,18,0"
+                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding OpenProjectCommand}"
+                            Height="{StaticResource Size.Control.Base}" Padding="16,0" VerticalAlignment="Center"
                             ToolTip="Otevřít uložený projekt · Ctrl+O" AutomationProperties.Name="Otevřít projekt">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <components:IconTile IconData="{StaticResource Glyph.Open}" Tone="Amber" Size="28" />
-                            <TextBlock Text="Otevřít projekt" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
+                        <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt"
+                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
                     </Button>
                 </StackPanel>
 
-                <!-- Tip dne: one rotating, dismissal-free hint. "Další tip" steps through the list. -->
-                <!-- A quiet line on the page background: red dot, muted label, hairline, sentence. No card. -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,32" HorizontalAlignment="Left"
+                <!-- Tip dne: one quiet rotating hint under the actions. "Další tip" steps through the list. -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,24" HorizontalAlignment="Left"
                             UseLayoutRounding="True" SnapsToDevicePixels="True"
                             AutomationProperties.AutomationId="HomeTipOfDay">
-                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Brand}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <TextBlock Text="TIP DNE" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Brand}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="TIP DNE" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
                                Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center" />
-                    <Rectangle Width="1" Height="18" Fill="{StaticResource Brush.PanelBorderStrong}" Margin="14,0,14,0" VerticalAlignment="Center" />
                     <TextBlock x:Name="TipOfDayText" Text="{Binding Home.TipOfDay, NotifyOnTargetUpdated=True}"
-                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="640"
-                               FontSize="{StaticResource Size.Text.Section}" RenderTransformOrigin="0,0.5">
+                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" Margin="12,0,0,0"
+                               Foreground="{StaticResource Brush.TextSecondary}"
+                               FontSize="{StaticResource Size.Text.Meta}" RenderTransformOrigin="0,0.5">
                         <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
                         <TextBlock.Triggers>
                             <EventTrigger RoutedEvent="Binding.TargetUpdated">
@@ -147,8 +142,8 @@
                             </EventTrigger>
                         </TextBlock.Triggers>
                     </TextBlock>
-                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Margin="12,0,0,0"
-                            FontSize="{StaticResource Size.Text.Section}" VerticalAlignment="Center"
+                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Margin="8,0,0,0"
+                            FontSize="{StaticResource Size.Text.Meta}" VerticalAlignment="Center"
                             AutomationProperties.Name="Další tip">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Další tip" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
@@ -159,11 +154,12 @@
                     </Button>
                 </StackPanel>
 
-                <!-- Pokračovat v práci -->
-                <TextBlock Text="Pokračovat v práci" Style="{StaticResource PanelTitle}"
-                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,0,16" />
+                
+<!-- Pokračovat v práci -->
+                <TextBlock Text="Pokračovat v práci" Style="{StaticResource SectionHeading}"
+                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,8,0,16" />
 
-                <components:ElevatedBorder Style="{StaticResource Card}" Padding="24,20"
+                <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20"
                         Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}"
                         Margin="0,0,0,32">
                     <components:EmptyState IconPrimaryData="{StaticResource Glyph.Project}"
@@ -207,7 +203,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Naposledy použité materiály" Style="{StaticResource PanelTitle}"
+                            <TextBlock Text="Naposledy použité materiály" Style="{StaticResource SectionHeading}"
                                        VerticalAlignment="Center" Margin="0,0,8,0" TextWrapping="Wrap" />
                             <Button Grid.Column="1" Style="{StaticResource Button.Link}" Click="OnMaterialsClick"
                                     Content="Vše →"
@@ -240,7 +236,7 @@
                             </ItemsControl>
                         </components:ElevatedBorder>
 
-                        <components:ElevatedBorder Style="{StaticResource Card}" Padding="24,20" MinHeight="152"
+                        <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20" MinHeight="152"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}">
                             <components:EmptyState IconPrimaryData="{StaticResource Glyph.Materials}"
                                                    Title="Zatím žádné použité materiály"
@@ -252,7 +248,7 @@
                         <!-- Same height as the materials header beside it (its "Vše" link is a 32px control), so the two
                              section titles share a baseline. -->
                         <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
-                            <TextBlock Text="Poslední úloha" Style="{StaticResource PanelTitle}"
+                            <TextBlock Text="Poslední úloha" Style="{StaticResource SectionHeading}"
                                        HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0" />
                         </Grid>
 
@@ -293,7 +289,7 @@
                             </Grid>
                         </components:ElevatedBorder>
 
-                        <components:ElevatedBorder Style="{StaticResource Card}" Padding="24,20" MinHeight="152"
+                        <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20" MinHeight="152"
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}">
                             <components:EmptyState IconPrimaryData="{StaticResource Glyph.History}"
                                                    Title="Zatím žádná dokončená úloha"

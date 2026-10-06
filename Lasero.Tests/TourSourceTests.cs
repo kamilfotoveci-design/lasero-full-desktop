@@ -134,8 +134,9 @@ public sealed class TourSourceTests
         }
 
         var theme = Read("Theme", "LaseroTheme.xaml");
-        Assert.Matches(@"x:Key=""Size\.Text\.Section"">16<", theme);
-        Assert.Matches(@"x:Key=""Size\.Text\.Title"">24<", theme);
+        // Tour text is read, not scanned: the card-title and page-title steps are both at least 16px.
+        Assert.Matches(@"x:Key=""Size.Text.Section"">(1[6-9]|2d)<", theme);
+        Assert.Matches(@"x:Key=""Size.Text.Title"">(2\d|3\d)<", theme);
     }
 
     [Fact]

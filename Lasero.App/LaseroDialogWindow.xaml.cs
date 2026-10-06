@@ -85,7 +85,7 @@ public partial class LaseroDialogWindow : Window
             return;
         }
 
-        var duration = (Duration)FindResource("Motion.Panel");
+        var duration = (Duration)FindResource("Motion.Dialog");
         var ease = (CubicEase)FindResource("Ease.Out");
 
         DialogSurface.BeginAnimation(OpacityProperty, new DoubleAnimation
@@ -94,11 +94,11 @@ public partial class LaseroDialogWindow : Window
         });
         DialogScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation
         {
-            From = 0.985, To = 1, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
+            From = 0.98, To = 1, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
         });
         DialogScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation
         {
-            From = 0.985, To = 1, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
+            From = 0.98, To = 1, Duration = duration, EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd,
         });
         DialogOffset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
         {

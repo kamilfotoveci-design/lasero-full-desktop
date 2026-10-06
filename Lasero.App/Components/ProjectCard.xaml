@@ -11,7 +11,20 @@
         <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
         <conv:UtcToLocalConverter x:Key="UtcToLocal" />
     </UserControl.Resources>
-    <components:ElevatedBorder Style="{StaticResource ThumbnailCard}" Padding="10" Cursor="Hand">
+    <components:ElevatedBorder Style="{StaticResource ThumbnailCard.Clickable}" Padding="10" Cursor="Hand" RenderTransformOrigin="0.5,0.5">
+        <components:ElevatedBorder.RenderTransform><TranslateTransform x:Name="Lift" /></components:ElevatedBorder.RenderTransform>
+        <components:ElevatedBorder.Triggers>
+            <EventTrigger RoutedEvent="UIElement.MouseEnter">
+                <BeginStoryboard><Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Lift" Storyboard.TargetProperty="Y" To="-1" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
+                </Storyboard></BeginStoryboard>
+            </EventTrigger>
+            <EventTrigger RoutedEvent="UIElement.MouseLeave">
+                <BeginStoryboard><Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Lift" Storyboard.TargetProperty="Y" To="0" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
+                </Storyboard></BeginStoryboard>
+            </EventTrigger>
+        </components:ElevatedBorder.Triggers>
         <Border.InputBindings>
             <MouseBinding MouseAction="LeftClick" Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding}" />
         </Border.InputBindings>

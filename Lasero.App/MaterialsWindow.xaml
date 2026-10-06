@@ -73,7 +73,9 @@
                         </Border>
                         <!-- The selected tab's 2px graphite indicator. -->
                         <Border x:Name="TabIndicator" Height="2" VerticalAlignment="Bottom" Margin="14,0,22,0"
-                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" />
+                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><ScaleTransform x:Name="IndicatorScale" /></Border.RenderTransform>
+                        </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -85,6 +87,16 @@
                                 <Setter TargetName="TabIndicator" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IndicatorScale" Storyboard.TargetProperty="ScaleX" From="0" To="1"
+                                                             Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" />
+                                            <DoubleAnimation Storyboard.TargetName="TabIndicator" Storyboard.TargetProperty="Opacity" From="0" To="1"
+                                                             Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
                             </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />

@@ -325,7 +325,7 @@ public sealed class MainWindowNavigationTests
         // asked for 320, the panel kept its 320 and the surplus hung off the right edge of the
         // window: X, Y, width and height were all cut through the middle of their value.
         var panelMin = ReadNumber(inspector, "MinWidth=\"", "\"");
-        var columnMin = ReadNumber(mainWindow, "x:Name=\"InspectorColumn\" Width=\"320\" MinWidth=\"", "\"");
+        var columnMin = ReadNumber(mainWindow, "x:Name=\"InspectorColumn\" Width=\"360\" MinWidth=\"", "\"");
         var persistedMin = ReadNumber(settings, "MinInspectorWidth = ", ";");
 
         Assert.Equal(panelMin, columnMin);

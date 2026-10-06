@@ -315,7 +315,10 @@ public sealed class InteractionRulesTests
         foreach (var file in files)
         {
             var text = File.ReadAllText(file);
-            Assert.DoesNotContain("BackEase", text, StringComparison.Ordinal);
+            // The one permitted overshoot is the press release (Ease.Release, a slight 0.35 BackEase), keyed and
+            // defined once in the theme; nothing else may carry a BackEase.
+            if (Path.GetFileName(file) != "LaseroTheme.xaml")
+                Assert.DoesNotContain("BackEase", text, StringComparison.Ordinal);
             Assert.DoesNotContain("ElasticEase", text, StringComparison.Ordinal);
             Assert.DoesNotContain("Ease.Spring", text, StringComparison.Ordinal);
         }
