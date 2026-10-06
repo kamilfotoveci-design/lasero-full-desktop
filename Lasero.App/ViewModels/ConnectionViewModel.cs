@@ -31,6 +31,39 @@ public partial class ConnectionViewModel : ObservableObject
     }
     public string CompatibilityMessage => SelectedCompatibility.Limitation;
     public ObservableCollection<string> AvailablePorts { get; } = new();
+
+    /// <summary>What the customer chooses from: "Automaticky" first (scan every port, the default), then the
+    /// available ports by friendly name ("COM3 - USB-SERIAL CH340"). There is deliberately no machine model
+    /// to pick: the machine is recognised from the controller itself and falls back to generic GRBL.</summary>
+    public ObservableCollection<PortOption> PortOptions { get; } = new();
+
+    [ObservableProperty] private PortOption? _selectedPortOption;
+
+    /// <summary>The same ports without Automaticky, for the wizard "Připojit ručně", which by definition
+    /// names a port.</summary>
+    public IReadOnlyList<PortOption> ManualPortOptions => PortOptions.Where(o => !o.IsAutomatic).ToList();
+
+    public PortOption? SelectedManualPortOption
+    {
+        get => PortOptions.FirstOrDefault(o => !o.IsAutomatic && o.PortName == SelectedPort);
+        set
+        {
+            if (value is null || value.IsAutomatic) return;
+            SelectedPort = value.PortName;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsAutomaticPort => SelectedPortOption?.IsAutomatic ?? true;
+
+    /// <summary>One primary connect button: its label says which of the two flows it runs.</summary>
+    public string ConnectButtonText => IsAutomaticPort ? "Připojit automaticky" : "Připojit k vybranému portu";
+
+    /// <summary>Read-only result of recognising the machine. "Obecný GRBL" until the controller has answered.</summary>
+    public string DetectedMachineText => IsConnected && DetectedDevice is not null && !string.IsNullOrWhiteSpace(ActiveMachineName)
+        && ActiveMachineName != "Laserové zařízení"
+        ? $"Zjištěno: {ActiveMachineName}"
+        : "Obecný GRBL";
     public int[] CommonBaudRates { get; } = [9600, 19200, 38400, 57600, 115200, 230400];
 
     [ObservableProperty] private string? _selectedPort;
@@ -59,6 +92,8 @@ public partial class ConnectionViewModel : ObservableObject
     public string StatusDetail => ConnectionError ?? StatusText;
 
     partial void OnStatusTextChanged(string value) => OnPropertyChanged(nameof(StatusDetail));
+    partial void OnActiveMachineNameChanged(string value) => OnPropertyChanged(nameof(DetectedMachineText));
+    partial void OnDetectedDeviceChanged(GrblDeviceProfile? value) => OnPropertyChanged(nameof(DetectedMachineText));
     partial void OnConnectionErrorChanged(string? value) => OnPropertyChanged(nameof(StatusDetail));
     [ObservableProperty] private string? _firmwareBanner;
     [ObservableProperty] private GrblDeviceProfile? _detectedDevice;
@@ -227,6 +262,65 @@ public partial class ConnectionViewModel : ObservableObject
 
     public bool HasAvailablePorts => AvailablePorts.Count > 0;
 
+    private bool _rebuildingPortOptions;
+
+    /// <summary>Rebuilds the customer-facing list from <see cref="AvailablePorts"/> and restores the remembered
+    /// choice: a port chosen before if it is still there, otherwise Automaticky.</summary>
+    private void RebuildPortOptions()
+    {
+        _rebuildingPortOptions = true;
+        try
+        {
+            var descriptions = SerialPortDescriptions.Read();
+            PortOptions.Clear();
+            PortOptions.Add(PortOption.Automatic);
+            foreach (var name in AvailablePorts)
+            {
+                var label = VirtualGrblTransport.IsVirtualPort(name)
+                    ? "Simulátor - virtuální laser"
+                    : SerialPortDescriptions.Label(name, descriptions);
+                PortOptions.Add(new PortOption(name, label));
+            }
+
+            var preferred = _settingsStore.Current.Device.PreferredPort;
+            SelectedPortOption = PortOptions.FirstOrDefault(o => !o.IsAutomatic && string.Equals(o.PortName, preferred, StringComparison.OrdinalIgnoreCase))
+                                 ?? PortOptions[0];
+        }
+        finally
+        {
+            _rebuildingPortOptions = false;
+        }
+
+        OnPropertyChanged(nameof(IsAutomaticPort));
+        OnPropertyChanged(nameof(ConnectButtonText));
+        OnPropertyChanged(nameof(ManualPortOptions));
+        OnPropertyChanged(nameof(SelectedManualPortOption));
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedPortOptionChanged(PortOption? value)
+    {
+        OnPropertyChanged(nameof(IsAutomaticPort));
+        OnPropertyChanged(nameof(ConnectButtonText));
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
+        if (_rebuildingPortOptions || value is null) return;
+        // Remember the choice. Automaticky is stored as no preference at all.
+        _settingsStore.Current.Device.PreferredPort = value.IsAutomatic ? null : value.PortName;
+        if (!value.IsAutomatic) SelectedPort = value.PortName;
+    }
+
+    private bool CanConnectSelected() => IsAutomaticPort ? CanSmartConnect() : CanConnect();
+
+    /// <summary>The one primary connect action. Automaticky scans every port (the same flow as the status
+    /// strip); a chosen port connects straight to it. Nothing else is decided here: the machine model is
+    /// recognised from the controller after the connection exists.</summary>
+    [RelayCommand(CanExecute = nameof(CanConnectSelected))]
+    private async Task ConnectSelected()
+    {
+        if (IsAutomaticPort) await SmartConnect().ConfigureAwait(true);
+        else Connect();
+    }
+
     private bool CanRefreshPorts() => !IsConnected && !IsConnecting && !IsDetecting;
 
     [RelayCommand(CanExecute = nameof(CanRefreshPorts))]
@@ -240,6 +334,7 @@ public partial class ConnectionViewModel : ObservableObject
         AvailablePorts.Add(VirtualGrblTransport.PortName);
 
         SelectedPort = AvailablePorts.Contains(current!) ? current : physicalPorts.FirstOrDefault() ?? VirtualGrblTransport.PortName;
+        RebuildPortOptions();
         OnPropertyChanged(nameof(HasAvailablePorts));
     }
 
@@ -363,6 +458,7 @@ public partial class ConnectionViewModel : ObservableObject
 
     partial void OnIsDetectingChanged(bool value)
     {
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
         ConnectCommand.NotifyCanExecuteChanged();
         SmartConnectCommand.NotifyCanExecuteChanged();
         RefreshPortsCommand.NotifyCanExecuteChanged();
@@ -371,6 +467,8 @@ public partial class ConnectionViewModel : ObservableObject
 
     partial void OnIsConnectedChanged(bool value)
     {
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(DetectedMachineText));
         SmartConnectCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanAutoDetect));
         ConnectCommand.NotifyCanExecuteChanged();
@@ -380,6 +478,7 @@ public partial class ConnectionViewModel : ObservableObject
 
     partial void OnIsConnectingChanged(bool value)
     {
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
         SmartConnectCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanAutoDetect));
         ConnectCommand.NotifyCanExecuteChanged();
@@ -389,7 +488,9 @@ public partial class ConnectionViewModel : ObservableObject
     partial void OnSelectedPortChanged(string? value)
     {
         IsVirtualMachineSelected = VirtualGrblTransport.IsVirtualPort(value);
+        OnPropertyChanged(nameof(SelectedManualPortOption));
         ConnectCommand.NotifyCanExecuteChanged();
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanSaveWorkspaceAsDefault() =>
@@ -430,4 +531,12 @@ public partial class ConnectionViewModel : ObservableObject
         if (dispatcher is null || dispatcher.CheckAccess()) action();
         else dispatcher.Invoke(action);
     }
+}
+
+/// <summary>One entry of the connection port list. A null <see cref="PortName"/> is Automaticky.</summary>
+public sealed record PortOption(string? PortName, string Display)
+{
+    public static PortOption Automatic { get; } = new(null, "Automaticky");
+    public bool IsAutomatic => PortName is null;
+    public override string ToString() => Display;
 }

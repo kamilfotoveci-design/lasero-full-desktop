@@ -61,7 +61,7 @@ Optimise for quality improvement per credit, not for number of agents, skills or
 - Grouping through whitespace, hierarchy and typography — not through another card, border or pill.
 - Contextual controls over permanent clutter.
 - Desktop application, not a SaaS dashboard. No decorative gradients, shadows or oversized headings.
-- Never solve density by shrinking text. Nothing below 12px; body 13px.
+- Never solve density by shrinking text. Body 15px, secondary 14px, nothing below 13px (see `DESIGN.md` Typography).
 - One tint: the LASERO red `#E5302B`, always SOLID, for everything that is on - checked and toggled
   controls, slider fill, focus ring, selected tool pill, selected nav and tab indicator, text links,
   running progress, caret and selection. Red is the tint: solid, only on active / selected /

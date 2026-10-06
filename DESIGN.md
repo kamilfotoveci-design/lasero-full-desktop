@@ -101,32 +101,32 @@ line icons, and no screen shows more than four tile colours (tested).
 
 ## Typography
 
-Sizes come from `Size.Text.Title` / `Section` / `Body` / `Meta` (22 / 15 / 13 / 12). Markup must not
-carry a literal `FontSize`, and a test enforces that — the absence of these tokens is exactly how the
-scale drifted to 22 instances of 12, 15 of 16, and 15 / 17 / 21 / 22 / 24 / 26 / 27 across headings.
+Sizes come from `Size.Text.*` (2026-10 raise: the first scale was far too small to read). Markup must not
+carry a literal `FontSize`, and a test enforces that.
 
-Panel and inspector section headers sit at Body, not above it. A header one step up from the text it
-introduces is what turns a dense panel into a stack of banners.
-
-Inter, bundled in `Lasero.App/Assets/Fonts` as a `<Resource>` under the SIL OFL. It is not a Windows
-font, so a family-name reference alone silently falls back to Segoe — always go through `Font.Ui`,
-`Font.Display` or `Font.Numeric`, which carry the pack URI and differ only in their Segoe fallback.
-
-Weights: 400 body, 500 controls and labels and values, 600 headings and selected navigation, 700 for
-a screen's own title. Nothing below 12px anywhere.
-
-| Role | Size / line | Weight |
+| Token | px | Use |
 |---|---|---|
-| App and splash title | 22 / 28 | 600 |
-| Section heading, dialog title | 15 / 20 | 600 |
-| Panel header, inspector section title | 13 / 18 | 600 |
-| UI body | 13 / 18 | 400 |
-| Body emphasised | 13 / 18 | 500 |
-| Control text | 13 / 16 | 500 |
-| Field label | 12 / 16 | 500 |
-| Helper text, metadata | 12 / 16 | 400 |
-| Numeric value | 13 / 18 | 500 |
-| Numeric readout | 15 / 20 | 600 |
+| `Title` | 30 Bold | a screen's own title |
+| `Heading` | 21 SemiBold | section headings on a screen ("Pokračovat v práci") |
+| `Section` | 17 SemiBold | card and panel titles |
+| `Body` | 15 | default text, controls, buttons (SemiBold) |
+| `Meta` | 14 | secondary and help text, field labels |
+| `Caption` | 13 | status strip, tooltips, rulers, badges: the single step below Meta |
+
+Reading text is never below 14 and nothing is below 13. Muted text is `#6E6E73`, no lighter. Controls
+follow the type: 40 high (`Size.Control.Base`), primary 44, large 48, rail tools and list rows 44 and 40,
+icon tile 28 (32 where it leads a row). The navigation is 184 wide, the Designer rail 64, the inspector 360.
+
+Inter is bundled in `Lasero.App/Assets/Fonts` as `<Resource>`s under the SIL OFL: Regular 400, Medium 500,
+SemiBold 600 and Bold 700 as separate static files, so each weight is a real face. `Font.Ui`, `Font.Display`
+and `Font.Numeric` carry the pack URI (a bare family name silently falls back to Segoe, which is what the
+theme did before this change). `TypographyTests` resolves all four weights to Inter faces.
+
+Weights: 400 body, 500 labels and values, 600 buttons, card titles, headings and selected navigation,
+700 a screen's own title.
+
+Hierarchy on a screen: one dominant action (graphite, large), secondary actions (white, hairline), tertiary
+actions as quiet tint text. Empty states are lighter than the actions beside them (no fill, no shadow).
 
 Engineering values use `Font.Numeric` with `Typography.NumeralAlignment="Tabular"` — Inter's tabular
 figures give column alignment without terminal texture. `Font.Mono` is reserved for content where
@@ -163,7 +163,7 @@ arithmetic and a composite token would restate its scalar anyway.
 
 ## Layout
 
-Title bar 60px, navigation rail 164px, canvas flexible with a 420px minimum, inspector 336px
+Title bar 60px, navigation rail 184px, canvas flexible with a 420px minimum, inspector 360px
 (resizable 280–560), status strip 56px. One working header rather than stacked menu and command bars.
 
 Connection, jogging, work origin, framing and job execution stay beside the canvas, so operating the
@@ -242,9 +242,25 @@ already is, 5% for hover and 8% for press. Toggle buttons use the same two layer
 would be a second implementation of one state, and every new button kind would have to re-derive it.
 The wash works on a graphite fill, a red fill, a white surface and a transparent ghost alike.
 
-Motion is short and ease-out with no bounce or overshoot (`Motion.Fast` 100ms, `Motion.Base` 180ms,
-`Ease.Out`), and respects the Windows animation preference. An overshoot curve reads as playful,
-which is wrong for a machine-control workbench.
+Motion is short and ease-out and respects the Windows animation preference: every `Motion.*` duration is
+zeroed together by `UiAccessibility`. Only Opacity and RenderTransform animate (no layout, no per-frame
+measure), and nothing runs at rest.
+
+| Interaction | Behaviour | Tokens |
+|---|---|---|
+| Hover | wash fades in and out | `Motion.Hover` 120 ms |
+| Press | scale to 0.97 | `Motion.Press` 90 ms, `Ease.Out` |
+| Release | back to 1.0 with a slight overshoot | `Motion.Release` 200 ms, `Ease.Release` (the only `BackEase`, amplitude 0.35) |
+| Rail tool selected | red pill fades in, icon scales 0.8 to 1 | `Motion.Toggle` 150 ms |
+| Checkbox | tick scales 0.6 to 1 and fades in | `Motion.Toggle` |
+| Tab | indicator grows from the centre | `Motion.Toggle` |
+| Clickable card | lifts 1px, shadow deepens (`ElevationLevel.Raised`) | `Motion.Hover` |
+| Popup, menu, dropdown | 120 ms fade and 4px slide (`PopupOpen`) | `Motion.Popup` |
+| Dialog | 160 ms fade, scale 0.98 to 1 | `Motion.Dialog` |
+
+The tool rail's hover and press are separate translucent ink layers above the selected pill. An opaque hover
+surface above it once painted a pale tile over the red in the live app while the source tests passed;
+`RailAndMotionTests` now render the real templates in their states and read pixels.
 
 ## Brand
 

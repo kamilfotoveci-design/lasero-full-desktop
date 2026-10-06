@@ -139,3 +139,14 @@ bound to two buttons (allow-list with reasons).
 | Nastavení and Účet in the nav rail (both open Settings) | Keep Účet as identity, or make it display only | Keep: the card shows who is signed in, a different job from the Nastavení label |
 | Najet domů twice on Zařízení (jog pad centre icon plus labelled button) | Keep both, or remove the labelled one | Keep both for now: homing moves the machine, so safety review should decide, not a layout pass |
 | Zařízení: "Připojit k vybranému portu" next to the status card CTA | Keep as Secondary, or fold into "Upřesnit" disclosure like the wizard | Fold into a disclosure once the status card is validated with a first-time owner |
+
+## Connection choice (2026-10, owner decision)
+
+The customer never picks an engraver model. The connection list offers "Automaticky" (scan every port, the
+default) and the available COM ports by friendly name ("COM3 - USB-SERIAL CH340"), with a refresh action; the
+last manual choice is remembered (`Device.PreferredPort`, none means Automaticky). There is one primary connect
+button per surface and its label says which flow it runs: "Připojit automaticky" or "Připojit k vybranému portu"
+(`ConnectionViewModel.ConnectSelectedCommand`). The machine is recognised from the controller (banner, `$I`, `$$`)
+and shown as read-only text: "Zjištěno: ..." or "Obecný GRBL". The model catalogue stays in `Lasero.Core`
+(`MachineCompatibilityCatalog`, `KnownMachineProfiles`) for detection and for the refusal to connect to an
+unverified profile; no customer view binds it (`ConnectionPortChoiceTests`).
