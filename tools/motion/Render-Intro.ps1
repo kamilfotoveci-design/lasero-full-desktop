@@ -82,9 +82,9 @@ if ($Only -in 'all', 'video') {
 }
 
 if ($Only -in 'all', 'installer') {
-    Invoke-Tool @('render-installer', '--out', (Join-Path $root 'installer\assets\anim'),
+    Invoke-Tool @('render-installer',
                   '--assets', (Join-Path $root 'installer\assets'),
-                  '--logo', (Join-Path $root 'Lasero.App\Assets\Lasero.png'))
+                  '--logo', (Join-Path $root 'Lasero.AppAssetsasero.png'))
 }
 
 Write-Host 'Done.'

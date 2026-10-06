@@ -95,6 +95,5 @@ exclamation mark. Review lines for the owner are in the task report.
 
 ## Installer
 
-The wizard plays a flip-book of pre-rendered frames (`installer/assets/anim/*.bmp`) driven by a WinAPI timer;
-see the comment block in `installer/Lasero.iss`. Silent installs skip all of it. Regenerate with
-`tools/motion/Render-Intro.ps1 -Only installer`.
+The installer is deliberately static (side panel = the intro's hold frame, normal progress bar). The brand
+animation plays when the app starts (startup splash), not in the wizard.

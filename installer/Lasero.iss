@@ -131,9 +131,6 @@ Name: "fileassoc"; Description: "{cm:TaskAssoc}"; GroupDescription: "{cm:TaskGro
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "assets\lasero-uninstall.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
-; Flip-book frames for the animated wizard (tools/motion). Not installed: extracted to {tmp} at wizard
-; start, and only when the wizard is visible (never for /SILENT or /VERYSILENT).
-Source: "assets\anim\*.bmp"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; AppUserModelID: "Lasero.Desktop"
@@ -158,149 +155,6 @@ const
 var
   PreviousVersion: String;
   UsbPage: TOutputMsgWizardPage;
-
-{ ---- animated wizard ----------------------------------------------------------------------------
-  Inno Setup cannot play video, so the wizard shows a flip-book: pre-rendered 8-bit BMPs (see
-  tools/motion/Render-Intro.ps1) swapped into the existing wizard images by a WinAPI timer.
-    welcome page   panel-00..23 once (the brand intro), then loop-00..15 (the dot breathing)
-    finished page  loop-00..15
-    inner pages    small-00..23 in the header badge
-    installing     banner-00..19 chosen by the progress bar position: the wordmark is drawn as files install
-  Nothing here runs for /SILENT or /VERYSILENT. If the frames cannot be extracted or the timer cannot be
-  created, the static wizard images (the intro's hold frame) simply stay. The timer is stopped on every
-  page change and in DeinitializeSetup, so it never outlives the wizard. }
-
-function SetTimer(hWnd, nIDEvent, uElapse, lpTimerFunc: LongWord): LongWord;
-external 'SetTimer@user32.dll stdcall';
-function KillTimer(hWnd, nIDEvent: LongWord): BOOL;
-external 'KillTimer@user32.dll stdcall';
-
-const
-  AnimTickMs = 55;
-  PanelIntroFrames = 24;
-  PanelLoopFrames = 16;
-  SmallFrames = 24;
-  BannerFrames = 20;
-
-var
-  AnimTimer: LongWord;
-  AnimReady: Boolean;
-  AnimTicks, AnimPageStart: Integer;
-  LastPanel, LastSmall, LastBanner: Integer;
-  BannerImage: TBitmapImage;
-
-procedure AnimStop;
-begin
-  if AnimTimer <> 0 then
-  begin
-    KillTimer(0, AnimTimer);
-    AnimTimer := 0;
-  end;
-end;
-
-function Pad2(Value: Integer): String;
-begin
-  Result := IntToStr(Value);
-  if Value < 10 then Result := '0' + Result;
-end;
-
-procedure AnimShow(Img: TBitmapImage; const Name: String; Index: Integer);
-begin
-  try
-    Img.Bitmap.LoadFromFile(ExpandConstant('{tmp}\') + Name + '-' + Pad2(Index) + '.bmp');
-  except
-    { a frame that cannot be read ends the animation; the current picture stays }
-    AnimReady := False;
-  end;
-end;
-
-procedure AnimStep;
-var
-  N, Idx, Code: Integer;
-  Pos, Range: Integer;
-begin
-  Inc(AnimTicks);
-  N := AnimTicks - AnimPageStart;
-  case WizardForm.CurPageID of
-    wpWelcome:
-      begin
-        if N < PanelIntroFrames * 2 then
-        begin
-          Idx := N div 2; Code := Idx;
-          if Code <> LastPanel then begin AnimShow(WizardForm.WizardBitmapImage, 'panel', Idx); LastPanel := Code; end;
-        end else begin
-          Idx := ((N - PanelIntroFrames * 2) div 4) mod PanelLoopFrames; Code := 100 + Idx;
-          if Code <> LastPanel then begin AnimShow(WizardForm.WizardBitmapImage, 'loop', Idx); LastPanel := Code; end;
-        end;
-      end;
-    wpFinished:
-      begin
-        Idx := (N div 4) mod PanelLoopFrames; Code := 100 + Idx;
-        if Code <> LastPanel then begin AnimShow(WizardForm.WizardBitmapImage2, 'loop', Idx); LastPanel := Code; end;
-      end;
-  else
-    begin
-      Idx := (N div 3) mod SmallFrames;
-      if Idx <> LastSmall then begin AnimShow(WizardForm.WizardSmallBitmapImage, 'small', Idx); LastSmall := Idx; end;
-      if (WizardForm.CurPageID = wpInstalling) and (BannerImage <> nil) then
-      begin
-        Range := WizardForm.ProgressGauge.Max - WizardForm.ProgressGauge.Min;
-        Pos := WizardForm.ProgressGauge.Position - WizardForm.ProgressGauge.Min;
-        if Range > 0 then Idx := (Pos * (BannerFrames - 1)) div Range else Idx := 0;
-        if Idx < 0 then Idx := 0;
-        if Idx > BannerFrames - 1 then Idx := BannerFrames - 1;
-        if Idx <> LastBanner then begin AnimShow(BannerImage, 'banner', Idx); LastBanner := Idx; end;
-      end;
-    end;
-  end;
-end;
-
-procedure AnimTimerProc(Wnd, Msg, IdEvent, Time: LongWord);
-begin
-  if (not AnimReady) or (WizardForm = nil) then
-  begin
-    AnimStop;
-    Exit;
-  end;
-  try
-    AnimStep;
-  except
-    AnimReady := False;
-  end;
-end;
-
-procedure AnimInit;
-begin
-  AnimReady := False;
-  if WizardSilent then Exit;
-  try
-    ExtractTemporaryFiles('*.bmp');
-    BannerImage := TBitmapImage.Create(WizardForm);
-    BannerImage.Parent := WizardForm.InstallingPage;
-    BannerImage.Left := 0;
-    BannerImage.Width := WizardForm.InstallingPage.Width;
-    BannerImage.Height := (BannerImage.Width * 110) div 460;
-    BannerImage.Top := WizardForm.ProgressGauge.Top + WizardForm.ProgressGauge.Height + ScaleY(20);
-    BannerImage.Stretch := True;
-    BannerImage.Bitmap.LoadFromFile(ExpandConstant('{tmp}\banner-00.bmp'));
-    { first frame of the intro is shown before the wizard appears, so the static hold frame never flashes }
-    WizardForm.WizardBitmapImage.Bitmap.LoadFromFile(ExpandConstant('{tmp}\panel-00.bmp'));
-    LastPanel := 0; LastSmall := -1; LastBanner := 0;
-    AnimReady := True;
-  except
-    AnimReady := False;
-  end;
-end;
-
-procedure AnimRestart;
-begin
-  AnimStop;
-  if not AnimReady then Exit;
-  AnimPageStart := AnimTicks;
-  LastPanel := -1;
-  AnimTimer := SetTimer(0, 0, AnimTickMs, CreateCallback(@AnimTimerProc));
-  if AnimTimer = 0 then AnimReady := False; { static images stay }
-end;
 
 function IsAppRunning: Boolean;
 var
@@ -348,18 +202,7 @@ end;
 
 procedure InitializeWizard;
 begin
-  AnimInit;
   UsbPage := CreateOutputMsgPage(wpInfoAfter, CustomMessage('UsbCaption'), CustomMessage('UsbDesc'), CustomMessage('UsbText'));
-end;
-
-procedure CurPageChanged(CurPageID: Integer);
-begin
-  AnimRestart; { stops the previous page's timer and starts a fresh one for the page now shown }
-end;
-
-procedure DeinitializeSetup;
-begin
-  AnimStop;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

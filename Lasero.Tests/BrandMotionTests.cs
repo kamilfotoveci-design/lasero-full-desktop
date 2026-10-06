@@ -10,7 +10,7 @@ using Xunit;
 namespace Lasero.Tests;
 
 /// <summary>
-/// Guards for the brand motion (Controls/Motion, tools/motion, installer flip-book). Source-level rules
+/// Guards for the brand motion (Controls/Motion, tools/motion). Source-level rules
 /// first (no timers, no transparency/effects/gradients, copy rules), then the renderer as a pure function
 /// of time, then the controls' lifecycle on a real WPF dispatcher: they must stop their clock on
 /// Unloaded, pause when hidden or minimized, show the final frame under reduced motion, and the video
@@ -380,33 +380,15 @@ public sealed class BrandMotionTests
         Assert.NotEqual(LaseroIntroVideoMode.Pending, mode);
     }
 
-    // ---- installer flip-book ------------------------------------------------------------------------
+    // ---- installer stays calm ------------------------------------------------------------------------
 
     [Fact]
-    public void InstallerFlipBookFramesMatchTheScript()
-    {
-        var installer = Path.Combine(RepoRoot(), "installer");
-        var script = File.ReadAllText(Path.Combine(installer, "Lasero.iss"));
-        int Const(string name) => int.Parse(Regex.Match(script, $@"\b{name}\s*=\s*(\d+)\s*;").Groups[1].Value);
-        var frames = Path.Combine(installer, "assets", "anim");
-        foreach (var (prefix, constant) in new[] { ("panel", "PanelIntroFrames"), ("loop", "PanelLoopFrames"), ("small", "SmallFrames"), ("banner", "BannerFrames") })
-        {
-            var count = Const(constant);
-            for (var i = 0; i < count; i++)
-                Assert.True(File.Exists(Path.Combine(frames, $"{prefix}-{i:D2}.bmp")), $"missing {prefix}-{i:D2}.bmp");
-            Assert.False(File.Exists(Path.Combine(frames, $"{prefix}-{count:D2}.bmp")), $"{prefix} has more frames than the script plays");
-        }
-    }
-
-    [Fact]
-    public void InstallerAnimationNeverRunsSilentlyAndAlwaysStopsItsTimer()
+    public void InstallerIsStaticWithNoTimersOrFramePlayer()
     {
         var script = File.ReadAllText(Path.Combine(RepoRoot(), "installer", "Lasero.iss"));
-        Assert.Matches(@"if WizardSilent then Exit;", script);
-        Assert.Contains("Flags: dontcopy", script);                        // frames are never installed
-        Assert.Contains("KillTimer(0, AnimTimer)", script);
-        Assert.Matches(@"procedure DeinitializeSetup;\s*begin\s*AnimStop;", script);
-        Assert.Matches(@"procedure CurPageChanged\(CurPageID: Integer\);\s*begin\s*AnimRestart;", script);
-        Assert.Contains("if AnimTimer = 0 then AnimReady := False;", script); // static images stay when no timer
+        Assert.DoesNotContain("SetTimer", script);
+        Assert.DoesNotContain("CreateCallback", script);
+        Assert.DoesNotContain("dontcopy", script);
+        Assert.False(Directory.Exists(Path.Combine(RepoRoot(), "installer", "assets", "anim")));
     }
 }
