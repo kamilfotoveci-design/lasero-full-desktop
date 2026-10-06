@@ -87,7 +87,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -97,7 +97,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -107,7 +107,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -117,7 +117,7 @@
                 <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
             </Style.Triggers>
@@ -360,7 +360,7 @@
                                         Background="{StaticResource Brush.SelectedSurface}">
                                     <components:IconGlyph IconData="{StaticResource Glyph.User}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                          Foreground="{StaticResource Brush.AccentText}" />
+                                                          Foreground="{StaticResource Brush.TextSecondary}" />
                                 </Border>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Account.Email}" FontWeight="Medium"

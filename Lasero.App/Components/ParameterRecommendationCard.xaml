@@ -55,11 +55,11 @@
                 <StackPanel Orientation="Horizontal">
                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                          Foreground="{DynamicResource Brush.AccentText}"
+                                          Foreground="{DynamicResource Brush.TextPrimary}"
                                           VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Text="DOPORUČENÉ PARAMETRY"
                                FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
-                               Foreground="{DynamicResource Brush.AccentText}"
+                               Foreground="{DynamicResource Brush.TextPrimary}"
                                VerticalAlignment="Center" />
                 </StackPanel>
             </Border>

@@ -68,7 +68,7 @@
             <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,20">
                     <StackPanel>
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
                                 <TextBlock Text="Nastavení offsetu" Style="{StaticResource PanelTitle}" />
 
@@ -86,7 +86,7 @@
                                          IsEnabled="{Binding JoinType, Converter={StaticResource EnumToBool}, ConverterParameter=Miter}"
                                          Visibility="{Binding JoinType, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Miter}" />
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
 
                         <CheckBox Content="Ponechat původní tvar" IsChecked="{Binding KeepOriginal}" Margin="2,14,0,0"
                                   ToolTip="Zapnuto: původní tvar zůstane na místě a offset se přidá jako nový objekt nad něj. Vypnuto: původní tvar se offsetem nahradí." />
@@ -95,7 +95,7 @@
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children
                                  with infinite width, so TextWrapping never engages. -->
                             <DockPanel>
-                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.AccentText}" Margin="0,1,9,0" />
+                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.TextPrimary}" Margin="0,1,9,0" />
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">

@@ -50,7 +50,7 @@
                             <Border Width="36" Height="36" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}">
                                 <components:IconGlyph x:Name="StepIcon" IconData="{StaticResource Glyph.Info}"
                                                       Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
-                                                      Foreground="{StaticResource Brush.AccentText}" />
+                                                      Foreground="{StaticResource Brush.TextPrimary}" />
                             </Border>
                             <TextBlock x:Name="CounterText" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"
                                        FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"

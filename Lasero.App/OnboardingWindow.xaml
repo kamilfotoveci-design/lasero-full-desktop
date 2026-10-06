@@ -56,41 +56,41 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}">
+            <components:ElevatedBorder Grid.Column="0" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" />
+                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připojte gravírku" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vyberete port, Lasero rozpozná GRBL a načte pracovní plochu. Pro zkoušení lze použít virtuální stroj."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
                 </StackPanel>
-            </Border>
+            </components:ElevatedBorder>
 
-            <Border Grid.Column="2" Style="{StaticResource Card}">
+            <components:ElevatedBorder Grid.Column="2" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" />
+                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Vyberte materiál" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vzorník doporučí bezpečné výchozí hodnoty výkonu a rychlosti. Před ostrou prací je ověříte na odřezu."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
                 </StackPanel>
-            </Border>
+            </components:ElevatedBorder>
 
-            <Border Grid.Column="4" Style="{StaticResource Card}">
+            <components:ElevatedBorder Grid.Column="4" Style="{StaticResource Card}">
                 <StackPanel>
                     <Border Width="34" Height="34" CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" />
+                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" />
                     </Border>
                     <components:IconGlyph IconData="{StaticResource Glyph.Design}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Left" Foreground="{StaticResource Brush.TextPrimary}" />
                     <TextBlock Text="Připravte návrh" Style="{StaticResource PanelTitle}" Margin="0,14,0,8" />
                     <TextBlock Text="Vytvoříte nebo importujete grafiku, zkontrolujete oblast a před spuštěním uvidíte náhled celé práce."
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" LineHeight="20" />
                 </StackPanel>
-            </Border>
+            </components:ElevatedBorder>
 
             <Border Grid.Row="1" Grid.ColumnSpan="5" Background="{StaticResource Brush.InfoMuted}"
                     BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}"

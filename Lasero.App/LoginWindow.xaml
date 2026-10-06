@@ -56,7 +56,7 @@
 
         <Style x:Key="LoginTextField" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
-            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
             <Setter Property="Template" Value="{StaticResource LoginTextBoxTemplate}" />
         </Style>
         <Style x:Key="LoginEmailField" TargetType="TextBox" BasedOn="{StaticResource LoginTextField}">
@@ -75,7 +75,7 @@
         </Style>
         <Style x:Key="LoginPasswordField" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
             <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
-            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
             <Setter Property="Template" Value="{StaticResource LoginPasswordBoxTemplate}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding PasswordError, Converter={StaticResource NotNullToVisibility}}" Value="Visible">

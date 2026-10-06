@@ -36,7 +36,7 @@
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
             <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
             <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         </Style>
     </UserControl.Resources>
 

@@ -11,7 +11,7 @@
         <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
         <conv:UtcToLocalConverter x:Key="UtcToLocal" />
     </UserControl.Resources>
-    <Border Style="{StaticResource ThumbnailCard}" Padding="10" Cursor="Hand">
+    <components:ElevatedBorder Style="{StaticResource ThumbnailCard}" Padding="10" Cursor="Hand">
         <Border.InputBindings>
             <MouseBinding MouseAction="LeftClick" Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding}" />
         </Border.InputBindings>
@@ -32,5 +32,5 @@
             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding LastOpenedUtc, Converter={StaticResource UtcToLocal}, StringFormat='dd.MM.yyyy HH:mm'}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
         </StackPanel>
-    </Border>
+    </components:ElevatedBorder>
 </UserControl>

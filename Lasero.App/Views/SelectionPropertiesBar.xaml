@@ -87,7 +87,7 @@
                             <Trigger Property="IsSubmenuOpen" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                             </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />

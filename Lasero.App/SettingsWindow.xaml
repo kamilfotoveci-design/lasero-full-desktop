@@ -54,19 +54,25 @@
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <StackPanel Margin="0,0,10,0">
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Bezpečnost a pracovní postup" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Lock}" Tone="Orange" VerticalAlignment="Center" />
+                                    <TextBlock Text="Bezpečnost a pracovní postup" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <TextBlock Text="Doporučené volby chrání materiál i stroj před nechtěným spuštěním."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,16" />
                                 <CheckBox x:Name="RequireFramingToggle" Content="Před spuštěním vyžadovat kontrolu rámování" Margin="0,0,0,12" />
                                 <CheckBox x:Name="ConfirmResetToggle" Content="Potvrdit softwarový reset" Margin="0,0,0,12" />
                                 <CheckBox x:Name="ShowMachineStatusToggle" Content="Po připojení otevřít obrazovku zařízení" />
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource InspectorSection}">
+                        </components:ElevatedBorder>
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Úvod a tipy" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Help}" Tone="Indigo" VerticalAlignment="Center" />
+                                    <TextBlock Text="Úvod a tipy" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox x:Name="StartupAnimationToggle" Content="Úvodní animace při spuštění" Margin="0,0,0,12" />
                                 <TextBlock Text="Prohlídka aplikace a krátké tipy při první práci."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,12" />
@@ -84,10 +90,13 @@
                                 </StackPanel>
                                 <TextBlock x:Name="TipsResetText" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource InspectorSection}">
+                        </components:ElevatedBorder>
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Účet Lasero" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.User}" Tone="Blue" VerticalAlignment="Center" />
+                                    <TextBlock Text="Účet Lasero" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -112,12 +121,15 @@
                                     <components:IconLabel IconData="{StaticResource Glyph.User}" Text="Odhlásit se" />
                                 </Button>
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Výchozí zařízení" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Graphite" VerticalAlignment="Center" />
+                                    <TextBlock Text="Výchozí zařízení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <TextBlock Text="Tyto hodnoty Lasero předvyplní při příštím připojení."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,16" />
                                 <TextBlock Text="Sériový port" Style="{StaticResource Text.Muted}" />
@@ -156,10 +168,13 @@
                                     <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Znovu vyhledat porty" />
                                 </Button>
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource InspectorSection}" Visibility="Collapsed">
+                        </components:ElevatedBorder>
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}" Visibility="Collapsed">
                             <StackPanel>
-                                <TextBlock Text="Účet a synchronizace" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.CloudSync}" Tone="Blue" VerticalAlignment="Center" />
+                                    <TextBlock Text="Účet a synchronizace" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -224,7 +239,7 @@
                                     <components:IconLabel IconData="{StaticResource Glyph.User}" Text="Odhlásit se" />
                                 </Button>
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
                     </StackPanel>
                 </Grid>
             </StackPanel>

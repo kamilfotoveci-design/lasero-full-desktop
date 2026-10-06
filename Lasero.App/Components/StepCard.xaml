@@ -11,7 +11,7 @@
                     Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Center">
                 <TextBlock Text="{Binding StepNumber, ElementName=Root}"
                            FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
-                           Foreground="{StaticResource Brush.AccentText}"
+                           Foreground="{StaticResource Brush.TextPrimary}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold"

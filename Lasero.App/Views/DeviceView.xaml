@@ -26,7 +26,7 @@
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
             <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
             <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         </Style>
     </UserControl.Resources>
 
@@ -64,7 +64,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                    <components:ElevatedBorder Style="{StaticResource Card}" Margin="0,0,0,16"
                             Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="Stav stroje" Style="{StaticResource PanelTitle}" />
@@ -144,7 +144,7 @@
                                        Foreground="{DynamicResource Brush.Danger}" Margin="0,12,0,0"
                                        Visibility="{Binding MachineStatus.TriggeredPins, Converter={StaticResource NotNullToVisibility}}" />
                         </StackPanel>
-                    </Border>
+                    </components:ElevatedBorder>
 
                     <!--
                         The guided path first, the manual controls under it. The card states what the
@@ -178,7 +178,7 @@
                         </components:ProcessStatusCard.Meta>
                     </components:ProcessStatusCard>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <components:ElevatedBorder Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
@@ -221,7 +221,7 @@
                                     Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                                          Foreground="{StaticResource Brush.AccentText}" Margin="0,1,9,0" />
+                                                          Foreground="{StaticResource Brush.TextPrimary}" Margin="0,1,9,0" />
                                     <StackPanel>
                                         <TextBlock Text="Virtuální laser" FontWeight="SemiBold" />
                                         <TextBlock Text="Bezpečný testovací režim. Aplikace neotevře žádný fyzický port a laser se nemůže zapnout."
@@ -263,9 +263,9 @@
                             <TextBlock Text="{Binding Connection.IdentificationMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,0"
                                        Visibility="{Binding Connection.IdentificationMessage, Converter={StaticResource NotNullToVisibility}}" />
                         </StackPanel>
-                    </Border>
+                    </components:ElevatedBorder>
 
-                    <Border Style="{StaticResource Card}">
+                    <components:ElevatedBorder Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" />
                             <TextBlock Text="Rozměry se po připojení načtou přímo z nastavení GRBL ($130 a $131)."
@@ -282,11 +282,11 @@
                                  applied, not typed here. An empty box under the work area read as an
                                  unfinished setting the operator was expected to fill in. -->
                         </StackPanel>
-                    </Border>
+                    </components:ElevatedBorder>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <components:ElevatedBorder Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
                             <TextBlock Text="Ruční posun stroje" Style="{StaticResource PanelTitle}" />
                             <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
@@ -373,9 +373,9 @@
                             <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,12,0,0" />
                             </StackPanel>
                         </StackPanel>
-                    </Border>
+                    </components:ElevatedBorder>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                    <components:ElevatedBorder Style="{StaticResource Card}" Margin="0,0,0,16"
                             Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <Grid Margin="0,0,0,12">
@@ -450,9 +450,9 @@
                             <TextBlock Text="Spuštění, pozastavení a zastavení úlohy najdete vždy ve spodní liště."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </StackPanel>
-                    </Border>
+                    </components:ElevatedBorder>
 
-                    <Border Style="{StaticResource Card}"
+                    <components:ElevatedBorder Style="{StaticResource Card}"
                             Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <Expander IsExpanded="False">
                             <Expander.Header>
@@ -486,7 +486,7 @@
                             </Grid>
                         </Grid>
                         </Expander>
-                    </Border>
+                    </components:ElevatedBorder>
                 </StackPanel>
             </Grid>
         </StackPanel>

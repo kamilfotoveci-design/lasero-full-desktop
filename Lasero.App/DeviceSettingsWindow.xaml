@@ -46,7 +46,7 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-                                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
@@ -132,9 +132,12 @@
                         <TextBlock Text="Pracovní plocha se po připojení načte z GRBL parametrů $130 a $131. Hodnoty zde můžete opravit a uložit jako výchozí."
                                    Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left" Margin="0,5,0,20" />
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Frame}" Tone="Blue" VerticalAlignment="Center" />
+                                    <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -149,11 +152,14 @@
                                 <TextBlock Text="Souřadnice a rozměry v celé aplikaci používají milimetry."
                                            Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Laserový profil" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Zap}" Tone="Orange" VerticalAlignment="Center" />
+                                    <TextBlock Text="Laserový profil" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -177,7 +183,7 @@
                                 <TextBlock Text="Profil filtruje doporučené parametry ve vzorníku materiálů."
                                            Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -188,9 +194,12 @@
                         <TextBlock Text="Výchozí vzdálenosti a rychlosti pro ruční ovládání stroje."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Osy X a Y" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Origin}" Tone="Graphite" VerticalAlignment="Center" />
+                                    <TextBlock Text="Osy X a Y" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -203,11 +212,14 @@
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Osa Z" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.MachineHome}" Tone="Graphite" VerticalAlignment="Center" />
+                                    <TextBlock Text="Osa Z" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox Content="Povolit ruční ovládání osy Z" IsChecked="{Binding Draft.EnableZAxis}" Margin="0,0,0,10" />
                                 <CheckBox Content="Obrátit směr osy Z" IsChecked="{Binding Draft.InvertZAxis}" Margin="0,0,0,14"
                                           IsEnabled="{Binding Draft.EnableZAxis}" />
@@ -223,7 +235,7 @@
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -234,9 +246,12 @@
                         <TextBlock Text="Komunikační parametry se použijí při příštím připojení zařízení."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Sériové připojení" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Connect}" Tone="Teal" VerticalAlignment="Center" />
+                                    <TextBlock Text="Sériové připojení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid IsEnabled="{Binding ViewModel.Connection.IsConnected, Converter={StaticResource InverseBool}}">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -259,11 +274,14 @@
                                 <TextBlock Text="Připojené zařízení nejdříve odpojte, pokud chcete změnit port nebo rychlost."
                                            Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Zjištěné zařízení" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" VerticalAlignment="Center" />
+                                    <TextBlock Text="Zjištěné zařízení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="Stav" Style="{StaticResource Text.Muted}" />
@@ -280,7 +298,7 @@
                                     <TextBlock Grid.Column="1" Text="{Binding ViewModel.Connection.FirmwareBanner}" TextWrapping="Wrap" />
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -291,9 +309,12 @@
                         <TextBlock Text="Kontroly, které pomáhají zabránit nechtěnému pohybu nebo spuštění laseru."
                                    Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
 
-                        <Border Style="{StaticResource InspectorSection}">
+                        <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Před spuštěním" Style="{StaticResource PanelTitle}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <components:IconTile IconData="{StaticResource Glyph.Play}" Tone="Orange" VerticalAlignment="Center" />
+                                    <TextBlock Text="Před spuštěním" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox Content="Vyžadovat kontrolu oblasti rámováním"
                                           IsChecked="{Binding Draft.RequireFramingBeforeStart}" Margin="0,0,0,12" />
                                 <CheckBox Content="Potvrdit softwarový reset stroje"
@@ -301,7 +322,7 @@
                                 <CheckBox Content="Po připojení otevřít obrazovku zařízení"
                                           IsChecked="{Binding Draft.ShowMachineStatusAfterConnect}" />
                             </StackPanel>
-                        </Border>
+                        </components:ElevatedBorder>
 
                         <Border Background="{StaticResource Brush.Field}"
                                 BorderBrush="{StaticResource Brush.PanelBorder}"

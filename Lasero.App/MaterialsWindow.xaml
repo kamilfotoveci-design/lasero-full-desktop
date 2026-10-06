@@ -81,7 +81,7 @@
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                                 <Setter TargetName="TabIndicator" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
@@ -191,7 +191,7 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Border Style="{StaticResource Card}" Padding="14,10,6,2">
+                    <components:ElevatedBorder Style="{StaticResource Card}" Padding="14,10,6,2">
                         <WrapPanel>
                             <StackPanel Width="174" Margin="0,0,8,8">
                                 <TextBlock Text="Typ laseru" Style="{StaticResource FieldLabel}" />
@@ -231,7 +231,7 @@
                                          MaxLength="12" AutomationProperties.Name="Text gravírovaného náhledu" />
                             </StackPanel>
                         </WrapPanel>
-                    </Border>
+                    </components:ElevatedBorder>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
@@ -259,7 +259,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Width="360" Style="{StaticResource Card}" Padding="0" Margin="0,0,12,12">
+                                            <components:ElevatedBorder Width="360" Style="{StaticResource Card}" Padding="0" Margin="0,0,12,12">
                                                 <Grid>
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto" />
@@ -267,10 +267,13 @@
                                                         <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
                                                     <Border Padding="14,12" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                                                        <StackPanel>
-                                                            <TextBlock Text="{Binding Material.Name}" FontWeight="SemiBold" />
-                                                            <TextBlock Text="{Binding Material.Description}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                                        </StackPanel>
+                                                        <DockPanel>
+                                                            <components:IconTile DockPanel.Dock="Left" IconData="{StaticResource Glyph.Materials}" Tone="{Binding Tone}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Material.Name}" FontWeight="SemiBold" />
+                                                                <TextBlock Text="{Binding Material.Description}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                        </DockPanel>
                                                     </Border>
                                                     <Grid Grid.Row="1" Margin="10,12,12,8">
                                                         <Grid.ColumnDefinitions>
@@ -344,14 +347,14 @@
                                                         </Grid>
                                                     </Border>
                                                 </Grid>
-                                            </Border>
+                                            </components:ElevatedBorder>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
                         </Grid>
 
-                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="18">
+                        <components:ElevatedBorder Grid.Column="2" Style="{StaticResource Card}" Padding="18">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -375,7 +378,7 @@
                                             <Run Text="{Binding SelectedRecipe.PowerWatts, Mode=OneWay}" /><Run Text=" W  ·  " />
                                             <Run Text="{Binding SelectedRecipe.OperationName, Mode=OneWay}" />
                                         </TextBlock>
-                                        <Border Style="{StaticResource InspectorSection}" Margin="0,0,0,10">
+                                        <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Margin="0,0,0,10">
                                             <StackPanel>
                                                 <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" />
                                                 <TextBlock Text="{Binding SelectedRecipe.SpeedMmPerMinute, StringFormat={}{0:0} mm/min}"
@@ -387,11 +390,11 @@
                                                 <TextBlock Text="{Binding SelectedRecipe.Passes, StringFormat={}{0}×}"
                                                            FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,3,0,0" />
                                             </StackPanel>
-                                        </Border>
-                                        <Border Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
+                                        </components:ElevatedBorder>
+                                        <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
                                                 Visibility="{Binding HasSelectedWarning, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="{Binding SelectedRecipe.Warning}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                                        </Border>
+                                        </components:ElevatedBorder>
                                     </StackPanel>
                                 </ScrollViewer>
                                 <StackPanel Grid.Row="1" Margin="0,14,0,0"
@@ -408,7 +411,7 @@
                                     </Button>
                                 </StackPanel>
                             </Grid>
-                        </Border>
+                        </components:ElevatedBorder>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -429,7 +432,7 @@
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <!-- Empty state: one primary action and an example so the row layout is not a surprise. -->
-                            <Border Style="{StaticResource InspectorSection}" Padding="24,20"
+                            <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Padding="24,20"
                                     Visibility="{Binding HasPresets, Converter={StaticResource InverseBoolToVisibility}}">
                                 <StackPanel HorizontalAlignment="Center" MaxWidth="560">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
@@ -450,7 +453,7 @@
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
-                            </Border>
+                            </components:ElevatedBorder>
 
                             <ItemsControl x:Name="RecipeList" ItemsSource="{Binding Presets}" KeyboardNavigation.TabNavigation="Continue">
                                 <ItemsControl.ItemTemplate>

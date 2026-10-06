@@ -13,6 +13,21 @@ public sealed partial class MaterialSwatchCardViewModel : ObservableObject
     private static readonly double[] SpeedFactors = [2.0, 1.25, 0.70, 0.35];
 
     public MaterialDefinition Material { get; }
+
+    /// <summary>Identification tile colour for this material category (Apple Settings style).</summary>
+    public Lasero.App.Components.TileTone Tone => ToneFor(Material.Id);
+
+    public static Lasero.App.Components.TileTone ToneFor(string materialId) => materialId switch
+    {
+        "wood" => Lasero.App.Components.TileTone.Orange,
+        "plywood" or "mdf" => Lasero.App.Components.TileTone.Amber,
+        "acrylic" => Lasero.App.Components.TileTone.Blue,
+        "glass" => Lasero.App.Components.TileTone.Teal,
+        "leather" => Lasero.App.Components.TileTone.Brown,
+        "anodized" or "metal" => Lasero.App.Components.TileTone.Steel,
+        "slate" or "rubber" => Lasero.App.Components.TileTone.Graphite,
+        _ => Lasero.App.Components.TileTone.Gray,
+    };
     public IReadOnlyList<int> Powers { get; } = [30, 55, 80, 100];
     public IReadOnlyList<double> Speeds { get; }
     public ObservableCollection<MaterialSwatchCellViewModel> Cells { get; }

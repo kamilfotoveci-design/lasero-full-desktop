@@ -9,12 +9,12 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     </UserControl.Resources>
-    <Border Style="{StaticResource Card}">
+    <components:ElevatedBorder Style="{StaticResource Card}">
         <StackPanel>
             <Grid Margin="0,0,0,14">
                 <StackPanel Orientation="Horizontal">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
-                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" />
+                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" VerticalAlignment="Center" />
                 </StackPanel>
                 <components:StatusBadge Grid.Column="1" HorizontalAlignment="Right"
                                         StatusText="{Binding StatusText, ElementName=Root}">
@@ -57,5 +57,5 @@
                 <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Otevřít návrh" Foreground="White" />
             </Button>
         </StackPanel>
-    </Border>
+    </components:ElevatedBorder>
 </UserControl>
