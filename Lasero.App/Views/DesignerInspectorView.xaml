@@ -7,7 +7,7 @@
              xmlns:components="clr-namespace:Lasero.App.Components"
              xmlns:views="clr-namespace:Lasero.App.Views"
              xmlns:layers="clr-namespace:Lasero.Core.Layers;assembly=Lasero.Core"
-             MinWidth="320">
+             MinWidth="340">
     <!--
         The Designer inspector, in three sections down one flat column:
 

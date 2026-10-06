@@ -709,11 +709,11 @@ public partial class MainWindow : Window
         NavColumn.Width = new GridLength(NavigationRailWidth);
     }
 
-    private const double NavigationRailWidth = 164;
+    private const double NavigationRailWidth = 184;
 
     /// <summary>Matches DesignerToolRail's own Width. The rail is a fixed strip, not a resizable
     /// panel, so the number lives in exactly these two places and nowhere else.</summary>
-    private const double DesignerRailWidth = 56;
+    private const double DesignerRailWidth = 64;
 
     private void OnInspectorSplitterDragCompleted(object sender, DragCompletedEventArgs e)
     {

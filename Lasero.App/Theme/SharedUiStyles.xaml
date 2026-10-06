@@ -7,7 +7,7 @@
          caption text. Reserve the muted tone for genuinely secondary content; a nav item that's merely
          "not currently selected" should not read as if it were disabled. -->
     <Style x:Key="NavButton" TargetType="Button">
-        <Setter Property="Height" Value="36" />
+        <Setter Property="Height" Value="44" />
         <Setter Property="Margin" Value="0,1,0,1" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -97,6 +97,15 @@
         <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
     </Style>
 
+    <!-- A screen section heading (Home: "Pokračovat v práci"). Larger than a card title so the page has
+         three clear levels: page title, section, card. -->
+    <Style x:Key="SectionHeading" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Heading}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Margin" Value="0,16,0,16" />
+    </Style>
     <Style x:Key="PanelTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
@@ -183,6 +192,12 @@
         <Setter Property="Padding" Value="20" />
     </Style>
 
+    <!-- An empty state: lighter than the primary actions. No fill, no shadow, a firmer hairline. -->
+    <Style x:Key="Card.Empty" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorderStrong}" />
+    </Style>
+
     <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
         <Setter Property="Padding" Value="18,16" />
         <Setter Property="MinHeight" Value="102" />
@@ -191,8 +206,8 @@
     <Style x:Key="PageTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Title}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="LineHeight" Value="28" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LineHeight" Value="38" />
     </Style>
 
     <Style x:Key="PageSubtitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
@@ -338,6 +353,15 @@
 
     <Style x:Key="ThumbnailCard" TargetType="Border" BasedOn="{StaticResource Card}">
         <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- A card that opens something: on hover it lifts 1px (ProjectCard) and its shadow deepens. -->
+    <Style x:Key="ThumbnailCard.Clickable" TargetType="components:ElevatedBorder" BasedOn="{StaticResource ThumbnailCard}">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Elevation" Value="Raised" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ===================== Numeric field with an integrated unit ===================== -->

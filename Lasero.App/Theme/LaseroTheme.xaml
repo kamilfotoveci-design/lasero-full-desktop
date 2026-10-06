@@ -175,7 +175,7 @@
     <!-- Text -->
     <SolidColorBrush x:Key="Brush.TextPrimary" Color="#1D1D1F" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6E6E73" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#747478" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#6E6E73" po:Freeze="False" />
 
     <!-- Disabled -->
     <SolidColorBrush x:Key="Brush.DisabledSurface" Color="#EDEDF0" po:Freeze="False" />
@@ -254,11 +254,22 @@
     <Duration x:Key="Motion.Fast">0:0:0.11</Duration>
     <Duration x:Key="Motion.Base">0:0:0.17</Duration>
     <Duration x:Key="Motion.Spatial">0:0:0.26</Duration>
+    <!-- Interaction feedback (2026-10). Hover wash fades over Hover, a press scales to 0.97 over Press and
+         springs back over Release with a slight overshoot (Ease.Release), a check or tab indicator
+         animates over Toggle, a popup opens over Popup and a dialog over Dialog. All are zeroed together
+         by UiAccessibility when Windows animations are off. Only Opacity and RenderTransform animate. -->
+    <Duration x:Key="Motion.Hover">0:0:0.12</Duration>
+    <Duration x:Key="Motion.Press">0:0:0.09</Duration>
+    <Duration x:Key="Motion.Release">0:0:0.20</Duration>
+    <Duration x:Key="Motion.Toggle">0:0:0.15</Duration>
+    <Duration x:Key="Motion.Popup">0:0:0.12</Duration>
+    <Duration x:Key="Motion.Dialog">0:0:0.16</Duration>
     <!-- Dialogs and the largest sheet-style overlays only - not ordinary hover/press motion. -->
     <Duration x:Key="Motion.Panel">0:0:0.34</Duration>
     <!-- AutoReverse makes the complete breathe cycle 3.2 s. Use only for real activity. -->
     <Duration x:Key="Motion.Breathe">0:0:1.6</Duration>
     <CubicEase x:Key="Ease.Out" EasingMode="EaseOut" />
+    <BackEase x:Key="Ease.Release" EasingMode="EaseOut" Amplitude="0.35" />
     <!-- One dimming level for disabled glyph-only and composite controls (filled buttons use the flat
          disabled surface instead). Two values, 0.4 and 0.45, had crept in side by side. -->
     <system:Double x:Key="Opacity.Disabled">0.45</system:Double>
@@ -276,12 +287,21 @@
     -->
     <!-- Specimen size. The font preview is there to be judged as a shape, not read as body copy. -->
     <system:Double x:Key="Size.Text.Preview">30</system:Double>
-    <system:Double x:Key="Size.Text.Title">24</system:Double>
-    <system:Double x:Key="Size.Text.Section">16</system:Double>
-    <system:Double x:Key="Size.Text.Body">13</system:Double>
-    <system:Double x:Key="Size.Text.Meta">12</system:Double>
+    <!-- 2026-10 raise (owner: "the letters are terribly small"). One scale, one place:
+         Title    page title, Bold
+         Heading  section headings on a screen, SemiBold
+         Section  card and panel titles, SemiBold
+         Body     default text, controls and buttons
+         Meta     secondary and help text, field labels (never below this for reading text)
+         Caption  status strip, tooltips, rulers and badges - the one step below Meta -->
+    <system:Double x:Key="Size.Text.Title">30</system:Double>
+    <system:Double x:Key="Size.Text.Heading">21</system:Double>
+    <system:Double x:Key="Size.Text.Section">17</system:Double>
+    <system:Double x:Key="Size.Text.Body">15</system:Double>
+    <system:Double x:Key="Size.Text.Meta">14</system:Double>
+    <system:Double x:Key="Size.Text.Caption">13</system:Double>
     <!-- Explanatory empty-state sentences: larger than body so a first-time owner reads them without effort. -->
-    <system:Double x:Key="Size.Text.Explain">14</system:Double>
+    <system:Double x:Key="Size.Text.Explain">15</system:Double>
 
     <!--
         KAMIL reading sizes. The assistant is read, not scanned, and its reader may be a first-time
@@ -320,10 +340,13 @@
          said 1.8, so the shipped icons and the design assets were never quite the same weight. -->
     <system:Double x:Key="Size.Icon.Stroke">1.75</system:Double>
 
-    <system:Double x:Key="Size.Control.Compact">32</system:Double>
-    <system:Double x:Key="Size.Control.Base">36</system:Double>
-    <system:Double x:Key="Size.Control.Primary">38</system:Double>
-    <system:Double x:Key="Size.Control.Large">44</system:Double>
+    <system:Double x:Key="Size.Control.Compact">36</system:Double>
+    <system:Double x:Key="Size.Control.Base">40</system:Double>
+    <system:Double x:Key="Size.Control.Primary">44</system:Double>
+    <system:Double x:Key="Size.Control.Large">48</system:Double>
+    <!-- Rail tool buttons, list rows and other repeated hit targets: 44, the touch minimum. -->
+    <system:Double x:Key="Size.Control.Rail">44</system:Double>
+    <system:Double x:Key="Size.Control.Row">40</system:Double>
 
     <!--
         Editor chrome geometry. The button is exactly tall enough for an 18px glyph over a caption at
@@ -341,9 +364,12 @@
         imported display face at small WPF sizes. Neue Montreal remains available as a design asset,
         but is not forced onto every control until its WPF rasterization is separately validated.
     -->
-    <FontFamily x:Key="Font.Ui">Segoe UI Variable Text, Segoe UI</FontFamily>
-    <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
-    <FontFamily x:Key="Font.Numeric">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <!-- Inter, bundled as Resources (SIL OFL, Assets/Fonts/Inter-LICENSE.txt): Regular, Medium, SemiBold and
+         Bold static files, so every weight is a real face rather than a synthesised bold. It is not a
+         Windows font, so a bare family name would silently fall back to Segoe: always go through these keys. -->
+    <FontFamily x:Key="Font.Ui">pack://application:,,,/Lasero.App;component/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Display">pack://application:,,,/Lasero.App;component/Assets/Fonts/#Inter, Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Numeric">pack://application:,,,/Lasero.App;component/Assets/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
     <!-- Genuinely fixed-pitch content only: the GRBL console and raw G-code, where column position
          carries meaning. Not for ordinary numeric fields. -->
     <FontFamily x:Key="Font.Mono">Cascadia Mono,Consolas,Courier New</FontFamily>
@@ -485,7 +511,7 @@
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
-        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -537,14 +563,14 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -554,17 +580,17 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0.08" Duration="{StaticResource Motion.VeryFast}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.975" Duration="{StaticResource Motion.VeryFast}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.975" Duration="{StaticResource Motion.VeryFast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="{StaticResource Motion.Press}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="{StaticResource Motion.Press}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Release}" EasingFunction="{StaticResource Ease.Release}" />
+                                        <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Release}" EasingFunction="{StaticResource Ease.Release}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -683,9 +709,9 @@
          intentionally 32px for inline/title-bar actions; Tool gives the canvas chrome a little more
          hit area without turning it into a stack of cards. -->
     <Style x:Key="Button.Tool" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-        <Setter Property="Width" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Rail}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Rail}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Rail}" />
         <Setter Property="Padding" Value="8" />
         <Setter Property="Margin" Value="0,1" />
     </Style>
@@ -719,14 +745,14 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -770,14 +796,14 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.05" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Hover}" EasingFunction="{StaticResource Ease.Out}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -987,7 +1013,9 @@
                                   StrokeThickness="2.6"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                                   Stretch="Uniform" Margin="3.5"
-                                  Opacity="0" />
+                                  Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                    <Path.RenderTransform><ScaleTransform x:Name="CheckScale" /></Path.RenderTransform>
+                                </Path>
                             </Border>
                         </Grid>
                         <ContentPresenter x:Name="Label" Margin="8,0,0,0"
@@ -1003,6 +1031,26 @@
                             <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}" />
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                             <Setter TargetName="Tick" Property="Opacity" Value="1" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity" From="0" To="1"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" />
+                                        <DoubleAnimation Storyboard.TargetName="CheckScale" Storyboard.TargetProperty="ScaleX" From="0.6" To="1"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Release}" />
+                                        <DoubleAnimation Storyboard.TargetName="CheckScale" Storyboard.TargetProperty="ScaleY" From="0.6" To="1"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Release}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity" From="1" To="0"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
@@ -1107,6 +1155,30 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
         <Setter Property="Padding" Value="2" />
     </Style>
+
+    <!-- A popup, menu or dropdown surface opens with a 120 ms fade and a 4px slide up. Opacity and a
+         RenderTransform only: nothing here changes layout. Applied by key to the three popup surfaces. -->
+    <Style x:Key="PopupOpen" TargetType="Border">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <TranslateTransform Y="4" />
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1"
+                                         Duration="{StaticResource Motion.Popup}" EasingFunction="{StaticResource Ease.Out}" />
+                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="4" To="0"
+                                         Duration="{StaticResource Motion.Popup}" EasingFunction="{StaticResource Ease.Out}" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Style.Triggers>
+    </Style>
+
 
     <!-- ===================== Inputs ===================== -->
 
@@ -1232,7 +1304,7 @@
                                           ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <Popup x:Name="Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Dropdown}">
+                            <Border Style="{StaticResource PopupOpen}" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="240" Effect="{StaticResource Shadow.Dropdown}">
                                 <ScrollViewer Margin="4">
                                     <ItemsPresenter />
                                 </ScrollViewer>
@@ -1372,7 +1444,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{DynamicResource Brush.Panel}"
+                    <Border Style="{StaticResource PopupOpen}" Background="{DynamicResource Brush.Panel}"
                             BorderBrush="{DynamicResource Brush.PanelBorder}"
                             BorderThickness="1"
                             CornerRadius="{StaticResource Radius.Lg}"
@@ -1400,7 +1472,7 @@
                         </Border>
                         <Popup x:Name="Popup" Placement="Bottom" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                                AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="4" Effect="{StaticResource Shadow.Dropdown}" MinWidth="180">
+                            <Border Style="{StaticResource PopupOpen}" Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="4" Effect="{StaticResource Shadow.Dropdown}" MinWidth="180">
                                 <StackPanel IsItemsHost="True" />
                             </Border>
                         </Popup>

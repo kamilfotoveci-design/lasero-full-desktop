@@ -41,7 +41,7 @@ public sealed class WorkspacePreferences
     /// default) or replace the original. Remembered from the last time the dialog was applied.</summary>
     public bool OffsetKeepOriginal { get; set; } = true;
 
-    public const double DefaultInspectorWidth = 320;
+    public const double DefaultInspectorWidth = 360;
     public const double DefaultAssistantWidth = 420;
     public const double DefaultAssistantHeight = 560;
     public const double MinAssistantWidth = 320;
@@ -53,7 +53,7 @@ public sealed class WorkspacePreferences
     /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than
     /// the column holding it, and a Grid does not shrink a child below its MinWidth — so the extra
     /// 40px hung off the right edge of the window and the value fields were cut in half.</summary>
-    public const double MinInspectorWidth = 320;
+    public const double MinInspectorWidth = 340;
     public const double MaxInspectorWidth = 560;
 
     public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)

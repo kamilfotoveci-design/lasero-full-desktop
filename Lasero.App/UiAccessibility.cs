@@ -15,5 +15,11 @@ public static class UiAccessibility
         Application.Current.Resources["Motion.Base"] = new Duration(TimeSpan.Zero);
         Application.Current.Resources["Motion.Spatial"] = new Duration(TimeSpan.Zero);
         Application.Current.Resources["Motion.Panel"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Hover"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Press"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Release"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Toggle"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Popup"] = new Duration(TimeSpan.Zero);
+        Application.Current.Resources["Motion.Dialog"] = new Duration(TimeSpan.Zero);
     }
 }

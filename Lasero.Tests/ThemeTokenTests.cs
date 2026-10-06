@@ -153,7 +153,7 @@ public sealed class ThemeTokenTests
         var settings = File.ReadAllText(Path.Combine(root, "Lasero.App", "AppSettingsStore.cs"));
         var theme = File.ReadAllText(ThemePath("LaseroTheme.xaml"));
 
-        Assert.Contains("x:Name=\"NavColumn\" Width=\"164\"", window, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"NavColumn\" Width=\"184\"", window, StringComparison.Ordinal);
         Assert.DoesNotContain("IsNavCollapsed", window + windowCode + viewModel + settings, StringComparison.Ordinal);
         Assert.DoesNotContain("ToggleNavCommand", window + viewModel, StringComparison.Ordinal);
         Assert.DoesNotContain("Button.RailHandle", window + theme, StringComparison.Ordinal);
@@ -196,10 +196,10 @@ public sealed class ThemeTokenTests
         Assert.Contains("x:Key=\"Motion.Spatial\">0:0:0.26", theme, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"Motion.Panel\">0:0:0.34", theme, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"Motion.Breathe\">0:0:1.6", theme, StringComparison.Ordinal);
-        Assert.Contains("To=\"0.975\"", theme, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.97\"", theme, StringComparison.Ordinal);
         Assert.DoesNotContain("To=\"0.96\" Duration=\"0:0:0.05\"", theme, StringComparison.Ordinal);
 
-        foreach (var key in new[] { "Motion.VeryFast", "Motion.Fast", "Motion.Base", "Motion.Spatial", "Motion.Panel" })
+        foreach (var key in new[] { "Motion.VeryFast", "Motion.Fast", "Motion.Base", "Motion.Spatial", "Motion.Panel", "Motion.Hover", "Motion.Press", "Motion.Release", "Motion.Toggle", "Motion.Popup", "Motion.Dialog" })
             Assert.Contains($"Resources[\"{key}\"] = new Duration(TimeSpan.Zero)", accessibility, StringComparison.Ordinal);
     }
 

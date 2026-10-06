@@ -284,10 +284,10 @@
                 persisted width.
             -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="NavColumn" Width="164" />
+                <ColumnDefinition x:Name="NavColumn" Width="184" />
                 <ColumnDefinition Width="*" MinWidth="420" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition x:Name="InspectorColumn" Width="320" MinWidth="320" MaxWidth="560" />
+                <ColumnDefinition x:Name="InspectorColumn" Width="360" MinWidth="340" MaxWidth="560" />
             </Grid.ColumnDefinitions>
 
             <!--
@@ -306,7 +306,7 @@
                  place has to set the column width — and a column and a binding disagreeing about who
                  owns the rail is how the canvas ends up 108px short of the window. -->
             <Grid x:Name="NavRailHost" Grid.Column="0" HorizontalAlignment="Left" Panel.ZIndex="10">
-            <Border x:Name="NavRail" Width="164"
+            <Border x:Name="NavRail" Width="184"
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0" CornerRadius="0"

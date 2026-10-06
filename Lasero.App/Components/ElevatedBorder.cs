@@ -10,6 +10,8 @@ public enum ElevationLevel
     None,
     /// <summary>A card on the canvas: contact shadow plus soft ambient shadow.</summary>
     Card,
+    /// <summary>A clickable card under the pointer: the same shadow, deeper.</summary>
+    Raised,
 }
 
 /// <summary>
@@ -41,11 +43,13 @@ public class ElevatedBorder : Border
 
     protected override void OnRender(DrawingContext dc)
     {
-        if (Elevation == ElevationLevel.Card && ActualWidth > 0 && ActualHeight > 0)
+        if (Elevation != ElevationLevel.None && ActualWidth > 0 && ActualHeight > 0)
         {
             var radius = CornerRadius.TopLeft;
+            var raised = Elevation == ElevationLevel.Raised;
             foreach (var layer in ElevationTokens.CardLayers())
-                ShadowPainter.Draw(dc, new Size(ActualWidth, ActualHeight), radius, layer);
+                ShadowPainter.Draw(dc, new Size(ActualWidth, ActualHeight), radius,
+                    raised ? layer with { Opacity = layer.Opacity * 1.8, OffsetY = layer.OffsetY + 1 } : layer);
         }
 
         base.OnRender(dc);
