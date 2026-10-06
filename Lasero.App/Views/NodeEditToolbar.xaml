@@ -74,9 +74,12 @@
             CornerRadius="{StaticResource Radius.Md}" Padding="12,7"
             Effect="{StaticResource Shadow.Sheet}">
         <StackPanel Orientation="Horizontal">
-            <TextBlock Text="Úprava uzlů" Style="{StaticResource Text.Muted}"
-                       FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium"
-                       VerticalAlignment="Center" Margin="0,0,10,0" />
+            <Button Style="{StaticResource Button.Ghost}" Padding="8,0" Height="{StaticResource Size.Control.Compact}"
+                    Click="OnFinishNodeEditClick" AutomationProperties.Name="Dokončit úpravu uzlů"
+                    ToolTip="Ukončí úpravu uzlů. Stejnou akci provede Enter nebo Esc."
+                    Margin="0,0,4,0">
+                <TextBlock Text="Hotovo" VerticalAlignment="Center" />
+            </Button>
 
             <!-- Always-visible core: selection utilities -->
             <Button Style="{StaticResource Button.Ghost}" Padding="8,0" Height="{StaticResource Size.Control.Compact}"

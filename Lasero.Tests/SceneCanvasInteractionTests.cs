@@ -5,6 +5,20 @@ namespace Lasero.Tests;
 public sealed class SceneCanvasInteractionTests
 {
     [Fact]
+    public void NodeEditToolbarHasVisibleExitActionUsingCanvasCleanup()
+    {
+        var root = FindRepositoryRoot();
+        var toolbar = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "NodeEditToolbar.xaml"));
+        var handler = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "NodeEditToolbar.xaml.cs"));
+        var canvas = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.VectorPathTool.cs"));
+
+        Assert.Contains("Text=\"Hotovo\"", toolbar, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnFinishNodeEditClick\"", toolbar, StringComparison.Ordinal);
+        Assert.Contains("TargetCanvas?.FinishNodeEditMode()", handler, StringComparison.Ordinal);
+        Assert.Contains("public void FinishNodeEditMode() => ExitNodeEditMode();", canvas, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NodeDragCancelsOnLostCaptureAndOwnerWindowDeactivation()
     {
         var root = FindRepositoryRoot();

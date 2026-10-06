@@ -160,7 +160,9 @@ public sealed class JobCancellationSafetyTests
         using var transport = new CancellationTransport { AutoRespond = true, AutoBusy = true, OnlyHold = true };
         using var connection = new GrblConnection(transport);
         connection.Connect("COM1");
-        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromMilliseconds(800) };
+        // This test checks pause/final-drain ordering, not the silence deadline. Leave scheduling
+        // headroom when the release packager compresses large native dependencies concurrently.
+        var runner = new GCodeJobRunner(connection) { StatusSilenceTimeout = TimeSpan.FromSeconds(3) };
         transport.BeforeStatusResponse = runner.Pause;
         var run = runner.RunAsync(["G1 X1"]);
         await transport.FiveStatuses.Task.WaitAsync(TimeSpan.FromSeconds(3));

@@ -85,7 +85,7 @@ public partial class GCodeViewModel : ObservableObject
     [ObservableProperty] private JobOriginAnchor _originAnchor = JobOriginAnchor.TopLeft;
     [ObservableProperty] private double _placementReferenceX;
     [ObservableProperty] private double _placementReferenceY;
-    [ObservableProperty] private string _placementLabel = "0,0 odpovídá pracovní nule stroje";
+    [ObservableProperty] private string _placementLabel = "Bod 0,0 návrhu je na nastaveném začátku práce stroje";
 
     [ObservableProperty] private TimeSpan _estimatedDuration;
     [ObservableProperty] private TimeSpan _elapsedDuration;
@@ -599,7 +599,7 @@ public partial class GCodeViewModel : ObservableObject
         PlacementChanged?.Invoke();
         LastMessage = value == JobPlacementMode.CurrentPosition
             ? "Úloha začne v aktuální poloze laseru. Polohu můžete změnit šipkami před rámováním nebo spuštěním."
-            : "Úloha používá absolutní souřadnice návrhu. Bod 0,0 odpovídá pracovní nule stroje.";
+            : "Úloha se umístí podle souřadnic návrhu. Bod 0,0 leží na nastaveném začátku práce stroje.";
     }
 
     partial void OnOriginAnchorChanged(JobOriginAnchor value)
@@ -615,7 +615,7 @@ public partial class GCodeViewModel : ObservableObject
     {
         PlacementLabel = PlacementMode switch
         {
-            JobPlacementMode.AbsoluteCoordinates => "0,0 odpovídá pracovní nule stroje",
+            JobPlacementMode.AbsoluteCoordinates => "Bod 0,0 návrhu je na nastaveném začátku práce stroje",
             JobPlacementMode.CurrentPosition when _connection.LastStatus is null =>
                 "Připojte zařízení pro načtení aktuální polohy",
             _ => $"{OriginAnchorLabel(OriginAnchor)}: X {PlacementReferenceX:0.###} · Y {PlacementReferenceY:0.###} mm",

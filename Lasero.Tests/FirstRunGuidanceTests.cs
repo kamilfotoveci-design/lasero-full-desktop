@@ -335,8 +335,19 @@ public sealed class FirstRunGuidanceTests : IDisposable
 
     // ------------------------------------------------------------------ start summary
 
+    [Fact]
+    public void DefaultPlacementExplainsMachineOriginWithoutControllerJargon()
+    {
+        using var machine = new GrblConnection(new VirtualGrblTransport { ResponseDelay = TimeSpan.Zero });
+        var gcode = new GCodeViewModel(machine, new SceneViewModel(),
+            new AppSettingsStore(Path.Combine(_directory, "origin-label.json")));
+
+        Assert.Contains("nastaveném začátku práce stroje", gcode.PlacementLabel, StringComparison.Ordinal);
+        Assert.DoesNotContain("pracovní nule", gcode.PlacementLabel, StringComparison.Ordinal);
+    }
+
     private static StartSummaryInput Summary(bool simulator = false, bool framed = true, string? port = "COM3") =>
-        new("Návrh na plátně", 80, 45.5, "xTool S1", port, simulator, "0,0 odpovídá pracovní nule stroje",
+        new("Návrh na plátně", 80, 45.5, "xTool S1", port, simulator, "Bod 0,0 návrhu je na nastaveném začátku práce stroje",
             "Výkon: 40 %", "12:30", framed);
 
     [Fact]

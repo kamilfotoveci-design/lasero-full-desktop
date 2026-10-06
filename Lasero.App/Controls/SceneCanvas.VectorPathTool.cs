@@ -299,6 +299,9 @@ public partial class SceneCanvas
         RedrawSelectionOverlay();
     }
 
+    /// <summary>Visible toolbar exit uses the same cancellation and cleanup as Enter/Escape.</summary>
+    public void FinishNodeEditMode() => ExitNodeEditMode();
+
     private void ExitNodeEditMode()
     {
         if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)

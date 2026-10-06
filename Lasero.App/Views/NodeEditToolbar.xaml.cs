@@ -27,6 +27,8 @@ public partial class NodeEditToolbar : UserControl
         InitializeComponent();
     }
 
+    private void OnFinishNodeEditClick(object sender, RoutedEventArgs e) => TargetCanvas?.FinishNodeEditMode();
+
     private void OnCornerClick(object sender, RoutedEventArgs e) => TargetCanvas?.ConvertSelectedNodes(VectorNodeType.Corner);
 
     private void OnSmoothClick(object sender, RoutedEventArgs e) => TargetCanvas?.ConvertSelectedNodes(VectorNodeType.Smooth);
