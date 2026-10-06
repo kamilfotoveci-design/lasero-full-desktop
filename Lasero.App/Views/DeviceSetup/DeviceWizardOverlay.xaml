@@ -191,33 +191,19 @@
                                  existing manual controls — no second connection path. -->
                             <ToggleButton x:Name="ManualToggle" Style="{StaticResource ToggleButton.Link}"
                                           HorizontalAlignment="Center" Margin="0,22,0,0"
-                                          automation:AutomationProperties.Name="Upřesnit">
-                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Upřesnit" IconSize="{StaticResource Size.Icon.Sm}" />
+                                          automation:AutomationProperties.Name="Vybrat COM port ručně">
+                                <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Vybrat COM port ručně" IconSize="{StaticResource Size.Icon.Sm}" />
                             </ToggleButton>
                             <Border Style="{StaticResource InspectorSection}" Margin="0,14,0,0"
                                     Visibility="{Binding IsChecked, ElementName=ManualToggle, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="Upřesnit model (volitelné)" FontWeight="SemiBold" />
-                                    <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
-                                              SelectedItem="{Binding Connection.SelectedCompatibility}" DisplayMemberPath="DisplayName" Margin="0,8,0,0"
-                                              automation:AutomationProperties.Name="Upřesnit model" />
-                                    <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,6,0,8" />
-                                    <TextBlock Text="Ruční připojení je určeno pro řadič, který automatické hledání nenašlo. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
+                                    <TextBlock Text="Ruční připojení" FontWeight="SemiBold" />
+                                    <TextBlock Text="Port najdete ve Správci zařízení Windows v části Porty (COM a LPT). LASERO použije běžnou rychlost připojení a otevře pouze zvolený port."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,3,0,12" />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="130" />
-                                        </Grid.ColumnDefinitions>
-                                        <ComboBox ItemsSource="{Binding Connection.AvailablePorts}"
-                                                  SelectedItem="{Binding Connection.SelectedPort}"
-                                                  Height="{StaticResource Size.Control.Base}" Margin="0,0,8,0"
-                                                  automation:AutomationProperties.Name="Sériový port" />
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Connection.CommonBaudRates}"
-                                                  SelectedItem="{Binding Connection.BaudRate}"
-                                                  Height="{StaticResource Size.Control.Base}"
-                                                  automation:AutomationProperties.Name="Rychlost přenosu" />
-                                    </Grid>
+                                    <ComboBox ItemsSource="{Binding Connection.AvailablePorts}"
+                                              SelectedItem="{Binding Connection.SelectedPort}"
+                                              Height="{StaticResource Size.Control.Base}"
+                                              automation:AutomationProperties.Name="Sériový port" />
                                     <Button Style="{StaticResource Button.Regular}" Margin="0,10,0,0" HorizontalAlignment="Left"
                                             Command="{Binding Connection.ConnectCommand}">
                                         <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit ručně" />

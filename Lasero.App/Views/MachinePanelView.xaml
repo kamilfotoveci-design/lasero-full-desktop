@@ -80,10 +80,10 @@
                             <Ellipse Width="7" Height="7" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,6,0" />
                             <TextBlock Text="{Binding MachineStatus.Mode, Converter={StaticResource ModeToLabel}}" Style="{StaticResource Text.Muted}" />
                         </StackPanel>
-                        <Button Style="{StaticResource Button.Secondary}" Height="36" MinHeight="36" Padding="12,0" Command="{Binding Connection.ConnectCommand}"
+                        <Button Style="{StaticResource Button.Secondary}" Height="36" MinHeight="36" Padding="12,0" Command="{Binding Connection.SmartConnectCommand}"
                                 Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
-                                ToolTip="Připojit vybrané zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="5,0,0,0" />
+                                ToolTip="Automaticky vyhledat a připojit laser">
+                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit automaticky" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="5,0,0,0" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -123,12 +123,10 @@
                              string ("SIMULÁTOR — Virtuální laser", "USB-SERIAL CH340 (COM3)"). The port
                              is the field the operator actually reads, so it gets the full width; the
                              refresh button sits beside it rather than floating on top of it. -->
-                        <TextBlock Text="Model a stav kompatibility" Style="{StaticResource MachineFieldLabel}" />
-                        <ComboBox ItemsSource="{Binding Connection.CompatibilityOptions}"
-                                  SelectedItem="{Binding Connection.SelectedCompatibility}"
-                                  DisplayMemberPath="DisplayName" ToolTip="Vyberte přesný model; neověřené profily nepovolují připojení." />
-                        <TextBlock Text="{Binding Connection.CompatibilityMessage}" Style="{StaticResource Text.Muted}"
-                                   TextWrapping="Wrap" Margin="0,6,0,10" />                        <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
+                        <TextBlock Text="Ruční připojení přes COM" Style="{StaticResource MachineFieldLabel}" />
+                        <TextBlock Text="Pokud automatické hledání laser nenajde, vyberte jeho COM port." Style="{StaticResource Text.Muted}"
+                                   TextWrapping="Wrap" Margin="0,0,0,10" />
+                        <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Margin="8,0,0,0"
                                     Command="{Binding Connection.RefreshPortsCommand}" ToolTip="Znovu vyhledat porty"
@@ -138,9 +136,6 @@
                             <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}"
                                       ToolTip="{Binding Connection.SelectedPort}" />
                         </DockPanel>
-                        <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" Margin="0,10,0,6" />
-                        <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}"
-                                  HorizontalAlignment="Left" MinWidth="132" />
                         <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}"
                                 Padding="9" Margin="0,8,0,0"
                                 Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
@@ -156,7 +151,7 @@
                         </Border>
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding Connection.ConnectCommand}"
                                 Margin="0,8,0,0" Padding="14,8">
-                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení" Foreground="White" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit přes COM" Foreground="White" />
                         </Button>
                     </StackPanel>
 

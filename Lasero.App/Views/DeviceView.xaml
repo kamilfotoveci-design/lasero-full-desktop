@@ -184,15 +184,9 @@
                                 <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
                                 <TextBlock Text="Ruční připojení" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
-                            <TextBlock Text="Vyberte port a rychlost. Číslo portu (COM) najdete ve Správci zařízení Windows v části Porty, obvyklá rychlost je 115200."
+                            <TextBlock Text="Pokud automatické hledání laser nenajde, vyberte jeho COM port. Číslo portu najdete ve Správci zařízení Windows v části Porty (COM a LPT)."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
+                            <StackPanel>
                                     <TextBlock Text="Sériový port" Style="{StaticResource Text.Muted}" />
                                     <!-- The refresh button used to overlay the right end of the combo and hid its chevron. It now has its own
                                          column, at the combo's height. -->
@@ -209,13 +203,7 @@
                                             <components:IconGlyph IconData="{StaticResource Glyph.Refresh}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                         </Button>
                                     </Grid>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Přenosová rychlost" Style="{StaticResource Text.Muted}" />
-                                    <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}"
-                                              IsEnabled="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolConverter}}" Margin="0,5,0,0" />
-                                </StackPanel>
-                            </Grid>
+                            </StackPanel>
                             <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}"
                                     Padding="12" Margin="0,12,0,0"
                                     Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
@@ -250,7 +238,7 @@
                                         Command="{Binding Connection.ConnectCommand}" Margin="0,0,8,0"
                                         Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
                                     <Grid>
-                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení" Foreground="White"
+                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit přes COM" Foreground="White"
                                                               Visibility="{Binding Connection.IsConnecting, Converter={StaticResource InverseBoolToVisibility}}" />
                                         <TextBlock Text="Připojování…" Foreground="White" FontWeight="SemiBold"
                                                    Visibility="{Binding Connection.IsConnecting, Converter={StaticResource BoolToVisibility}}" />
