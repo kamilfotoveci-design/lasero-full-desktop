@@ -29,36 +29,47 @@ rounded UI.
 
 ## Color
 
-One interaction colour. Cobalt carries selection, keyboard focus, the active tool, active navigation
-and ordinary primary actions — all four are the same idea, so they are the same colour. Everything
-else earns its colour by meaning: green only for success and ready, orange only for warning, red only
-for destructive and error. Lasero red is the wordmark dot and nothing else.
+Neutral-first, Apple-like. Surfaces are white, the app and canvas surround are one cool gray, text and
+interaction are graphite. Red is a small saturated **signal**, never a surface, a wash or a tint.
+Roughly 90% neutral, 8% graphite, 2% signal.
 
 | Role | Value | Token |
 |---|---|---|
-| App background | `#F7F7F5` | `Brush.Background` |
-| Surface — panels, rail, title bar, status bar | `#FFFFFF` | `Brush.Panel` |
-| Surface subtle — fields, raised rows, inactive segment | `#F3F4F2` | `Brush.PanelRaised`, `Brush.Field` |
-| Border | `#E4E5E2` | `Brush.PanelBorder` |
-| Border strong — field outline, resize grip | `#D2D4D0` | `Brush.PanelBorderStrong` |
-| Text primary | `#171918` | `Brush.TextPrimary` |
-| Text secondary | `#666B68` | `Brush.TextSecondary` |
-| Text muted — metadata, units, placeholder | `#929793` | `Brush.TextMuted` |
-| Interaction — selection, focus, active tool, primary action | `#2563EB` | `Brush.Accent` |
-| Interaction hover | `#1D4ED8` | `Brush.AccentHover` |
-| Informational panel — same value, different role | `#EFF6FF` | `Brush.InfoMuted` |
-| Selected surface — tinted, not filled | `#EFF6FF` | `Brush.SelectedSurface` |
-| Selected border | `#BFDBFE` | `Brush.SelectedBorder` |
-| Success / ready | `#15803D` | `Brush.Success` |
-| Warning | `#D97706` | `Brush.Warning` |
-| Error / destructive | `#DC2626` | `Brush.Danger` |
-| Disabled surface | `#F1F2F0` | `Brush.DisabledSurface` |
-| Disabled text — still legible | `#A4A8A5` | `Brush.TextDisabled` |
-| Brand red — wordmark dot only | `#FF0000` | `Brush.Brand` |
+| Surface - cards, panels, popovers, dialogs, title bar, rails | `#FFFFFF` | `Brush.Surface`, `Brush.Panel` |
+| App background, canvas surround | `#F5F5F7` | `Brush.Canvas`, `Brush.Background` |
+| Field, raised row, chip | `#F2F2F4` | `Brush.Field`, `Brush.PanelRaised` |
+| Hairline | ink 8% | `Brush.PanelBorder` |
+| Hairline strong - field outline, secondary button | `#D2D2D7` | `Brush.PanelBorderStrong` |
+| Text primary / interaction / focus ring | `#1D1D1F` | `Brush.TextPrimary`, `Brush.Accent`, `Brush.FocusRing` |
+| Text secondary | `#6E6E73` | `Brush.TextSecondary` |
+| Text muted (AA on white) | `#747478` | `Brush.TextMuted` |
+| Text disabled (3:1) | `#8E8E93` | `Brush.TextDisabled` |
+| Hover / pressed / selected wash | ink 5% / 8% / 6% | `Brush.Hover`, `Brush.Pressed`, `Brush.Selected` |
+| Active tool | graphite pill, white icon | `Brush.ActiveTool` |
+| Signal red | `#E5302B` (hover `#CF2A26`, pressed `#B9231F`) | `Brush.Signal*`, `Brush.Brand` |
+| Error / destructive text and fill | `#D92B27` | `Brush.Danger` |
+| Success / warning (text on white) | `#1F7F37` / `#B25E09` | `Brush.Success`, `Brush.Warning` |
 
-Hover and selected must never look alike. Hover is a neutral wash with no border change; selected is
-a cobalt tint plus a cobalt border. A control that only changes shade on hover is fine; a control
-that adopts the selected tint on hover is a bug.
+Rules:
+
+- **Red is signal only**: the brand dot, laser/beam markers and selection handles on the canvas,
+  error and destructive, the live-job indicator, tiny badge dots. Nothing else. `PaletteTests` keeps
+  the red tokens, the files allowed to reference them and the literal hex values on an allow-list.
+- **No tinted washes**: hover, pressed and selected are neutral ink. `Brush.*Muted` survive only as
+  aliases of one gray. Banners are gray surface + hairline + a small coloured icon.
+- **Selected** is a 6% wash with graphite text and a 2px graphite indicator (nav, tabs, list rows);
+  a segmented control's selected segment is a white pill on the gray track; the active tool is a
+  graphite pill with a white icon. Never a pink or blue tint.
+- **Focus** is a 2px graphite ring; on buttons a 1px white gap sits inside it so it shows on graphite fills.
+- Chips are neutral gray with graphite text; colour lives in a 6px dot. Progress fills are graphite,
+  red only for error. Checked controls are graphite.
+- Shadows are soft, neutral, low opacity (popover 0 8px 24px at 8%); no coloured glow.
+- Contrast is tested: text pairs are computed from the token hex (`PaletteTests`). Deviations from the
+  brief: muted text is `#747478` (Apple's `#8E8E93` is 3.3:1 on white), success text `#1F7F37` and
+  error text `#D92B27` (the brief's `#248A3D` and `#E5302B` are 4.4:1).
+
+Hover and selected must never look alike: hover has no border and no indicator; selected has a hairline
+or a graphite indicator and heavier text.
 
 ## Typography
 
@@ -170,7 +181,7 @@ Use `IconGlyph` for icon-only controls and `IconLabel` for an action with a visi
 
 Icons clarify navigation, tools, machine controls and important actions. They do not decorate every
 label or menu item. Ambiguous and safety-critical actions always keep text or an accessible name and
-tooltip. Blue is inherited only by selected or primary states, red only by destructive or
+tooltip. Graphite is inherited by selected or primary states, red only by destructive or
 safety-critical ones. No Unicode symbols, no emoji, no filled pictograms, no one-off local paths.
 
 Custom laser glyphs are also kept as clean standalone SVGs in `docs/design/icons-custom/` —
@@ -178,24 +189,24 @@ Custom laser glyphs are also kept as clean standalone SVGs in `docs/design/icons
 
 ## Interaction
 
-Cobalt communicates selection, focus and the active tool. Red is never ambient decoration: it is
-destructive actions and safety-critical states. Disabled controls stay legible and appear only when
+Graphite communicates selection, focus and the active tool. Red is never ambient decoration: it is
+destructive actions, safety-critical states and canvas selection markers. Disabled controls stay legible and appear only when
 their availability can change in the current workflow. Empty, disconnected, busy, paused and error
 states must all be readable from the status strip.
 
-Keyboard focus is always visible — a 2px cobalt ring, inside the border on unfilled controls and
+Keyboard focus is always visible — a 2px graphite ring, inside the border on unfilled controls and
 outside the fill on filled ones. It appears only when focus arrived from the keyboard: templates
 trigger on `FocusVisual.IsVisible`, never on `IsKeyboardFocused`, so a mouse click leaves no ring.
-Text inputs are the exception and show their cobalt border on any focus.
+Text inputs are the exception and show their graphite border on any focus.
 
 Disabled filled controls use the flat disabled surface; glyph-only and composite controls dim to
 `Opacity.Disabled` (0.45), the one dimming level. Every other rule of behaviour (Esc layering, numeric
 field commit and revert, double-click, cursors, dialogs, tooltips) is in `docs/interaction-rules.md`.
 
 Hover and press are one mechanic at two strengths: `Brush.HoverWash` (ink) over whatever the control
-already is, 6% for hover and 8% for press. Toggle buttons use the same two layers as `Button`. There is deliberately no per-kind pressed colour — that
+already is, 5% for hover and 8% for press. Toggle buttons use the same two layers as `Button`. There is deliberately no per-kind pressed colour — that
 would be a second implementation of one state, and every new button kind would have to re-derive it.
-The wash works on a cobalt fill, a red fill, a white surface and a transparent ghost alike.
+The wash works on a graphite fill, a red fill, a white surface and a transparent ghost alike.
 
 Motion is short and ease-out with no bounce or overshoot (`Motion.Fast` 100ms, `Motion.Base` 180ms,
 `Ease.Out`), and respects the Windows animation preference. An overshoot curve reads as playful,

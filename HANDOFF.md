@@ -1,5 +1,14 @@
 # Lasero Desktop — handoff
 
+## Neutral-first palette (2026-10-06)
+
+Colour system replaced: white surfaces, cool gray #F5F5F7 canvas, graphite interaction, red (#E5302B) only as a
+signal. Tokens live in LaseroTheme.xaml (see DESIGN.md "Color"); old key names (Accent*, SelectedSurface,
+*Muted) remain as neutral aliases so views were not mass-edited. Guards: PaletteTests (contrast, neutrality,
+red allow-lists) and PaletteRenderTests (pixel checks). Open: tour/login views not audited beyond tokens;
+brand dot inside LaseroWordmark.png is an asset and not re-coloured; nav/tab 2px indicators applied only to
+nav, materials tabs and list rows.
+
 ## Claude Code — Architecture/UX/perf audits + Phase 1 G-code golden-file suite — 28. 9. 2026 (session 13)
 
 **START HERE.** This session produced four audit documents and one shipped test suite. No production
