@@ -21,7 +21,7 @@ loop) draw any frame as a pure function of time, using the traced vector wordmar
 ## Controls (namespace `Lasero.App.Controls.Motion`)
 
 All three draw no background: they sit on whatever the host paints. On the welcome screen that is
-`Brush.Background` (#F7F6F3), which is exactly the ground the hold frame was designed on. They take the
+`Brush.Background` (#F5F5F7), which is exactly the ground the hold frame was designed on. They take the
 colours from the theme (`Brush.Background`, `Brush.TextPrimary`, `Brush.Brand`, `Brush.TextSecondary`,
 `Brush.PanelBorderStrong`) and fall back to the same values when a key is absent.
 

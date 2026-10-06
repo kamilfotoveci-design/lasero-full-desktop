@@ -46,3 +46,22 @@ internal static class Ffmpeg
         if (p.ExitCode != 0) throw new InvalidOperationException("ffmpeg failed: " + err);
     }
 }
+
+internal static class FfmpegCapture
+{
+    /// <summary>Runs ffmpeg and returns whatever it writes to stdout (used to decode a test clip back to raw RGB).</summary>
+    public static byte[] Run(string exe, string arguments)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo(exe, arguments)
+        {
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
+        };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        using var ms = new MemoryStream();
+        var err = p.StandardError.ReadToEndAsync();
+        p.StandardOutput.BaseStream.CopyTo(ms);
+        p.WaitForExit();
+        if (p.ExitCode != 0) throw new InvalidOperationException("ffmpeg failed: " + err.Result);
+        return ms.ToArray();
+    }
+}

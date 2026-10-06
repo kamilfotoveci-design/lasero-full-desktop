@@ -77,7 +77,7 @@ internal static class InstallerFrames
     private static void DecoratePanel(DrawingContext dc, Size size)
     {
         var pal = MotionPalette.Default;
-        dc.DrawRectangle(MotionPalette.Solid(Color.FromRgb(0xE6, 0xE3, 0xDC)), null, new Rect(size.Width - 1, 0, 1, size.Height));
+        dc.DrawRectangle(MotionPalette.Solid(Color.FromRgb(0xE5, 0xE5, 0xEA)), null, new Rect(size.Width - 1, 0, 1, size.Height));
         var ft = new FormattedText("Testovací verze", CultureInfo.GetCultureInfo("cs-CZ"), FlowDirection.LeftToRight,
             new Typeface(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
             size.Width * 8.0 / 164, MotionPalette.Solid(pal.Muted), 1.0);

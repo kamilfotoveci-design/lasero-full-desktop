@@ -28,7 +28,13 @@ internal static class VideoRenderer
         var args = $"-c:v libx264 -preset slower -crf {crf} -tune animation -profile:v high -level 4.1 " +
                    $"-vf scale=out_color_matrix=bt709:out_range=tv,format=yuv420p -colorspace bt709 -color_primaries bt709 -color_trc bt709 " +
                    $"-movflags +faststart -an \"{outFile}\"";
-        using var ff = Ffmpeg.StartRawInput(Ffmpeg.Find(o), w, h, fps, args);
+        var ffmpeg = Ffmpeg.Find(o);
+        // the codec arguments without the output file, to calibrate the background against the real encoder
+        var codecOnly = args[..args.LastIndexOf(" -movflags")];
+        var ground = BackgroundMatch.Find(ffmpeg, codecOnly, MotionPalette.Default.Background);
+        intro.Palette = MotionPalette.Default with { Background = ground };
+        pulse.Palette = intro.Palette;
+        using var ff = Ffmpeg.StartRawInput(ffmpeg, w, h, fps, args);
         var stream = ff.StandardInput.BaseStream;
         for (var i = 0; i < frames; i++)
         {
