@@ -56,6 +56,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
+                        <Grid>
                         <Border x:Name="TabSurface"
                                 Margin="0,0,8,0"
                                 Background="Transparent"
@@ -70,6 +71,10 @@
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True" />
                         </Border>
+                        <!-- The selected tab's 2px graphite indicator. -->
+                        <Border x:Name="TabIndicator" Height="2" VerticalAlignment="Bottom" Margin="14,0,22,0"
+                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.Field}" />
@@ -77,6 +82,7 @@
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter TargetName="TabIndicator" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                                 <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.SelectedBorder}" />
                             </Trigger>
