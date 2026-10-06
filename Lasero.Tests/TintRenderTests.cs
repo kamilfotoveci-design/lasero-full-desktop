@@ -496,6 +496,34 @@ public sealed class TintRenderTests
     }
 
     [Fact]
+    public void TheSelectedRailToolIsASolidTintPillWithAWhiteIcon()
+    {
+        Ui.Invoke(() =>
+        {
+            var rail = new Lasero.App.Views.DesignerToolRail();
+            var style = (Style)rail.Resources["RailTool"];
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            foreach (var selected in new[] { true, false })
+                panel.Children.Add(new RadioButton
+                {
+                    Style = style,
+                    IsChecked = selected,
+                    GroupName = "rail-" + selected,
+                    Margin = new Thickness(8),
+                    Content = new IconGlyph { IconData = (Geometry)Application.Current.FindResource("Glyph.Select"), Width = 20, Height = 20 },
+                });
+            var bitmap = Draw(panel, (Brush)Application.Current.FindResource("Brush.Surface"), "rail-tool-selected", out _);
+            var host = (FrameworkElement)panel.Parent;
+            var on = (RadioButton)panel.Children[0];
+            var off = (RadioButton)panel.Children[1];
+            var onBounds = on.TransformToAncestor(host).TransformBounds(new Rect(on.RenderSize));
+            var offBounds = off.TransformToAncestor(host).TransformBounds(new Rect(off.RenderSize));
+            Assert.True(Near(Px(bitmap, onBounds.Left + 4, onBounds.Top + onBounds.Height / 2), Res("Brush.Tint"), 4), "selected tool is the solid tint");
+            Assert.True(Near(Px(bitmap, offBounds.Left + 4, offBounds.Top + offBounds.Height / 2), Res("Brush.Surface"), 2), "an unselected tool has no fill");
+        });
+    }
+
+    [Fact]
     public void QuietAndLinkButtonsAreTintTextWithADeeperHoverAndNoUnderline()
     {
         var shared = XmlComment.Replace(File.ReadAllText(Path.Combine(Root(), "Lasero.App", "Theme", "SharedUiStyles.xaml")), "");
