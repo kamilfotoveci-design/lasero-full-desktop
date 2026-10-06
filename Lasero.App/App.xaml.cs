@@ -66,6 +66,9 @@ public partial class App : Application
         return style;
     }
 
+    /// <summary>Longest the start waits for the stored session to be refreshed over the network.</summary>
+    internal const int SessionResumeCapMilliseconds = 3000;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -166,7 +169,15 @@ public partial class App : Application
         UiAccessibility.ApplyMotionPreferences();
         _host.Start();
         var viewModel = _host.Services.GetRequiredService<MainViewModel>();
-        await viewModel.Account.TryResumeSessionAsync();
+        // Session resume is a network call; the splash must never wait on it. Cap it (the call itself also has a 6 s
+        // limit) and carry on: if it is still running the person is offered sign-in, and a late result is simply ignored by
+        // the already open window.
+        Log.Information("Startup: resuming session");
+        var resume = viewModel.Account.TryResumeSessionAsync();
+        _ = resume.ContinueWith(t => { if (t.IsFaulted) Log.Warning(t.Exception, "Startup: session resume failed late"); }, TaskScheduler.Default);
+        var resumed = await StartupSplash.CompletedWithin(resume, SessionResumeCapMilliseconds);
+        Log.Information("Startup: session resume finished in time={InTime} signedIn={SignedIn}", resumed, viewModel.Account.IsSignedIn);
+        if (!resumed) viewModel.Account.StatusMessage = "Přihlášení se nepodařilo obnovit. Přihlaste se prosím znovu.";
 
         // Let the intro finish (at most ~4.5 s, and only if init was faster than it) before any dialog or window appears.
         if (splash is not null) await splash.WaitForAnimationAsync();
@@ -189,7 +200,9 @@ public partial class App : Application
         // constructed (and their AccountViewModel.PropertyChanged subscriptions wired) above, before
         // TryResumeSessionAsync/SignIn ever changed Account.UserId — so Chat/Materials/Home's
         // account-scoped caches have already reloaded for the now-current account automatically.
+        Log.Information("Startup: creating main window");
         var window = _host.Services.GetRequiredService<MainWindow>();
+        Log.Information("Startup: main window created");
         MainWindow = window;
         StartupSplash.Reveal(window, splash);
 

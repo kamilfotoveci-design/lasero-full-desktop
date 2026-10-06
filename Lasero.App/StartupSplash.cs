@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Lasero.App.Controls.Motion;
+using Serilog;
 
 namespace Lasero.App;
 
@@ -33,6 +34,17 @@ public sealed class StartupSplash
     public const int StillFrameMilliseconds = 600;
     /// <summary>The longest the main window ever waits for the splash to finish.</summary>
     public const int MaxWaitMilliseconds = 4500;
+    /// <summary>The splash closes itself unconditionally this long after it started, whatever else is happening.</summary>
+    public const int WatchdogMilliseconds = 8000;
+    /// <summary>Test seam: the watchdog delay actually used (defaults to <see cref="WatchdogMilliseconds"/>).</summary>
+    internal static int WatchdogDelayMilliseconds = WatchdogMilliseconds;
+
+    /// <summary>True if <paramref name="task"/> completed within <paramref name="milliseconds"/>; never throws for the task.</summary>
+    internal static async Task<bool> CompletedWithin(Task task, int milliseconds)
+    {
+        var first = await Task.WhenAny(task, Task.Delay(milliseconds)).ConfigureAwait(true);
+        return ReferenceEquals(first, task);
+    }
 
     private readonly TaskCompletionSource _animationFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _windowReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -65,6 +77,7 @@ public sealed class StartupSplash
     {
         var splash = new StartupSplash();
         Current = splash;
+        Log.Information("Splash: start");
         var thread = new Thread(splash.Run) { Name = "LASERO startup splash", IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
@@ -80,10 +93,14 @@ public sealed class StartupSplash
             _window = window;
             window.Closed += (_, _) =>
             {
+                _closed = true;
+                Log.Information("Splash: closed");
                 _animationFinished.TrySetResult();
                 Dispatcher.CurrentDispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
             };
             window.Show();
+            Log.Information("Splash: window shown");
+            StartWatchdog();
             _windowReady.TrySetResult();
             Dispatcher.Run();
         }
@@ -99,12 +116,27 @@ public sealed class StartupSplash
         }
     }
 
-    internal void MarkFinished() => _animationFinished.TrySetResult();
+
+    private void StartWatchdog()
+    {
+        var dispatcher = _dispatcher;
+        _ = Task.Delay(WatchdogDelayMilliseconds).ContinueWith(_ =>
+        {
+            if (_closed) return;
+            Log.Warning("Splash: watchdog closing the splash after {Ms} ms", WatchdogDelayMilliseconds);
+            dispatcher?.BeginInvoke(new Action(() => _window?.Close()));
+            _animationFinished.TrySetResult();
+        }, TaskScheduler.Default);
+    }
+
+    private volatile bool _closed;
+    internal void MarkFinished() { Log.Information("Splash: animation finished"); _animationFinished.TrySetResult(); }
 
     /// <summary>Waits for the animation, but never longer than <see cref="MaxWaitMilliseconds"/>.</summary>
     public async Task WaitForAnimationAsync()
     {
-        await Task.WhenAny(AnimationFinished, Task.Delay(MaxWaitMilliseconds)).ConfigureAwait(true);
+        var done = await Task.WhenAny(AnimationFinished, Task.Delay(MaxWaitMilliseconds)).ConfigureAwait(true);
+        Log.Information("Splash: wait ended, animation finished={Finished}", ReferenceEquals(done, AnimationFinished));
     }
 
     /// <summary>Fades the splash out and closes it. Safe from any thread, safe to call twice.</summary>
@@ -127,17 +159,20 @@ public sealed class StartupSplash
     /// <summary>Shows the main window with a short fade-in while the splash fades away.</summary>
     public static void Reveal(Window main, StartupSplash? splash)
     {
+        // The splash starts leaving BEFORE the main window is shown. Showing the main window can open a modal dialog
+        // (the recovery prompt runs from its Loaded handler) and the call does not return until that is answered;
+        // with the old order the splash stayed up over the dialog and the app looked frozen.
+        Log.Information("Splash: reveal main window");
+        splash?.FadeOutAndClose();
         if (splash is not null && main.Content is UIElement root && LaseroMotion.AnimationsEnabled)
         {
             root.Opacity = 0;
-            main.Show();
             var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
             Timeline.SetDesiredFrameRate(fade, 60);
             fade.Completed += (_, _) => { root.BeginAnimation(UIElement.OpacityProperty, null); root.Opacity = 1; };
             root.BeginAnimation(UIElement.OpacityProperty, fade);
         }
-        else main.Show();
-        splash?.FadeOutAndClose();
+        main.Show();
     }
 
     // -----------------------------------------------------------------------------------------------

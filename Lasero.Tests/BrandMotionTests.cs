@@ -480,4 +480,75 @@ public sealed class BrandMotionTests
         while (StartupSplash.Current is not null && DateTime.UtcNow < deadline) Thread.Sleep(50);
         Assert.Null(StartupSplash.Current);
     }
+
+    // ---- splash must never look frozen ----------------------------------------------------------------
+
+    [Fact]
+    public void SplashWatchdogClosesAnOrphanedSplash()
+    {
+        using var scope = new MotionScope(animations: true);
+        var saved = StartupSplash.WatchdogDelayMilliseconds;
+        StartupSplash.WatchdogDelayMilliseconds = 700; // stands in for the 8 s production value
+        try
+        {
+            var splash = StartupSplash.Start();
+            Assert.True(splash.WindowReady.Wait(10_000));
+            // nobody calls FadeOutAndClose or CloseNow: the app is "stuck"
+            var deadline = DateTime.UtcNow.AddSeconds(6);
+            while (StartupSplash.Current is not null && DateTime.UtcNow < deadline) Thread.Sleep(50);
+            Assert.Null(StartupSplash.Current);
+            Assert.True(splash.AnimationFinished.IsCompleted);
+        }
+        finally { StartupSplash.WatchdogDelayMilliseconds = saved; }
+        Assert.Equal(8000, StartupSplash.WatchdogMilliseconds);
+    }
+
+    [Fact]
+    public async Task SessionResumeIsCappedAndNeverBlocksTheSplash()
+    {
+        var never = new TaskCompletionSource().Task; // a hung network call
+        var started = DateTime.UtcNow;
+        Assert.False(await StartupSplash.CompletedWithin(never, 300));
+        Assert.True((DateTime.UtcNow - started).TotalSeconds < 2);
+        Assert.True(await StartupSplash.CompletedWithin(Task.CompletedTask, 300));
+        Assert.True(Lasero.App.App.SessionResumeCapMilliseconds <= 3000);
+        var app = AppSource("App.xaml.cs");
+        Assert.DoesNotContain("await viewModel.Account.TryResumeSessionAsync();", app); // the unbounded await is gone
+        Assert.Contains("CompletedWithin(resume, SessionResumeCapMilliseconds)", app);
+    }
+
+    [Fact]
+    public void SplashLeavesBeforeTheMainWindowOrAnyDialogAppears()
+    {
+        var splash = AppSource("StartupSplash.cs");
+        var reveal = splash[splash.IndexOf("public static void Reveal", StringComparison.Ordinal)..];
+        Assert.True(reveal.IndexOf("splash?.FadeOutAndClose()", StringComparison.Ordinal) < reveal.IndexOf("main.Show()", StringComparison.Ordinal),
+            "the splash must start leaving before main.Show(), which can block on the recovery dialog");
+        var app = AppSource("App.xaml.cs");
+        Assert.True(app.IndexOf("splash?.FadeOutAndClose();", StringComparison.Ordinal) < app.IndexOf("new LoginWindow", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReducedMotionShowsTheCompleteFinalFrameNeverAPartialOne()
+    {
+        using var scope = new MotionScope(animations: false, reduced: true);
+        var (time, total, ink, hold) = OnUi(() =>
+        {
+            var intro = new LaseroIntroAnimation { Compact = true, UseThemeColors = false };
+            var window = Host(intro, 720, 420);
+            try
+            {
+                Pump(200);
+                var r = new IntroRenderer { DrawBackground = true, Timeline = IntroTimeline.Splash };
+                var shown = Pixels(Frame((dc, s) => r.Render(dc, intro.Time, s), 720, 420));
+                var final = Pixels(Frame((dc, s) => r.Render(dc, r.Timeline.Total, s), 720, 420));
+                return (intro.Time, intro.TotalSeconds, InkPixels(shown), shown.SequenceEqual(final));
+            }
+            finally { window.Close(); }
+        });
+        Assert.Equal(IntroTimeline.Splash.Total, total);
+        Assert.Equal(total, time);
+        Assert.True(hold, "the frame shown equals the hold frame, underline and tagline complete");
+        Assert.True(ink > 2000);
+    }
 }
