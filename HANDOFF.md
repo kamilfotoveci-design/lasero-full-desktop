@@ -1,4 +1,5 @@
 # Lasero Desktop — handoff
+n> **START HERE (2026-10-06): [docs/HANDOFF-CODEX-2026-10-06.md](docs/HANDOFF-CODEX-2026-10-06.md)** — branch state, unmerged WIP branch, open owner feedback, hard rules.
 
 ## Neutral-first palette (2026-10-06)
 
