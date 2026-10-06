@@ -292,6 +292,45 @@ public sealed class RailAndMotionTests
         Assert.Contains("x:Name=\"Press\"", rail, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void RailStateSheetRendersEveryStateSideBySide()
+    {
+        Ui.Invoke(() =>
+        {
+            var template = TemplateOf(RailStyle("RailTool"));
+            var hover = HoverTarget(template);
+            var press = PressTarget(template);
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            RadioButton Add(string icon, bool selected, string group)
+            {
+                var t = Tool(icon, selected, group);
+                t.Margin = new Thickness(10);
+                panel.Children.Add(t);
+                return t;
+            }
+
+            Add("Glyph.Select", false, "s1");                       // idle
+            var hoverIdle = Add("Glyph.Text", false, "s2");         // hover on an idle tool
+            var selected = Add("Glyph.Text", true, "s3");           // selected
+            var selectedHover = Add("Glyph.Text", true, "s4");      // selected + pointer still on it (the reported bug)
+            var selectedPressed = Add("Glyph.Text", true, "s5");    // selected + pressed
+            var focused = Add("Glyph.Text", true, "s6");            // selected + keyboard focus
+            FocusVisual.SetIsVisible(focused, true);
+            var armed = new Button { Style = RailStyle("ShapeRailButton"), Tag = "True", Content = Icon("Glyph.Rectangle"), Margin = new Thickness(10) };
+            panel.Children.Add(armed);
+
+            var shot = Render(panel, "rail-states-sheet", beforeSettle: _ =>
+            {
+                Part(hoverIdle, "Hover").Opacity = hover;
+                Part(selectedHover, "Hover").Opacity = hover;
+                Part(selectedPressed, "Hover").Opacity = hover;
+                Part(selectedPressed, "Press").Opacity = press;
+            });
+            Assert.True(shot.Bitmap.PixelWidth > 100);
+            _ = selected;
+        });
+    }
+
     // ------------------------------------------------------------------ other tint states, by pixels
 
     [Fact]
