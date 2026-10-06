@@ -255,7 +255,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
                         <Grid>
-                            <Border x:Name="Selected" Background="{DynamicResource Brush.SelectedSurface}"
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.ActiveTool}"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
                             <Border x:Name="Hover" Background="{DynamicResource Brush.HoverWash}" IsHitTestVisible="False"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
@@ -288,7 +288,7 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Selected" Property="Opacity" Value="1" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.OnActiveTool}" />
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
