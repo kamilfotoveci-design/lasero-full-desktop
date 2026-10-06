@@ -70,6 +70,14 @@ public sealed class ScreenSpecimenTests
     [Fact]
     public void HomeScreenRenders() => Ui.Invoke(() => Render(new HomeView(), "screen-home", 1100, 768));
 
+    // The Home content area at the two reference windows: 1366x768 and 1080x640, less the 184 px
+    // navigation, the 60 px title bar and the 56 px status strip.
+    [Fact]
+    public void HomeAt1366x768Renders() => Ui.Invoke(() => Render(new HomeView(), "screen-home-1366x768", 1182, 652));
+
+    [Fact]
+    public void HomeAt1080x640Renders() => Ui.Invoke(() => Render(new HomeView(), "screen-home-1080x640", 896, 524));
+
     [Fact]
     public void DeviceScreenRenders() => Ui.Invoke(() => Render(new DeviceView(), "screen-device", 1100, 768));
 
