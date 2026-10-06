@@ -2,12 +2,13 @@
  Reproducible generator for the installer artwork (System.Drawing, Windows PowerShell 5.1 or 7).
  Sources:  Lasero.App/Assets/Lasero.png, LaseroWordmark.png, Fonts/Inter-*.ttf
  Output:   installer/assets/  (committed)
-   wizard-164.bmp wizard-192.bmp wizard-246.bmp      WizardImageFile   (164x314, 192x386, 246x459)
+   wizard-164.bmp wizard-192.bmp wizard-246.bmp      WizardImageFile - now written by tools/motion (the animation hold frame); pass -LegacyWizardPanels to regenerate the old static ones
    small-55.bmp small-64.bmp small-80.bmp small-96.bmp  WizardSmallImageFile
    lasero-setup.ico      multi-size (16-256) Setup icon
    lasero-uninstall.ico  uninstall icon (inverted: warm-white tile, graphite L, red beam)
  Run:  powershell -ExecutionPolicy Bypass -File installer\tools\New-InstallerArtwork.ps1
 #>
+param([switch]$LegacyWizardPanels)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $root   = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -102,9 +103,9 @@ function Render-Wizard([int]$W, [int]$H) {
     $br.Dispose(); $bm.Dispose(); $f1.Dispose(); $f2.Dispose(); $f3.Dispose(); $g.Dispose()
     $r = Resize-Image $b $W $H; $b.Dispose(); return $r
 }
-foreach ($sz in @(@(164,314), @(192,386), @(246,459))) {
+if ($LegacyWizardPanels) { foreach ($sz in @(@(164,314), @(192,386), @(246,459))) {
     $b = Render-Wizard $sz[0] $sz[1]; Save-Bmp24 $b (Join-Path $out ("wizard-{0}.bmp" -f $sz[0])) $Warm; $b.Dispose()
-}
+} }
 
 # --- small header image (square, sits on the white page header) ---------------------------------
 foreach ($n in 55, 64, 80, 96) {
