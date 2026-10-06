@@ -80,7 +80,7 @@ Name: "czech"; MessagesFile: "compiler:Languages\Czech.isl"; LicenseFile: "licen
 Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "license-en.txt"; InfoBeforeFile: "info-before-en.txt"; InfoAfterFile: "info-after-en.txt"
 
 [Messages]
-czech.WelcomeLabel1=Vítejte v instalaci aplikace [name]
+czech.WelcomeLabel1=Instalace aplikace [name]
 czech.WelcomeLabel2=Průvodce nainstaluje aplikaci [name/ver] pro návrh, přípravu a ovládání laserových gravírek.%n%nJde o testovací verzi. Doporučuje se před pokračováním ukončit spuštěné kopie aplikace a uložit rozdělanou práci.%n%nLightBurn ani jiný software se instalací nemění.
 czech.FinishedHeadingLabel=Aplikace [name] je nainstalována
 czech.FinishedLabel=Aplikaci lze spustit pomocí zástupce v nabídce Start nebo volbou níže.
@@ -96,8 +96,8 @@ czech.TaskGroup=Zástupci a přiřazení souborů:
 czech.RunApp=Spustit LASERO
 czech.WinTooOld=Aplikace %1 vyžaduje Windows 10 verze 1809 (sestavení 17763) nebo novější, případně Windows 11.%n%nTento počítač má starší verzi systému (%2). Je nutné nejprve aktualizovat Windows. Instalace bude ukončena.
 czech.Need64=Aplikace {#AppName} vyžaduje 64bitový Windows (x64) a na tomto počítači ji nelze nainstalovat.
-czech.AppRunning=Aplikace {#AppName} je právě spuštěná.%n%nUložte rozdělanou práci, aplikaci ukončete a zvolte Opakovat. Volba Storno instalaci přeruší.
-czech.UninstRunning=Aplikace {#AppName} je právě spuštěná.%n%nUložte rozdělanou práci, aplikaci ukončete a zvolte Opakovat. Volba Storno odinstalaci přeruší.
+czech.AppRunning=Aplikace {#AppName} je právě spuštěná.%n%nRozdělanou práci je třeba uložit a aplikaci ukončit, poté zvolit Opakovat. Volba Storno instalaci přeruší.
+czech.UninstRunning=Aplikace {#AppName} je právě spuštěná.%n%nRozdělanou práci je třeba uložit a aplikaci ukončit, poté zvolit Opakovat. Volba Storno odinstalaci přeruší.
 czech.ReadyUser=Instalace proběhne pouze pro aktuálního uživatele, bez oprávnění správce.
 czech.ReadyAll=Instalace proběhne pro všechny uživatele tohoto počítače.
 czech.ReadyUpgrade=Nalezena nainstalovaná verze %1. Bude aktualizována na verzi {#AppVersion}; projekty a nastavení zůstanou zachovány.

@@ -37,7 +37,7 @@ xmlns:motion="clr-namespace:Lasero.App.Controls.Motion"
 * `AutoPlay` (default true) starts it when loaded. `Play()` restarts, `SkipToEnd()` jumps to the hold
   frame (call it on Esc, on "Přeskočit", or when the user clicks Next early).
 * `Completed` fires once when the last frame is reached by playing (not for `SkipToEnd`). Use it to fade in
-  the welcome text and the primary button. The hold frame (wordmark, rule, tagline "Tvořte s jistotou")
+  the welcome text and the primary button. The hold frame (wordmark, rule, tagline "Tvorba s jistotou")
   stays on screen afterwards at zero cost.
 * `IsPlaying`, `IsFinished`, `Time` (0 to 8 s) are available for gating UI.
 * Pauses while its window is minimized or it is not visible, removes its clock when unloaded and continues
@@ -90,7 +90,7 @@ user-facing "play brand animations anyway" setting and for QA harnesses; do not 
 
 ## Copy
 
-Tagline (one place, `IntroRenderer.TaglineText`): **Tvořte s jistotou**. Neutral form, no question or
+Tagline (one place, `IntroRenderer.TaglineText`): **Tvorba s jistotou**. Neutral form, no question or
 exclamation mark. Review lines for the owner are in the task report.
 
 

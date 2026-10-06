@@ -126,7 +126,7 @@ internal readonly record struct IntroLayout(double Scale, double OriginX, double
 /// </summary>
 internal sealed class IntroRenderer
 {
-    private const string Tagline = "Tvořte s jistotou";
+    private const string Tagline = "Tvorba s jistotou";
 
     private static readonly Typeface TaglineFace = new(
         new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.Medium, FontStretches.Normal);

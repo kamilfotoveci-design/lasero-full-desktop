@@ -108,10 +108,25 @@ public sealed class BrandMotionTests
     public void TaglineFollowsTheBrandTextRules()
     {
         var tagline = IntroRenderer.TaglineText;
-        Assert.Equal("Tvořte s jistotou", tagline);
+        Assert.Equal("Tvorba s jistotou", tagline);
         Assert.DoesNotContain('?', tagline);
         Assert.DoesNotContain('!', tagline);
         Assert.DoesNotContain("  ", tagline);
+    }
+
+    [Fact]
+    public void NoImperativeTaglineRemainsInMotionOrInstallerSources()
+    {
+        var root = RepoRoot();
+        var files = Directory.EnumerateFiles(Path.Combine(root, "Lasero.App", "Controls", "Motion"), "*.cs")
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "installer"), "*", SearchOption.TopDirectoryOnly))
+            .Concat(new[] { Path.Combine(root, "docs", "motion-integration.md") });
+        foreach (var f in files)
+        {
+            var text = File.ReadAllText(f);
+            Assert.DoesNotContain("Tvořte", text);
+            Assert.DoesNotContain("Vítejte", text);
+        }
     }
 
     // ---- the renderer is a pure function of time ----------------------------------------------------
