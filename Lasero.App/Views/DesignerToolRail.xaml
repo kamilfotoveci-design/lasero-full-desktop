@@ -205,9 +205,9 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
                         <Grid>
-                            <Border x:Name="Selected" Background="{DynamicResource Brush.SelectedSurface}"
+                            <Border x:Name="Selected" Background="{DynamicResource Brush.ActiveTool}"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
-                            <Border x:Name="Hover" Background="{DynamicResource Brush.PanelRaised}"
+                            <Border x:Name="Hover" Background="{DynamicResource Brush.HoverWash}" IsHitTestVisible="False"
                                     CornerRadius="{StaticResource Radius.Sm}" Opacity="0" />
                             <Border x:Name="FocusRing" BorderBrush="{DynamicResource Brush.FocusRing}"
                                     BorderThickness="0" CornerRadius="{StaticResource Radius.Sm}" />
@@ -219,7 +219,7 @@
                                     <BeginStoryboard>
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
-                                                             To="1" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
+                                                             To="0.05" Duration="{StaticResource Motion.Fast}" EasingFunction="{StaticResource Ease.Out}" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
@@ -234,11 +234,10 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Selected" Property="Opacity" Value="1" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.OnActiveTool}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Hover" Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
-                                <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                                <Setter TargetName="Hover" Property="Opacity" Value="0.08" />
                             </Trigger>
                             <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                                 <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />

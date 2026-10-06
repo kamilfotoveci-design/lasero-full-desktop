@@ -42,6 +42,18 @@ public partial class DesignerToolRail : UserControl
             StopLongPressTimer();
             ClosePicker();
         };
+
+        // The rail is Collapsed (not unloaded) when the screen changes, and a Popup does not follow its owner
+        // out of the tree: a picker left open on Návrh stayed on screen over the Home navigation. The picker
+        // belongs to a visible rail, so it closes the moment the rail stops being visible.
+        IsVisibleChanged += (_, e) =>
+        {
+            if (e.NewValue is false)
+            {
+                StopLongPressTimer();
+                ClosePicker();
+            }
+        };
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
