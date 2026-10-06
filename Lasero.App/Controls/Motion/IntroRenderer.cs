@@ -53,6 +53,40 @@ internal sealed record IntroTimeline
         TaglineStart = 2.00, TaglineDuration = 0.35, TaglineStagger = 0.015,
         Total = 2.8,
     };
+
+    /// <summary>The 2.4 s startup splash: the same beats, compressed so the app is never kept waiting, ending on the hold frame.</summary>
+    private static readonly IntroTimeline SplashBase = new()
+    {
+        PieceStart = new[] { 0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.88 },
+        Outline = 0.42, HeadOutline = 0.50, FillDelay = 0.65, Fill = 0.28,
+        BeamStart = 1.30, BeamDuration = 0.22,
+        DotStart = 1.42, DotDuration = 0.34,
+        UnderlineStart = 1.50, UnderlineDuration = 0.45,
+        GridStart = 1.35, GridDuration = 0.65,
+        TaglineStart = 1.60, TaglineDuration = 0.35, TaglineStagger = 0.012,
+        Total = 2.4,
+    };
+
+    /// <summary>The ONE knob for the splash pace: every beat of the base choreography is multiplied by this.
+    /// 1.0 is the original 2.4 s; 1.7 gives about 4.1 s with a short final hold. Tune here, nowhere else.</summary>
+    public const double SplashSpeedFactor = 1.7;
+
+    /// <summary>The startup splash timeline: the base choreography slowed by <see cref="SplashSpeedFactor"/>, with a calmer dot
+    /// ignition and a ~0.5 s hold on the final frame.</summary>
+    public static readonly IntroTimeline Splash = SplashBase.Scaled(SplashSpeedFactor) with { Total = 4.1 };
+
+    /// <summary>Every time in the timeline multiplied by <paramref name="factor"/> (the dot ignites over 1.3x longer on top).</summary>
+    public IntroTimeline Scaled(double factor) => this with
+    {
+        PieceStart = PieceStart.Select(s => s * factor).ToArray(),
+        Outline = Outline * factor, HeadOutline = HeadOutline * factor, Fill = Fill * factor,
+        BeamStart = BeamStart * factor, BeamDuration = BeamDuration * factor,
+        DotStart = DotStart * factor, DotDuration = DotDuration * factor * 1.3,
+        UnderlineStart = UnderlineStart * factor, UnderlineDuration = UnderlineDuration * factor,
+        GridStart = GridStart * factor, GridDuration = GridDuration * factor,
+        TaglineStart = TaglineStart * factor, TaglineDuration = TaglineDuration * factor, TaglineStagger = TaglineStagger * factor,
+        Total = Total * factor,
+    };
 }
 
 /// <summary>Where the mark sits inside a given area. Wide areas centre one composition; tall ones (the
@@ -299,9 +333,10 @@ internal sealed class IntroRenderer
 
     private void DrawTaglineText(DrawingContext dc, double t, IntroTimeline tl, IntroLayout layout)
     {
-        if (t < tl.TaglineStart) return;
+        // build the glyph layout from the very first frame, so the first use of the font never lands mid-animation as a hitch
         var fontSize = IntroLayout.TaglineSize * layout.Scale;
         var cache = TaglineGlyphs(fontSize);
+        if (t < tl.TaglineStart) return;
         var total = cache.X[^1];
         var left = layout.OriginX + (WordmarkData.Width * layout.Scale - total) / 2;
         var top = layout.OriginY + IntroLayout.TaglineTop * layout.Scale;

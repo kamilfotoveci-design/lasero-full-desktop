@@ -15,6 +15,9 @@ public sealed class AppSettings
     /// <summary>First-run guidance progress (welcome, tour, micro-tips), kept per account. Additive:
     /// a settings file from before the tour existed has no such section and loads with defaults.</summary>
     public Lasero.App.Tour.GuidancePreferences Guidance { get; set; } = new();
+
+    /// <summary>How the app starts. Additive: older settings files load with the defaults.</summary>
+    public StartupPreferences Startup { get; set; } = new();
 }
 
 /// <summary>
@@ -181,6 +184,7 @@ public sealed class AppSettingsStore
         settings.Device ??= new DevicePreferences();
         settings.Safety ??= new SafetyPreferences();
         settings.Machine ??= new MachinePreferences();
+        settings.Startup ??= new StartupPreferences();
         settings.Workspace ??= new WorkspacePreferences();
         settings.Guidance ??= new Lasero.App.Tour.GuidancePreferences();
         settings.Guidance.Accounts ??= new Dictionary<string, Lasero.App.Tour.AccountGuidance>(StringComparer.Ordinal);
@@ -211,4 +215,13 @@ public sealed class AppSettingsStore
             if (profile.LastPasses < 1) profile.LastPasses = 1;
         }
     }
+}
+
+/// <summary>Start-up behaviour.</summary>
+public sealed class StartupPreferences
+{
+    /// <summary>Play the short brand animation (the splash) when the app starts. Default on. It is skipped
+    /// with any key or click, is a still frame when Windows animations are off, and is not shown when a
+    /// project file is opened directly.</summary>
+    public bool ShowIntroAnimation { get; set; } = true;
 }

@@ -29,6 +29,10 @@ public sealed class LaseroIntroAnimation : FrameworkElement
     public static readonly DependencyProperty AutoPlayProperty = DependencyProperty.Register(
         nameof(AutoPlay), typeof(bool), typeof(LaseroIntroAnimation), new PropertyMetadata(true));
 
+    public static readonly DependencyProperty CompactProperty = DependencyProperty.Register(
+        nameof(Compact), typeof(bool), typeof(LaseroIntroAnimation),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender, (d, _) => ((LaseroIntroAnimation)d).ApplyVariant()));
+
     private readonly IntroRenderer _renderer = new();
     private readonly MotionDriver _driver;
     private readonly ActivityGate _gate;
@@ -62,11 +66,31 @@ public sealed class LaseroIntroAnimation : FrameworkElement
         set => SetValue(AutoPlayProperty, value);
     }
 
+    /// <summary>The splash variant (about 4.1 s) (wordmark, dot, rule, tagline; no long hold) instead of the 8 s intro. Set before it starts.</summary>
+    public bool Compact
+    {
+        get => (bool)GetValue(CompactProperty);
+        set => SetValue(CompactProperty, value);
+    }
+
+    /// <summary>Read colours from the application theme (default). A control living on another UI thread, such as the
+    /// startup splash, must turn this off: theme brushes belong to the main thread.</summary>
+    public bool UseThemeColors { get; set; } = true;
+
+    private void ApplyVariant()
+    {
+        _renderer.Timeline = Compact ? IntroTimeline.Splash : IntroTimeline.Full;
+        _driver.Duration = TotalSeconds;
+    }
+
     /// <summary>True while a clock is attached and ticking.</summary>
     public bool IsPlaying => _driver.IsRunning;
 
     /// <summary>True once the final frame is showing (played to the end, skipped, or reduced motion).</summary>
-    public bool IsFinished => Time >= DurationSeconds;
+    public bool IsFinished => Time >= TotalSeconds;
+
+    /// <summary>Length of the active variant in seconds: 8 for the full intro, IntroTimeline.Splash.Total (about 4.1) for the compact splash variant.</summary>
+    public double TotalSeconds => Compact ? IntroTimeline.Splash.Total : DurationSeconds;
 
     /// <summary>Raised once when the last frame is reached by playing. Not raised by <see cref="SkipToEnd"/>.</summary>
     public event EventHandler? Completed;
@@ -78,7 +102,7 @@ public sealed class LaseroIntroAnimation : FrameworkElement
         if (!LaseroMotion.AnimationsEnabled)
         {
             _wantPlaying = false;
-            Time = DurationSeconds;
+            Time = TotalSeconds;
             return;
         }
         Time = 0;
@@ -91,18 +115,18 @@ public sealed class LaseroIntroAnimation : FrameworkElement
     {
         _wantPlaying = false;
         _driver.Stop();
-        Time = DurationSeconds;
+        Time = TotalSeconds;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _renderer.Palette = MotionPalette.FromResources(this);
+        if (UseThemeColors) _renderer.Palette = MotionPalette.FromResources(this);
         InvalidateVisual();
         if (!_started)
         {
             _started = true;
             if (AutoPlay) Play();
-            else if (!LaseroMotion.AnimationsEnabled) Time = DurationSeconds;
+            else if (!LaseroMotion.AnimationsEnabled) Time = TotalSeconds;
         }
         else if (_wantPlaying && _gate.IsActive && !_driver.HasClock)
         {

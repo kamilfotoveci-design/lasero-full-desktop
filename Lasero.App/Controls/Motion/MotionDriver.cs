@@ -66,7 +66,7 @@ internal sealed class MotionDriver
 {
     private readonly FrameworkElement _owner;
     private readonly DependencyProperty _time;
-    private readonly double _duration;
+    private double _duration;
     private readonly bool _loop;
     private readonly int _fps;
     private Storyboard? _storyboard;
@@ -76,6 +76,8 @@ internal sealed class MotionDriver
     {
         _owner = owner; _time = timeProperty; _duration = duration; _loop = loop; _fps = framesPerSecond;
     }
+
+    public double Duration { get => _duration; set => _duration = value; }
 
     /// <summary>Raised when a one-shot reaches its end (never for loops). The clock is already removed.</summary>
     public event EventHandler? Completed;

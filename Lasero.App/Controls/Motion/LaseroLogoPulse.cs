@@ -66,12 +66,15 @@ public sealed class LaseroLogoPulse : FrameworkElement
         set => SetValue(IsActiveProperty, value);
     }
 
+    /// <summary>Read colours from the application theme (default); off for a control on another UI thread.</summary>
+    public bool UseThemeColors { get; set; } = true;
+
     /// <summary>True while a clock is attached and ticking.</summary>
     public bool IsPlaying => _driver.IsRunning;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _renderer.Palette = MotionPalette.FromResources(this);
+        if (UseThemeColors) _renderer.Palette = MotionPalette.FromResources(this);
         InvalidateVisual();
         Refresh();
     }

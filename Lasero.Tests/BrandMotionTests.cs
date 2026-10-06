@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Lasero.App;
 using Lasero.App.Controls.Motion;
 using Xunit;
 
@@ -390,5 +391,78 @@ public sealed class BrandMotionTests
         Assert.DoesNotContain("CreateCallback", script);
         Assert.DoesNotContain("dontcopy", script);
         Assert.False(Directory.Exists(Path.Combine(RepoRoot(), "installer", "assets", "anim")));
+    }
+
+    // ---- startup splash --------------------------------------------------------------------------------
+
+    private static string AppSource(string relative) => File.ReadAllText(Path.Combine(RepoRoot(), "Lasero.App", relative));
+
+    [Fact]
+    public void SplashPaceIsOneConstantAndTheTotalIsAboutFourSeconds()
+    {
+        Assert.InRange(IntroTimeline.Splash.Total, 4.0, 4.5);
+        Assert.InRange(IntroTimeline.SplashSpeedFactor, 1.0, 3.0);
+        // every beat finishes before the end, leaving a short hold on the final frame
+        var s = IntroTimeline.Splash;
+        var lastBeat = s.TaglineStart + 16 * s.TaglineStagger + s.TaglineDuration;
+        Assert.True(lastBeat < s.Total - 0.3 && lastBeat > s.Total - 0.8, $"hold = {s.Total - lastBeat:F2}s");
+        Assert.True(s.DotStart + s.DotDuration < s.Total);
+        Assert.True(StartupSplash.MaxWaitMilliseconds >= (int)(s.Total * 1000));
+    }
+
+    [Fact]
+    public void SplashIsShownFirstAndNeverBlocksOrOutstaysIts()
+    {
+        var app = AppSource("App.xaml.cs");
+        var splashAt = app.IndexOf("StartupSplash.Start()", StringComparison.Ordinal);
+        Assert.True(splashAt > 0);
+        Assert.True(splashAt < app.IndexOf("Host.CreateDefaultBuilder", StringComparison.Ordinal), "the splash starts before the host and view models are built");
+        Assert.True(splashAt < app.IndexOf("new LoginWindow", StringComparison.Ordinal));
+        Assert.Contains("WaitForAnimationAsync", app);          // capped wait, not an open-ended one
+        Assert.Contains("StartupSplash.Reveal(window, splash)", app); // cross-fade into the main window
+        Assert.Contains("CloseNow()", app);                       // closed on fatal errors
+        var splash = AppSource("StartupSplash.cs");
+        Assert.Contains("new Thread(", splash);                   // its own UI thread: init cannot stall the animation
+        Assert.DoesNotContain("Topmost = true", splash);          // never covers an error dialog
+        Assert.DoesNotContain("AllowsTransparency", splash);
+        Assert.DoesNotContain("DispatcherTimer", splash);
+    }
+
+    [Fact]
+    public void SplashIsSkippableHonoursReducedMotionAndTheSetting()
+    {
+        var splash = AppSource("StartupSplash.cs");
+        Assert.Contains("PreviewKeyDown", splash);
+        Assert.Contains("PreviewMouseDown", splash);
+        Assert.Contains("SkipToEnd()", splash);
+        Assert.Contains("StillFrameMilliseconds = 600", splash);
+        Assert.Contains("LaseroMotion.AnimationsEnabled", splash);
+        Assert.True(new StartupPreferences().ShowIntroAnimation, "default on");
+        Assert.Contains("StartupAnimationToggle", AppSource("SettingsWindow.xaml"));
+        Assert.Contains("Startup.ShowIntroAnimation = StartupAnimationToggle.IsChecked == true", AppSource("SettingsWindow.xaml.cs"));
+        Assert.Contains("Úvodní animace při spuštění", AppSource("SettingsWindow.xaml"));
+    }
+
+    [Fact]
+    public void SplashIsSkippedForSettingOffProjectFilesAndQuietStarts()
+    {
+        Assert.True(StartupSplash.ShouldShow(true, Array.Empty<string>()));
+        Assert.False(StartupSplash.ShouldShow(false, Array.Empty<string>()));
+        Assert.False(StartupSplash.ShouldShow(true, new[] { @"C:\work\box.lasero" }));
+        Assert.False(StartupSplash.ShouldShow(true, new[] { "--no-splash" }));
+    }
+
+    [Fact]
+    public void SplashRunsOnItsOwnThreadAndReleasesItWhenClosed()
+    {
+        using var scope = new MotionScope(animations: true);
+        var before = System.Diagnostics.Process.GetCurrentProcess().Threads.Count;
+        var splash = StartupSplash.Start();
+        Assert.True(splash.WindowReady.Wait(10_000), "splash window appeared");
+        splash.CloseNow();
+        Assert.True(splash.AnimationFinished.Wait(5_000));
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (StartupSplash.Current is not null && DateTime.UtcNow < deadline) Thread.Sleep(50);
+        Assert.Null(StartupSplash.Current);
     }
 }

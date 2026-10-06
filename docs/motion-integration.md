@@ -93,6 +93,27 @@ user-facing "play brand animations anyway" setting and for QA harnesses; do not 
 Tagline (one place, `IntroRenderer.TaglineText`): **Tvořte s jistotou**. Neutral form, no question or
 exclamation mark. Review lines for the owner are in the task report.
 
+
+## Startup splash
+
+`Lasero.App/StartupSplash.cs`. When the app starts it shows a borderless, centred 720 x 420 window that plays
+the compact intro (`LaseroIntroAnimation` with `Compact="True"`, `IntroTimeline.Splash`), then fades into the
+main window.
+
+* Pace: one constant, `IntroTimeline.SplashSpeedFactor` (1.7). It multiplies every beat of the base choreography
+  (2.4 s at 1.0); total is `IntroTimeline.Splash.Total` = **4.1 s** including about 0.5 s hold on the final frame.
+  The dot ignition is additionally 1.3x calmer. Change the factor (and `Total`) to retune.
+* Starts first in `App.OnStartup`, before the host, view models and stores are built, on its own STA UI
+  thread, so the heavy startup work on the main thread cannot stall it. Measured pacing: see the task report.
+* Waits: the main window (or sign-in) waits for the animation to end, at most `StartupSplash.MaxWaitMilliseconds`
+  (4.5 s), and only if init finished sooner. If init is slower, the held frame keeps breathing (`LaseroLogoPulse`).
+* Skippable with any key, click or Esc. System animations off: a still frame for 600 ms.
+* Not shown when a `.lasero` file is opened directly, with `--no-splash`, or when
+  `Settings > Úvodní animace při spuštění` is off (`AppSettings.Startup.ShowIntroAnimation`, default on).
+* Never topmost, closed immediately on a fatal error, so it cannot cover an error dialog.
+* The first-run welcome overlay keeps its own animation; the splash is shorter and runs before it.
+* Frame pacing trace: set `LASERO_SPLASH_TRACE=<file>` and the splash writes mean/p95/max frame gaps on close.
+  `Lasero.MotionTool splash --force [--busy ms]` runs the real splash in isolation (`--busy` blocks the main thread).
 ## Installer
 
 The installer is deliberately static (side panel = the intro's hold frame, normal progress bar). The brand

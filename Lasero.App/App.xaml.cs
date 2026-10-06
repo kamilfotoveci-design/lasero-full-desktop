@@ -75,6 +75,7 @@ public partial class App : Application
         {
             var errorId = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
             Log.Fatal(args.Exception, "Unhandled UI-thread exception {ErrorId}", errorId);
+            StartupSplash.Current?.CloseNow(); // never leave the splash over an error dialog
             StopMachineAfterFatalError();
             MessageBox.Show(
                 $"Došlo k neočekávané chybě. Aplikace bude bezpečně ukončena.\n\nKód chyby: {errorId}",
@@ -87,6 +88,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
             Log.Fatal(args.ExceptionObject as Exception, "Unhandled non-UI-thread exception");
+            StartupSplash.Current?.CloseNow(); // never leave the splash over an error dialog
             StopMachineAfterFatalError();
         };
 
@@ -99,6 +101,9 @@ public partial class App : Application
 
         var settingsStore = AppSettingsStore.CreateDefault();
         var settings = settingsStore.Load();
+
+        // First thing on screen: the brand splash runs on its own UI thread so the work below cannot stall it.
+        var splash = StartupSplash.ShouldShow(settings.Startup.ShowIntroAnimation, e.Args) ? StartupSplash.Start() : null;
 
         _host = Host.CreateDefaultBuilder()
             .UseSerilog()
@@ -163,8 +168,13 @@ public partial class App : Application
         var viewModel = _host.Services.GetRequiredService<MainViewModel>();
         await viewModel.Account.TryResumeSessionAsync();
 
+        // Let the intro finish (at most ~4.5 s, and only if init was faster than it) before any dialog or window appears.
+        if (splash is not null) await splash.WaitForAnimationAsync();
+
         if (!viewModel.Account.IsSignedIn)
         {
+            splash?.FadeOutAndClose();
+            splash = null;
             var login = new LoginWindow(viewModel.Account);
             if (login.ShowDialog() != true)
             {
@@ -181,7 +191,7 @@ public partial class App : Application
         // account-scoped caches have already reloaded for the now-current account automatically.
         var window = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = window;
-        window.Show();
+        StartupSplash.Reveal(window, splash);
 
         var projectPath = e.Args.FirstOrDefault(argument =>
             string.Equals(Path.GetExtension(argument), ".lasero", StringComparison.OrdinalIgnoreCase));
@@ -193,6 +203,7 @@ public partial class App : Application
     {
         var jobState = _host?.Services.GetService<GCodeViewModel>()?.JobState;
         if (jobState is JobRunState.Running or JobRunState.Paused or JobRunState.Framing)
+            StartupSplash.Current?.CloseNow(); // never leave the splash over an error dialog
             StopMachineAfterFatalError();
         _host?.Services.GetService<ILaserMachine>()?.Dispose();
         _host?.StopAsync().GetAwaiter().GetResult();

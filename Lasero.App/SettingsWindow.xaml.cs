@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
         RequireFramingToggle.IsChecked = viewModel.Settings.Safety.RequireFramingBeforeStart;
         ConfirmResetToggle.IsChecked = viewModel.Settings.Safety.ConfirmSoftReset;
         ShowMachineStatusToggle.IsChecked = viewModel.Settings.Safety.ShowMachineStatusAfterConnect;
+        StartupAnimationToggle.IsChecked = viewModel.Settings.Startup.ShowIntroAnimation;
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => TrySaveAndClose();
@@ -52,6 +53,7 @@ public partial class SettingsWindow : Window
         _viewModel.Settings.Safety.RequireFramingBeforeStart = RequireFramingToggle.IsChecked == true;
         _viewModel.Settings.Safety.ConfirmSoftReset = ConfirmResetToggle.IsChecked == true;
         _viewModel.Settings.Safety.ShowMachineStatusAfterConnect = ShowMachineStatusToggle.IsChecked == true;
+        _viewModel.Settings.Startup.ShowIntroAnimation = StartupAnimationToggle.IsChecked == true;
         _viewModel.SaveSettings();
         Close();
         return true;

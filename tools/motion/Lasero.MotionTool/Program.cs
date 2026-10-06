@@ -30,6 +30,7 @@ public static class Program
                 case "render-video": return VideoRenderer.Run(options);
                 case "render-poster": return VideoRenderer.RunPoster(options);
                 case "render-installer": return InstallerFrames.Run(options);
+                case "splash": return SplashDemo.Run(options);
                 case "preview":
                     return new Application().Run(new PreviewWindow());
                 default:

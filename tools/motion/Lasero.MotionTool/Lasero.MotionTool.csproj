@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <Compile Include="..\..\..\Lasero.App\Controls\Motion\*.cs" Link="Motion\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Lasero.App\StartupSplash.cs" Link="Motion\StartupSplash.cs" />
+    <Compile Include="..\..\..\Lasero.App\WindowFrameHook.cs" Link="Motion\WindowFrameHook.cs" />
   </ItemGroup>
 
 </Project>

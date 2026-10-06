@@ -67,6 +67,7 @@
                         <Border Style="{StaticResource InspectorSection}">
                             <StackPanel>
                                 <TextBlock Text="Úvod a tipy" Style="{StaticResource PanelTitle}" />
+                                <CheckBox x:Name="StartupAnimationToggle" Content="Úvodní animace při spuštění" Margin="0,0,0,12" />
                                 <TextBlock Text="Prohlídka aplikace a krátké tipy při první práci."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,12" />
                                 <StackPanel Orientation="Horizontal">
