@@ -29,9 +29,11 @@ rounded UI.
 
 ## Color
 
-Neutral-first, Apple-like. Surfaces are white, the app and canvas surround are one cool gray, text and
-interaction are graphite. Red is a small saturated **signal**, never a surface, a wash or a tint.
-Roughly 90% neutral, 8% graphite, 2% signal.
+Neutral-first, Apple-like, with a soul. Surfaces are white, the app and canvas surround are one cool
+gray, text and primary buttons are graphite, and ONE confident **tint** - the LASERO red - marks
+everything that is on, the way iOS and macOS use their accent. The tint is always solid. Colour also
+*identifies* (muted icon tiles) and depth separates three layers. Roughly 88% neutral, 6% graphite,
+4% tint and signal, plus a few tiles.
 
 | Role | Value | Token |
 |---|---|---|
@@ -40,36 +42,62 @@ Roughly 90% neutral, 8% graphite, 2% signal.
 | Field, raised row, chip | `#F2F2F4` | `Brush.Field`, `Brush.PanelRaised` |
 | Hairline | ink 8% | `Brush.PanelBorder` |
 | Hairline strong - field outline, secondary button | `#D2D2D7` | `Brush.PanelBorderStrong` |
-| Text primary / interaction / focus ring | `#1D1D1F` | `Brush.TextPrimary`, `Brush.Accent`, `Brush.FocusRing` |
+| Text primary, primary button | `#1D1D1F` | `Brush.TextPrimary`, `Brush.PrimaryAction` |
+| **Tint** (fills: on, selected, active, focus ring) | `#E5302B` (hover `#CF2A26`, pressed `#B9231F`), white on it `Brush.OnTint` | `Brush.Tint`, `Brush.Tint.Hover`, `Brush.Tint.Pressed` |
+| Tint as text (links, quiet text buttons) | `#D32925` (5.1:1 white, 4.6:1 canvas), hover `#B9231F` | `Brush.TintText`, `Brush.TintText.Hover` |
+| Legacy aliases of the tint | same values | `Brush.Accent`, `Brush.AccentHover`, `Brush.AccentText`, `Brush.ActiveTool`, `Brush.SelectedIndicator`, `Brush.FocusRing` |
+| Text selection | tint at 30% | `Brush.TextSelection` |
+| Identification tiles | muted solid fills | `Brush.Tile.*` (see Tiles) |
 | Text secondary | `#6E6E73` | `Brush.TextSecondary` |
 | Text muted (AA on white) | `#747478` | `Brush.TextMuted` |
 | Text disabled (3:1) | `#8E8E93` | `Brush.TextDisabled` |
 | Hover / pressed / selected wash | ink 5% / 8% / 6% | `Brush.Hover`, `Brush.Pressed`, `Brush.Selected` |
-| Active tool | graphite pill, white icon | `Brush.ActiveTool` |
-| Signal red | `#E5302B` (hover `#CF2A26`, pressed `#B9231F`) | `Brush.Signal*`, `Brush.Brand` |
+| Active tool | solid tint pill, white icon | `Brush.ActiveTool` |
+| Signal red (canvas markers, brand dot, live job) | `#E5302B` (hover `#CF2A26`, pressed `#B9231F`) | `Brush.Signal*`, `Brush.Brand` |
 | Error / destructive text and fill | `#D92B27` | `Brush.Danger` |
 | Success / warning (text on white) | `#1F7F37` / `#B25E09` | `Brush.Success`, `Brush.Warning` |
 
 Rules:
 
-- **Red is signal only**: the brand dot, laser/beam markers and selection handles on the canvas,
-  error and destructive, the live-job indicator, tiny badge dots. Nothing else. `PaletteTests` keeps
-  the red tokens, the files allowed to reference them and the literal hex values on an allow-list.
-- **No tinted washes**: hover, pressed and selected are neutral ink. `Brush.*Muted` survive only as
-  aliases of one gray. Banners are gray surface + hairline + a small coloured icon.
-- **Selected** is a 6% wash with graphite text and a 2px graphite indicator (nav, tabs, list rows);
-  a segmented control's selected segment is a white pill on the gray track; the active tool is a
-  graphite pill with a white icon. Never a pink or blue tint.
-- **Focus** is a 2px graphite ring; on buttons a 1px white gap sits inside it so it shows on graphite fills.
-- Chips are neutral gray with graphite text; colour lives in a 6px dot. Progress fills are graphite,
-  red only for error. Checked controls are graphite.
-- Shadows are soft, neutral, low opacity (popover 0 8px 24px at 8%); no coloured glow.
+- **Red is the tint**: solid, only on active / selected / interactive-ON, never as a wash or a large
+  surface. No red panels, no red banners, no red backgrounds. It is on: checked boxes and radios,
+  toggles when on, slider fill and thumb rim, the keyboard focus ring, the selected tool in the rail
+  (solid pill, white icon), the selected navigation and tab indicator (2px), text links and quiet text
+  buttons ("Další tip ›", "Vše →"), running progress fills, the caret and the text selection.
+  Primary buttons stay graphite with white text; destructive buttons stay solid red (`Brush.Danger`)
+  and are confirmed in a dialog; success and warning keep their own colours.
+- **Red as signal** is unchanged: the brand dot, laser/beam markers and selection handles on the
+  canvas, error, the live-job indicator, tiny badge dots. `PaletteTests` keeps the red tokens, the
+  files allowed to reference them (signal and tint allow-lists), the literal hex values and the
+  render scans (no flat pastel area; no solid tint blob larger than a small control).
+- **No tinted washes**: hover, pressed and selected rows are neutral ink. `Brush.*Muted` survive only
+  as aliases of one gray. Banners are gray surface + hairline + a small coloured icon. The text
+  selection highlight is the one translucent tint (30%) and graphite text stays above 7:1 on it.
+- **Selected** is a 6% neutral wash with graphite text and a 2px tint indicator (nav, tabs, list
+  rows); a segmented control's selected segment is a white pill on the gray track; the active tool is
+  a solid tint pill with a white icon.
+- **Focus** is a 2px tint ring (4.4:1 on white, 4.0:1 on the canvas gray). On buttons a 1px white
+  gap sits inside it so it shows on graphite fills; on a checkbox it sits outside the box with a gap.
+- Chips are neutral gray with graphite text; colour lives in a 6px dot. Progress fills are the tint,
+  error is `Brush.Danger`. Checked controls are the tint.
+- Shadows are soft, neutral, low opacity; no coloured glow (see Elevation).
 - Contrast is tested: text pairs are computed from the token hex (`PaletteTests`). Deviations from the
-  brief: muted text is `#747478` (Apple's `#8E8E93` is 3.3:1 on white), success text `#1F7F37` and
-  error text `#D92B27` (the brief's `#248A3D` and `#E5302B` are 4.4:1).
+  brief: muted text is `#747478` (Apple's `#8E8E93` is 3.3:1 on white), success text `#1F7F37`, error
+  text `#D92B27`, and tint-as-text `#D32925` (the brand `#E5302B` is 4.38:1 on white and 4.03:1 on
+  the canvas, so it is used for fills and the focus ring only).
 
 Hover and selected must never look alike: hover has no border and no indicator; selected has a hairline
-or a graphite indicator and heavier text.
+or a tint indicator and heavier text.
+
+## Tiles
+
+Apple Settings-style identification. `IconTile` (`Lasero.App/Components/IconTile.xaml`) is a 28px
+rounded square (`Radius.Md`) with a white 1.75-stroke line icon on a muted, saturated solid fill
+(`Brush.Tile.Graphite / Red / Orange / Amber / Green / Teal / Blue / Indigo`, plus `Brown / Steel /
+Gray` for material categories). No gradient, shadow or glow. Every fill keeps at least 3:1 against
+its white icon (tested). Tiles identify a thing - Home quick actions, settings group headers,
+material categories, device cards - and are never a control state. Toolbar and rail icons stay plain
+line icons, and no screen shows more than four tile colours (tested).
 
 ## Typography
 
@@ -144,13 +172,19 @@ canvas stays the visual focus. Non-functional roadmap controls are not shown in 
 
 ## Elevation
 
-Docked panels get a border, never a shadow. Four steps, each with one job.
+Three layers: the canvas (`#F5F5F7`), cards and groups (white, hairline plus the card shadow), and
+popovers, menus and dialogs one level higher. Docked chrome (title bar, rails, the inspector) gets a
+hairline, never a shadow. Cards use `ElevatedBorder`, which draws `0 1px 2px` + `0 8px 24px` at 6%
+neutral ink (`Elevation.Card.*`) in `OnRender` as a nine-slice of gradient brushes rather than a
+`DropShadowEffect`: an Effect rasterises the card offscreen and turns the text inside it to grayscale
+anti-aliasing. The design canvas never carries an effect beyond the thin sheet shadow. Cards are 12px
+(`Radius.Lg`), separated by 16px. Four effect steps remain for the rest:
 
 | Token | Job |
 |---|---|
 | `Shadow.Sheet` | the canvas sheet — paper on a desk, not a floating surface |
 | `Shadow.Tooltip` | tooltip and toast, barely lifts |
-| `Shadow.Dropdown` | dropdown, context menu, popover |
+| `Shadow.Dropdown` | dropdown, context menu, popover (0 12px 32px at 12%) |
 | `Shadow.Modal` | modal dialogs, the only real one |
 
 A single `Shadow.Panel` used to serve all four, which made a dropdown as heavy as a modal and put a
@@ -181,23 +215,23 @@ Use `IconGlyph` for icon-only controls and `IconLabel` for an action with a visi
 
 Icons clarify navigation, tools, machine controls and important actions. They do not decorate every
 label or menu item. Ambiguous and safety-critical actions always keep text or an accessible name and
-tooltip. Graphite is inherited by selected or primary states, red only by destructive or
-safety-critical ones. No Unicode symbols, no emoji, no filled pictograms, no one-off local paths.
+tooltip. The tint is inherited by selected and on states, graphite by primary ones, danger red by destructive
+or safety-critical ones. No Unicode symbols, no emoji, no filled pictograms, no one-off local paths.
 
 Custom laser glyphs are also kept as clean standalone SVGs in `docs/design/icons-custom/` —
 `currentColor`, one path, no transforms.
 
 ## Interaction
 
-Graphite communicates selection, focus and the active tool. Red is never ambient decoration: it is
-destructive actions, safety-critical states and canvas selection markers. Disabled controls stay legible and appear only when
+The tint communicates selection, focus and the active tool. Red is never ambient decoration or a
+surface: it is the on state, destructive actions, safety-critical states and canvas selection markers. Disabled controls stay legible and appear only when
 their availability can change in the current workflow. Empty, disconnected, busy, paused and error
 states must all be readable from the status strip.
 
-Keyboard focus is always visible — a 2px graphite ring, inside the border on unfilled controls and
+Keyboard focus is always visible — a 2px tint ring, inside the border on unfilled controls and
 outside the fill on filled ones. It appears only when focus arrived from the keyboard: templates
 trigger on `FocusVisual.IsVisible`, never on `IsKeyboardFocused`, so a mouse click leaves no ring.
-Text inputs are the exception and show their graphite border on any focus.
+Text inputs are the exception and show their tint border (and a tint caret) on any focus.
 
 Disabled filled controls use the flat disabled surface; glyph-only and composite controls dim to
 `Opacity.Disabled` (0.45), the one dimming level. Every other rule of behaviour (Esc layering, numeric

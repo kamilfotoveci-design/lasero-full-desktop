@@ -117,10 +117,10 @@ ends or changes the session). `LaseroDialogWindow` already follows this.
 
 | State | Rule |
 |---|---|
-| Hover | one mechanic: `Brush.HoverWash` over whatever the control is, 6 percent. No border change, never the selected tint, never cobalt text |
+| Hover | one mechanic: `Brush.HoverWash` over whatever the control is, 6 percent. No border change, never the selected indicator, never tint text |
 | Pressed | same wash at 8 percent (pinned by `ThemeTokenTests`; `DESIGN.md` still says 14) |
-| Selected | cobalt tint plus cobalt border |
-| Keyboard focus | 2 px cobalt ring, only when focus arrived from the keyboard. A mouse click never leaves a ring. Text inputs show their cobalt border on any focus |
+| Selected | 6 percent neutral wash plus a 2 px tint indicator (nav, tabs, rows); the active tool is a solid tint pill with a white icon. Never a pastel wash |
+| Keyboard focus | 2 px tint ring (1 px white gap where the control is filled), only when focus arrived from the keyboard. A mouse click never leaves a ring. Text inputs show their tint border and caret on any focus |
 | Disabled | flat `Brush.DisabledSurface` with `Brush.TextDisabled` for filled controls, `Opacity.Disabled` (0.45) for glyph-only and composite controls. Arrow cursor. Says why via tooltip where the action is safety- or workflow-relevant |
 | Motion | hover fade 100 ms, no overshoot, no bounce anywhere. Selection changes are instant |
 

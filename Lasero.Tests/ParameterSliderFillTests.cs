@@ -70,10 +70,13 @@ public class ParameterSliderFillTests
         // Precondition that makes the explicit style necessary: the implicit style forces a MinHeight.
         Assert.Contains("<Style TargetType=\"RepeatButton\">", theme, StringComparison.Ordinal);
 
-        Assert.Contains("<Style x:Key=\"Slider.Parameter.Segment\" TargetType=\"RepeatButton\">", xaml, StringComparison.Ordinal);
-        Assert.Contains("<Setter Property=\"MinHeight\" Value=\"0\" />", xaml, StringComparison.Ordinal);
-        Assert.Equal(2, xaml.Split("Style=\"{StaticResource Slider.Parameter.Segment}\"").Length - 1);
-        Assert.Contains("Margin=\"0,0,-9,0\"", xaml, StringComparison.Ordinal);
+        // The slider template moved into the theme (the tint fill and thumb rim apply to every Slider
+        // now); ParameterSlider only layers its own height and move-to-point behaviour on top.
+        Assert.Contains("<Style x:Key=\"Slider.Segment\" TargetType=\"RepeatButton\">", theme, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"MinHeight\" Value=\"0\" />", theme, StringComparison.Ordinal);
+        Assert.Equal(2, theme.Split("Style=\"{StaticResource Slider.Segment}\"").Length - 1);
+        Assert.Contains("Margin=\"0,0,-9,0\"", theme, StringComparison.Ordinal);
+        Assert.Contains("BasedOn=\"{StaticResource {x:Type Slider}}\"", xaml, StringComparison.Ordinal);
     }
 
     private static T Find<T>(DependencyObject root, Func<T, bool>? where = null) where T : DependencyObject

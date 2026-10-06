@@ -85,7 +85,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Lg}" />
         <Setter Property="Padding" Value="16" />
-        <Setter Property="Margin" Value="0,0,0,12" />
+        <Setter Property="Margin" Value="0,0,0,16" />
     </Style>
     <!-- A 1px hairline separating adjacent zones in a horizontal bar (bottom job strip, selection
          toolbar) — shared so every bar uses the same divider instead of relying on Margin gaps alone. -->
@@ -173,7 +173,7 @@
     <!-- Compatibility alias for older views; new UI should use PrimaryAction. -->
     <Style x:Key="PrimaryBlue" TargetType="Button" BasedOn="{StaticResource PrimaryAction}" />
 
-    <!-- Flat, bordered, no shadow — same philosophy as LaseroTheme.xaml's editor "Panel" style, so
+    <!-- Cards sit on the canvas with the soft card shadow (ElevatedBorder draws it, see LaseroTheme.xaml "Depth"); the hairline stays so
          dashboard surfaces and editor chrome read as one consistent visual language rather than two. -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
@@ -217,13 +217,13 @@
     -->
 
     <!--
-        A quiet text action: graphite at rest, the brand red only on hover, no fill, no outline. The ring
+        A quiet text action: tint text at rest, a deeper tint on hover (no underline), no fill, no outline. The ring
         appears for keyboard focus only (FocusVisual.IsVisible), never after a click, and the stock dotted
         FocusVisualStyle is switched off so nothing is drawn at rest. Used by the tips ("Další tip", the
         chip's close button).
     -->
     <Style x:Key="Button.Quiet" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TintText}" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="Cursor" Value="Hand" />
@@ -240,10 +240,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TintText.Hover}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentHover}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Tint.Pressed}" />
                         </Trigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
                             <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
@@ -258,12 +258,21 @@
     </Style>
 
     <Style x:Key="Button.Link" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TintText}" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="Padding" Value="8,0" />
         <Setter Property="Cursor" Value="Hand" />
+        <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsEnabled" Value="True" />
+                    <Condition Property="IsMouseOver" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Foreground" Value="{StaticResource Brush.TintText.Hover}" />
+            </MultiTrigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Button.Link's ToggleButton counterpart. A WPF Style's TargetType must match the element it's
@@ -271,7 +280,7 @@
          subtype), so a disclosure toggle bound through IsChecked cannot reuse Button.Link directly —
          this repeats its look with a self-contained template instead of Button's default chrome. -->
     <Style x:Key="ToggleButton.Link" TargetType="ToggleButton">
-        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TintText}" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
@@ -370,7 +379,7 @@
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="TextAlignment" Value="Right" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CaretBrush" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource Brush.TextSelection}" />
         <Setter Property="Template">
             <Setter.Value>

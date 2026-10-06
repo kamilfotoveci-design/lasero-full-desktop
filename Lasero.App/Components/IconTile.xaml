@@ -1,0 +1,21 @@
+<UserControl x:Class="Lasero.App.Components.IconTile"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:Lasero.App.Components"
+             x:Name="Root" Focusable="False" IsHitTestVisible="False" SnapsToDevicePixels="True">
+    <!--
+        Apple Settings-style identification tile: a rounded square in one muted, saturated tone with a
+        white stroke icon. It identifies a thing (a quick action, a settings group, a material
+        category, a device); it is never a control state and never carries meaning by colour alone,
+        because the label sits beside it. Solid fill, no gradient, no shadow, no glow.
+
+        Use sparingly: tiles are for identity rows. Toolbar and rail icons stay plain line icons.
+    -->
+    <Border x:Name="Tile" CornerRadius="{StaticResource Radius.Md}"
+            Width="{Binding Size, ElementName=Root}" Height="{Binding Size, ElementName=Root}">
+        <components:IconGlyph x:Name="Glyph" IconData="{Binding IconData, ElementName=Root}"
+                              Foreground="{StaticResource Brush.OnTint}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Width="{Binding GlyphSize, ElementName=Root}" Height="{Binding GlyphSize, ElementName=Root}" />
+    </Border>
+</UserControl>

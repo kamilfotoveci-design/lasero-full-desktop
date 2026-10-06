@@ -169,40 +169,116 @@ public sealed class PaletteRenderTests
         return panel;
     }
 
+    // The tint colours as they reach the screen: fills, the deeper text variant, hover and pressed.
+    private static readonly string[] TintKeys = { "Brush.Tint", "Brush.Tint.Hover", "Brush.Tint.Pressed", "Brush.TintText", "Brush.TintText.Hover" };
+
+    private static bool IsSolidTint(Color c) => TintKeys.Any(k => Near(c, C(k), 6));
+
+    private static byte[] Pixels(BitmapSource bitmap, out int stride)
+    {
+        stride = bitmap.PixelWidth * 4;
+        var data = new byte[stride * bitmap.PixelHeight];
+        bitmap.CopyPixels(data, stride, 0);
+        return data;
+    }
+
+    private static Color At(byte[] data, int stride, int x, int y)
+    {
+        var i = y * stride + x * 4;
+        return Color.FromRgb(data[i + 2], data[i + 1], data[i]);
+    }
+
+    /// <summary>A pastel or tinted wash is a FLAT area of a coloured, non-tint pixel: a pixel with chroma
+    /// whose four neighbours are the very same colour. Anti-aliased edges and text fringes never form
+    /// one, and solid tint fills are excluded by <see cref="IsSolidTint"/>.</summary>
+    internal static (int X, int Y, Color Colour)? FirstFlatWash(BitmapSource bitmap)
+    {
+        var data = Pixels(bitmap, out var stride);
+        for (var y = 1; y < bitmap.PixelHeight - 1; y++)
+            for (var x = 1; x < bitmap.PixelWidth - 1; x++)
+            {
+                var c = At(data, stride, x, y);
+                if (Spread(c) <= 8 || IsSolidTint(c)) continue;
+                if (Near(c, At(data, stride, x - 1, y), 1) && Near(c, At(data, stride, x + 1, y), 1)
+                    && Near(c, At(data, stride, x, y - 1), 1) && Near(c, At(data, stride, x, y + 1), 1))
+                    return (x, y, c);
+            }
+        return null;
+    }
+
+    /// <summary>Largest bounding-box area (px) of any connected run of solid tint pixels.</summary>
+    internal static int LargestTintBlob(BitmapSource bitmap)
+    {
+        var data = Pixels(bitmap, out var stride);
+        var w = bitmap.PixelWidth;
+        var h = bitmap.PixelHeight;
+        var seen = new bool[w * h];
+        var largest = 0;
+        var queue = new Queue<(int X, int Y)>();
+        for (var sy = 0; sy < h; sy++)
+            for (var sx = 0; sx < w; sx++)
+            {
+                if (seen[sy * w + sx] || !IsSolidTint(At(data, stride, sx, sy))) continue;
+                int minX = sx, maxX = sx, minY = sy, maxY = sy;
+                seen[sy * w + sx] = true;
+                queue.Enqueue((sx, sy));
+                while (queue.Count > 0)
+                {
+                    var (x, y) = queue.Dequeue();
+                    minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                    minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
+                    foreach (var (nx, ny) in new[] { (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1) })
+                    {
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen[ny * w + nx]) continue;
+                        if (!IsSolidTint(At(data, stride, nx, ny))) continue;
+                        seen[ny * w + nx] = true;
+                        queue.Enqueue((nx, ny));
+                    }
+                }
+                largest = Math.Max(largest, (maxX - minX + 1) * (maxY - minY + 1));
+            }
+        return largest;
+    }
+
     [Fact]
-    public void OrdinaryChromeRendersWithoutAnyTintedPixel()
+    public void OrdinaryChromeHasSolidTintWhereActiveButNoPastelWash()
     {
         Ui.Invoke(() =>
         {
             var (bitmap, _) = Render(NeutralSpecimen(out _), (Brush)Application.Current.FindResource("Brush.Canvas"), 360, "neutral-specimen");
-            var tinted = FirstTintedPixel(bitmap);
-            Assert.True(tinted is null,
-                tinted is null ? "" : $"tinted pixel {Hex(tinted.Value.Colour)} at {tinted.Value.X},{tinted.Value.Y}: a template paints a colour in ordinary chrome");
+            var wash = FirstFlatWash(bitmap);
+            Assert.True(wash is null,
+                wash is null ? "" : $"flat tinted area {Hex(wash.Value.Colour)} at {wash.Value.X},{wash.Value.Y}: a template paints a pastel wash in ordinary chrome");
+
+            // Solid tint is allowed on small active controls only: a toggle pill, a checkbox, a progress fill.
+            var blob = LargestTintBlob(bitmap);
+            Assert.InRange(blob, 1, 2600);
         });
     }
 
     [Fact]
-    public void PrimaryActionAndCheckedControlsAreGraphiteFills()
+    public void PrimaryActionStaysGraphiteAndActiveControlsAreSolidTint()
     {
         Ui.Invoke(() =>
         {
             var (bitmap, bounds) = Render(NeutralSpecimen(out var parts), (Brush)Application.Current.FindResource("Brush.Canvas"), 360, "neutral-fills");
             var graphite = C("Brush.PrimaryAction");
+            var tint = C("Brush.Tint");
 
             var primary = bounds[parts["primary"]];
-            Assert.True(Near(Pixel(bitmap, primary.Left + 6, primary.Top + 6), graphite, 4), "primary button fill is not graphite");
+            Assert.True(Near(Pixel(bitmap, primary.Left + 6, primary.Top + 6), graphite, 4), "primary button fill stays graphite");
 
             var toggle = bounds[parts["toggleOn"]];
-            Assert.True(Near(Pixel(bitmap, toggle.Left + 3, toggle.Top + toggle.Height / 2), C("Brush.ActiveTool"), 4),
-                "an active toggle is a graphite pill");
+            Assert.True(Near(Pixel(bitmap, toggle.Left + 3, toggle.Top + toggle.Height / 2), tint, 4),
+                "an active toggle is a solid tint pill");
 
             var check = bounds[parts["checkOn"]];
-            Assert.True(Near(Pixel(bitmap, check.Left + 3, check.Top + check.Height / 2 - 6), graphite, 12),
-                "a checked checkbox is graphite, not red");
+            Assert.True(Near(Pixel(bitmap, check.Left + 3, check.Top + check.Height / 2 - 6), tint, 12),
+                "a checked checkbox is solid tint");
 
             var progress = bounds[parts["progress"]];
-            Assert.True(Near(Pixel(bitmap, progress.Left + 8, progress.Top + progress.Height / 2), graphite, 4),
-                "a progress fill is graphite");
+            Assert.True(Near(Pixel(bitmap, progress.Left + 8, progress.Top + progress.Height / 2), tint, 4),
+                "a progress fill is solid tint");
         });
     }
 

@@ -16,18 +16,30 @@ public sealed class PaletteTests
 {
     // Tokens that may carry chroma. Everything else in the theme must be a neutral (R, G and B within
     // a few steps of each other). Green and amber exist as semantic text/icon/dot colours; the reds
-    // are the signal family plus the error/destructive colour.
-    private static readonly string[] ChromaticTokens =
-    {
-        "Brush.Signal", "Brush.SignalHover", "Brush.SignalPressed", "Brush.Brand",
-        "Brush.Danger", "Brush.Success", "Brush.Warning",
-    };
-
-    // The tokens whose hue is red. A new red token must be added here deliberately.
-    private static readonly string[] RedTokens =
+    // are the signal family, the error/destructive colour and THE TINT; the Brush.Tile.* identification
+    // tiles are muted chromatic fills for IconTile.
+    private static readonly string[] SignalTokens =
     {
         "Brush.Signal", "Brush.SignalHover", "Brush.SignalPressed", "Brush.Brand", "Brush.Danger",
     };
+
+    // The tint (2026-10, owner decision): ONE solid red for everything that is on, selected or active.
+    // Solid only, never a wash. The aliases resolve to it and are listed so a new one is deliberate.
+    private static readonly string[] TintTokens =
+    {
+        "Brush.Tint", "Brush.Tint.Hover", "Brush.Tint.Pressed", "Brush.TintText", "Brush.TintText.Hover",
+        "Brush.Accent", "Brush.AccentHover", "Brush.AccentText", "Brush.ActiveTool", "Brush.SelectedIndicator",
+        "Brush.FocusRing", "Brush.TextSelection",
+    };
+
+    private static readonly string[] SemanticTokens = { "Brush.Success", "Brush.Warning" };
+
+    private static readonly string[] ChromaticTokens = SignalTokens.Concat(TintTokens).Concat(SemanticTokens).ToArray();
+
+    private static bool IsChromatic(string key) => ChromaticTokens.Contains(key) || key.StartsWith("Brush.Tile.", StringComparison.Ordinal);
+
+    // The tokens whose hue is red. A new red token must be added here deliberately.
+    private static readonly string[] RedTokens = SignalTokens.Concat(TintTokens).ToArray();
 
     // The only files outside the theme that may reference the signal red tokens. Each is a place the
     // brief names: the live-job indicator, status dots, canvas selection and beam markers.
@@ -42,6 +54,32 @@ public sealed class PaletteTests
         "TourOverlay.xaml.cs",            // same dot, built in code
         "MotionPalette.cs",               // the brand dot in the intro animation (token-resolved)
         "HomeView.xaml",                  // the 6px brand dot beside a section heading
+    };
+
+    // The files that implement an interactive ON / selected / active state with the tint. Each is a
+    // control template or a screen-level state (selected tab, selected card, nav indicator, tool pill,
+    // link-style button). Anything else reaching for the tint is decoration and must be argued for.
+    private static readonly string[] TintConsumers =
+    {
+        "SharedUiStyles.xaml",       // links, quiet text buttons, nav indicator, selected swatch, focus rings
+        "DesignerToolRail.xaml",     // the selected tool pill
+        "MainWindow.xaml",           // nav indicator, splitter hover, link-style Připojit, unsaved dot
+        "MaterialsWindow.xaml",      // selected tab indicator, selected material card
+        "DeviceSettingsWindow.xaml", // selected settings nav item
+        "DeviceWizardOverlay.xaml",  // selected device card, running scan ring
+        "ProcessStatusCard.xaml",    // running progress fill
+        "KamilComposer.xaml",        // focused composer border
+        "SelectionPropertiesBar.xaml", // focus ring
+        "DesignerInspectorView.xaml",  // focus ring on a layer row
+        "LoginWindow.xaml",          // caret and focus
+        "TourOverlay.xaml",          // spotlight ring and brackets
+        "TourOverlay.xaml.cs",       // current step dot
+        "BitmapTraceWindow.xaml",    // traced path preview
+        "OffsetPathWindow.xaml",     // offset path preview
+        "App.xaml.cs",               // global keyboard focus ring
+        "SceneCanvas.xaml",          // selection handles
+        "SceneCanvas.xaml.cs",       // selection handles
+        "IconTile.xaml",             // the white glyph on a tile (Brush.OnTint)
     };
 
     // Source files whose hex literals are content, not chrome.
@@ -147,11 +185,20 @@ public sealed class PaletteTests
     // Text on filled controls.
     [InlineData("Brush.OnPrimaryAction", "Brush.PrimaryAction", 7.0)]
     [InlineData("Brush.OnPrimaryAction", "Brush.PrimaryActionHover", 7.0)]
-    [InlineData("Brush.OnActiveTool", "Brush.ActiveTool", 7.0)]
     [InlineData("Brush.OnAccent", "Brush.Danger", 4.5)]
     // Non-text indicators need 3:1 (WCAG 1.4.11): focus ring, selection handles, the signal dot.
+    // The tint: text variant AA on every surface it is set on, the fill/ring 3:1 on both grounds.
+    [InlineData("Brush.TintText", "Brush.Surface", 4.5)]
+    [InlineData("Brush.TintText", "Brush.Canvas", 4.5)]
+    [InlineData("Brush.TintText", "Brush.Field", 4.5)]
+    [InlineData("Brush.TintText.Hover", "Brush.Canvas", 4.5)]
+    [InlineData("Brush.OnTint", "Brush.Tint", 3.0)]
+    [InlineData("Brush.OnActiveTool", "Brush.ActiveTool", 3.0)]
+    [InlineData("Brush.Tint", "Brush.Surface", 3.0)]
+    [InlineData("Brush.Tint", "Brush.Canvas", 3.0)]
     [InlineData("Brush.FocusRing", "Brush.Surface", 3.0)]
     [InlineData("Brush.FocusRing", "Brush.Canvas", 3.0)]
+    [InlineData("Brush.FocusRing", "Brush.FocusGap", 3.0)]
     [InlineData("Brush.Signal", "Brush.Surface", 3.0)]
     [InlineData("Brush.Signal", "Brush.Canvas", 3.0)]
     [InlineData("Brush.PanelBorderStrong", "Brush.Surface", 1.3)]
@@ -173,7 +220,7 @@ public sealed class PaletteTests
             Assert.Equal(ParseHex("F5F5F7"), Token(key));
 
         // Cool, not warm: blue is the highest channel on every gray the chrome uses.
-        foreach (var (key, c) in ThemeBrushes().Where(p => p.Value.A == 255 && p.Value.Spread > 0 && !ChromaticTokens.Contains(p.Key)))
+        foreach (var (key, c) in ThemeBrushes().Where(p => p.Value.A == 255 && p.Value.Spread > 0 && !IsChromatic(p.Key)))
             Assert.True(c.B >= c.R, $"{key} is a warm gray (#{c.R:X2}{c.G:X2}{c.B:X2}); the palette is cool neutral");
     }
 
@@ -181,7 +228,7 @@ public sealed class PaletteTests
     public void EveryThemeBrushIsNeutralExceptTheAllowListedSemanticColours()
     {
         var offenders = ThemeBrushes()
-            .Where(p => !ChromaticTokens.Contains(p.Key) && p.Value.Spread > 6)
+            .Where(p => !IsChromatic(p.Key) && p.Value.Spread > 6)
             .Select(p => $"{p.Key} = #{p.Value.A:X2}{p.Value.R:X2}{p.Value.G:X2}{p.Value.B:X2} (spread {p.Value.Spread})")
             .ToList();
 
@@ -222,11 +269,61 @@ public sealed class PaletteTests
     }
 
     [Fact]
-    public void AccentNamesResolveToGraphiteNotRed()
+    public void AccentNamesResolveToTheTintAndPrimaryActionsStayGraphite()
     {
+        var tint = ParseHex("E5302B");
+        foreach (var key in new[] { "Brush.Tint", "Brush.Accent", "Brush.FocusRing", "Brush.ActiveTool", "Brush.SelectedIndicator" })
+            Assert.Equal(tint, Token(key));
+        Assert.Equal(Token("Brush.TintText"), Token("Brush.AccentText"));
+        Assert.Equal(ParseHex("CF2A26"), Token("Brush.Tint.Hover"));
+        Assert.Equal(Token("Brush.Tint.Hover"), Token("Brush.AccentHover"));
+        Assert.Equal(ParseHex("B9231F"), Token("Brush.Tint.Pressed"));
+        Assert.Equal(ParseHex("FFFFFF"), Token("Brush.OnTint"));
+
+        // Primary buttons and body text are still graphite: the tint is for active states only.
         var graphite = ParseHex("1D1D1F");
-        foreach (var key in new[] { "Brush.Accent", "Brush.AccentText", "Brush.FocusRing", "Brush.PrimaryAction", "Brush.ActiveTool", "Brush.TextPrimary" })
+        foreach (var key in new[] { "Brush.PrimaryAction", "Brush.TextPrimary" })
             Assert.Equal(graphite, Token(key));
+
+        // The text-selection highlight is the tint at 30%: translucent by nature, the one exception
+        // to "solid". Hover, pressed and selected washes stay neutral ink.
+        Assert.Equal(tint.R, Token("Brush.TextSelection").R);
+        Assert.InRange(Token("Brush.TextSelection").Alpha, 0.25, 0.35);
+    }
+
+    [Fact]
+    public void TintTokensAreOnlyReferencedFromAllowListedFiles()
+    {
+        var reference = new Regex(@"Brush\.(Tint|Tint\.Hover|Tint\.Pressed|TintText|TintText\.Hover|OnTint)\b");
+        var offenders = new List<string>();
+
+        foreach (var file in AppFiles("*.xaml").Concat(AppFiles("*.cs")))
+        {
+            var name = Path.GetFileName(file);
+            if (name == "LaseroTheme.xaml" || TintConsumers.Contains(name) || SignalConsumers.Contains(name)) continue;
+            var text = File.ReadAllText(file);
+            if (name.EndsWith(".xaml", StringComparison.Ordinal)) text = XmlComment.Replace(text, string.Empty);
+            if (reference.IsMatch(text)) offenders.Add(name);
+        }
+
+        Assert.True(offenders.Count == 0,
+            "The tint marks on/selected/active states. These files use it without being on the allow-list in PaletteTests: " + string.Join(", ", offenders));
+    }
+
+    [Fact]
+    public void TheTintIsNeverUsedAsABackgroundWashOrLargeSurface()
+    {
+        // A solid tint fill belongs to small controls: a toggle, a checkbox, a slider fill, a tool pill.
+        // No view may paint a window, grid, panel or card Background with a tint token.
+        var offenders = new List<string>();
+        var bg = new Regex(@"<(?:Window|Grid|StackPanel|DockPanel|ScrollViewer|UserControl|components:ElevatedBorder)\b[^>]*\bBackground=""\{(?:Static|Dynamic)Resource Brush\.(?:Tint|Accent|ActiveTool|Signal)[^}]*\}""");
+        foreach (var file in AppFiles("*.xaml"))
+        {
+            var text = XmlComment.Replace(File.ReadAllText(file), string.Empty);
+            if (bg.IsMatch(text)) offenders.Add(Path.GetFileName(file));
+        }
+
+        Assert.True(offenders.Count == 0, "Large surfaces must not be tinted: " + string.Join(", ", offenders));
     }
 
     [Fact]
@@ -299,7 +396,7 @@ public sealed class PaletteTests
     [Fact]
     public void ThemeFileOnlyContainsNeutralOrAllowListedHexValues()
     {
-        var allowed = ChromaticTokens.Select(k => ThemeBrushes()[k]).Select(c => $"{c.R:X2}{c.G:X2}{c.B:X2}").ToHashSet();
+        var allowed = ThemeBrushes().Where(p => IsChromatic(p.Key)).Select(p => p.Value).Select(c => $"{c.R:X2}{c.G:X2}{c.B:X2}").ToHashSet();
         var theme = XmlComment.Replace(File.ReadAllText(ThemePath()), string.Empty);
         var offenders = new List<string>();
 

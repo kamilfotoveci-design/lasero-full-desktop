@@ -62,9 +62,12 @@ Optimise for quality improvement per credit, not for number of agents, skills or
 - Contextual controls over permanent clutter.
 - Desktop application, not a SaaS dashboard. No decorative gradients, shadows or oversized headings.
 - Never solve density by shrinking text. Nothing below 12px; body 13px.
-- One interaction colour: cobalt `#2563EB` for selection, active tool, active nav, focus and primary
-  CTA. Red is danger plus the wordmark dot. Amber is warnings. Roughly 90% neutral / 8% blue / 2%
-  semantic.
+- One tint: the LASERO red `#E5302B`, always SOLID, for everything that is on - checked and toggled
+  controls, slider fill, focus ring, selected tool pill, selected nav and tab indicator, text links,
+  running progress, caret and selection. Red is the tint: solid, only on active / selected /
+  interactive-ON, never as a wash or a large surface. Primary buttons stay graphite. Amber is
+  warnings. Colour also identifies through muted `IconTile`s (never on toolbar or rail icons) and
+  depth comes from `ElevatedBorder` cards on the `#F5F5F7` canvas. See `DESIGN.md`.
 - Reuse the shared tokens (`Brush.*`, `Size.Control.*`) rather than adding one-off values.
 - Precise look, forgiving interaction.
 

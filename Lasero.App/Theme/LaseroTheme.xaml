@@ -49,21 +49,29 @@
           2. Text is graphite #1D1D1F, secondary #6E6E73, muted #747478. Muted is a deliberate step
              darker than Apple's #8E8E93, which is only 3.3:1 on white and fails body text; #8E8E93
              survives as Brush.TextDisabled, where 3:1 is the bar.
-          3. Interaction is graphite: primary button, active tool, active navigation, checked
-             controls, focus ring, caret. Brush.Accent* therefore resolve to graphite; the names stay
-             so no view needs editing, but they no longer mean "red".
-          4. Red (Brush.Signal #E5302B) is a SIGNAL only: the brand dot, laser/beam markers and
-             selection handles on the canvas, error/danger, destructive buttons, the live-job
-             indicator and tiny badge dots. It is never a surface, a wash, a tint or a text-selection
-             colour. The allow-list is enforced in ThemeTokenTests.
-          5. Hover/pressed/selected are neutral ink washes. There is no tinted wash anywhere:
+          3. THE TINT (2026-10 owner decision: the neutral palette was "soulless"). One confident
+             red, #E5302B, marks everything that is ON: checked and toggled controls, slider fill,
+             the focus ring, the selected tool pill, the selected-navigation and tab indicators, text
+             links and quiet text buttons, running progress, the caret and the text selection. It is
+             always SOLID. Primary buttons stay graphite; destructive buttons are solid red but are
+             confirmed in a dialog. Brush.Accent* are legacy aliases of the tint.
+          4. Red as a SIGNAL is unchanged: the brand dot, laser/beam markers and selection handles on
+             the canvas, error/danger, the live-job indicator and tiny badge dots. Red is the tint:
+             solid, only on active / selected / interactive-ON, never as a wash or a large surface
+             (no red panels, banners or backgrounds). The allow-lists are enforced in PaletteTests.
+          5. Hover/pressed/selected rows are neutral ink washes. There is no tinted wash anywhere:
              Brush.*Muted exist only as aliases of one neutral gray, and banners are gray surface +
              hairline + a small coloured icon.
+          5b. Colour also IDENTIFIES, Apple-Settings style: IconTile, a 28px rounded square with a
+             white line icon on a muted solid fill (Brush.Tile.*). Never a state, never on rail or
+             toolbar icons, at most four tile colours on a screen.
+          5c. Depth in three layers: canvas #F5F5F7, white cards with the two-layer card shadow
+             (Elevation.Card.*, drawn by ElevatedBorder), popovers and dialogs one level higher.
           6. Semantic text colours are chosen so they pass 4.5:1 on white (Success #1F7F37,
              Warning #B25E09, Danger #D92B27). The brighter #E5302B / #248A3D reds and greens live
              in Brush.Signal and the dots, where only 3:1 is required.
 
-        Budget: ~90% neutral, ~8% graphite, ~2% signal red.
+        Budget: ~88% neutral, ~6% graphite, ~4% tint and signal red, a few tiles.
     -->
 
     <!-- Primary action: ordinary buttons. Graphite fill, white text. -->
@@ -72,18 +80,33 @@
     <SolidColorBrush x:Key="Brush.PrimaryActionPressed" Color="#0B0B0C" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.OnPrimaryAction" Color="#FFFFFF" po:Freeze="False" />
 
-    <!-- Interaction: active tool, active navigation, checked controls, caret. Graphite. The key names
-         predate the 2026-10 palette; they are kept as aliases so views do not need editing. -->
-    <SolidColorBrush x:Key="Brush.Accent" Color="#1D1D1F" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentHover" Color="#3A3A3C" po:Freeze="False" />
-    <!-- Foreground for anything drawn on top of Brush.Accent or Brush.Signal fills — including the
-         scene canvas's resize and rotate handles (red outline, white core). SceneCanvas resolves this
+    <!--
+         THE TINT. One confident colour for everything that is on: toggles and checkboxes when
+         checked, slider fill, the focus ring, the selected tool, the selected navigation indicator,
+         text links, running progress, the caret and the text selection. It is always SOLID - never a
+         pastel, a wash or a large surface. Fills use #E5302B; text uses the slightly deeper
+         #D32925 (5.1:1 on white, 4.6:1 on the gray canvas; #E5302B is 4.38 and 4.03 and fails AA for body text).
+         Primary buttons stay graphite; destructive buttons are the same solid red but are
+         confirmed in a dialog, so the tint never has to say "danger" on its own. -->
+    <SolidColorBrush x:Key="Brush.Tint" Color="#E5302B" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tint.Hover" Color="#CF2A26" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tint.Pressed" Color="#B9231F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.OnTint" Color="#FFFFFF" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TintText" Color="#D32925" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.TintText.Hover" Color="#B9231F" po:Freeze="False" />
+
+    <!-- Legacy interaction names, kept as aliases of the tint so views do not need editing. New code
+         uses Brush.Tint*. -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#E5302B" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#CF2A26" po:Freeze="False" />
+    <!-- Foreground for anything drawn on top of Brush.Accent or Brush.Signal fills, including the
+         scene canvas resize and rotate handles (red outline, white core). SceneCanvas resolves this
          key with FindResource, so it must exist or building the selection adorner throws. -->
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFF" po:Freeze="False" />
-    <SolidColorBrush x:Key="Brush.AccentText" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#D32925" po:Freeze="False" />
 
-    <!-- The active tool: a graphite pill with a white icon. -->
-    <SolidColorBrush x:Key="Brush.ActiveTool" Color="#1D1D1F" po:Freeze="False" />
+    <!-- The active tool: a solid tint pill with a white icon. -->
+    <SolidColorBrush x:Key="Brush.ActiveTool" Color="#E5302B" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.OnActiveTool" Color="#FFFFFF" po:Freeze="False" />
 
     <!-- Selected rows, tabs and segments: a very light neutral wash (6%) plus a hairline. Never a tint.
@@ -92,12 +115,12 @@
     <SolidColorBrush x:Key="Brush.SelectedSurface" Color="#0F1D1D1F" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.SelectedBorder" Color="#D2D2D7" po:Freeze="False" />
     <!-- The 2px indicator on a selected row or active navigation item. -->
-    <SolidColorBrush x:Key="Brush.SelectedIndicator" Color="#1D1D1F" po:Freeze="False" />
-    <!-- Keyboard focus: graphite, 2px, with a white gap on filled controls (Brush.FocusGap). -->
-    <SolidColorBrush x:Key="Brush.FocusRing" Color="#1D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.SelectedIndicator" Color="#E5302B" po:Freeze="False" />
+    <!-- Keyboard focus: tint, 2px, with a white gap on filled controls (Brush.FocusGap). -->
+    <SolidColorBrush x:Key="Brush.FocusRing" Color="#E5302B" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.FocusGap" Color="#FFFFFF" po:Freeze="False" />
-    <!-- Text selection inside a field. Neutral ink at 18%, so selected text stays black on gray. -->
-    <SolidColorBrush x:Key="Brush.TextSelection" Color="#2E1D1D1F" po:Freeze="False" />
+    <!-- Text selection inside a field: the tint at 30%, so selected graphite text stays at 4.5:1+ on it. -->
+    <SolidColorBrush x:Key="Brush.TextSelection" Color="#4DE5302B" po:Freeze="False" />
 
     <!-- LASERO signal red. The only saturated colour in the chrome. -->
     <SolidColorBrush x:Key="Brush.Signal" Color="#E5302B" po:Freeze="False" />
@@ -105,6 +128,24 @@
     <SolidColorBrush x:Key="Brush.SignalPressed" Color="#B9231F" po:Freeze="False" />
     <!-- Brand. The wordmark's red dot. -->
     <SolidColorBrush x:Key="Brush.Brand" Color="#E5302B" po:Freeze="False" />
+
+    <!--
+        Identification tiles (IconTile). Muted, saturated, flat: each reaches at least 3:1 against the
+        white icon drawn on it (PaletteTests computes it). They identify a thing and are never a state:
+        the tint (red) alone marks on, selected and active. Brown, Steel and Gray exist for material
+        categories (leather, metal marking, paper).
+    -->
+    <SolidColorBrush x:Key="Brush.Tile.Graphite" Color="#48484A" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Red" Color="#D9534F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Orange" Color="#C46A24" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Amber" Color="#B7791F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Green" Color="#2F8F4E" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Teal" Color="#2A8C86" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Blue" Color="#4F7CAC" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Indigo" Color="#5856B8" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Brown" Color="#8B5E3C" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Steel" Color="#6B7F8F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.Tile.Gray" Color="#8E8E93" po:Freeze="False" />
 
     <!-- Surfaces. White cards and panels on a cool neutral gray canvas. -->
     <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF" po:Freeze="False" />
@@ -116,7 +157,7 @@
     <SolidColorBrush x:Key="Brush.PanelRaised" Color="#F2F2F4" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.Field" Color="#F2F2F4" po:Freeze="False" />
     <!-- Hairline: ink at 8%. Strong is the opaque #D2D2D7 for field outlines and resize grips. -->
-    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#141D1D1F" po:Freeze="False" />
+    <SolidColorBrush x:Key="Brush.PanelBorder" Color="#0F1D1D1F" po:Freeze="False" />
     <SolidColorBrush x:Key="Brush.PanelBorderStrong" Color="#D2D2D7" po:Freeze="False" />
 
     <!--
@@ -189,8 +230,22 @@
     -->
     <DropShadowEffect x:Key="Shadow.Sheet" Color="#1D1D1F" Opacity="0.06" BlurRadius="4" ShadowDepth="1" Direction="270" />
     <DropShadowEffect x:Key="Shadow.Tooltip" Color="#1D1D1F" Opacity="0.08" BlurRadius="8" ShadowDepth="2" Direction="270" />
-    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#1D1D1F" Opacity="0.08" BlurRadius="24" ShadowDepth="8" Direction="270" />
+    <DropShadowEffect x:Key="Shadow.Dropdown" Color="#1D1D1F" Opacity="0.12" BlurRadius="32" ShadowDepth="12" Direction="270" />
     <DropShadowEffect x:Key="Shadow.Modal" Color="#1D1D1F" Opacity="0.14" BlurRadius="48" ShadowDepth="16" Direction="270" />
+
+    <!--
+        Three layers of depth. 1: the canvas and app background (#F5F5F7). 2: cards and panels, white,
+        lifted by the two-layer card shadow below (0 1px 2px + 0 8px 24px at 6%, neutral ink). 3:
+        popovers, menus and dialogs, one level higher (Shadow.Dropdown 0 12px 32px at 12%, Shadow.Modal).
+        Cards draw their shadow in ElevatedBorder rather than through DropShadowEffect (no offscreen
+        surface, ClearType text stays crisp); these numbers are what it reads.
+    -->
+    <system:Double x:Key="Elevation.Card.Contact.OffsetY">1</system:Double>
+    <system:Double x:Key="Elevation.Card.Contact.Blur">2</system:Double>
+    <system:Double x:Key="Elevation.Card.Contact.Opacity">0.06</system:Double>
+    <system:Double x:Key="Elevation.Card.Ambient.OffsetY">8</system:Double>
+    <system:Double x:Key="Elevation.Card.Ambient.Blur">24</system:Double>
+    <system:Double x:Key="Elevation.Card.Ambient.Opacity">0.06</system:Double>
 
     <!-- Motion language: responsive at the pointer, slightly slower for spatial change. Spring is
          deliberately high-damping: it is used only for the final 1-3% settle, never for travel or
@@ -388,11 +443,13 @@
     <!-- ===================== Panels ===================== -->
 
     <!--
-        Only ONE element in the whole app carries a drop shadow — the workspace/scene canvas (see
-        WorkspaceCanvas.xaml) — that's the one deliberate focal point. Every other surface, editor
-        chrome and dashboard cards alike, is flat/bordered: shadow-on-every-card is the single most
-        reliable "generic template" tell. Dashboard cards (SharedUiStyles.xaml's Card/MetricCard/
-        ThumbnailCard) converge on this same flat philosophy rather than carrying their own shadow.
+        Depth (2026-10). Docked chrome (title bar, rails, the inspector) is white with a hairline, no
+        shadow. Cards and dialog groups (Card, MetricCard, ThumbnailCard, InspectorSection) lift off
+        the #F5F5F7 canvas through ElevatedBorder: a soft neutral two-layer shadow drawn in OnRender
+        rather than a DropShadowEffect, so ClearType text inside stays crisp and nothing is rasterised
+        offscreen. The design canvas itself never carries an effect beyond the one thin sheet shadow
+        on the paper (Shadow.Sheet, WorkspaceCanvas.xaml). Popovers, menus and dialogs use the
+        Shadow.Dropdown / Shadow.Modal effects, one level higher.
     -->
     <Style x:Key="Badge" TargetType="Border">
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
@@ -913,20 +970,26 @@
                          of the click target, not just the 18px box. -->
                     <StackPanel Orientation="Horizontal" Background="Transparent"
                                 MinHeight="{StaticResource Size.Control.Compact}" VerticalAlignment="Center">
-                        <Border x:Name="Box" Width="18" Height="18"
+                        <Grid VerticalAlignment="Center">
+                            <!-- Focus ring: 2px tint with a 1px gap outside the box, so it stays visible
+                                 on a checked (solid tint) box as well as an empty one. -->
+                            <Border x:Name="FocusRing" Margin="-3" CornerRadius="{StaticResource Radius.Sm}"
+                                    BorderBrush="{DynamicResource Brush.FocusRing}" BorderThickness="0" />
+                            <Border x:Name="Box" Width="18" Height="18"
                                 CornerRadius="{StaticResource Radius.Xs}"
                                 Background="{DynamicResource Brush.Panel}"
                                 BorderBrush="{DynamicResource Brush.PanelBorderStrong}"
                                 BorderThickness="1"
                                 VerticalAlignment="Center">
-                            <Path x:Name="Tick"
+                                <Path x:Name="Tick"
                                   Data="{StaticResource Glyph.Check}"
                                   Stroke="{DynamicResource Brush.OnAccent}"
                                   StrokeThickness="2.6"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                                   Stretch="Uniform" Margin="3.5"
                                   Opacity="0" />
-                        </Border>
+                            </Border>
+                        </Grid>
                         <ContentPresenter x:Name="Label" Margin="8,0,0,0"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left" />
@@ -953,8 +1016,7 @@
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.AccentHover}" />
                         </MultiTrigger>
                         <Trigger Property="components:FocusVisual.IsVisible" Value="True">
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
-                            <Setter TargetName="Box" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
@@ -1055,7 +1117,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
-        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -1087,7 +1149,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="Padding" Value="10,0" />
-        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="PasswordChar" Value="●" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -1416,7 +1478,7 @@
 
     <Style TargetType="ProgressBar">
         <Setter Property="Background" Value="{StaticResource Brush.Field}" />
-        <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Tint}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Height" Value="6" />
         <Setter Property="Template">
@@ -1448,6 +1510,99 @@
                             <Trigger.ExitActions>
                                 <StopStoryboard BeginStoryboardName="PulseLoop" />
                             </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== Slider ===================== -->
+    <!--
+        A 4px groove, a solid tint fill that ends under the thumb, and a white thumb with a tint rim.
+        The stock WPF slider draws Aero chrome that belongs to no part of this product. The Track's
+        page buttons are restyled because the implicit RepeatButton style (MinHeight 32) would
+        otherwise make them 32px tall inside an 18px slider.
+    -->
+    <Style x:Key="Slider.Segment" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="IsMoveToPointEnabled" Value="True" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Background="Transparent">
+                        <Border Height="4" VerticalAlignment="Center" CornerRadius="{StaticResource Radius.Xs}"
+                                Background="{DynamicResource Brush.ToggleTrackOff}" />
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource Slider.Segment}" Command="Slider.DecreaseLarge">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Grid Background="Transparent">
+                                                <!-- Runs on under the thumb (drawn last, opaque) so the fill ends at
+                                                     the thumb centre at every value, including the minimum. -->
+                                                <Border Height="4" VerticalAlignment="Center" Margin="0,0,-9,0"
+                                                        CornerRadius="{StaticResource Radius.Xs}"
+                                                        Background="{DynamicResource Brush.Tint}" />
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource Slider.Segment}" Command="Slider.IncreaseLarge">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb x:Name="Grip" Width="16" Height="16" Focusable="False" OverridesDefaultStyle="True">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Grid Background="Transparent">
+                                                <Ellipse Fill="{DynamicResource Brush.Panel}"
+                                                         Stroke="{DynamicResource Brush.Tint}" StrokeThickness="2" />
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Width" Value="17" />
+                                                    <Setter Property="Height" Value="17" />
+                                                </Trigger>
+                                                <Trigger Property="IsMouseCaptured" Value="True">
+                                                    <Setter Property="Width" Value="18" />
+                                                    <Setter Property="Height" Value="18" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                        </Trigger>
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                            <Setter TargetName="Grip" Property="Width" Value="18" />
+                            <Setter TargetName="Grip" Property="Height" Value="18" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
