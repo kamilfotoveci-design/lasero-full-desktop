@@ -40,6 +40,7 @@ public sealed class PaletteTests
         "TipChip.xaml",                   // the tiny brand dot on the tip chip
         "TourOverlay.xaml",               // the red dot closing the welcome headline
         "TourOverlay.xaml.cs",            // same dot, built in code
+        "MotionPalette.cs",               // the brand dot in the intro animation (token-resolved)
         "HomeView.xaml",                  // the 6px brand dot beside a section heading
     };
 

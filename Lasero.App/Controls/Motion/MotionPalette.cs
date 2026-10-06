@@ -5,7 +5,7 @@ namespace Lasero.App.Controls.Motion;
 
 /// <summary>
 /// The only colours the brand motion uses: warm-white ground, graphite ink, one red accent, and two
-/// warm neutrals for hairlines and the tagline. Defaults equal the shipped tokens (Brush.Background,
+/// cool neutrals for hairlines and the tagline. Defaults equal the shipped tokens (Brush.Background,
 /// Brush.TextPrimary, Brush.Brand, Brush.TextSecondary, Brush.PanelBorderStrong); inside the app the
 /// controls re-read those resources, so a future palette change follows automatically. The video and
 /// installer renderers use the defaults.
@@ -13,12 +13,12 @@ namespace Lasero.App.Controls.Motion;
 internal readonly record struct MotionPalette(Color Background, Color Ink, Color Brand, Color Muted, Color Hairline, Color Grid)
 {
     public static readonly MotionPalette Default = new(
-        Background: Color.FromRgb(0xF7, 0xF6, 0xF3),
-        Ink: Color.FromRgb(0x18, 0x18, 0x18),
-        Brand: Color.FromRgb(0xE4, 0x51, 0x3D),
-        Muted: Color.FromRgb(0x5C, 0x5A, 0x54),
-        Hairline: Color.FromRgb(0xD3, 0xCF, 0xC5),
-        Grid: Color.FromRgb(0x8A, 0x85, 0x7C));
+        Background: Color.FromRgb(0xF5, 0xF5, 0xF7),
+        Ink: Color.FromRgb(0x1D, 0x1D, 0x1F),
+        Brand: Color.FromRgb(0xE5, 0x30, 0x2B),
+        Muted: Color.FromRgb(0x6E, 0x6E, 0x73),
+        Hairline: Color.FromRgb(0xD2, 0xD2, 0xD7),
+        Grid: Color.FromRgb(0x8E, 0x8E, 0x93));
 
     /// <summary>Reads the theme tokens when they are available, falls back to <see cref="Default"/> per colour.</summary>
     public static MotionPalette FromResources(FrameworkElement element)
