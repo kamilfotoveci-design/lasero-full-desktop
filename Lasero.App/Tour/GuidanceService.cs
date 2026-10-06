@@ -167,6 +167,14 @@ public sealed class GuidanceService
 
     public void DismissTip() => ClearTip();
 
+    /// <summary>Hides the current tip only when it is the given one, so a situational tip can leave the
+    /// moment its situation ends without taking an unrelated tip down with it.</summary>
+    public void DismissTipIf(string tipId)
+    {
+        if (_currentTip?.Id == tipId) ClearTip();
+        if (_pendingTipId == tipId) _pendingTipId = null;
+    }
+
     private void ClearTip()
     {
         if (_currentTip is null) return;

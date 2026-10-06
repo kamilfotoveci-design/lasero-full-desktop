@@ -8,7 +8,7 @@ using Lasero.App.ViewModels;
 namespace Lasero.App.Views;
 
 /// <summary>
-/// Shows the empty-canvas explanation or one contextual hint over the design canvas. It only reads
+/// Shows one contextual hint over the design canvas (never a static empty-state card). It only reads
 /// state (scene selection and tool from <see cref="MainViewModel"/>, node-edit state from the canvas)
 /// and hands it to <see cref="GuidanceText"/>; it changes nothing about how the canvas behaves.
 /// </summary>
@@ -31,8 +31,6 @@ public partial class CanvasHintOverlay : UserControl
     public CanvasHintOverlay()
     {
         InitializeComponent();
-        EmptyContent.Title = GuidanceText.EmptyCanvasTitle;
-        EmptyContent.Description = GuidanceText.EmptyCanvasDescription;
         DataContextChanged += (_, _) => AttachScene();
         Loaded += (_, _) => AttachScene();
     }
@@ -55,7 +53,6 @@ public partial class CanvasHintOverlay : UserControl
             _scene.PropertyChanged += OnSceneChanged;
             _scene.Objects.CollectionChanged += OnCollectionChanged;
             _scene.SelectedObjects.CollectionChanged += OnCollectionChanged;
-            EmptyContent.CtaCommand = (DataContext as MainViewModel)?.GCode.LoadFileCommand;
         }
 
         Refresh();
@@ -97,7 +94,6 @@ public partial class CanvasHintOverlay : UserControl
     {
         if (_scene is null)
         {
-            EmptyCard.Visibility = Visibility.Collapsed;
             HintChip.Visibility = Visibility.Collapsed;
             return;
         }
@@ -116,12 +112,6 @@ public partial class CanvasHintOverlay : UserControl
 
         HintText.Text = _current?.Text;
         HintChip.Visibility = _current is null ? Visibility.Collapsed : Visibility.Visible;
-
-        // The empty explanation only stands in for a hint that does not exist: an empty scene with the
-        // Select tool active. Any armed drawing tool already has its own hint, and hiding the card then
-        // keeps the first click on the canvas from landing on it.
-        var emptyScene = _scene.Objects.Count == 0 && _scene.ActiveTool == DesignerTool.Select;
-        EmptyCard.Visibility = emptyScene ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnDismissClick(object sender, RoutedEventArgs e)

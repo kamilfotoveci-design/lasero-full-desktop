@@ -37,12 +37,6 @@ public static class GuidanceText
     /// checked yet. Preflight enforces it; this only says it before the operator presses Start.</summary>
     public const string FramingNextStep = "Před spuštěním ověřte umístění tlačítkem Rámovat";
 
-    public const string EmptyCanvasTitle = "Plátno je prázdné";
-
-    public const string EmptyCanvasDescription =
-        "Vložte text nebo tvar nástroji vlevo, případně importujte SVG, obrázek či G-code. " +
-        "Laser pracuje jen uvnitř vyznačené pracovní plochy.";
-
     /// <summary>
     /// The single most useful hint for the current canvas state, or null when the canvas already
     /// explains itself (an empty scene shows its own empty state instead of a hint).

@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Lasero.App;
 using Lasero.App.Components;
+using Lasero.App.Tour;
 using Lasero.App.Converters;
 using Lasero.App.ViewModels;
 using Lasero.Core.GCode;
@@ -42,7 +43,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
     // ------------------------------------------------------------------ canvas hints
 
     [Fact]
-    public void EmptyCanvasHasNoHintBecauseItShowsItsOwnEmptyState()
+    public void EmptyCanvasHasNoHintBecauseTheEmptyCanvasTipExplainsIt()
     {
         Assert.Null(GuidanceText.DesignerHint(Context(objects: 0)));
     }
@@ -475,8 +476,8 @@ public sealed class FirstRunGuidanceTests : IDisposable
     {
         var texts = new List<string>
         {
-            GuidanceText.NoSelection, GuidanceText.NoMachine, GuidanceText.EmptyCanvasTitle,
-            GuidanceText.EmptyCanvasDescription, GuidanceText.FramingNextStep, StartSummary.SimulatorNote,
+            GuidanceText.NoSelection, GuidanceText.NoMachine,
+            TipCatalog.Find(TipCatalog.EmptyCanvas)!.Text, GuidanceText.FramingNextStep, StartSummary.SimulatorNote,
             StartSummary.Build(Summary()), StartSummary.Build(Summary(simulator: true, framed: false)),
             UserFacingErrors.ConnectionLost(new IOException()), UserFacingErrors.ConnectionLostDuringJob(),
             UserFacingErrors.RecoveryFailed(new IOException()),

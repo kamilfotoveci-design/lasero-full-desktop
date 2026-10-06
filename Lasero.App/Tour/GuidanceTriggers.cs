@@ -23,7 +23,48 @@ public sealed class GuidanceTriggers
         _dispatcher = dispatcher;
     }
 
+    /// <summary>How long an empty Návrh must stay empty before its tip appears.</summary>
+    public static readonly TimeSpan EmptyCanvasDelay = TimeSpan.FromSeconds(1.5);
+
+    private DispatcherTimer? _emptyTimer;
+
     public void OnFileImported() => _guidance.TryOfferTip(TipCatalog.Import);
+
+    /// <summary>
+    /// The empty-canvas tip: offered once the empty Návrh has been quiet for <see cref="EmptyCanvasDelay"/>
+    /// (immediately without a dispatcher, for tests), withdrawn the moment anything is drawn, imported or
+    /// clicked, or the operator leaves the screen. It replaces a permanent card, so it is never kept up.
+    /// </summary>
+    public void OnEmptyCanvasChanged(bool emptyDesignerWithSelectTool)
+    {
+        _emptyTimer?.Stop();
+        if (!emptyDesignerWithSelectTool)
+        {
+            _guidance.DismissTipIf(TipCatalog.EmptyCanvas);
+            return;
+        }
+
+        if (_guidance.HasSeenTip(TipCatalog.EmptyCanvas)) return;
+        if (_dispatcher is null)
+        {
+            _guidance.TryOfferTip(TipCatalog.EmptyCanvas);
+            return;
+        }
+
+        _emptyTimer ??= new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = EmptyCanvasDelay };
+        _emptyTimer.Tick -= OnEmptyTimer;
+        _emptyTimer.Tick += OnEmptyTimer;
+        _emptyTimer.Start();
+    }
+
+    private void OnEmptyTimer(object? sender, EventArgs e)
+    {
+        _emptyTimer?.Stop();
+        _guidance.TryOfferTip(TipCatalog.EmptyCanvas);
+    }
+
+    /// <summary>A click on the canvas counts as the first interaction.</summary>
+    public void OnCanvasInteraction() => OnEmptyCanvasChanged(false);
 
     /// <summary>Selection is offered a moment late: importing a file selects the new object, and the
     /// import tip is the one that matters at that instant.</summary>
@@ -73,6 +114,21 @@ public sealed class GuidanceTriggers
 
     public void Attach(MainViewModel viewModel, SceneCanvas canvas)
     {
+        void Evaluate() => OnEmptyCanvasChanged(
+            viewModel.CurrentScreen == AppScreen.Designer
+            && viewModel.Scene.Objects.Count == 0
+            && viewModel.Scene.ActiveTool == DesignerTool.Select);
+        viewModel.Scene.Objects.CollectionChanged += (_, _) => Evaluate();
+        viewModel.Scene.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SceneViewModel.ActiveTool)) Evaluate();
+        };
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.CurrentScreen)) Evaluate();
+        };
+        canvas.PreviewMouseDown += (_, _) => OnCanvasInteraction();
+        Evaluate();
         viewModel.Scene.FileImported += OnFileImported;
         viewModel.Scene.SelectedObjects.CollectionChanged += (_, _) => OnSelectionChanged(viewModel.Scene.SelectedObjects.Count);
         viewModel.Connection.PropertyChanged += (_, e) =>

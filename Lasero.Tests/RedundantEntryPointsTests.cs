@@ -16,13 +16,19 @@ public sealed class RedundantEntryPointsTests
     // ------------------------------------------------------------------ the owner's report
 
     [Fact]
-    public void ImportIsOneCallToActionInTheEmptyCardPlusTheRailTool()
+    public void ImportIsOnlyTheRailToolAndNoStaticEmptyCardRemainsInDesigner()
     {
         var overlay = Read("Views", "CanvasHintOverlay.xaml");
+        var overlayCode = Read("Views", "CanvasHintOverlay.xaml.cs");
+        Assert.DoesNotContain("EmptyState", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("EmptyCard", overlay + overlayCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("CtaText", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("Importovat grafiku", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("Plátno je prázdné", Read("MainWindow.xaml"), StringComparison.Ordinal);
+        Assert.DoesNotContain("Plátno je prázdné", Read("Views", "DesignerInspectorView.xaml"), StringComparison.Ordinal);
         var rail = Read("Views", "DesignerToolRail.xaml");
         var inspector = Read("Views", "DesignerInspectorView.xaml");
 
-        Assert.Contains("CtaText=\"Importovat grafiku\"", overlay, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding GCode.LoadFileCommand}\"", rail, StringComparison.Ordinal);
         Assert.Contains("ToolTip=\"Importovat SVG, obrázek nebo G-code\"", rail, StringComparison.Ordinal);
 
@@ -46,11 +52,14 @@ public sealed class RedundantEntryPointsTests
     }
 
     [Fact]
-    public void EmptyCanvasCardDisappearsWithTheFirstObject()
+    public void EmptyCanvasTipIsOnlyDrivenByEmptyDesignerAndWithdrawnOnInteraction()
     {
-        var code = Read("Views", "CanvasHintOverlay.xaml.cs");
-        Assert.Contains("_scene.Objects.Count == 0 && _scene.ActiveTool == DesignerTool.Select", code, StringComparison.Ordinal);
-        Assert.Contains("_scene.Objects.CollectionChanged += OnCollectionChanged", code, StringComparison.Ordinal);
+        var triggers = Read("Tour", "GuidanceTriggers.cs");
+        Assert.Contains("viewModel.CurrentScreen == AppScreen.Designer", triggers, StringComparison.Ordinal);
+        Assert.Contains("viewModel.Scene.Objects.Count == 0", triggers, StringComparison.Ordinal);
+        Assert.Contains("viewModel.Scene.ActiveTool == DesignerTool.Select", triggers, StringComparison.Ordinal);
+        Assert.Contains("canvas.PreviewMouseDown", triggers, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromSeconds(1.5)", triggers, StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------------ strip connect

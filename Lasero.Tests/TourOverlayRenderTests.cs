@@ -488,6 +488,72 @@ public sealed class TipChipRenderTests
     private static Dispatcher Ui => InlineTextEditorRenderTests.Ui;
 
     [Fact]
+    public void EmptyCanvasRendersWithAndWithoutTheTipAndNeverHasACenterCard()
+    {
+        Ui.Invoke(() =>
+        {
+            var path = Path.Combine(Path.GetTempPath(), "lasero-emptytip-" + Guid.NewGuid().ToString("N"), "settings.json");
+            var store = new Lasero.App.AppSettingsStore(path);
+            store.Load();
+            var service = new GuidanceService(store);
+            service.SwitchAccount("u", false);
+            service.RecordWelcome(WelcomeChoice.Skipped);
+            var canvas = new Lasero.App.Controls.SceneCanvas { ViewModel = new Lasero.App.ViewModels.SceneViewModel() };
+            var chip = new TipChip { ForceStatic = true, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(44, 0, 0, 20) };
+            chip.Attach(service);
+            var root = new Grid { Width = 900, Height = 560 };
+            root.Children.Add(canvas);
+            root.Children.Add(chip);
+            var window = new Window { WindowStyle = WindowStyle.None, SizeToContent = SizeToContent.WidthAndHeight, ShowActivated = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = -20000, Content = root };
+            try
+            {
+                window.Show();
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                var without = Snap(root);
+                Assert.True(service.TryOfferTip(TipCatalog.EmptyCanvas));
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                Assert.Equal(Visibility.Visible, chip.Visibility);
+                var with = Snap(root);
+
+                // The centre of the canvas is identical with and without the tip: nothing sits there.
+                Assert.Equal(Pixel(without, 450, 280), Pixel(with, 450, 280));
+                Assert.Equal(Pixel(without, 450, 250), Pixel(with, 450, 250));
+
+                var dir = Environment.GetEnvironmentVariable("LASERO_RENDER_OUT");
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    Save(without, Path.Combine(dir, "empty-canvas-without-tip.png"));
+                    Save(with, Path.Combine(dir, "empty-canvas-with-tip.png"));
+                }
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    private static RenderTargetBitmap Snap(FrameworkElement e)
+    {
+        var rtb = new RenderTargetBitmap((int)e.ActualWidth, (int)e.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(e);
+        return rtb;
+    }
+
+    private static uint Pixel(BitmapSource s, int x, int y)
+    {
+        var px = new byte[4];
+        s.CopyPixels(new Int32Rect(x, y, 1, 1), px, 4, 0);
+        return BitConverter.ToUInt32(px, 0);
+    }
+
+    private static void Save(BitmapSource s, string file)
+    {
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(s));
+        using var f = File.Create(file);
+        enc.Save(f);
+    }
+
+    [Fact]
     public void ChipRendersOneBorderedCardWithTheTipText()
     {
         Ui.Invoke(() =>

@@ -269,7 +269,7 @@ public sealed class GuidanceServiceTests : IDisposable
     [Fact]
     public void EveryCatalogTipHasUniqueIdAndText()
     {
-        Assert.Equal(7, TipCatalog.All.Count);
+        Assert.Equal(8, TipCatalog.All.Count);
         Assert.Equal(TipCatalog.All.Count, TipCatalog.All.Select(t => t.Id).Distinct().Count());
         Assert.All(TipCatalog.All, t => Assert.False(string.IsNullOrWhiteSpace(t.Text)));
     }
@@ -299,5 +299,79 @@ public sealed class GuidanceServiceTests : IDisposable
         var accounts = doc.RootElement.GetProperty("Guidance").GetProperty("Accounts");
         Assert.Equal(1, accounts.EnumerateObject().Count());
         Assert.Equal(store.Current.Guidance.Accounts.Single().Key, accounts.EnumerateObject().Single().Name);
+    }
+}
+
+public sealed class EmptyCanvasTipTests : IDisposable
+{
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "lasero-empty-tip", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_directory, recursive: true); } catch (IOException) { }
+    }
+
+    private (GuidanceService Service, GuidanceTriggers Triggers) Create()
+    {
+        Directory.CreateDirectory(_directory);
+        var store = new Lasero.App.AppSettingsStore(Path.Combine(_directory, "settings.json"));
+        store.Load();
+        var service = new GuidanceService(store);
+        service.SwitchAccount("u", hasPriorWork: false);
+        service.RecordWelcome(WelcomeChoice.Skipped);
+        return (service, new GuidanceTriggers(service));
+    }
+
+    [Fact]
+    public void ShownOnceOnEmptyCanvasAndNeverAgainUntilTipsAreReset()
+    {
+        var (service, triggers) = Create();
+        triggers.OnEmptyCanvasChanged(true);
+        Assert.Equal(TipCatalog.EmptyCanvas, service.CurrentTip?.Id);
+
+        service.DismissTip();
+        triggers.OnEmptyCanvasChanged(true);
+        Assert.Null(service.CurrentTip);
+
+        service.ResetTips();
+        triggers.OnEmptyCanvasChanged(true);
+        Assert.Equal(TipCatalog.EmptyCanvas, service.CurrentTip?.Id);
+    }
+
+    [Fact]
+    public void FirstInteractionWithdrawsItWithoutTouchingOtherTips()
+    {
+        var (service, triggers) = Create();
+        triggers.OnEmptyCanvasChanged(true);
+        triggers.OnCanvasInteraction();
+        Assert.Null(service.CurrentTip);
+
+        Assert.True(service.TryOfferTip(TipCatalog.Import));
+        triggers.OnEmptyCanvasChanged(false);
+        Assert.Equal(TipCatalog.Import, service.CurrentTip?.Id);
+    }
+
+    [Fact]
+    public void NotOfferedWhenTheCanvasIsNotEmptyOrTheAccountIsAnExistingUser()
+    {
+        var (service, triggers) = Create();
+        triggers.OnEmptyCanvasChanged(false);
+        Assert.Null(service.CurrentTip);
+
+        var store = new Lasero.App.AppSettingsStore(Path.Combine(_directory, "other.json"));
+        store.Load();
+        var existing = new GuidanceService(store);
+        existing.SwitchAccount("old", hasPriorWork: true);
+        new GuidanceTriggers(existing).OnEmptyCanvasChanged(true);
+        Assert.Null(existing.CurrentTip);
+    }
+
+    [Fact]
+    public void CopyIsShortNeutralAndFreeOfQuestionAndExclamationMarks()
+    {
+        var text = TipCatalog.Find(TipCatalog.EmptyCanvas)!.Text;
+        Assert.DoesNotMatch(@"[?!]", text);
+        Assert.True(text.Count(c => c == '.') <= 2);
+        Assert.DoesNotContain("tlačítko", text);
     }
 }

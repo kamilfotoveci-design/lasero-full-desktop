@@ -3,31 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:components="clr-namespace:Lasero.App.Components">
     <!--
-        Progressive disclosure over the canvas. Two things can appear here and never both:
+        Progressive disclosure over the canvas: one short hint for the situation the operator is in
+        right now (nothing selected, a tool armed, nodes selected). There is deliberately no static
+        empty-canvas card: an empty canvas is explained by the rail tools, the ruler and grid, and one
+        once-only tip (TipCatalog.EmptyCanvas) shown through the tip chip.
 
-          - an empty-canvas explanation while the design has nothing in it and the Select tool is
-            active (with a drawing tool active the operator has plainly worked out what to do);
-          - one short hint for the situation the operator is in right now (nothing selected, a tool
-            armed, nodes selected).
-
-        Nothing is permanent: the hint has a dismiss button and stays dismissed for the session, and
-        the empty state disappears with the first object. The wrapper does not intercept the pointer
-        outside the two cards, so drawing and selecting on the canvas underneath is unaffected.
+        The hint has a dismiss button and stays dismissed for the session. The wrapper does not
+        intercept the pointer outside the chip, so drawing and selecting underneath is unaffected.
         The wording lives in GuidanceText, not here.
     -->
     <Grid>
-        <!-- Empty canvas -->
-        <Border x:Name="EmptyCard" Visibility="Collapsed" IsHitTestVisible="True"
-                HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="360"
-                Background="{DynamicResource Brush.Panel}"
-                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-                CornerRadius="{StaticResource Radius.Lg}" Padding="24,20"
-                Effect="{StaticResource Shadow.Tooltip}">
-            <components:EmptyState x:Name="EmptyContent"
-                                   IconPrimaryData="{StaticResource Glyph.Import}"
-                                   CtaText="Importovat grafiku" />
-        </Border>
-
         <!-- One contextual hint -->
         <Border x:Name="HintChip" Visibility="Collapsed" IsHitTestVisible="True"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom" MaxWidth="440"

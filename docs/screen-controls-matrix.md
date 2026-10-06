@@ -26,7 +26,7 @@ while a job is active.
 | Nastavení zařízení (title bar) | H | K | H | H | Work area, Z axis and safety matter while placing artwork. Zařízení has its own identical button in its page header, Home shows the work area read-only |
 | Minimalizovat, Maximalizovat, Zavřít | K | K | K | K | Window |
 | Nav rail: Domů, Návrh, Materiály, Zařízení, Lasero Chat, Nastavení, Účet | K | rail | K | K | Navigation. Návrh swaps in its 56 px tool rail, which repeats Domů, Import, Materiály, Zařízení, Chat, Nastavení |
-| Tool rail (Vybrat, Text, Tvary, Čára), Importovat grafiku | n/a | K | n/a | n/a | Drawing and import act on the canvas. Import is the persistent tool; the empty-canvas card is the single call-to-action |
+| Tool rail (Vybrat, Text, Tvary, Čára), Importovat grafiku | n/a | K | n/a | n/a | Drawing and import act on the canvas. Import is the persistent tool and the only import entry on an empty canvas. No static empty-state card (owner, 2026-10-06); a once-only tip explains the empty canvas |
 | Selection bar, node-edit toolbar | n/a | K | n/a | n/a | Contextual to a selection |
 | Zpět, Znovu | n/a | K | n/a | n/a | Undo applies to the design; Ctrl+Z is already Designer-only |
 | Zoom cluster, Vycentrovat, Přizpůsobit oknu | n/a | K | n/a | n/a | Canvas view |
@@ -116,7 +116,7 @@ bound to two buttons (allow-list with reasons).
 
 | # | Duplicate (screen state) | Decision | Reason |
 |---|---|---|---|
-| 1 | Importovat grafiku: rail tool, empty-canvas card, inspector Operace empty state (Návrh, empty design) | Keep rail tool and card. Removed the inspector button | Rail is the persistent, discoverable tool (tooltip "Importovat SVG, obrázek nebo G-code"; no Ctrl+I exists, so the tooltip names none). The card is where the eye lands on a new design and is the one call-to-action. The inspector now only explains: "Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek" (14 px). The card disappears with the first object, the rail tool stays |
+| 1 | Importovat grafiku: rail tool, empty-canvas card, inspector Operace empty state (Návrh, empty design) | Keep only the rail tool. Removed the inspector button and (2026-10-06) the permanent empty-canvas card | Rail is the persistent, discoverable tool (tooltip "Importovat SVG, obrázek nebo G-code"; no Ctrl+I exists, so the tooltip names none). The inspector only explains: "Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek" (14 px). The empty canvas is explained by one tip, `TipCatalog.EmptyCanvas`, through the quiet tip chip: once per account, 1.5 s after an empty Návrh with the Select tool, auto-hides after 16 s or on the first object, tool change, canvas click or leaving the screen, back only after "Obnovit tipy". The tip carries no button |
 | 2 | Připojit: strip button plus Home device rail "Připojit zařízení" (Home, disconnected) | Removed the strip button on Home | Same intent twice on one screen. The rail card is the explanatory connect state |
 | 3 | Připojit: strip button plus status card "Připojit laser automaticky", both `SmartConnectCommand` (Zařízení, disconnected) | Removed the strip button on Zařízení | Identical command and label meaning. Návrh and Chat keep the strip button, they have no connect of their own |
 | 4 | Připojit zařízení (port card) next to the status card primary (Zařízení, disconnected) | Converted: now a Secondary button labelled "Připojit k vybranému portu" | Two primary connect buttons competed. The status card is the primary path; the port card is the manual path for a known port |

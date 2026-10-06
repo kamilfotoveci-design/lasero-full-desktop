@@ -16,6 +16,7 @@ public static class TipCatalog
     public const string Frame = "frame";
     public const string Start = "start";
     public const string Kamil = "kamil";
+    public const string EmptyCanvas = "empty-canvas";
 
     public static readonly IReadOnlyList<GuidanceTip> All =
     [
@@ -26,6 +27,7 @@ public static class TipCatalog
         new(Frame, "Slabý bod ukazuje okraj práce. Sedí-li poloha, následuje Spustit."),
         new(Start, "Úlohu lze kdykoli Pozastavit nebo Zastavit. Laser nenechávat bez dozoru."),
         new(Kamil, "Kamil vidí vybraný materiál i operaci. Stačí napsat, co se má stát."),
+        new(EmptyCanvas, "Plátno je prázdné. Text a tvary vloží nástroje vlevo, SVG, obrázek nebo G-code vloží Importovat grafiku."),
     ];
 
     public static GuidanceTip? Find(string id) => All.FirstOrDefault(t => t.Id == id);
