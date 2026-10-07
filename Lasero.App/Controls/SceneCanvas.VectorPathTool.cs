@@ -449,6 +449,22 @@ public partial class SceneCanvas
         var showHover = _dragMode is DragMode.None or DragMode.NodeMarquee;
         if (showHover && _hoveredSegment is { } hoveredSeg) DrawSegmentHoverHighlight(obj, path, hoveredSeg);
 
+        // Level of detail. A traced or imported path can carry thousands of nodes; one hit target, one
+        // dot and up to two handles per node meant tens of thousands of elements rebuilt on every
+        // pointer move of a drag. Nodes that are off screen cannot be touched, and dots closer together
+        // than NodeDotMinSpacingPx cannot be told apart or picked individually, so neither is drawn
+        // (selected, hovered and open-end nodes always are). On a dense path the Bezier handles are
+        // shown for the selected and hovered nodes only, as for every vector editor at that density.
+        var visibleNodeCount = 0;
+        foreach (var subpath in path.Subpaths)
+            foreach (var node in subpath.Nodes)
+            {
+                var anchor = obj.Transform.Apply(node.Anchor, obj.LocalPivot);
+                if (IsNearViewport(ToCanvasX(anchor.X), ToCanvasY(anchor.Y))) visibleNodeCount++;
+            }
+
+        var allHandles = visibleNodeCount <= NodeHandleDensityLimit;
+        var occupied = new HashSet<long>();
         for (var s = 0; s < path.Subpaths.Count; s++)
         {
             var subpath = path.Subpaths[s];
@@ -458,15 +474,27 @@ public partial class SceneCanvas
                 var worldAnchor = obj.Transform.Apply(node.Anchor, obj.LocalPivot);
                 var screenAnchor = new Point(ToCanvasX(worldAnchor.X), ToCanvasY(worldAnchor.Y));
                 var isSelected = _selectedNodeKeys.Contains((s, n));
-
-                if (node.HandleIn is { } handleIn)
-                    DrawHandle(obj, s, n, handleIn, screenAnchor, isOutHandle: false, isHovered: showHover && _hoveredHandleKey == (s, n, false));
-                if (node.HandleOut is { } handleOut)
-                    DrawHandle(obj, s, n, handleOut, screenAnchor, isOutHandle: true, isHovered: showHover && _hoveredHandleKey == (s, n, true));
-
+                var isHoveredNode = showHover && _hoveredNodeKey == (s, n);
                 var isOpenEndpoint = !subpath.IsClosed && (n == 0 || n == subpath.Nodes.Count - 1);
-                DrawNodeDot(s, n, screenAnchor, isSelected, node.Type, isOpenEndpoint,
-                    isHovered: showHover && _hoveredNodeKey == (s, n));
+
+                var mustDraw = isSelected || isHoveredNode || isOpenEndpoint;
+                if (!mustDraw)
+                {
+                    if (!IsNearViewport(screenAnchor.X, screenAnchor.Y)) continue;
+                    var cell = ((long)Math.Floor(screenAnchor.X / NodeDotMinSpacingPx) << 32)
+                        ^ (long)(uint)(int)Math.Floor(screenAnchor.Y / NodeDotMinSpacingPx);
+                    if (!occupied.Add(cell)) continue;
+                }
+
+                if (allHandles || isSelected || isHoveredNode)
+                {
+                    if (node.HandleIn is { } handleIn)
+                        DrawHandle(obj, s, n, handleIn, screenAnchor, isOutHandle: false, isHovered: showHover && _hoveredHandleKey == (s, n, false));
+                    if (node.HandleOut is { } handleOut)
+                        DrawHandle(obj, s, n, handleOut, screenAnchor, isOutHandle: true, isHovered: showHover && _hoveredHandleKey == (s, n, true));
+                }
+
+                DrawNodeDot(s, n, screenAnchor, isSelected, node.Type, isOpenEndpoint, isHovered: isHoveredNode);
             }
         }
 
@@ -559,6 +587,12 @@ public partial class SceneCanvas
     /// LIGHTBURN_VECTOR_PARITY.md §3 (an open path's ends must be visually unmistakable, not inferred
     /// by counting nodes) — rather than a third dot shape, so Corner/Smooth legibility is not lost for
     /// the common case of an open path made of straight or curved segments alike.</summary>
+    private const double NodeDotMinSpacingPx = 7;
+    private const int NodeHandleDensityLimit = 200;
+
+    private bool IsNearViewport(double x, double y) =>
+        x >= -24 && y >= -24 && x <= ActualWidth + 24 && y <= ActualHeight + 24;
+
     private void DrawNodeDot(int subpathIndex, int nodeIndex, Point screen, bool isSelected, VectorNodeType type, bool isOpenEndpoint, bool isHovered = false)
     {
         var target = new Ellipse
@@ -976,7 +1010,11 @@ public partial class SceneCanvas
     private void RenderVectorPathLive(SceneObject obj, VectorPath path)
     {
         var session = _nodeDragSession ??= new VectorPathDragSession(obj.LocalShapes);
-        obj.LocalShapes = session.BuildPreviewShapes(path, VectorPathDefaultColor);
+        // The property-changed handler would repaint the object and the whole overlay once more for this
+        // same assignment; this method repaints the object itself and the caller redraws the overlay.
+        _suppressObjectRepaint = true;
+        try { obj.LocalShapes = session.BuildPreviewShapes(path, VectorPathDefaultColor); }
+        finally { _suppressObjectRepaint = false; }
         UpdateObjectGeometry(obj);
     }
 

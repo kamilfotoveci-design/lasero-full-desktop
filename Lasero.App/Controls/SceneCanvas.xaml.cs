@@ -112,6 +112,7 @@ public partial class SceneCanvas : UserControl
     private readonly Dictionary<SceneObject, ObjectGeometryEntry> _geometryCache = new();
     private readonly HashSet<FrameworkElement> _worldSpaceSelectionVisuals = new();
     private double _appliedStrokeScale = double.NaN;
+    private bool _suppressObjectRepaint;
     private const double ObjectStrokePx = 1.4;
     private const double HoverStrokePx = 2;
     private readonly Dictionary<SceneObject, Image> _rasterImageVisuals = new();
@@ -588,7 +589,7 @@ public partial class SceneCanvas : UserControl
 
     private void OnObjectPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is not SceneObject obj) return;
+        if (sender is not SceneObject obj || _suppressObjectRepaint) return;
         if (e.PropertyName is not (nameof(SceneObject.Transform) or nameof(SceneObject.IsVisible) or
             nameof(SceneObject.IncludeInOutput) or nameof(SceneObject.LocalShapes))) return;
 
