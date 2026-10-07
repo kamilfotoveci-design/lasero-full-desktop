@@ -34,6 +34,16 @@ public sealed class LayoutAuditRenderTests
         return path;
     }
 
+    internal static void WaitFor(Func<bool> condition, int milliseconds = 8000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(milliseconds);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            ShellHarness.Pump();
+            Thread.Sleep(25);
+        }
+    }
+
     private static string SamplePhoto() => WritePng($"audit-photo-{Guid.NewGuid():N}.png", (dc, w, h) =>
     {
         dc.DrawRectangle(new LinearGradientBrush(Colors.White, Colors.DimGray, 45), null, new Rect(0, 0, w, h));
@@ -78,7 +88,7 @@ public sealed class LayoutAuditRenderTests
 
             // Connected (simulator) with a design: strip shows the next step.
             shell.Machine.Connect(VirtualGrblTransport.PortName);
-            ShellHarness.Pump();
+            WaitFor(() => vm.Connection.IsConnected && vm.MachineStatus.DisplayState != Lasero.Core.Machines.LaserMachineDisplayState.Connecting);
             Shot("designer-connected-design");
             vm.CurrentScreen = AppScreen.Device; Shot("device-connected");
             vm.GCode.JobState = JobRunState.Running; Shot("device-running");

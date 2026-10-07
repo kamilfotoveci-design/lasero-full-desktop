@@ -17,9 +17,9 @@
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
 
         <Style x:Key="JogPadButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Width" Value="54" />
-            <Setter Property="Height" Value="54" />
-            <Setter Property="MinHeight" Value="54" />
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Height" Value="52" />
+            <Setter Property="MinHeight" Value="52" />
             <Setter Property="Margin" Value="4" />
             <Setter Property="Padding" Value="12" />
         </Style>
@@ -287,14 +287,11 @@
                             <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                             <Grid Margin="0,0,0,16">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Vzdálenost XY (mm)" Style="{StaticResource Text.Muted}" />
-                                    <ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.StepSizeMm}" Margin="0,4,0,0" ToolTip="Vzdálenost jednoho posunu os X a Y v milimetrech" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Rychlost XY (mm/min)" Style="{StaticResource Text.Muted}" />
-                                    <TextBox Text="{Binding Jog.JogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" Margin="0,4,0,0" ToolTip="Rychlost ručního posunu os X a Y v mm/min" />
-                                </StackPanel>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Vzdálenost XY (mm)" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="2" Text="Rychlost XY (mm/min)" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" />
+                                <ComboBox Grid.Row="1" Margin="0,4,0,0" ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.StepSizeMm}" ToolTip="Vzdálenost jednoho posunu os X a Y v milimetrech" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0" Text="{Binding Jog.JogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" ToolTip="Rychlost ručního posunu os X a Y v mm/min" />
                             </Grid>
 
                             <Grid Margin="0,0,0,16">
@@ -323,14 +320,11 @@
 
                             <Grid Margin="0,0,0,16">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Vzdálenost Z (mm)" Style="{StaticResource Text.Muted}" />
-                                    <ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.ZStepSizeMm}" Margin="0,4,0,0" ToolTip="Vzdálenost jednoho posunu osy Z v milimetrech" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Rychlost Z (mm/min)" Style="{StaticResource Text.Muted}" />
-                                    <TextBox Text="{Binding Jog.ZJogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" Margin="0,4,0,0" ToolTip="Rychlost ručního posunu osy Z v mm/min" />
-                                </StackPanel>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Vzdálenost Z (mm)" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="2" Text="Rychlost Z (mm/min)" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" TextWrapping="Wrap" />
+                                <ComboBox Grid.Row="1" Margin="0,4,0,0" ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.ZStepSizeMm}" ToolTip="Vzdálenost jednoho posunu osy Z v milimetrech" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0" Text="{Binding Jog.ZJogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" ToolTip="Rychlost ručního posunu osy Z v mm/min" />
                             </Grid>
 
                             <Button Command="{Binding Jog.CancelJogCommand}" Style="{StaticResource Button.Danger}" Margin="0,0,0,8" ToolTip="Okamžitě zrušit právě probíhající ruční posun">
