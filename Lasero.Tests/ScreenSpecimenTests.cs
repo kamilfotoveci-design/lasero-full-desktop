@@ -25,7 +25,7 @@ public sealed class ScreenSpecimenTests
 
     private static void Flush() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
-    private static void Render(FrameworkElement view, string name, double width = 1366, double height = 768, Brush? background = null, double dpi = 96)
+    private static void Render(FrameworkElement view, string name, double width = 1366, double height = 768, Brush? background = null, double dpi = 96, Action<FrameworkElement>? inspect = null)
     {
         var host = new Border
         {
@@ -52,6 +52,7 @@ public sealed class ScreenSpecimenTests
             window.Show();
             Flush();
             host.UpdateLayout();
+            inspect?.Invoke(view);
             var bitmap = new RenderTargetBitmap(
                 (int)Math.Round(width * dpi / 96), (int)Math.Round(height * dpi / 96), dpi, dpi, PixelFormats.Pbgra32);
             bitmap.Render(host);
@@ -96,6 +97,32 @@ public sealed class ScreenSpecimenTests
     [Fact]
     public void HomeWithRecentProjectsAt1080x640Renders() => Ui.Invoke(() => RenderHome(CreateHomeWithProjects(), "screen-home-projects-1080x640", 896, 524));
 
+    // The tip of the day sits between the actions and "Pokračovat v práci". At the two reference windows
+    // and at 150 percent it must be fully inside the column, show its action and keep the sentence >= 15 px.
+    [Theory]
+    [InlineData(1182, 652, 96, "1366x768")]
+    [InlineData(896, 524, 96, "1080x640")]
+    [InlineData(1182, 652, 144, "1366x768-150pct")]
+    [InlineData(896, 524, 144, "1080x640-150pct")]
+    public void HomeTipOfDayCardFitsAndStaysReadable(double width, double height, double dpi, string label) => Ui.Invoke(() =>
+    {
+        var checkedCard = false;
+        RenderHome(CreateHomeWithProjects(), $"screen-home-tip-{label}", width, height, dpi, view =>
+        {
+            var card = TipOfDayCardTests.FindDescendant<Lasero.App.Components.TipOfDayCard>(view);
+            Assert.NotNull(card);
+            TipOfDayCardTests.AssertCardLaidOutCleanly(card!, view, width);
+            Assert.Equal("HomeTipOfDay", System.Windows.Automation.AutomationProperties.GetAutomationId(card));
+            Assert.Equal("Tip dne", System.Windows.Automation.AutomationProperties.GetName(card));
+            checkedCard = true;
+        });
+        Assert.True(checkedCard);
+    });
+
+    [Fact]
+    public void HomeWithoutProjectsShowsTheTipCardAt1080x640() =>
+        Ui.Invoke(() => RenderHome(CreateEmptyHome(), "screen-home-tip-empty-1080x640", 896, 524));
+
     private static void RenderHome(string name, double width, double height, double dpi = 96)
     {
         var previous = LaseroMotion.ForceReducedMotion;
@@ -104,11 +131,11 @@ public sealed class ScreenSpecimenTests
         finally { LaseroMotion.ForceReducedMotion = previous; }
     }
 
-    private static void RenderHome(HomeView view, string name, double width, double height, double dpi = 96)
+    private static void RenderHome(HomeView view, string name, double width, double height, double dpi = 96, Action<FrameworkElement>? inspect = null)
     {
         var previous = LaseroMotion.ForceReducedMotion;
         LaseroMotion.ForceReducedMotion = true;
-        try { Render(view, name, width, height, dpi: dpi); }
+        try { Render(view, name, width, height, dpi: dpi, inspect: inspect); }
         finally { LaseroMotion.ForceReducedMotion = previous; }
     }
 
@@ -145,6 +172,9 @@ public sealed class ScreenSpecimenTests
         public string DeviceConnectionLabel => "Připojte gravírku kabelem USB";
         public string FirmwareLabel => "Neznámo";
         public string TipOfDay => "Před výrobou vždy zkontrolujte náhled a polohu materiálu.";
+        public int TipPosition => 3;
+        public int TipCount => 12;
+        public System.Windows.Input.ICommand NextTipCommand { get; } = new Lasero.Tests.TipOfDayCardTests.NoopCommand();
         public HomeSpecimenConnection Connection { get; } = new();
         public HomeSpecimenMachineStatus MachineStatus { get; } = new();
 

@@ -70,6 +70,11 @@ public partial class HomeViewModel : ObservableObject
     /// <summary>The rotating "Tip dne": one per calendar day, "Další tip" steps through the list.</summary>
     [ObservableProperty] private string _tipOfDay = Lasero.App.Tour.TipOfDay.For(DateTime.Today);
 
+    /// <summary>"3 z 12": which tip of the rotation is on screen, so the card can show that more follow.</summary>
+    public int TipPosition => Lasero.App.Tour.TipOfDay.PositionOf(TipOfDay);
+    public int TipCount => Lasero.App.Tour.TipOfDay.All.Count;
+    partial void OnTipOfDayChanged(string value) => OnPropertyChanged(nameof(TipPosition));
+
     [RelayCommand]
     private void NextTip()
     {

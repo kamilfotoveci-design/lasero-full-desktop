@@ -38,18 +38,18 @@ public static class TipOfDay
 {
     public static readonly IReadOnlyList<string> All =
     [
-        "Klávesa F přizpůsobí zobrazení oknu, Ctrl a kolečko myši přiblíží k ukazateli.",
-        "Šipky posunou vybraný objekt o 0,5 mm, se Shiftem o 5 mm.",
-        "Mezerník s tažením nebo prostřední tlačítko myši posouvá plátno.",
-        "Dvojklik na vektorovou dráhu zapne úpravu uzlů, Enter ji ukončí.",
-        "Ctrl+D vytvoří kopii vybraného objektu, Ctrl+G sloučí výběr do skupiny.",
-        "Klávesa Esc vrací o krok zpět: zavře úpravu, zruší nástroj a nakonec výběr.",
-        "Klávesy V, T, R, E a L přepínají nástroje, přehled zkratek otevře F1.",
-        "Alt+T převede vybranou bitmapu na vektorové obrysy.",
-        "Před ostrou prací vždy otestovat nastavení na odřezku stejného materiálu.",
-        "Operace se provádějí shora dolů, pořadí lze měnit šipkami v panelu Operace.",
-        "Projekt se každých 30 sekund automaticky zálohuje, Ctrl+S ho uloží natrvalo.",
-        "Rámovat obkreslí okraj práce slabým bodem, kontrola polohy trvá jen pár sekund.",
+        "Klávesa F zobrazí celý návrh v okně, kolečko myši s klávesou Ctrl přibližuje a oddaluje.",
+        "Šipky na klávesnici posouvají vybraný objekt po půl milimetru, se Shiftem po pěti milimetrech.",
+        "Plátno lze posouvat tažením myší při stisknutém mezerníku.",
+        "Dvojklik na čáru ukáže body, ze kterých se skládá. Jejich tažením se tvar upraví, Enter úpravu ukončí.",
+        "Ctrl+D vytvoří kopii vybraného objektu, Ctrl+G spojí vybrané objekty do jedné skupiny.",
+        "Klávesa Esc vrací o krok zpět: zavře úpravu, zruší nástroj a nakonec zruší výběr.",
+        "Klávesy V, T, R, E a L přepínají nástroje, přehled všech zkratek otevře klávesa F1.",
+        "Alt+T převede obrázek na čáry, které laser umí vyříznout nebo vyrýt.",
+        "Před ostrou prací je dobré vyzkoušet nastavení na zbytku stejného materiálu.",
+        "Laser pracuje po krocích shora dolů, pořadí kroků se mění šipkami v panelu Operace.",
+        "Projekt se každých 30 sekund sám zálohuje, Ctrl+S ho uloží natrvalo.",
+        "Tlačítko Rámovat obkreslí okraj práce slabým světlem, takže je vidět, kam laser dosáhne.",
     ];
 
     /// <summary>Deterministic for a date, so the tip does not change on every visit to Home.
@@ -58,5 +58,13 @@ public static class TipOfDay
     {
         var index = (date.DayOfYear + date.Year * 7 + offset) % All.Count;
         return All[(index + All.Count) % All.Count];
+    }
+
+    /// <summary>1-based place of a tip in the rotation (1 when it is not one of the list).</summary>
+    public static int PositionOf(string tip)
+    {
+        for (var i = 0; i < All.Count; i++)
+            if (All[i] == tip) return i + 1;
+        return 1;
     }
 }

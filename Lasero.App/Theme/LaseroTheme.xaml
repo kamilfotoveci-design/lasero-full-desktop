@@ -27,6 +27,8 @@
     <CornerRadius x:Key="Radius.Sm">6</CornerRadius>
     <CornerRadius x:Key="Radius.Md">8</CornerRadius>
     <CornerRadius x:Key="Radius.Lg">12</CornerRadius>
+    <!-- Soft feature cards (the Home tip of the day): one step above Lg, never for controls. -->
+    <CornerRadius x:Key="Radius.Xl">16</CornerRadius>
     <!--
         Pill means fully round, and it is the token for circles too: WPF clamps a radius to half the
         smaller side, so 999 on a 34x34 badge is a circle and on a 38x22 track is a pill. Hardcoding

@@ -231,8 +231,8 @@ public sealed class TourSourceTests
         var home = Read("Views", "HomeView.xaml");
         Assert.Contains("Command=\"{Binding ReplayTourCommand}\"", home);
         Assert.Contains("AutomationProperties.Name=\"Prohlídka aplikace\"", home);
-        Assert.Contains("Text=\"Tip dne\"", home);
-        Assert.Contains("Command=\"{Binding Home.NextTipCommand}\"", home);
+        Assert.Contains("AutomationProperties.Name=\"Tip dne\"", home);
+        Assert.Contains("NextCommand=\"{Binding Home.NextTipCommand}\"", home);
 
         var settings = Read("SettingsWindow.xaml");
         Assert.Contains("AutomationProperties.Name=\"Znovu zobrazit úvod\"", settings);
@@ -251,16 +251,17 @@ public sealed class TourSourceTests
         Assert.Contains("Button.Quiet", chip);
         Assert.DoesNotContain("GhostIcon", chip);
 
+        // the card lives in its own component; HomeView only places it
         var home = Read("Views", "HomeView.xaml");
-        var tip = home[home.IndexOf("HomeTipOfDay", StringComparison.Ordinal)..];
-        tip = tip[..tip.IndexOf("</StackPanel>", StringComparison.Ordinal)];
+        var tip = Read("Components", "TipOfDayCard.xaml");
         Assert.DoesNotContain("Style=\"{StaticResource Card}\"", tip);
         Assert.DoesNotContain("Radius.Pill", tip);
         Assert.DoesNotContain("SelectedSurface", tip);
         Assert.DoesNotContain("Button.Link", tip);
         Assert.Contains("Button.Quiet", tip);
-        Assert.Contains("Home.NextTipCommand", tip);
-        Assert.Contains("Tip dne", tip);
+        Assert.Contains("NextCommand", tip);
+        Assert.Contains("HomeTipOfDay", home);
+        Assert.Contains("TIP DNE", tip);
 
         var shared = Read("Theme", "SharedUiStyles.xaml");
         var quiet = shared[shared.IndexOf("x:Key=\"Button.Quiet\"", StringComparison.Ordinal)..];

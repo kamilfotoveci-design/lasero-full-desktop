@@ -80,7 +80,7 @@
             <StackPanel Margin="24">
 
                 <!-- Primary actions. Exactly one dominant action: Nový projekt. Importovat and Otevřít projekt are
-                     clearly secondary, the tour is a quiet text button, the tip is a quiet line below. -->
+                     clearly secondary, the tour is a quiet text button, the tip of the day is a quiet card below. -->
                 <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded"
                       RenderTransformOrigin="0.5,0.5" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
@@ -128,6 +128,14 @@
                                               IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
                     </Button>
                 </StackPanel>
+
+                <!-- Tip dne: a quiet card between the actions and the work. A different surface from the
+                     contextual TipChip over the workspace (that one reacts to an event; this one rotates daily). -->
+                <components:TipOfDayCard Tip="{Binding Home.TipOfDay}" NextCommand="{Binding Home.NextTipCommand}"
+                                         Position="{Binding Home.TipPosition}" Count="{Binding Home.TipCount}"
+                                         Margin="0,0,0,8"
+                                         AutomationProperties.AutomationId="HomeTipOfDay"
+                                         AutomationProperties.Name="Tip dne" />
 
                 <!-- Pokračovat v práci -->
                 <TextBlock Text="Pokračovat v práci" Style="{StaticResource SectionHeading}"
