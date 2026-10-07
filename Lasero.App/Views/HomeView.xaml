@@ -55,7 +55,7 @@
 
     </UserControl.Resources>
 
-    <Grid Background="{DynamicResource Brush.Background}">
+    <Grid Background="{DynamicResource Brush.Surface}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="520" />
             <ColumnDefinition Width="300" />
@@ -81,13 +81,23 @@
 
                 <!-- Primary actions. Exactly one dominant action: Nový projekt. Importovat and Otevřít projekt are
                      clearly secondary, the tour is a quiet text button, the tip is a quiet line below. -->
-                <Grid Margin="0,0,0,24">
+                <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded"
+                      RenderTransformOrigin="0.5,0.5" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Začněte novým návrhem" Style="{StaticResource PageTitle}" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}"
+                    <components:LaseroAvatar Size="72" Margin="0,0,16,0" VerticalAlignment="Center"
+                                              AutomationProperties.Name="Kamil, průvodce aplikací" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Dobrý den, jsem Kamil" Style="{StaticResource PageTitle}" TextWrapping="Wrap" />
+                        <TextBlock Text="Nový projekt je první krok. Provedu návrhem, přípravou materiálu i kontrolou před gravírováním."
+                                   Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Assistant.Body}"
+                                   LineHeight="{StaticResource Size.Text.Assistant.LineHeight}"
+                                   TextWrapping="Wrap" Margin="0,4,12,0" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}"
                             VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Body}"
                             ToolTip="Krátká prohlídka aplikace krok za krokem"
                             AutomationProperties.Name="Prohlídka aplikace">
@@ -119,85 +129,38 @@
                     </Button>
                 </StackPanel>
 
-                <!-- Tip dne: one quiet rotating hint under the actions. "Další tip" steps through the list. -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,24" HorizontalAlignment="Left"
-                            UseLayoutRounding="True" SnapsToDevicePixels="True"
-                            AutomationProperties.AutomationId="HomeTipOfDay">
-                    <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Brand}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <TextBlock Text="TIP DNE" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
-                               Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center" />
-                    <TextBlock x:Name="TipOfDayText" Text="{Binding Home.TipOfDay, NotifyOnTargetUpdated=True}"
-                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620" Margin="12,0,0,0"
-                               Foreground="{StaticResource Brush.TextSecondary}"
-                               FontSize="{StaticResource Size.Text.Meta}" RenderTransformOrigin="0,0.5">
-                        <TextBlock.RenderTransform><TranslateTransform /></TextBlock.RenderTransform>
-                        <TextBlock.Triggers>
-                            <EventTrigger RoutedEvent="Binding.TargetUpdated">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
-                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="6" To="0" Duration="{StaticResource Motion.Base}" EasingFunction="{StaticResource Ease.Out}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </TextBlock.Triggers>
-                    </TextBlock>
-                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Margin="8,0,0,0"
-                            FontSize="{StaticResource Size.Text.Meta}" VerticalAlignment="Center"
-                            AutomationProperties.Name="Další tip">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Další tip" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                            <components:IconGlyph IconData="{StaticResource Glyph.ChevronRight}" Margin="4,1,0,0"
-                                                  Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                  Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-
-                
-<!-- Pokračovat v práci -->
+                <!-- Pokračovat v práci -->
                 <TextBlock Text="Pokračovat v práci" Style="{StaticResource SectionHeading}"
-                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,8,0,16" />
+                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,8,0,16"
+                           Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}" />
 
-                <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20"
-                        Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}"
-                        Margin="0,0,0,32">
-                    <components:EmptyState IconPrimaryData="{StaticResource Glyph.Project}"
-                                           Title="Zatím tu nic není"
-                                           Description="Projekty, které uložíte nebo otevřete, se objeví tady." />
-                </components:ElevatedBorder>
+                <!-- The newest project gets the full-width feature; older entries stay in a
+                     horizontally scrolling shelf so none are hidden. -->
+                <components:ProjectThumbCard DataContext="{Binding Home.FeaturedProject}" Height="220" Margin="0,0,0,16"
+                    OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    Visibility="{Binding DataContext.Home.FeaturedProject, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NotNullToVisibility}}" />
 
-                <!-- Three per row, matching the mockup's lg:grid-cols-3. The recent list holds at most
-                     twelve entries, so it wraps rather than hiding anything behind a link to a
-                     project browser the application does not have. -->
-                <!-- The 24px gutter lives on the cards, so the trailing column's and bottom row's
-                     gutters are pulled back off the container rather than padding the section. -->
-                <ItemsControl ItemsSource="{Binding Home.RecentProjectRows}" Margin="0,0,-24,8"
+                <ItemsControl ItemsSource="{Binding Home.OtherRecentProjectRows}" Margin="0,0,-16,16"
                               Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="3" />
+                            <StackPanel Orientation="Horizontal" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <components:ProjectThumbCard
-                                Margin="0,0,24,24"
+                                Width="260" Margin="0,0,16,8"
                                 OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Materiály + poslední úloha, side by side -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="32" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0">
+                <!-- Materials and job history share one calm vertical column. -->
+                <StackPanel>
+                    <StackPanel>
                         <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -210,41 +173,29 @@
                                     ToolTip="Otevřít knihovnu materiálů a přednastavení" />
                         </Grid>
 
-                        <!-- A flat row list inside the same framed card as everything else on this screen. The rows paint a
-                             hover wash, which is square, so the list is clipped to the card's rounded inner edge. -->
-                        <components:ElevatedBorder Style="{StaticResource ThumbnailCard}" MinHeight="152"
+                        <!-- Materials are a horizontal shelf; each usage row stays factual and compact. -->
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource BoolToVisibility}}">
-                            <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}" components:RoundedClip.ToParentBorder="True">
+                            <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <!-- Hairline between rows, none above the first: the card's own
-                                             border already closes the top edge. -->
-                                        <Border BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,1,0,0">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
-                                                            <Setter Property="BorderThickness" Value="0" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
+                                        <Border Width="220" Margin="0,0,12,0" Padding="14" Background="{DynamicResource Brush.PanelRaised}"
+                                                CornerRadius="{StaticResource Radius.Md}" components:RoundedClip.ToParentBorder="True">
                                             <components:MaterialUsageRow />
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </components:ElevatedBorder>
+                        </ScrollViewer>
 
-                        <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20" MinHeight="152"
+                        <TextBlock Style="{StaticResource Text.Muted}" Text="Po dokončení úlohy se tady zobrazí použité materiály."
+                                Margin="0,0,0,24" TextWrapping="Wrap"
                                 Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}">
-                            <components:EmptyState IconPrimaryData="{StaticResource Glyph.Materials}"
-                                                   Title="Zatím žádné použité materiály"
-                                                   Description="Jakmile dokončíte úlohu s vyplněným materiálem, objeví se tady." />
-                        </components:ElevatedBorder>
+                        </TextBlock>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Margin="0,24,0,0">
                         <!-- Same height as the materials header beside it (its "Vše" link is a 32px control), so the two
                              section titles share a baseline. -->
                         <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
@@ -289,14 +240,20 @@
                             </Grid>
                         </components:ElevatedBorder>
 
-                        <components:ElevatedBorder Elevation="None" Style="{StaticResource Card.Empty}" Padding="24,20" MinHeight="152"
-                                Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}">
-                            <components:EmptyState IconPrimaryData="{StaticResource Glyph.History}"
-                                                   Title="Zatím žádná dokončená úloha"
-                                                   Description="Po dokončení gravírování se tady zobrazí její výsledek a doba běhu." />
-                        </components:ElevatedBorder>
+                        <TextBlock Style="{StaticResource Text.Muted}" Text="Dokončené úlohy se zobrazí tady."
+                                Margin="0,0,0,12" TextWrapping="Wrap"
+                                Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}" />
                     </StackPanel>
-                </Grid>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,24,0,0" HorizontalAlignment="Left"
+                            AutomationProperties.AutomationId="HomeTipOfDay">
+                    <TextBlock Text="Tip dne" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextSecondary}"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="TipOfDayText" Text="{Binding Home.TipOfDay}" Style="{StaticResource Text.Muted}"
+                               Margin="10,0,0,0" TextWrapping="Wrap" MaxWidth="600" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Content="Další tip"
+                            Margin="8,0,0,0" Padding="8,0" MinHeight="0" VerticalAlignment="Center" />
+                </StackPanel>
             </StackPanel>
             </Grid>
         </ScrollViewer>
@@ -335,7 +292,8 @@
                         </Border>
 
                         <!-- Facts -->
-                        <Grid Margin="0,0,0,24">
+                        <Grid Margin="0,0,0,24"
+                              Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="12" />
@@ -389,12 +347,12 @@
                         <!-- The one action Home's machine card needs: connect. Homing, framing, jogging and
                              the positioning beam are machine and job controls; they live on Zařízení and
                              Návrh (docs/screen-controls-matrix.md). -->
-                        <Button Style="{StaticResource PrimaryBlue}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
+                        <Button Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
                                 Command="{Binding OpenDeviceWizardCommand}"
                                 Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
                                 ToolTip="Najít a připojit gravírku">
                             <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení"
-                                                  Foreground="White" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
+                                                  IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
                         </Button>
 
                     </StackPanel>

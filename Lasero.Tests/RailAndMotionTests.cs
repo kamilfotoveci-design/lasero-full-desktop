@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Reflection;
 using Lasero.App.Components;
 using Lasero.App.Views;
 using Xunit;
@@ -160,6 +161,13 @@ public sealed class RailAndMotionTests
 
     private static Border Part(Control control, string name) => (Border)control.Template.FindName(name, control);
 
+    private static void SetFrameworkState(DependencyObject element, Type owner, string keyName, object value)
+    {
+        var key = owner.GetField(keyName, BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null) as DependencyPropertyKey
+            ?? throw new InvalidOperationException($"WPF state key {owner.Name}.{keyName} was not found.");
+        element.SetValue(key, value);
+    }
+
     /// <summary>The Opacity the template's own IsMouseOver trigger animates the Hover layer to.</summary>
     private static double HoverTarget(ControlTemplate template) =>
         template.Triggers.OfType<Trigger>().First(t => t.Property == UIElement.IsMouseOverProperty)
@@ -190,13 +198,19 @@ public sealed class RailAndMotionTests
             Assert.InRange(hover, 0.01, 0.12);
             Assert.InRange(press, 0.01, 0.16);
 
-            foreach (var (state, alpha) in new[] { ("rest", 0.0), ("hover", hover), ("hover-pressed", hover + press) })
+            foreach (var (state, alpha, isHover, isPressed) in new[]
+                     {
+                         ("rest", 0.0, false, false),
+                         ("hover", hover, true, false),
+                         ("hover-pressed", hover + press, true, true),
+                     })
             {
                 var tool = Tool("Glyph.Text", true, "g-" + state + dpi);
                 var shot = Render(tool, $"rail-selected-{state}-{dpi:0}", dpi, beforeSettle: _ =>
                 {
-                    Part(tool, "Hover").Opacity = state == "rest" ? 0 : hover;
-                    Part(tool, "Press").Opacity = state == "hover-pressed" ? press : 0;
+                    SetFrameworkState(tool, typeof(UIElement), "IsMouseOverPropertyKey", isHover);
+                    SetFrameworkState(tool, typeof(ButtonBase), "IsPressedPropertyKey", isPressed);
+                    Pump(450);
                 });
 
                 var expected = Blend(ink, tint, alpha);
@@ -249,7 +263,11 @@ public sealed class RailAndMotionTests
             var template = TemplateOf(RailStyle("ShapeRailButton"));
             var hover = HoverTarget(template);
             var armedHover = new Button { Style = RailStyle("ShapeRailButton"), Tag = "True", Content = Icon("Glyph.Rectangle") };
-            var shot2 = Render(armedHover, "rail-shape-armed-hover", beforeSettle: _ => Part(armedHover, "Hover").Opacity = hover);
+            var shot2 = Render(armedHover, "rail-shape-armed-hover", beforeSettle: _ =>
+            {
+                SetFrameworkState(armedHover, typeof(UIElement), "IsMouseOverPropertyKey", true);
+                Pump(450);
+            });
             Assert.True(Near(shot2.Mid(6), Blend(Res("Brush.HoverWash"), Res("Brush.Tint"), hover), 6), $"armed + hover is {Hex(shot2.Mid(6))}");
         });
     }

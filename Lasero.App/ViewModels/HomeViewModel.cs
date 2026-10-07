@@ -25,6 +25,8 @@ public partial class HomeViewModel : ObservableObject
 
     public ObservableCollection<RecentProjectEntry> RecentProjects { get; } = new();
     public ObservableCollection<RecentProjectItemViewModel> RecentProjectRows { get; } = new();
+    public RecentProjectItemViewModel? FeaturedProject => RecentProjectRows.Count > 0 ? RecentProjectRows[0] : null;
+    public ObservableCollection<RecentProjectItemViewModel> OtherRecentProjectRows { get; } = new();
     public ObservableCollection<JobHistoryEntry> TodayJobs { get; } = new();
     public ObservableCollection<MaterialUsage> RecentMaterials { get; } = new();
     public ObservableCollection<MaterialUsageItemViewModel> RecentMaterialRows { get; } = new();
@@ -39,7 +41,7 @@ public partial class HomeViewModel : ObservableObject
 
     public string DeviceConnectionLabel => Connection.IsConnected
         ? $"USB  ·  {Connection.SelectedPort}  ·  {Connection.BaudRate} Bd"
-        : "Připojte gravírku kabelem USB";
+        : "USB připojení není aktivní";
 
     /// <summary>The same fact as DeviceConnectionLabel, short enough for a half-width stat tile. The
     /// long form stays for places that have a full row to spend on it.</summary>
@@ -160,12 +162,16 @@ public partial class HomeViewModel : ObservableObject
     {
         RecentProjects.Clear();
         RecentProjectRows.Clear();
+        OtherRecentProjectRows.Clear();
         var now = DateTime.Now;
         foreach (var entry in _recentProjectsStore.Recent)
         {
             RecentProjects.Add(entry);
             RecentProjectRows.Add(new RecentProjectItemViewModel(entry, now));
         }
+        for (var index = 1; index < RecentProjectRows.Count; index++)
+            OtherRecentProjectRows.Add(RecentProjectRows[index]);
+        OnPropertyChanged(nameof(FeaturedProject));
         OnPropertyChanged(nameof(HasRecentProjects));
     }
 

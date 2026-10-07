@@ -184,7 +184,7 @@
                                 <components:IconGlyph IconData="{StaticResource Glyph.Connect}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" />
                                 <TextBlock Text="Ruční připojení" Style="{StaticResource PanelTitle}" Margin="0" />
                             </StackPanel>
-                            <TextBlock Text="Vyberte port a rychlost. Číslo portu (COM) najdete ve Správci zařízení Windows v části Porty, obvyklá rychlost je 115200."
+                            <TextBlock Text="Přenos probíhá přes zvolený port COM. Číslo portu je v části Porty ve Správci zařízení Windows; obvyklá rychlost přenosu je 115200 Bd."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -241,7 +241,7 @@
                              the panel edge. -->
 <DockPanel>
                                     <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,9,0" Foreground="{DynamicResource Brush.TextSecondary}" />
-                                    <TextBlock Text="Nebyl nalezen žádný sériový port. Připojte gravírku přes USB a zvolte Obnovit porty."
+                                    <TextBlock Text="Nebyl nalezen žádný sériový port. Gravírka se po připojení datovým kabelem USB zobrazí jako port COM. Dostupné porty lze znovu vyhledat tlačítkem Obnovit porty."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                                 </DockPanel>
                             </Border>

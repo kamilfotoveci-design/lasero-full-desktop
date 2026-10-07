@@ -182,7 +182,7 @@ public partial class ConnectionViewModel : ObservableObject
                 if (cancellationToken.IsCancellationRequested || !IsConnected) return;
                 if (profile.NumericSettings.Count < 4)
                 {
-                    IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Zkontrolujte, zda je vybrán správný model a port, a zda zařízení používá firmware GRBL.";
+                    IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Zkontrolujte vybraný port a zda zařízení používá firmware GRBL.";
                     return;
                 }
                 var knownMachine = KnownMachineProfiles.Match(profile);

@@ -104,14 +104,15 @@ Context menus are owned by the context-menu rebuild and are not restyled here.
 | Rectangle, Ellipse, Line tool | Cross |
 | Text tool | IBeam |
 | Any disabled control | Arrow (no Hand) |
-| Any enabled button, toggle, tab, checkbox | Hand |
+| Any enabled button, toggle, tab, checkbox | Hand, except project-title button |
+| Project-title button in the main title bar | Arrow (matches its title-bar role) |
 
 ### 1.9 Dialogs and windows
 
 Modal dialogs and secondary windows: Esc cancels or closes, Enter runs the default action, focus
 starts on the first input (or the default button when there is none), Tab stays inside the window.
-Exempt from Esc-closes: the main window, the sign-in window and first-run onboarding (closing them
-ends or changes the session). `LaseroDialogWindow` already follows this.
+Exempt from Esc-closes: the main window and the sign-in window (closing them ends or changes the
+session). `LaseroDialogWindow` already follows this.
 
 ### 1.10 States
 

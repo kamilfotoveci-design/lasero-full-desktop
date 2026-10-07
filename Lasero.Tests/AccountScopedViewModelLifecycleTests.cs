@@ -262,6 +262,21 @@ public sealed class AccountScopedViewModelLifecycleTests : IDisposable
     }
 
     [Fact]
+    public void Home_FeaturesTheMostRecentProjectAndKeepsTheRemainingProjectsInTheShelf()
+    {
+        var (home, store, account) = CreateHome();
+        store.SwitchAccount("account-a");
+        store.Touch(@"C:\projects\older.lasero", "Older", null);
+        store.Touch(@"C:\projects\latest.lasero", "Latest", null);
+
+        account.UserId = "account-a";
+
+        Assert.Equal("Latest", home.FeaturedProject?.Name);
+        Assert.Single(home.OtherRecentProjectRows);
+        Assert.Equal("Older", home.OtherRecentProjectRows[0].Name);
+    }
+
+    [Fact]
     public void Home_SignOutThenSignInAsDifferentAccount_NoBleed()
     {
         var (home, store, account) = CreateHome();

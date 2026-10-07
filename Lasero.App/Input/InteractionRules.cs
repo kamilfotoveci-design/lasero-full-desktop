@@ -82,14 +82,12 @@ public static class InteractionRules
     }
 
     /// <summary>
-    /// Secondary windows cancel or close on Esc. The main window, sign-in and first-run onboarding
-    /// are exempt because closing them ends or changes the session; the shared dialog shell already
-    /// handles Esc itself.
+    /// Secondary windows cancel or close on Esc. The main window and sign-in window are exempt
+    /// because closing them ends or changes the session; the shared dialog shell already handles Esc.
     /// </summary>
     public static bool WindowClosesOnEscape(Type windowType) =>
         windowType != typeof(MainWindow) &&
         windowType != typeof(LoginWindow) &&
-        windowType != typeof(OnboardingWindow) &&
         windowType != typeof(LaseroDialogWindow);
 
     // ------------------------------------------------------------------ deferred numeric fields

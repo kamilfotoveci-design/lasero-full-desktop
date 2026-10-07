@@ -69,7 +69,6 @@ public sealed class InteractionRulesTests
     {
         Assert.False(InteractionRules.WindowClosesOnEscape(typeof(MainWindow)));
         Assert.False(InteractionRules.WindowClosesOnEscape(typeof(LoginWindow)));
-        Assert.False(InteractionRules.WindowClosesOnEscape(typeof(OnboardingWindow)));
         Assert.False(InteractionRules.WindowClosesOnEscape(typeof(LaseroDialogWindow)));
 
         Assert.True(InteractionRules.WindowClosesOnEscape(typeof(SettingsWindow)));

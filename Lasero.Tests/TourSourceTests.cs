@@ -231,7 +231,7 @@ public sealed class TourSourceTests
         var home = Read("Views", "HomeView.xaml");
         Assert.Contains("Command=\"{Binding ReplayTourCommand}\"", home);
         Assert.Contains("AutomationProperties.Name=\"Prohlídka aplikace\"", home);
-        Assert.Contains("Text=\"TIP DNE\"", home);
+        Assert.Contains("Text=\"Tip dne\"", home);
         Assert.Contains("Command=\"{Binding Home.NextTipCommand}\"", home);
 
         var settings = Read("SettingsWindow.xaml");
@@ -253,14 +253,14 @@ public sealed class TourSourceTests
 
         var home = Read("Views", "HomeView.xaml");
         var tip = home[home.IndexOf("HomeTipOfDay", StringComparison.Ordinal)..];
-        tip = tip[..tip.IndexOf("Pokračovat v práci", StringComparison.Ordinal)];
+        tip = tip[..tip.IndexOf("</StackPanel>", StringComparison.Ordinal)];
         Assert.DoesNotContain("Style=\"{StaticResource Card}\"", tip);
         Assert.DoesNotContain("Radius.Pill", tip);
         Assert.DoesNotContain("SelectedSurface", tip);
         Assert.DoesNotContain("Button.Link", tip);
         Assert.Contains("Button.Quiet", tip);
-        Assert.Contains("Glyph.ChevronRight", tip);
-        Assert.Contains("Brush.Brand", tip);
+        Assert.Contains("Home.NextTipCommand", tip);
+        Assert.Contains("Tip dne", tip);
 
         var shared = Read("Theme", "SharedUiStyles.xaml");
         var quiet = shared[shared.IndexOf("x:Key=\"Button.Quiet\"", StringComparison.Ordinal)..];
