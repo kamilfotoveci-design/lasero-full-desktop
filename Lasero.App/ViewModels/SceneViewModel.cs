@@ -1973,11 +1973,30 @@ public partial class SceneViewModel : ObservableObject
             return layers.FirstOrDefault(layer => layer.Color.IsApproximately(color))?.Id ?? Guid.Empty;
         }
 
-        ResetDocument();
-        foreach (var layer in loadedLayers) Layers.Add(layer);
-        foreach (var item in loadedObjects) Objects.Add(item);
+        // The canvas listens to Objects. Telling it about every object of a large project one at a
+        // time made it rebuild the whole scene per object; it is told once, after the document is whole.
+        IsLoadingProject = true;
+        try
+        {
+            ResetDocument();
+            foreach (var layer in loadedLayers) Layers.Add(layer);
+            foreach (var item in loadedObjects) Objects.Add(item);
+        }
+        finally
+        {
+            IsLoadingProject = false;
+        }
+
+        ProjectLoaded?.Invoke();
         RefreshCommands();
     }
+
+    /// <summary>True while <see cref="LoadProject"/> is replacing the document. Views should ignore
+    /// per-object collection changes in that window and rebuild once on <see cref="ProjectLoaded"/>.</summary>
+    public bool IsLoadingProject { get; private set; }
+
+    /// <summary>Raised once after <see cref="LoadProject"/> has replaced the document.</summary>
+    public event Action? ProjectLoaded;
     private void RefreshCommands()
     {
         UndoCommand.NotifyCanExecuteChanged();

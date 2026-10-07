@@ -217,6 +217,7 @@ public partial class SceneCanvas : UserControl
             oldVm.Objects.CollectionChanged -= canvas.OnObjectsChanged;
             oldVm.SelectedObjects.CollectionChanged -= canvas.OnSelectionChanged;
             oldVm.Changed -= canvas.OnViewModelContentChanged;
+            oldVm.ProjectLoaded -= canvas.OnProjectLoaded;
             oldVm.PropertyChanged -= canvas.OnViewModelPropertyChanged;
         }
         if (e.NewValue is SceneViewModel newVm)
@@ -224,14 +225,22 @@ public partial class SceneCanvas : UserControl
             newVm.Objects.CollectionChanged += canvas.OnObjectsChanged;
             newVm.SelectedObjects.CollectionChanged += canvas.OnSelectionChanged;
             newVm.Changed += canvas.OnViewModelContentChanged;
+            newVm.ProjectLoaded += canvas.OnProjectLoaded;
             newVm.PropertyChanged += canvas.OnViewModelPropertyChanged;
         }
         canvas.RebuildAll();
         canvas.UpdateToolCursor();
     }
 
+    private void OnProjectLoaded()
+    {
+        RebuildAll();
+        ResyncNodeEditAfterExternalChange();
+    }
+
     private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (ViewModel is { IsLoadingProject: true }) return; // rebuilt once in OnProjectLoaded
         // A normal append/delete should touch only that object's visuals. Rebuilding the whole
         // canvas also decodes every existing raster preview from disk and makes large designs feel
         // slow. Keep the full path for reorders, resets, auto-fit and active inline text editing.
@@ -429,8 +438,12 @@ public partial class SceneCanvas : UserControl
     // OnObjectPropertyChanged, which patches just that one object's geometry.
     // ------------------------------------------------------------------
 
+    /// <summary>How many times the whole scene was rebuilt; tests use it to pin that bulk changes rebuild once.</summary>
+    internal int RebuildAllCount { get; private set; }
+
     private void RebuildAll()
     {
+        RebuildAllCount++;
         // Defensive only — the normal commit path (CommitInlineTextEdit) always detaches the editor
         // itself before touching Objects, so this should not fire mid-edit. It exists so that if some
         // other change ever rebuilds the scene while a canvas text edit is open, the stale TextBox
