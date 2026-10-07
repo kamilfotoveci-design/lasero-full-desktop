@@ -103,6 +103,17 @@ public partial class SceneCanvas : UserControl
     private bool _autoFit = true;
 
     private readonly Dictionary<SceneObject, List<Path>> _objectVisuals = new();
+
+    // Object geometry lives in world millimetres and is drawn through one shared view matrix, so a
+    // pan or zoom is one matrix write instead of a rebuild of every object's geometry. The frozen
+    // geometry itself is cached per object and rebuilt only when the object's own data changes.
+    private readonly MatrixTransform _viewTransform = new();
+    private readonly MatrixTransform _previewTransform = new();
+    private readonly Dictionary<SceneObject, ObjectGeometryEntry> _geometryCache = new();
+    private readonly HashSet<FrameworkElement> _worldSpaceSelectionVisuals = new();
+    private double _appliedStrokeScale = double.NaN;
+    private const double ObjectStrokePx = 1.4;
+    private const double HoverStrokePx = 2;
     private readonly Dictionary<SceneObject, Image> _rasterImageVisuals = new();
     private readonly List<Line> _gridLines = new();
     private readonly List<FrameworkElement> _selectionVisuals = new();
@@ -252,7 +263,15 @@ public partial class SceneCanvas : UserControl
     }
 
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
-    private void OnViewModelContentChanged() => RepositionAll();
+    private void OnViewModelContentChanged()
+    {
+        // A command or a layer change may have altered fills, visibility or colour of any object; the
+        // geometry cache keeps this to a few property writes per object when nothing really changed.
+        if (ViewModel is not null)
+            foreach (var obj in ViewModel.Objects)
+                UpdateObjectGeometry(obj);
+        RepositionAll();
+    }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -427,6 +446,8 @@ public partial class SceneCanvas : UserControl
         DrawCanvas.Children.Clear();
         _gridLines.Clear();
         _selectionVisuals.Clear();
+        _worldSpaceSelectionVisuals.Clear();
+        _geometryCache.Clear();
         _rubberBandVisual = null;
         _toolPreviewVisual = null;
 
@@ -447,13 +468,18 @@ public partial class SceneCanvas : UserControl
         RedrawSelectionOverlay();
     }
 
+    /// <summary>
+    /// The view (pan, zoom, size) changed. Object geometry is world-space and cached, so this is a
+    /// matrix write plus the raster placements; nothing is rebuilt per object.
+    /// </summary>
     private void RepositionAll()
     {
         SetValue(ZoomPercentPropertyKey, (int)Math.Round(_scale / DefaultScale * 100));
         RedrawGrid();
-        if (ViewModel is not null)
-            foreach (var obj in ViewModel.Objects)
-                UpdateObjectGeometry(obj);
+        UpdateViewMatrix();
+        ApplyStrokeScale();
+        foreach (var obj in _rasterImageVisuals.Keys.ToList())
+            UpdateRasterPlacement(obj);
         RedrawSelectionOverlay();
 
         // Pan, zoom, fit and resize all end up here. The editor lives on the same canvas as the
@@ -485,8 +511,9 @@ public partial class SceneCanvas : UserControl
             var path = new Path
             {
                 Fill = null,
-                Stroke = new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)),
-                StrokeThickness = 1.4,
+                Stroke = FrozenBrush(color),
+                StrokeThickness = ObjectStrokePx / _scale,
+                RenderTransform = _viewTransform,
                 Tag = obj,
                 Cursor = obj.IsLocked ? Cursors.Arrow : Cursors.SizeAll,
                 ToolTip = $"{obj.Name} — kliknutím vybrat",
@@ -552,6 +579,7 @@ public partial class SceneCanvas : UserControl
             DrawCanvas.Children.Remove(path);
         }
         _objectVisuals.Remove(obj);
+        _geometryCache.Remove(obj);
         obj.PropertyChanged -= OnObjectPropertyChanged;
     }
 
@@ -570,25 +598,21 @@ public partial class SceneCanvas : UserControl
 
     private void UpdateObjectGeometry(SceneObject obj)
     {
-        // Same dimming convention used for disabled controls elsewhere in this theme — a "won't be
-        // burned" object reads as visually distinct without a new visual language.
-        var opacity = obj.IncludeInOutput ? 1.0 : 0.4;
-
-        if (_rasterImageVisuals.TryGetValue(obj, out var image))
-        {
-            // Raster rotation remains disabled because the engraving planner is axis-aligned. Scaling
-            // is supported, so WorldBounds keeps the preview aligned with the generated output size.
-            var bounds = obj.WorldBounds();
-            Canvas.SetLeft(image, ToCanvasX(bounds.MinX));
-            Canvas.SetTop(image, ToCanvasY(bounds.MaxY));
-            image.Width = (bounds.MaxX - bounds.MinX) * _scale;
-            image.Height = (bounds.MaxY - bounds.MinY) * _scale;
-            image.Visibility = IsObjectVisibleOnCanvas(obj) ? Visibility.Visible : Visibility.Collapsed;
-            image.Opacity = opacity;
-        }
+        UpdateViewMatrix();
+        UpdateRasterPlacement(obj);
 
         if (!_objectVisuals.TryGetValue(obj, out var paths)) return;
-        var groups = CompoundGroups(obj.GetWorldShapes());
+
+        // Node-editable objects retain their cubic Bezier source in VectorPath. Drawing their cached
+        // ImportedShape polylines here would make the curve visibly faceted after zooming, because that
+        // cache is flattened once at a fixed document-space tolerance. Keep the original cubic geometry
+        // for WPF rendering; the flattened cache remains for hit testing and machine output.
+        // While a node/handle/segment drag is in flight the edit lives in the working path, not in
+        // obj.VectorPath (the object is only replaced on mouse-up), so draw that or the outline
+        // stays put while the dots move.
+        var vectorSource = VectorPathRenderSource.For(obj, _nodeEditObject, _nodeEditWorkingPath, _nodeDragSession is not null);
+        var entry = GetGeometryEntry(obj, vectorSource);
+        var groups = entry.Groups;
 
         // Recolouring or reassigning a layer changes the grouping key, so the number of compound paths
         // can change without the object itself being replaced. Rebuild rather than update in place.
@@ -599,42 +623,46 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        var opacity = obj.IncludeInOutput ? 1.0 : 0.4;
+        var strokeThickness = ObjectStrokePx / _scale;
         for (var i = 0; i < groups.Count; i++)
         {
             var group = groups[i];
             var layerColor = group.Key.Color;
             var layerId = group.Key.Layer;
-            var color = Color.FromRgb(layerColor.R, layerColor.G, layerColor.B);
             // A raster's LocalShapes contain only its placement rectangle. Filling that rectangle
             // paints an opaque layer-colour slab over the actual bitmap preview below it.
             var fills = !obj.IsRaster &&
                 (ViewModel?.LayerModeFor(layerId, layerColor) is LayerMode.Fill or LayerMode.FillAndCut);
 
-            // Node-editable objects retain their cubic Bezier source in VectorPath. Drawing their
-            // cached ImportedShape polylines here makes the curve visibly faceted after zooming,
-            // because that cache is flattened once at a fixed document-space tolerance. Keep the
-            // original cubic geometry for WPF rendering; the flattened cache remains for hit testing
-            // and machine output.
-            // While a node/handle/segment drag is in flight the edit lives in the working path, not in
-            // obj.VectorPath (the object is only replaced on mouse-up), so draw that or the outline
-            // stays put while the dots move.
-            paths[i].Data = VectorPathRenderSource.For(obj, _nodeEditObject, _nodeEditWorkingPath, _nodeDragSession is not null) is { } vectorPath
-                ? BuildVectorPathGeometry(obj, vectorPath)
-                : BuildCompoundGeometry(group);
-            paths[i].Stroke = new SolidColorBrush(color);
-            paths[i].StrokeThickness = 1.4;
-            paths[i].Fill = fills && group.Any(shape => shape.IsClosed)
-                ? new SolidColorBrush(color)
-                : null;
-            // The object under the inline editor stays hidden for as long as the editor is open. This
-            // method runs on every pan and zoom, and it used to put the artwork back each time, so the
-            // wording showed twice: once as the editor and once, at the new zoom, as the object.
-            paths[i].Visibility = obj.IsVisible && (ViewModel?.IsLayerVisible(layerId, layerColor) ?? true) &&
+            var path = paths[i];
+            var geometry = GetGroupGeometry(obj, entry, i);
+            if (!ReferenceEquals(path.Data, geometry)) path.Data = geometry;
+            var brush = FrozenBrush(layerColor);
+            path.Stroke = brush;
+            path.StrokeThickness = strokeThickness;
+            path.Fill = fills && group.Any(shape => shape.IsClosed) ? brush : null;
+            // The object under the inline editor stays hidden for as long as the editor is open.
+            path.Visibility = obj.IsVisible && (ViewModel?.IsLayerVisible(layerId, layerColor) ?? true) &&
                 !ReferenceEquals(obj, _editingTextObject)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
-            paths[i].Opacity = opacity;
+            path.Opacity = opacity;
         }
+    }
+
+    private void UpdateRasterPlacement(SceneObject obj)
+    {
+        if (!_rasterImageVisuals.TryGetValue(obj, out var image)) return;
+        // Raster rotation remains disabled because the engraving planner is axis-aligned. Scaling
+        // is supported, so WorldBounds keeps the preview aligned with the generated output size.
+        var bounds = obj.WorldBounds();
+        Canvas.SetLeft(image, ToCanvasX(bounds.MinX));
+        Canvas.SetTop(image, ToCanvasY(bounds.MaxY));
+        image.Width = (bounds.MaxX - bounds.MinX) * _scale;
+        image.Height = (bounds.MaxY - bounds.MinY) * _scale;
+        image.Visibility = IsObjectVisibleOnCanvas(obj) ? Visibility.Visible : Visibility.Collapsed;
+        image.Opacity = obj.IncludeInOutput ? 1.0 : 0.4;
     }
 
     private bool IsObjectVisibleOnCanvas(SceneObject obj)
@@ -871,6 +899,7 @@ public partial class SceneCanvas : UserControl
 
         foreach (var el in _selectionVisuals) DrawCanvas.Children.Remove(el);
         _selectionVisuals.Clear();
+        _worldSpaceSelectionVisuals.Clear();
 
         // VECTOR PATH TOOL HOOK: Node Edit mode replaces the normal resize/rotate handles with node
         // and Bezier-handle dots for the one object being edited.
@@ -917,38 +946,22 @@ public partial class SceneCanvas : UserControl
     /// </summary>
     private void DrawObjectAnts(SceneObject obj)
     {
-        var figures = new PathFigureCollection();
-        foreach (var shape in obj.GetWorldShapes())
-        {
-            if (shape.Points.Count < 2) continue;
-            if (!(ViewModel?.IsLayerVisible(shape.LayerId, shape.LayerColor) ?? true)) continue;
-            figures.Add(new PathFigure
-            {
-                StartPoint = new Point(ToCanvasX(shape.Points[0].X), ToCanvasY(shape.Points[0].Y)),
-                IsClosed = shape.IsClosed,
-                IsFilled = false,
-                Segments =
-                {
-                    new PolyLineSegment(
-                        shape.Points.Skip(1).Select(point => new Point(ToCanvasX(point.X), ToCanvasY(point.Y))),
-                        isStroked: true),
-                },
-            });
-        }
-
-        if (figures.Count == 0) return;
+        var geometry = GetAntsGeometry(obj);
+        if (geometry is null) return;
 
         var ants = new Path
         {
-            Data = new PathGeometry(figures),
+            Data = geometry,
             Stroke = SelectionBrush,
-            StrokeThickness = 1.6,
+            StrokeThickness = 1.6 / _scale,
             Fill = null,
             IsHitTestVisible = false,
+            RenderTransform = _viewTransform,
         };
         ApplyMarchingAnts(ants);
         DrawCanvas.Children.Add(ants);
         _selectionVisuals.Add(ants);
+        _worldSpaceSelectionVisuals.Add(ants);
     }
 
     /// <summary>Dashes the shape and ties its dash offset to the shared crawl.</summary>
@@ -1212,7 +1225,7 @@ public partial class SceneCanvas : UserControl
         foreach (var path in paths)
         {
             path.Stroke = SelectionBrush;
-            path.StrokeThickness = 2;
+            path.StrokeThickness = HoverStrokePx / _scale;
         }
     }
 
@@ -1950,13 +1963,20 @@ public partial class SceneCanvas : UserControl
     private void ApplyMovePreview(double dx, double dy)
     {
         var translation = new TranslateTransform(dx * _scale, -dy * _scale);
+        // World-space visuals share one matrix (view + the drag offset); raster previews and the
+        // screen-space handles take the equivalent pixel translation.
+        var preview = CurrentViewMatrix();
+        preview.OffsetX += dx * _scale;
+        preview.OffsetY -= dy * _scale;
+        _previewTransform.Matrix = preview;
         foreach (var obj in _dragStartTransforms.Keys.Where(item => !item.IsLocked))
         {
             if (_objectVisuals.TryGetValue(obj, out var paths))
-                foreach (var path in paths) path.RenderTransform = translation;
+                foreach (var path in paths) path.RenderTransform = _previewTransform;
             if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = translation;
         }
-        foreach (var visual in _selectionVisuals) visual.RenderTransform = translation;
+        foreach (var visual in _selectionVisuals)
+            visual.RenderTransform = _worldSpaceSelectionVisuals.Contains(visual) ? _previewTransform : translation;
     }
 
     private void ClearMovePreview()
@@ -1964,10 +1984,11 @@ public partial class SceneCanvas : UserControl
         foreach (var obj in _dragStartTransforms.Keys)
         {
             if (_objectVisuals.TryGetValue(obj, out var paths))
-                foreach (var path in paths) path.RenderTransform = Transform.Identity;
+                foreach (var path in paths) path.RenderTransform = _viewTransform;
             if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = Transform.Identity;
         }
-        foreach (var visual in _selectionVisuals) visual.RenderTransform = Transform.Identity;
+        foreach (var visual in _selectionVisuals)
+            visual.RenderTransform = _worldSpaceSelectionVisuals.Contains(visual) ? _viewTransform : Transform.Identity;
     }
 
     private void ScheduleExpensiveDragUpdate(Point screen)
