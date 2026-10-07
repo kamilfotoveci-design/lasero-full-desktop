@@ -16,7 +16,7 @@
                 <components:IconGlyph IconData="{StaticResource Glyph.Design}"
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,5,0" />
+                                      VerticalAlignment="Center" Margin="0,0,4,0" />
                 <TextBlock Text="{Binding ScreenLabel}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" />
             </StackPanel>
@@ -28,7 +28,7 @@
                 <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,5,0" />
+                                      VerticalAlignment="Center" Margin="0,0,4,0" />
                 <TextBlock Text="{Binding MaterialContext}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
             </StackPanel>
@@ -40,7 +40,7 @@
                 <components:IconGlyph IconData="{StaticResource Glyph.Device}"
                                       Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
                                       Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,5,0" />
+                                      VerticalAlignment="Center" Margin="0,0,4,0" />
                 <TextBlock Text="{Binding MachineContext}" Style="{StaticResource Kamil.MetaText}"
                            VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
             </StackPanel>

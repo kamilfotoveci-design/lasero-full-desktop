@@ -21,21 +21,20 @@
                                     CloseButtonName="Zavřít trasování bitmapy" />
     <Grid Grid.Row="1">
         <Grid.RowDefinitions>
-            <RowDefinition Height="72" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="64" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,0">
-            <Grid>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Trasovat bitmapu" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
-                    <TextBlock Text="Zvolte typ obrázku, upravte rozpoznání a zkontrolujte výsledné křivky." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
-                </StackPanel>
-                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,6">
-                    <TextBlock Text="{Binding ResultSummary}" Foreground="{StaticResource Brush.TextPrimary}" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
-                </Border>
-            </Grid>
+        <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,16">
+            <components:PageHeader Title="Trasovat bitmapu"
+                                   Subtitle="Typ obrázku, rozpoznání obrysu a kontrola výsledných křivek.">
+                <components:PageHeader.Actions>
+                    <Border VerticalAlignment="Center" Style="{StaticResource Badge}">
+                        <TextBlock Text="{Binding ResultSummary}" FontWeight="SemiBold" />
+                    </Border>
+                </components:PageHeader.Actions>
+            </components:PageHeader>
         </Border>
 
         <Grid Grid.Row="1">
@@ -86,18 +85,18 @@
                             BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}"
                             Padding="4" Panel.ZIndex="1">
                         <StackPanel Orientation="Horizontal">
-                            <Button Click="OnZoomOutClick" ToolTip="Oddálit" Padding="9,4" MinWidth="32">−</Button>
+                            <Button Click="OnZoomOutClick" ToolTip="Oddálit" Padding="8,4" MinWidth="32">−</Button>
                             <TextBlock x:Name="ZoomLevelText" Text="100 %" VerticalAlignment="Center" MinWidth="54" TextAlignment="Center"
                                        FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Meta}" />
-                            <Button Click="OnZoomInClick" ToolTip="Přiblížit" Padding="9,4" MinWidth="32">+</Button>
-                            <Button Click="OnFitPreviewClick" Margin="4,0,0,0" Padding="9,4">Přizpůsobit</Button>
+                            <Button Click="OnZoomInClick" ToolTip="Přiblížit" Padding="8,4" MinWidth="32">+</Button>
+                            <Button Click="OnFitPreviewClick" Margin="4,0,0,0" Padding="8,4">Přizpůsobit</Button>
                         </StackPanel>
                     </Border>
                     <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
                             Visibility="{Binding IsComputing, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                            <ProgressBar Width="72" Height="4" IsIndeterminate="True" Margin="0,0,10,0" />
+                            <ProgressBar Width="72" Height="4" IsIndeterminate="True" Margin="0,0,12,0" />
                             <TextBlock Text="Počítám obrysy…" VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Meta}" />
                         </StackPanel>
                     </Border>
@@ -105,11 +104,11 @@
             </Border>
 
             <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,20">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,20">
                     <StackPanel>
                         <TextBlock Text="Zdroj" Style="{StaticResource PanelTitle}" />
                         <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Margin="0,4,0,18" Foreground="{StaticResource Brush.TextSecondary}">
+                        <TextBlock Margin="0,4,0,20" Foreground="{StaticResource Brush.TextSecondary}">
                             <Run Text="Výsledný rozměr: " /><Run Text="{Binding PreviewWidthMm, Mode=OneTime, StringFormat={}{0:0.##}}" /><Run Text=" × " />
                             <Run Text="{Binding PreviewHeightMm, Mode=OneTime, StringFormat={}{0:0.##}}" /><Run Text=" mm" />
                         </TextBlock>
@@ -117,17 +116,17 @@
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
                                 <TextBlock Text="Typ trasování" Style="{StaticResource PanelTitle}" />
-                                <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Mode, Mode=TwoWay}" Margin="0,0,0,5">
+                                <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Mode, Mode=TwoWay}" Margin="0,0,0,4">
                                     <ComboBoxItem Content="Logo a černobílá grafika" Tag="{x:Static trace:TraceMode.FilledShapes}" />
                                     <ComboBoxItem Content="Fotografie a linkové obrysy" Tag="{x:Static trace:TraceMode.Outline}" />
                                     <ComboBoxItem Content="Barevné logo a ilustrace" Tag="{x:Static trace:TraceMode.Color}" />
                                 </ComboBox>
                                 <TextBlock Text="{Binding ModeDescription}" Style="{StaticResource Text.Muted}"
-                                           TextWrapping="Wrap" Margin="0,0,0,15" />
+                                           TextWrapping="Wrap" Margin="0,0,0,16" />
 
                                 <StackPanel Visibility="{Binding IsOutlineMode, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Text="Kvalita zpracování" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
-                                    <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Quality, Mode=TwoWay}" Margin="0,0,0,14">
+                                    <TextBlock Text="Kvalita zpracování" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
+                                    <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Quality, Mode=TwoWay}" Margin="0,0,0,16">
                                         <ComboBoxItem Content="Rychlá" Tag="{x:Static trace:TraceQuality.Fast}" />
                                         <ComboBoxItem Content="Vyvážená" Tag="{x:Static trace:TraceQuality.Balanced}" />
                                         <ComboBoxItem Content="Vysoká přesnost" Tag="{x:Static trace:TraceQuality.HighFidelity}" />
@@ -135,11 +134,11 @@
                                 </StackPanel>
 
                                 <TextBlock Text="Barevné plochy se převedou na samostatné vektorové vrstvy."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,5"
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,4"
                                            Visibility="{Binding IsColorMode, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock Text="Rozpoznání obrysu" Style="{StaticResource PanelTitle}" />
                                 <StackPanel Visibility="{Binding IsFilledMode, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Text="Metoda určení prahu" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                    <TextBlock Text="Metoda určení prahu" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
                                     <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding ThresholdMode, Mode=TwoWay}" Margin="0,0,0,12">
                                         <ComboBoxItem Content="Ruční" Tag="{x:Static trace:ThresholdMode.Manual}" />
                                         <ComboBoxItem Content="Automatická (Otsu)" Tag="{x:Static trace:ThresholdMode.Auto}" />
@@ -151,7 +150,7 @@
                                             <TextBlock Text="{Binding Threshold, StringFormat={}{0:0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                         </DockPanel>
                                         <Slider Minimum="0" Maximum="255" Value="{Binding Threshold}" />
-                                        <TextBlock Text="Vyšší hodnota zachytí i světlejší části obrázku." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,12" />
+                                        <TextBlock Text="Vyšší hodnota zachytí i světlejší části obrázku." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,12" />
                                     </StackPanel>
                                     <CheckBox Content="Invertovat světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,0,0,12" />
                                 </StackPanel>
@@ -161,30 +160,30 @@
                                     <TextBlock Text="{Binding SimplificationPixels, StringFormat={}{0:0.0} px}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                 </DockPanel>
                                 <Slider Minimum="0" Maximum="5" TickFrequency="0.1" Value="{Binding SimplificationPixels}" />
-                                <TextBlock Text="Vyšší hodnota používá méně uzlů; drobné tvary se mohou zjednodušit." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,5,0,14" />
+                                <TextBlock Text="Vyšší hodnota používá méně uzlů; drobné tvary se mohou zjednodušit." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,16" />
 
                                 <DockPanel Margin="0,0,0,4">
                                     <TextBlock Text="Zachovat ostré rohy" Style="{StaticResource Text.Muted}" />
                                     <TextBlock Text="{Binding Detail, StringFormat={}{0:P0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                 </DockPanel>
-                                <Slider Minimum="0" Maximum="1" TickFrequency="0.05" Value="{Binding Detail}" Margin="0,0,0,14" />
+                                <Slider Minimum="0" Maximum="1" TickFrequency="0.05" Value="{Binding Detail}" Margin="0,0,0,16" />
 
                                 <DockPanel Margin="0,0,0,4">
                                     <TextBlock Text="Odstranit šum" Style="{StaticResource Text.Muted}" />
                                     <TextBlock Text="{Binding NoiseRemoval, StringFormat={}{0:P0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                 </DockPanel>
-                                <Slider Minimum="0" Maximum="1" TickFrequency="0.05" Value="{Binding NoiseRemoval}" Margin="0,0,0,14" />
+                                <Slider Minimum="0" Maximum="1" TickFrequency="0.05" Value="{Binding NoiseRemoval}" Margin="0,0,0,16" />
 
                                 <StackPanel Visibility="{Binding IsOutlineMode, Converter={StaticResource BoolToVisibility}}">
                                     <DockPanel Margin="0,0,0,4">
                                         <TextBlock Text="Kontrast" Style="{StaticResource Text.Muted}" />
                                         <TextBlock Text="{Binding Contrast, StringFormat={}{0:+0.0;-0.0;0.0}}" HorizontalAlignment="Right" FontFamily="{StaticResource Font.Numeric}" />
                                     </DockPanel>
-                                    <Slider Minimum="-1" Maximum="1" TickFrequency="0.1" Value="{Binding Contrast}" Margin="0,0,0,14" />
+                                    <Slider Minimum="-1" Maximum="1" TickFrequency="0.1" Value="{Binding Contrast}" Margin="0,0,0,16" />
                                 </StackPanel>
 
                                 <TextBlock Text="Ignorovat plochy menší než (px²)" Style="{StaticResource Text.Muted}" />
-                                <TextBox Text="{Binding MinimumFeaturePixels, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,12" />
+                                <TextBox Text="{Binding MinimumFeaturePixels, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,12" />
                             </StackPanel>
                         </components:ElevatedBorder>
 
@@ -193,29 +192,25 @@
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->
 <DockPanel>
-                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.TextPrimary}" Margin="0,1,9,0" />
+                                <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Foreground="{StaticResource Brush.TextPrimary}" Margin="0,0,8,0" />
                                 <TextBlock Text="Bitmapa bude nahrazena jedním seskupeným vektorovým objektem. Původní stav lze obnovit pomocí Ctrl+Z."
                                            TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
                             </DockPanel>
                         </Border>
 
-                        <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="2,12,2,0" />
+                        <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="4,12,4,0" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="20,12">
-            <Grid>
-                <TextBlock Text="Kolečko: přiblížení · prostřední tlačítko: posun · Překrytí: porovnání s originálem" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Click="OnCancelClick" Padding="16,0" Margin="0,0,8,0">Zrušit</Button>
-                    <Button IsDefault="True" Style="{StaticResource PrimaryBlue}" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Padding="18,0">
-                        <components:IconLabel IconData="{StaticResource Glyph.Vector}" Text="Nahradit vektorem" Foreground="White" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <components:DialogFooter Grid.Row="2">
+            <TextBlock components:DialogFooter.IsLeading="True" Text="Kolečko: přiblížení · prostřední tlačítko: posun · Překrytí: porovnání s originálem" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+            <Button Style="{StaticResource Button.Outline}" Click="OnCancelClick" Height="{StaticResource Size.Control.Primary}" MinWidth="96" Content="Zrušit" />
+            <Button IsDefault="True" Style="{StaticResource Button.Primary}" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Height="{StaticResource Size.Control.Primary}" Padding="24,0">
+                <components:IconLabel IconData="{StaticResource Glyph.Vector}" Text="Nahradit vektorem" Foreground="White" />
+            </Button>
+        </components:DialogFooter>
     </Grid>
     </Grid>
     </Border>

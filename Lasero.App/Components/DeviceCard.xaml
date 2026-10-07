@@ -11,9 +11,9 @@
     </UserControl.Resources>
     <components:ElevatedBorder Style="{StaticResource Card}">
         <StackPanel>
-            <Grid Margin="0,0,0,14">
+            <Grid Margin="0,0,0,16">
                 <StackPanel Orientation="Horizontal">
-                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" VerticalAlignment="Center" Margin="0,0,12,0" />
                     <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0" VerticalAlignment="Center" />
                 </StackPanel>
                 <components:StatusBadge Grid.Column="1" HorizontalAlignment="Right"
@@ -32,7 +32,7 @@
                     </components:StatusBadge.Style>
                 </components:StatusBadge>
             </Grid>
-            <TextBlock Text="{Binding FirmwareBanner, ElementName=Root}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,10"
+            <TextBlock Text="{Binding FirmwareBanner, ElementName=Root}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12"
                        Visibility="{Binding FirmwareBanner, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
             <Grid Margin="0,0,0,4">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

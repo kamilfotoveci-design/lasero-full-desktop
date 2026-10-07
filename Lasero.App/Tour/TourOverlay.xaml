@@ -41,7 +41,7 @@
                         AutomationProperties.LiveSetting="Polite">
                     <Border.RenderTransform><TranslateTransform x:Name="CardOffset" /></Border.RenderTransform>
                     <StackPanel>
-                        <Grid Margin="0,0,0,14">
+                        <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -60,14 +60,14 @@
 
                         <TextBlock x:Name="TitleText" TextWrapping="Wrap"
                                    FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}"
-                                   FontWeight="SemiBold" LineHeight="30" Margin="0,0,0,10" />
+                                   FontWeight="SemiBold" LineHeight="30" Margin="0,0,0,12" />
                         <TextBlock x:Name="BodyText" TextWrapping="Wrap"
                                    FontSize="{StaticResource Size.Text.Section}" LineHeight="24"
                                    Foreground="{StaticResource Brush.TextSecondary}" />
 
-                        <StackPanel x:Name="PointsHost" Margin="0,14,0,0" Visibility="Collapsed" />
+                        <StackPanel x:Name="PointsHost" Margin="0,16,0,0" Visibility="Collapsed" />
 
-                        <Border x:Name="SafetyBox" Margin="0,16,0,0" Padding="12,10" Visibility="Collapsed"
+                        <Border x:Name="SafetyBox" Margin="0,16,0,0" Padding="12,12" Visibility="Collapsed"
                                 Background="{StaticResource Brush.WarningMuted}"
                                 BorderBrush="{StaticResource Brush.Warning}" BorderThickness="1"
                                 CornerRadius="{StaticResource Radius.Md}">
@@ -78,14 +78,14 @@
                                 </Grid.ColumnDefinitions>
                                 <components:IconGlyph IconData="{StaticResource Glyph.Warning}"
                                                       Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}"
-                                                      Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Top" Margin="0,2,10,0" />
+                                                      Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Top" Margin="0,4,12,0" />
                                 <TextBlock x:Name="SafetyText" Grid.Column="1" TextWrapping="Wrap"
                                            FontSize="{StaticResource Size.Text.Section}" LineHeight="24" FontWeight="Medium"
                                            Foreground="{StaticResource Brush.TextPrimary}" />
                             </Grid>
                         </Border>
 
-                        <Grid Margin="0,22,0,0">
+                        <Grid Margin="0,24,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -97,12 +97,12 @@
                                     ToolTip="Ukončit prohlídku · Esc"
                                     AutomationProperties.Name="Přeskočit prohlídku" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="BackButton" Style="{StaticResource Button.LargeSecondary}" Margin="0,0,10,0"
+                                <Button x:Name="BackButton" Style="{StaticResource Button.LargeSecondary}" Margin="0,0,12,0"
                                         FontSize="{StaticResource Size.Text.Section}"
                                         Content="Zpět" Click="OnBackClick"
                                         ToolTip="Předchozí krok · šipka vlevo"
                                         AutomationProperties.Name="Zpět" />
-                                <Button x:Name="ReplayButton" Style="{StaticResource Button.LargeSecondary}" Margin="0,0,10,0"
+                                <Button x:Name="ReplayButton" Style="{StaticResource Button.LargeSecondary}" Margin="0,0,12,0"
                                         FontSize="{StaticResource Size.Text.Section}"
                                         Content="Přehrát znovu" Click="OnReplayClick" Visibility="Collapsed"
                                         AutomationProperties.Name="Přehrát prohlídku znovu" />
@@ -163,7 +163,7 @@
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" StrokeDashArray="20 20"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16" Width="18" Height="18" />
 
-                            <Grid Width="300" Height="93" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,14">
+                            <Grid Width="300" Height="93" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,16">
                                 <Image x:Name="WordmarkImage" Source="{StaticResource Image.BrandWordmark}" Stretch="Uniform"
                                        AutomationProperties.Name="Lasero" />
                                 <Canvas>
@@ -175,16 +175,16 @@
                                 </Canvas>
                             </Grid>
                             <Rectangle x:Name="EtchLine" Height="2" Width="0" Fill="{StaticResource Brush.Accent}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,34" RadiusX="1" RadiusY="1" />
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,36" RadiusX="1" RadiusY="1" />
                         </Grid>
                     </Border>
 
-                    <TextBlock x:Name="WelcomeTitle" Margin="0,26,0,0" HorizontalAlignment="Center"
+                    <TextBlock x:Name="WelcomeTitle" Margin="0,28,0,0" HorizontalAlignment="Center"
                                FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="Bold">
                         <Run Text="Od nápadu k laseru" /><Run Text="." Foreground="{StaticResource Brush.Brand}" />
                     </TextBlock>
                     <TextBlock Text="Návrh, kontrola polohy a bezpečné spuštění krok za krokem."
-                               Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                               Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
                                FontSize="{StaticResource Size.Text.Section}" LineHeight="24" FontWeight="Medium" />
                     <TextBlock Text="Prohlídka trvá asi dvě minuty a nic přitom nezmění ani nespustí."
                                Margin="0,8,0,0" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"

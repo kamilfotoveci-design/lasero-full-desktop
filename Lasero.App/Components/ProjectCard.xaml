@@ -11,7 +11,7 @@
         <conv:ThumbnailPathToImageSourceConverter x:Key="ThumbnailToImage" />
         <conv:UtcToLocalConverter x:Key="UtcToLocal" />
     </UserControl.Resources>
-    <components:ElevatedBorder Style="{StaticResource ThumbnailCard.Clickable}" Padding="10" Cursor="Hand" RenderTransformOrigin="0.5,0.5">
+    <components:ElevatedBorder Style="{StaticResource ThumbnailCard.Clickable}" Padding="12" Cursor="Hand" RenderTransformOrigin="0.5,0.5">
         <components:ElevatedBorder.RenderTransform><TranslateTransform x:Name="Lift" /></components:ElevatedBorder.RenderTransform>
         <components:ElevatedBorder.Triggers>
             <EventTrigger RoutedEvent="UIElement.MouseEnter">
@@ -29,12 +29,12 @@
             <MouseBinding MouseAction="LeftClick" Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding}" />
         </Border.InputBindings>
         <StackPanel>
-            <Grid Height="100" Margin="0,0,0,10">
+            <Grid Height="100" Margin="0,0,0,12">
                 <Border CornerRadius="{StaticResource Radius.Md}" Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1">
                     <components:IconGlyph IconData="{StaticResource Glyph.Project}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" Foreground="{DynamicResource Brush.TextSecondary}" />
                 </Border>
                 <Border CornerRadius="{StaticResource Radius.Md}" Background="White" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1">
-                    <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImage}}" Stretch="Uniform" Margin="6" />
+                    <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImage}}" Stretch="Uniform" Margin="8" />
                 </Border>
                 <Button Width="32" Height="32" Padding="8" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="4" Style="{StaticResource Button.Icon}"
                         Command="{Binding RemoveCommand, ElementName=Root}" CommandParameter="{Binding}"
@@ -43,7 +43,7 @@
                 </Button>
             </Grid>
             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding LastOpenedUtc, Converter={StaticResource UtcToLocal}, StringFormat='dd.MM.yyyy HH:mm'}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
+            <TextBlock Text="{Binding LastOpenedUtc, Converter={StaticResource UtcToLocal}, StringFormat='dd.MM.yyyy HH:mm'}" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
         </StackPanel>
     </components:ElevatedBorder>
 </UserControl>

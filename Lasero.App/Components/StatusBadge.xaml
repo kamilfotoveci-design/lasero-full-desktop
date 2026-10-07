@@ -21,7 +21,7 @@
     -->
     <Border x:Name="Surface"
             CornerRadius="{StaticResource Radius.Sm}"
-            Padding="8,0,10,0"
+            Padding="8,0,12,0"
             Height="26"
             VerticalAlignment="Center">
         <Border.Style>
@@ -34,7 +34,7 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
                                   Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                  Margin="0,0,6,0" VerticalAlignment="Center"
+                                  Margin="0,0,8,0" VerticalAlignment="Center"
                                   Visibility="{Binding IconData, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
                 <components:IconGlyph.Style>
                     <Style TargetType="components:IconGlyph">
@@ -57,7 +57,7 @@
                 </components:IconGlyph.Style>
             </components:IconGlyph>
 
-            <Ellipse Width="6" Height="6" Margin="0,0,7,0" VerticalAlignment="Center"
+            <Ellipse Width="6" Height="6" Margin="0,0,8,0" VerticalAlignment="Center"
                      Visibility="{Binding IconData, ElementName=Root, Converter={StaticResource NotNullToVisibility}, ConverterParameter=Invert}">
                 <Ellipse.Style>
                     <Style TargetType="Ellipse">

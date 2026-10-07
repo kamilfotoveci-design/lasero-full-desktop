@@ -19,11 +19,11 @@
                 Margin="44,0,0,20"
                 Background="{DynamicResource Brush.Panel}"
                 BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-                CornerRadius="{StaticResource Radius.Md}" Padding="12,6,4,6"
+                CornerRadius="{StaticResource Radius.Md}" Padding="12,8,4,8"
                 Effect="{StaticResource Shadow.Tooltip}">
             <DockPanel LastChildFill="True">
                 <Button DockPanel.Dock="Right" Style="{StaticResource Button.GhostIcon}"
-                        Width="24" Height="24" MinHeight="24" Margin="6,0,0,0"
+                        Width="24" Height="24" MinHeight="24" Margin="8,0,0,0"
                         Click="OnDismissClick" VerticalAlignment="Center"
                         ToolTip="Skrýt tuto nápovědu do konce práce s aplikací"
                         AutomationProperties.Name="Skrýt nápovědu">

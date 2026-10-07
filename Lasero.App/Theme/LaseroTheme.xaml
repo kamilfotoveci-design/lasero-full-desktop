@@ -361,6 +361,37 @@
     <system:Double x:Key="Size.Toolbar.Height">64</system:Double>
 
     <!--
+        ===================== Layout system (2026-10) =====================
+        One grid: 8 px, 4 px for tight pairs (icon and label, label and value). Every Margin and Padding in markup is a
+        multiple of 4 (LayoutGridTests enforces it); the values below are the named ones to reach for first.
+
+        Page         32 around a screen's content, 24 when the content column is narrower than 720 (PageScaffold switches).
+        Section gap  32 between page sections, 16 between cards in a row or column, 8 between sibling controls.
+        Card         padding 24 (20 compact), radius Radius.Lg (12). A card inside a card is Radius.Md (8) with no shadow.
+        Controls     Compact 36, Base 40 (default), Primary 44; icon tiles 28, 32 where one leads a row.
+        Panels       the right panel (inspector, Home device rail, Zařízení jog column) is 360 wide everywhere,
+                     the left navigation 184, the Designer tool rail 64.
+        Content      a screen's column is capped at 1120 and left-anchored; running text at 720.
+    -->
+    <Thickness x:Key="Layout.PagePadding">32</Thickness>
+    <Thickness x:Key="Layout.PagePaddingCompact">24</Thickness>
+    <Thickness x:Key="Layout.CardPadding">24</Thickness>
+    <Thickness x:Key="Layout.CardPaddingCompact">20</Thickness>
+    <Thickness x:Key="Layout.DialogPadding">24</Thickness>
+    <Thickness x:Key="Layout.InspectorPadding">24,20</Thickness>
+    <system:Double x:Key="Layout.SectionGap">32</system:Double>
+    <system:Double x:Key="Layout.CardGap">16</system:Double>
+    <system:Double x:Key="Layout.ControlGap">8</system:Double>
+    <system:Double x:Key="Layout.ContentMaxWidth">1120</system:Double>
+    <system:Double x:Key="Layout.ReadingMaxWidth">720</system:Double>
+    <system:Double x:Key="Layout.NavWidth">184</system:Double>
+    <system:Double x:Key="Layout.PanelWidth">360</system:Double>
+    <GridLength x:Key="Layout.PanelColumn">360</GridLength>
+    <system:Double x:Key="Layout.DialogWidth">440</system:Double>
+    <system:Double x:Key="Layout.DialogFooterHeight">72</system:Double>
+    <system:Double x:Key="Layout.PageHeaderMinHeight">64</system:Double>
+
+    <!--
         Segoe UI Variable is the native Windows UI face. Keeping the shell on the system variable
         family preserves ClearType/DPI hinting and avoids the heavy, uneven appearance of the
         imported display face at small WPF sizes. Neue Montreal remains available as a design asset,
@@ -455,7 +486,7 @@
              reads as a caption, not a heading, and flattens the panel hierarchy. Body is 13, so 12
              was still losing that contest. -->
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
-        <Setter Property="Margin" Value="0,0,0,10" />
+        <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
 
     <!-- Tabular figures: every digit takes the same advance width, so coordinates, speeds and
@@ -481,7 +512,7 @@
     -->
     <Style x:Key="Badge" TargetType="Border">
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
@@ -509,7 +540,7 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Padding" Value="16,0" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
@@ -556,7 +587,7 @@
                         <Border x:Name="FocusGap"
                                 BorderBrush="{StaticResource Brush.FocusGap}"
                                 BorderThickness="0"
-                                Margin="2"
+                                Margin="4"
                                 CornerRadius="{StaticResource Radius.Sm}" />
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="{TemplateBinding Padding}" />
                     </Grid>
@@ -690,8 +721,8 @@
     <Style x:Key="Button.Icon" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
-        <Setter Property="Padding" Value="7" />
-        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Margin" Value="0,0,8,0" />
     </Style>
 
     <!-- Ghost: no fill, no border until hover. For dense clusters where a full bordered button per
@@ -715,7 +746,7 @@
         <Setter Property="Height" Value="{StaticResource Size.Control.Rail}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Rail}" />
         <Setter Property="Padding" Value="8" />
-        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="Margin" Value="0,0" />
     </Style>
 
     <!--
@@ -834,8 +865,8 @@
     <Style x:Key="Button.Jog" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Width" Value="52" />
         <Setter Property="Height" Value="52" />
-        <Setter Property="Padding" Value="14" />
-        <Setter Property="Margin" Value="3" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Margin" Value="4" />
     </Style>
 
     <Style x:Key="Button.JogCenter" TargetType="Button" BasedOn="{StaticResource Button.Jog}">
@@ -1014,7 +1045,7 @@
                                   Stroke="{DynamicResource Brush.OnAccent}"
                                   StrokeThickness="2.6"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                                  Stretch="Uniform" Margin="3.5"
+                                  Stretch="Uniform" Margin="4"
                                   Opacity="0" RenderTransformOrigin="0.5,0.5">
                                     <Path.RenderTransform><ScaleTransform x:Name="CheckScale" /></Path.RenderTransform>
                                 </Path>
@@ -1147,7 +1178,7 @@
     <!-- For segment strips of three or four options in a narrow panel, where the default 12px side
          padding is what pushes the labels into a clip. -->
     <Style x:Key="Segment.Compact" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
-        <Setter Property="Padding" Value="4,5" />
+        <Setter Property="Padding" Value="4,4" />
     </Style>
 
     <Style x:Key="SegmentedTrack" TargetType="Border">
@@ -1155,7 +1186,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" />
-        <Setter Property="Padding" Value="2" />
+        <Setter Property="Padding" Value="4" />
     </Style>
 
     <!-- A popup, menu or dropdown surface opens with a 120 ms fade and a 4px slide up. Opacity and a
@@ -1190,7 +1221,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -1222,7 +1253,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
         <Setter Property="PasswordChar" Value="●" />
@@ -1253,7 +1284,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -1342,7 +1373,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Base}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Base}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -1386,7 +1417,7 @@
     </Style>
 
     <Style TargetType="ComboBoxItem">
-        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Padding" Value="8,8" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
@@ -1519,7 +1550,8 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
-        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
         <Setter Property="HasDropShadow" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -1694,7 +1726,7 @@
     <!-- The default template had no hover and no selected state at all, so selection in any list
          using this style was invisible. -->
     <Style TargetType="ListBoxItem">
-        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Padding" Value="8,4" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -1704,7 +1736,7 @@
                         <Border x:Name="RowBg" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter />
                         </Border>
-                        <Border x:Name="Indicator" Width="2" HorizontalAlignment="Left" Margin="0,6"
+                        <Border x:Name="Indicator" Width="2" HorizontalAlignment="Left" Margin="0,8"
                                 Background="{StaticResource Brush.SelectedIndicator}" Visibility="Collapsed" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -1741,7 +1773,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}" CornerRadius="{StaticResource Radius.Xs}" Margin="2" />
+                    <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}" CornerRadius="{StaticResource Radius.Xs}" Margin="4" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.ScrollThumbHover}" />
@@ -1770,7 +1802,7 @@
                          on something 3px tall and hundreds wide is drawn as a lens rather than a
                          rounded bar — it read as a stray bubble under the toolbar. -->
                     <Border x:Name="ThumbFill" Background="{StaticResource Brush.ScrollThumb}"
-                            CornerRadius="{StaticResource Radius.Xs}" Margin="1" />
+                            CornerRadius="{StaticResource Radius.Xs}" Margin="0" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbFill" Property="Background" Value="{StaticResource Brush.ScrollThumbHover}" />
@@ -1877,7 +1909,7 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">

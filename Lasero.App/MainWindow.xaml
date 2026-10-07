@@ -39,7 +39,7 @@
         -->
         <Style x:Key="ProjectNameButton" TargetType="ToggleButton">
             <Setter Property="MinHeight" Value="36" />
-            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Padding" Value="12,0" />
             <Setter Property="Cursor" Value="Arrow" />
             <Setter Property="Focusable" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -189,7 +189,7 @@
                      unsaved-changes dot carries the only state this area actually has. -->
                 <!-- Margin left is 6, not 16: the button carries 10px of its own padding, so the
                      name text stays exactly where it was and the hover wash reaches 10px past it. -->
-                <ToggleButton x:Name="ProjectNameButton" Grid.Column="1" Margin="6,0,2,0" VerticalAlignment="Center"
+                <ToggleButton x:Name="ProjectNameButton" Grid.Column="1" Margin="8,0,4,0" VerticalAlignment="Center"
                               Style="{StaticResource ProjectNameButton}"
                               shell:WindowChrome.IsHitTestVisibleInChrome="True"
                               ContextMenuService.IsEnabled="False"
@@ -233,7 +233,7 @@
                                    TextTrimming="CharacterEllipsis" MaxWidth="200" VerticalAlignment="Center" />
                         <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Accent}" Margin="8,0,0,0" VerticalAlignment="Center"
                                  Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
-                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}" Margin="8,1,0,0" VerticalAlignment="Center"
+                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronDown}" Margin="8,0,0,0" VerticalAlignment="Center"
                                               Foreground="{DynamicResource Brush.TextSecondary}"
                                               Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                     </StackPanel>
@@ -247,7 +247,7 @@
                      and the Device page keeps its own badge because there the machine is the subject. -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
                             Margin="16,0,12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="14,0"
+                    <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="16,0"
                             Visibility="{Binding ShowDeviceSettingsShortcut, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="Otevřít nastavení gravírky — pracovní plocha, osa Z, bezpečnost"
                             AutomationProperties.Name="Nastavení zařízení">
@@ -310,7 +310,7 @@
                     Background="{DynamicResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0" CornerRadius="0"
-                    Padding="14,16">
+                    Padding="16,16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -351,11 +351,11 @@
                         <!-- Whoever is signed in, at the foot of the sidebar. The e-mail is the only
                              name the account actually has, so that is what it shows — no invented
                              display name — and the second line states the real licence state. -->
-                        <Button Style="{StaticResource NavButton}" Height="46" Margin="0,6,0,0"
+                        <Button Style="{StaticResource NavButton}" Height="46" Margin="0,8,0,0"
                                 Click="OnSettingsClick" AutomationProperties.Name="Účet"
                                 Visibility="{Binding Account.IsSignedIn, Converter={StaticResource BoolToVisibility}}">
                             <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="26" Height="26" Margin="0,0,9,0"
+                                <Border DockPanel.Dock="Left" Width="26" Height="26" Margin="0,0,8,0"
                                         CornerRadius="{StaticResource Radius.Pill}"
                                         Background="{StaticResource Brush.SelectedSurface}">
                                     <components:IconGlyph IconData="{StaticResource Glyph.User}"
@@ -375,18 +375,17 @@
             </Border>
             </Grid>
 
-            <!-- Home dashboard. No margin: Home owns its own 24px content padding and its device
-                 rail is edge-mounted, the way the approved layout has it. Device and Chat keep the
-                 inset they were designed with. -->
+            <!-- The three full screens (Home, Zařízení, Chat) share PageScaffold, which owns the page padding and the
+                 header band, so none of them gets a margin here. -->
             <views:HomeView Grid.Column="1" Grid.ColumnSpan="3" Margin="0"
                              Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Home}" />
 
             <!-- Device workspace -->
-            <views:DeviceView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"
+            <views:DeviceView Grid.Column="1" Grid.ColumnSpan="3" Margin="0"
                               Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Device}" />
 
             <!-- Account-scoped assistant. History remains available without a network connection. -->
-            <views:ChatView Grid.Column="1" Grid.ColumnSpan="3" Margin="16"
+            <views:ChatView Grid.Column="1" Grid.ColumnSpan="3" Margin="0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Chat}" />
 
             <!-- Workspace -->
@@ -430,7 +429,7 @@
                      editing individual nodes and editing the whole object's X/Y/W/H are different
                      concerns, and the edited object stays in SceneViewModel.SelectedObjects the whole
                      time (EnterNodeEditMode adds it), so without this the two bars would show at once. -->
-                <Grid VerticalAlignment="Top" Margin="12,30,12,0" Panel.ZIndex="20">
+                <Grid VerticalAlignment="Top" Margin="12,32,12,0" Panel.ZIndex="20">
                     <views:SelectionPropertiesBar HorizontalAlignment="Center" VerticalAlignment="Top"
                                                   TargetCanvas="{Binding ElementName=DesignerCanvas}"
                                                   Visibility="{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -575,7 +574,7 @@
                                  Návrh and Chat (docs/screen-controls-matrix.md, Redundant entry points). -->
                             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowStripConnect, Converter={StaticResource BoolToVisibility}}">
                             <Button Style="{StaticResource Button.Ghost}" Command="{Binding Connection.SmartConnectCommand}"
-                                    Height="26" MinHeight="26" Padding="8,0" Margin="10,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
+                                    Height="26" MinHeight="26" Padding="8,0" Margin="12,0,0,0" FontSize="{StaticResource Size.Text.Meta}"
                                     Foreground="{StaticResource Brush.AccentText}"
                                     Content="Připojit"
                                     ToolTip="Připojí naposledy použitý laser, jinak jej najde automaticky na portech COM"
@@ -586,7 +585,7 @@
                                  left Idle/Ready (see ScreenChrome.ShowJobDetails). -->
                             <StackPanel Orientation="Horizontal"
                                         Visibility="{Binding ShowStripJobDetails, Converter={StaticResource BoolToVisibility}}">
-                            <components:StatusBadge Margin="10,0,0,0"
+                            <components:StatusBadge Margin="12,0,0,0"
                                                     StatusText="{Binding GCode.JobBadgeLabel}"
                                                     Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
                                 <components:StatusBadge.Style>
@@ -611,7 +610,7 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Project}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                          Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,6,0" />
+                                                          Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,8,0" />
                                     <TextBlock Text="{Binding GCode.FileLabel}"
                                                Foreground="{StaticResource Brush.TextSecondary}"
                                                FontSize="{StaticResource Size.Text.Meta}"
@@ -621,7 +620,7 @@
                             </Border>
 
                             <TextBlock Text="{Binding GCode.StatusStripMessage}"
-                                       Margin="10,0,0,0"
+                                       Margin="12,0,0,0"
                                        FontSize="{StaticResource Size.Text.Meta}"
                                        Foreground="{StaticResource Brush.TextSecondary}"
                                        MaxWidth="340"
@@ -630,7 +629,7 @@
                                        Visibility="{Binding GCode.StatusStripMessage, Converter={StaticResource NotNullToVisibility}}" />
                             </StackPanel>
                     </StackPanel>
-                    <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,6,0,0"
+                    <ProgressBar Grid.Row="1" Value="{Binding GCode.ProgressPercent, Mode=OneWay}" Height="3" Margin="0,8,0,0"
                                  Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
 
@@ -661,7 +660,7 @@
                      production colour is something you do while working on the canvas, and reaching
                      the inspector's operation settings for it was a detour. The swatch matching the
                      selected layer is ringed. -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,20,0"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,20,0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
                             ToolTip="Barva určuje, jak laser objekt zpracuje. Vyberte objekt a kliknutím na barvu mu ji přiřaďte">
                     <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
@@ -694,32 +693,32 @@
                     is danger-red because it begins a physical operation; Frame stays secondary.
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="19,0,0,0"
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0"
                             AutomationProperties.AutomationId="StripJobActions"
                             Visibility="{Binding ShowStripJobActionZone, Converter={StaticResource BoolToVisibility}}">
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}" AutomationProperties.Name="Rámovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
-                            Padding="16,0" Margin="0,0,10,0"
+                            Padding="16,0" Margin="0,0,12,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.FrameActionTooltip}">
                         <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobRunningActionButton}" Command="{Binding GCode.PauseResumeCommand}" AutomationProperties.Name="Pozastavit"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
-                            Padding="16,0" Margin="0,0,10,0"
+                            Padding="16,0" Margin="0,0,12,0"
                             ToolTip="Pozastaví úlohu a zhasne laser. Pokračovat lze tlačítkem Pokračovat">
                         <components:IconLabel IconData="{StaticResource Glyph.Pause}" Text="Pozastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}" AutomationProperties.Name="Pokračovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
-                            Padding="16,0" Margin="0,0,10,0"
+                            Padding="16,0" Margin="0,0,12,0"
                             ToolTip="Naváže od místa pozastavení. Nejprve zkontrolujte, že nic nebrání pohybu hlavy">
                         <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobActiveStopButton}"
                             Command="{Binding GCode.AbortCommand}" AutomationProperties.Name="Zastavit"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
-                            Padding="16,0" Margin="0,0,10,0"
+                            Padding="16,0" Margin="0,0,12,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="Okamžitě zastaví pohyb a vypne laser. Úlohu pak lze jen spustit znovu od začátku">
                         <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />

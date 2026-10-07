@@ -20,7 +20,7 @@
         <Style x:Key="DeviceSettingsNav" TargetType="RadioButton">
             <Setter Property="Height" Value="40" />
             <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="Padding" Value="11,0" />
+            <Setter Property="Padding" Value="12,0" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             <Setter Property="Template">
@@ -59,7 +59,7 @@
             </Setter>
         </Style>
         <Style x:Key="SettingsFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-            <Setter Property="Margin" Value="0,0,0,5" />
+            <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
     </Window.Resources>
 
@@ -70,32 +70,19 @@
                                     CloseButtonName="Zavřít nastavení zařízení" />
     <Grid Grid.Row="1">
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="66" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
-                Background="{StaticResource Brush.Panel}"
-                BorderBrush="{StaticResource Brush.PanelBorder}"
-                BorderThickness="0,0,0,1"
-                Padding="22,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Device}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" />
-                    <StackPanel>
-                        <TextBlock Text="Nastavení zařízení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding ViewModel.Connection.ActiveMachineName}" Style="{StaticResource Text.Muted}" Margin="0,2,0,0" />
-                    </StackPanel>
-                </StackPanel>
-                <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding ViewModel.Connection.StatusText}" FontWeight="SemiBold" />
-                </Border>
-            </Grid>
+        <Border Grid.Row="0" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,16">
+            <components:PageHeader Title="Nastavení zařízení" Subtitle="{Binding ViewModel.Connection.ActiveMachineName}">
+                <components:PageHeader.Actions>
+                    <Border Style="{StaticResource Badge.Aligned}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ViewModel.Connection.StatusText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </Border>
+                </components:PageHeader.Actions>
+            </components:PageHeader>
         </Border>
 
         <Grid Grid.Row="1">
@@ -107,7 +94,7 @@
             <Border Background="{StaticResource Brush.Panel}"
                     BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,0,1,0"
-                    Padding="14,20">
+                    Padding="16,20">
                 <StackPanel>
                     <RadioButton x:Name="WorkspaceTab" IsChecked="True" Style="{StaticResource DeviceSettingsNav}" GroupName="DeviceSettingsTab">
                         <components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Rozměry a profil" IconSize="{StaticResource Size.Icon.Md}" TextMargin="10,0,0,0" />
@@ -130,14 +117,11 @@
                     <StackPanel Margin="28,24">
                         <TextBlock Text="Rozměry a profil" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Pracovní plocha se po připojení načte z GRBL parametrů $130 a $131. Hodnoty zde můžete opravit a uložit jako výchozí."
-                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left" Margin="0,5,0,20" />
+                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left" Margin="0,4,0,20" />
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Frame}" Tone="Blue" VerticalAlignment="Center" />
-                                    <TextBlock Text="Pracovní plocha" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Pracovní plocha" IconData="{StaticResource Glyph.Frame}" Tone="Blue" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -150,16 +134,13 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Text="Souřadnice a rozměry v celé aplikaci používají milimetry."
-                                           Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
+                                           Style="{StaticResource Text.Muted}" Margin="0,12,0,0" />
                             </StackPanel>
                         </components:ElevatedBorder>
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Zap}" Tone="Orange" VerticalAlignment="Center" />
-                                    <TextBlock Text="Laserový profil" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Laserový profil" IconData="{StaticResource Glyph.Zap}" Tone="Orange" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -181,7 +162,7 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Text="Profil filtruje doporučené parametry ve vzorníku materiálů."
-                                           Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
+                                           Style="{StaticResource Text.Muted}" Margin="0,12,0,0" />
                             </StackPanel>
                         </components:ElevatedBorder>
                     </StackPanel>
@@ -192,14 +173,11 @@
                     <StackPanel Margin="28,24">
                         <TextBlock Text="Pohyb os" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Výchozí vzdálenosti a rychlosti pro ruční ovládání stroje."
-                                   Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
+                                   Style="{StaticResource Text.Muted}" Margin="0,4,0,20" />
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Origin}" Tone="Graphite" VerticalAlignment="Center" />
-                                    <TextBlock Text="Osy X a Y" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Osy X a Y" IconData="{StaticResource Glyph.Origin}" Tone="Graphite" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -216,12 +194,9 @@
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.MachineHome}" Tone="Graphite" VerticalAlignment="Center" />
-                                    <TextBlock Text="Osa Z" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
-                                <CheckBox Content="Povolit ruční ovládání osy Z" IsChecked="{Binding Draft.EnableZAxis}" Margin="0,0,0,10" />
-                                <CheckBox Content="Obrátit směr osy Z" IsChecked="{Binding Draft.InvertZAxis}" Margin="0,0,0,14"
+                                <components:SectionHeader Level="Card" Title="Osa Z" IconData="{StaticResource Glyph.MachineHome}" Tone="Graphite" />
+                                <CheckBox Content="Povolit ruční ovládání osy Z" IsChecked="{Binding Draft.EnableZAxis}" Margin="0,0,0,12" />
+                                <CheckBox Content="Obrátit směr osy Z" IsChecked="{Binding Draft.InvertZAxis}" Margin="0,0,0,16"
                                           IsEnabled="{Binding Draft.EnableZAxis}" />
                                 <Grid IsEnabled="{Binding Draft.EnableZAxis}">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -244,14 +219,11 @@
                     <StackPanel Margin="28,24">
                         <TextBlock Text="Připojení GRBL" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Komunikační parametry se použijí při příštím připojení zařízení."
-                                   Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
+                                   Style="{StaticResource Text.Muted}" Margin="0,4,0,20" />
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Connect}" Tone="Teal" VerticalAlignment="Center" />
-                                    <TextBlock Text="Sériové připojení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Sériové připojení" IconData="{StaticResource Glyph.Connect}" Tone="Teal" />
                                 <Grid IsEnabled="{Binding ViewModel.Connection.IsConnected, Converter={StaticResource InverseBool}}">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
                                     <StackPanel>
@@ -272,16 +244,13 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Text="Připojené zařízení nejdříve odpojte, pokud chcete změnit port nebo rychlost."
-                                           Style="{StaticResource Text.Muted}" Margin="0,10,0,0" />
+                                           Style="{StaticResource Text.Muted}" Margin="0,12,0,0" />
                             </StackPanel>
                         </components:ElevatedBorder>
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" VerticalAlignment="Center" />
-                                    <TextBlock Text="Zjištěné zařízení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Zjištěné zařízení" IconData="{StaticResource Glyph.Device}" Tone="Blue" />
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="Stav" Style="{StaticResource Text.Muted}" />
@@ -307,14 +276,11 @@
                     <StackPanel Margin="28,24">
                         <TextBlock Text="Bezpečnost" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                         <TextBlock Text="Kontroly, které pomáhají zabránit nechtěnému pohybu nebo spuštění laseru."
-                                   Style="{StaticResource Text.Muted}" Margin="0,5,0,20" />
+                                   Style="{StaticResource Text.Muted}" Margin="0,4,0,20" />
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Play}" Tone="Orange" VerticalAlignment="Center" />
-                                    <TextBlock Text="Před spuštěním" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Před spuštěním" IconData="{StaticResource Glyph.Play}" Tone="Orange" />
                                 <CheckBox Content="Vyžadovat kontrolu oblasti rámováním"
                                           IsChecked="{Binding Draft.RequireFramingBeforeStart}" Margin="0,0,0,12" />
                                 <CheckBox Content="Potvrdit softwarový reset stroje"
@@ -328,10 +294,10 @@
                                 BorderBrush="{StaticResource Brush.PanelBorder}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource Radius.Md}"
-                                Padding="14">
+                                Padding="16">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,10,0" Foreground="{StaticResource Brush.Info}" />
+                                <components:IconGlyph IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,12,0" Foreground="{StaticResource Brush.Info}" />
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="Bezpečný výstup G-code" FontWeight="SemiBold" />
                                     <TextBlock Text="LASERO generuje milimetry (G21), absolutní souřadnice (G90) a dynamický výkon laseru (M4). Pokročilé příkazy zůstávají v GRBL konzoli."
@@ -344,25 +310,13 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="2"
-                Background="{StaticResource Brush.Panel}"
-                BorderBrush="{StaticResource Brush.PanelBorder}"
-                BorderThickness="0,1,0,0"
-                Padding="22,0">
-            <Grid>
-                <TextBlock x:Name="SettingsErrorText"
-                           Foreground="{StaticResource Brush.Danger}"
-                           VerticalAlignment="Center"
-                           TextWrapping="Wrap"
-                           Margin="0,0,220,0" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Style="{StaticResource Button.Outline}" Content="Zrušit" Width="96" Click="OnCancelClick" Margin="0,0,8,0" />
-                    <Button Style="{StaticResource Button.Primary}" Width="112" Click="OnSaveClick">
-                        <components:IconLabel IconData="{StaticResource Glyph.Save}" Text="Uložit" Foreground="White" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <components:DialogFooter Grid.Row="2">
+            <TextBlock x:Name="SettingsErrorText" components:DialogFooter.IsLeading="True" Foreground="{StaticResource Brush.Danger}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Style="{StaticResource Button.Outline}" Content="Zrušit" MinWidth="96" Height="{StaticResource Size.Control.Primary}" Click="OnCancelClick" />
+            <Button Style="{StaticResource Button.Primary}" MinWidth="112" Height="{StaticResource Size.Control.Primary}" Click="OnSaveClick">
+                <components:IconLabel IconData="{StaticResource Glyph.Save}" Text="Uložit" Foreground="White" />
+            </Button>
+        </components:DialogFooter>
     </Grid>
     </Grid>
     </Border>

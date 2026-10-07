@@ -22,7 +22,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Padding" Value="12,8" />
         </Style>
         <Style x:Key="TileCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -32,26 +32,26 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
             <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
-            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
         <Style x:Key="TileUnit" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Bottom" />
-            <Setter Property="Margin" Value="4,0,0,2" />
+            <Setter Property="Margin" Value="4,0,0,4" />
         </Style>
         <Style x:Key="TileGlyph" TargetType="components:IconGlyph">
             <Setter Property="Width" Value="{StaticResource Size.Icon.Chrome}" />
             <Setter Property="Height" Value="{StaticResource Size.Icon.Chrome}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
-            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource Brush.SelectedSurface}"
             BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Md}" Margin="0,10,0,0">
+            CornerRadius="{StaticResource Radius.Md}" Margin="0,12,0,0">
         <StackPanel>
-            <Border Padding="12,9" BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="0,0,0,1">
+            <Border Padding="12,8" BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal">
                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
@@ -151,7 +151,7 @@
                 <components:IconGlyph IconData="{StaticResource Glyph.Check}"
                                       Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                       Foreground="{DynamicResource Brush.Success}"
-                                      VerticalAlignment="Top" Margin="0,1,7,0" />
+                                      VerticalAlignment="Top" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding AppliedMessage, ElementName=Root}" TextWrapping="Wrap"
                            Foreground="{DynamicResource Brush.Success}"
                            FontSize="{StaticResource Size.Text.Meta}" MaxWidth="270" />

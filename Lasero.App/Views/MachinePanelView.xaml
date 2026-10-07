@@ -17,21 +17,21 @@
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
 
         <Style x:Key="MachineFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
         </Style>
         <Style x:Key="TelemetryValue" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
         <Style x:Key="JogPadButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Width" Value="46" />
             <Setter Property="Height" Value="46" />
             <Setter Property="MinHeight" Value="46" />
-            <Setter Property="Margin" Value="2" />
-            <Setter Property="Padding" Value="10" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Padding" Value="12" />
         </Style>
         <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
             <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
@@ -50,14 +50,14 @@
 
         <Border Grid.Row="0" Background="{StaticResource Brush.Field}"
                 BorderBrush="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
-                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,8"
+                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="12" Margin="0,0,0,8"
                 Visibility="{Binding MachineStatus.HasActiveAlert, Converter={StaticResource BoolToVisibility}}">
             <Grid>
                 <TextBlock Text="{Binding MachineStatus.ActiveAlert.Message}" TextWrapping="Wrap"
                            Foreground="{Binding MachineStatus.ActiveAlert.Kind, Converter={StaticResource AlertKindToBrush}}"
                            Margin="0,0,28,0" />
                 <Button HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Button.Icon}"
-                        Width="24" Height="24" Padding="5" Command="{Binding MachineStatus.DismissAlertCommand}"
+                        Width="24" Height="24" Padding="4" Command="{Binding MachineStatus.DismissAlertCommand}"
                         ToolTip="Zavřít upozornění">
                     <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                 </Button>
@@ -66,18 +66,18 @@
 
         <Border Grid.Row="1" Background="{StaticResource Brush.Field}"
                 BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
-                CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,0,0,8">
+                CornerRadius="{StaticResource Radius.Lg}" Padding="12" Margin="0,0,0,8">
             <StackPanel>
-                <Grid Margin="0,0,0,7">
+                <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="7" Height="7" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,7,0" />
+                        <Ellipse Width="7" Height="7" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,8,0" />
                         <TextBlock Text="{Binding Connection.StatusText}" FontWeight="SemiBold" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                     Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
-                            <Ellipse Width="7" Height="7" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,6,0" />
+                            <Ellipse Width="7" Height="7" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,8,0" />
                             <TextBlock Text="{Binding MachineStatus.Mode, Converter={StaticResource ModeToLabel}}" Style="{StaticResource Text.Muted}" />
                         </StackPanel>
                         <Button Style="{StaticResource Button.Secondary}" Height="36" MinHeight="36" Padding="12,0" Command="{Binding Connection.ConnectCommand}"
@@ -104,7 +104,7 @@
         <!-- Text-only. Four icon+label pairs in a 336px panel left roughly 50px per segment, so every
              tab label was clipped mid-word; the icons were not carrying meaning a one-word tab needs
              anyway. Tooltips still spell out what each tab holds. -->
-        <Border Grid.Row="2" Style="{StaticResource SegmentedTrack}" Padding="3" Margin="0,0,0,2">
+        <Border Grid.Row="2" Style="{StaticResource SegmentedTrack}" Padding="4" Margin="0,0,0,4">
             <UniformGrid Columns="3">
                 <RadioButton x:Name="ConnectionPanelTab" IsChecked="True" Content="Připojení" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Připojení a pracovní plocha" />
                 <RadioButton x:Name="JogPanelTab" Content="Pohyb" Style="{StaticResource Segment.Compact}" GroupName="MachinePanelTab" ToolTip="Ruční posun os" />
@@ -115,8 +115,8 @@
         <Grid Grid.Row="3">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Visibility="{Binding IsChecked, ElementName=ConnectionPanelTab, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Margin="0,10,0,8">
-                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0,0,0,9" />
+                <StackPanel Margin="0,12,0,8">
+                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}" Margin="0,0,0,8" />
                     <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
                         <!-- Port and baud rate stack instead of sharing a row. Side by side in a 336px
                              inspector the port name had about 150px, which truncates every real device
@@ -126,7 +126,7 @@
                         <!-- No machine model picker. The machine is recognised from the controller once connected
                              and falls back to generic GRBL; this line is read-only. -->
                         <TextBlock Text="{Binding Connection.DetectedMachineText}" Style="{StaticResource Text.Muted}"
-                                   TextWrapping="Wrap" Margin="0,0,0,10" AutomationProperties.Name="Zjištěné zařízení" />
+                                   TextWrapping="Wrap" Margin="0,0,0,12" AutomationProperties.Name="Zjištěné zařízení" />
                         <TextBlock Text="Sériový port" Style="{StaticResource MachineFieldLabel}" />
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Margin="8,0,0,0"
@@ -137,31 +137,31 @@
                             <ComboBox ItemsSource="{Binding Connection.PortOptions}" SelectedItem="{Binding Connection.SelectedPortOption}"
                                       DisplayMemberPath="Display" ToolTip="{Binding Connection.SelectedPortOption}" />
                         </DockPanel>
-                        <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" Margin="0,10,0,6" />
+                        <TextBlock Text="Rychlost" Style="{StaticResource MachineFieldLabel}" Margin="0,12,0,8" />
                         <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}"
                                   HorizontalAlignment="Left" MinWidth="132" />
                         <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}"
-                                Padding="9" Margin="0,8,0,0"
+                                Padding="8" Margin="0,8,0,0"
                                 Visibility="{Binding Connection.IsVirtualMachineSelected, Converter={StaticResource BoolToVisibility}}">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its
                                  children with infinite width, so TextWrapping never engaged and the
                                  sentence was simply cut off at the panel edge. -->
                             <DockPanel>
                                 <components:IconGlyph DockPanel.Dock="Left" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                                      Foreground="{StaticResource Brush.Info}" Margin="0,1,8,0" VerticalAlignment="Top" />
+                                                      Foreground="{StaticResource Brush.Info}" Margin="0,0,8,0" VerticalAlignment="Top" />
                                 <TextBlock Text="Bezpečný simulátor — neotevře fyzický port ani laser."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                             </DockPanel>
                         </Border>
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding Connection.ConnectSelectedCommand}"
-                                Margin="0,8,0,0" Padding="14,8">
+                                Margin="0,8,0,0" Padding="16,8">
                             <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="{Binding Connection.ConnectButtonText}" Foreground="White" />
                         </Button>
                     </StackPanel>
 
                     <StackPanel Visibility="{Binding Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10">
+                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -178,10 +178,10 @@
                         </Border>
 
                         <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="10" Margin="0,8,0,0">
+                                BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="12" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="Polohovací paprsek" Style="{StaticResource PanelTitle}" Margin="0,0,0,8" />
-                                <Grid Margin="0,0,0,7">
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="88" />
@@ -192,7 +192,7 @@
                                              Text="{Binding Jog.PositioningLaserPowerPercent, UpdateSourceTrigger=PropertyChanged, StringFormat=0.#}"
                                              HorizontalContentAlignment="Right"
                                              ToolTip="Povolený rozsah pro polohování je 0,1 až 5 %." />
-                                    <TextBlock Grid.Column="2" Text="%" Style="{StaticResource Text.Muted}" Margin="7,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="%" Style="{StaticResource Text.Muted}" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </Grid>
                                 <TextBlock Text="Doporučeno 1 %. Paprsek svítí pouze po dobu držení tlačítka."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -209,12 +209,12 @@
                                     <components:IconLabel IconData="{StaticResource Glyph.Zap}" Text="Podržet pro paprsek" />
                                 </Button>
                                 <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}"
-                                           TextWrapping="Wrap" Margin="0,7,0,0"
+                                           TextWrapping="Wrap" Margin="0,8,0,0"
                                            Visibility="{Binding Jog.LastActionMessage, Converter={StaticResource NotNullToVisibility}}" />
                             </StackPanel>
                         </Border>
 
-                        <Button Style="{StaticResource Button.Outline}" Command="{Binding Connection.DisconnectCommand}" Margin="0,9,0,0">
+                        <Button Style="{StaticResource Button.Outline}" Command="{Binding Connection.DisconnectCommand}" Margin="0,8,0,0">
                             <components:IconLabel IconData="{StaticResource Glyph.Disconnect}" Text="Odpojit zařízení" />
                         </Button>
                     </StackPanel>
@@ -223,18 +223,18 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Visibility="{Binding IsChecked, ElementName=JogPanelTab, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Margin="0,10,0,8" IsEnabled="{Binding Connection.IsConnected}">
-                    <Grid Margin="0,0,0,9">
+                <StackPanel Margin="0,12,0,8" IsEnabled="{Binding Connection.IsConnected}">
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBlock Text="Ruční posun" Style="{StaticResource PanelTitle}" Margin="0" />
                         <TextBlock Grid.Column="1" Text="XY / Z" Style="{StaticResource Text.Muted}" />
                     </Grid>
-                    <Grid Margin="0,0,0,10">
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock Text="XY krok (mm)" Style="{StaticResource MachineFieldLabel}" /><ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.StepSizeMm}" /></StackPanel>
                         <StackPanel Grid.Column="2"><TextBlock Text="XY rychlost (mm/min)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Jog.JogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" /></StackPanel>
                     </Grid>
-                    <Grid HorizontalAlignment="Center" Margin="0,0,0,10">
+                    <Grid HorizontalAlignment="Center" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="50" /><ColumnDefinition Width="14" /><ColumnDefinition Width="50" /></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="50" /><RowDefinition Height="50" /><RowDefinition Height="50" /></Grid.RowDefinitions>
                         <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYPosCommand}" ToolTip="Posunout hlavu vlevo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
@@ -250,17 +250,17 @@
                         <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZPosCommand}" ToolTip="Zvednout osu Z, vzdálí se od materiálu"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogZNegCommand}" ToolTip="Spustit osu Z, přiblíží se k materiálu"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                     </Grid>
-                    <Grid Margin="0,0,0,9">
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock Text="Z krok (mm)" Style="{StaticResource MachineFieldLabel}" /><ComboBox ItemsSource="{Binding Jog.StepSizePresets}" SelectedItem="{Binding Jog.ZStepSizeMm}" /></StackPanel>
                         <StackPanel Grid.Column="2"><TextBlock Text="Z rychlost (mm/min)" Style="{StaticResource MachineFieldLabel}" /><TextBox Text="{Binding Jog.ZJogFeedRate, UpdateSourceTrigger=PropertyChanged, StringFormat=0}" /></StackPanel>
                     </Grid>
-                    <Grid Margin="0,0,0,7">
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="7" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nula zde" /></Button>
                         <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Na nulu XY" /></Button>
                     </Grid>
-                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,7"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout zařízení ($X)" /></Button>
+                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout zařízení ($X)" /></Button>
                     <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.CancelJogCommand}"><components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit ruční pohyb" /></Button>
                     <Expander Header="Pokročilé ovládání" Margin="0,8,0,0">
                         <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
@@ -269,21 +269,21 @@
                         </Button>
                     </Expander>
                     <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}"
-                            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,10,0,0">
+                            BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,12,0,0">
                         <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children with
                              infinite width, so TextWrapping never engages and the sentence is cut off at
                              the panel edge. -->
 <DockPanel>
-                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,1,9,0" Foreground="{StaticResource Brush.Info}" />
+                            <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" Foreground="{StaticResource Brush.Info}" />
                             <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </DockPanel>
                     </Border>
-                    <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,7,0,0" />
+                    <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
                 </StackPanel>
             </ScrollViewer>
 
-            <Grid Visibility="{Binding IsChecked, ElementName=ConsolePanelTab, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,8">
+            <Grid Visibility="{Binding IsChecked, ElementName=ConsolePanelTab, Converter={StaticResource BoolToVisibility}}" Margin="0,12,0,8">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Konzola GRBL" Style="{StaticResource PanelTitle}" Margin="0" /><TextBlock Grid.Column="1" Text="Pokročilé" Style="{StaticResource Text.Muted}" /></Grid>
                 <Border Grid.Row="1" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}">

@@ -13,7 +13,7 @@
         RenderTransform only); with animations off it simply swaps.
     -->
     <Border x:Name="Card" Background="{DynamicResource Brush.Canvas}"
-            CornerRadius="{StaticResource Radius.Xl}" Padding="22,18,12,18"
+            CornerRadius="{StaticResource Radius.Xl}" Padding="24,20,12,20"
             UseLayoutRounding="True" SnapsToDevicePixels="True">
         <Grid>
             <Grid.ColumnDefinitions>
@@ -28,7 +28,7 @@
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Text="TIP DNE" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
                            Foreground="{DynamicResource Brush.TextMuted}" />
-                <Grid Margin="0,3,16,0" ClipToBounds="False">
+                <Grid Margin="0,4,16,0" ClipToBounds="False">
                     <TextBlock x:Name="TipOut" Visibility="Collapsed" IsHitTestVisible="False"
                                TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="47"
                                FontSize="{StaticResource Size.Text.Assistant.Body}" FontWeight="Medium" LineHeight="23.2"
@@ -56,7 +56,7 @@
                         AutomationProperties.Name="Další tip">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Další tip" VerticalAlignment="Center" />
-                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronRight}" Margin="6,1,0,0"
+                        <components:IconGlyph IconData="{StaticResource Glyph.ChevronRight}" Margin="8,0,0,0"
                                               Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                               VerticalAlignment="Center" />
                     </StackPanel>

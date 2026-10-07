@@ -9,12 +9,13 @@
              mc:Ignorable="d" d:DesignWidth="1316" d:DesignHeight="860">
 
     <!--
-        Home follows the approved Stitch layout: a scrolling content column at 24px padding beside a
-        fixed 300px device rail. Every value on this screen comes from live state — recent projects
-        from RecentProjectsStore, materials and the last job from JobHistoryStore, the rail from
-        ConnectionViewModel/MachineStatusViewModel. Where the mockup shows a fact Lasero does not
-        record (project dimensions, the material a project uses, the file behind a history entry) the
-        control is omitted rather than filled with a plausible-looking value.
+        Home is the shared screen frame (PageScaffold: header band, one scrolling column) beside the shared 360 px
+        right panel. Every value comes from live state: recent projects from RecentProjectsStore, materials and the last
+        job from JobHistoryStore, the panel from ConnectionViewModel and MachineStatusViewModel. Where the mockup showed a
+        fact Lasero does not record, the control is omitted rather than filled with a plausible-looking value.
+
+        Order of the eye: greeting and subtitle, the one dominant action (Nový projekt), the tip, then the work.
+        Sections are 32 apart (Layout.SectionGap), cards and shelf items 16.
     -->
 
     <UserControl.Resources>
@@ -23,172 +24,113 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <conv:MachineDisplayStateToLabelConverter x:Key="MachineStateLabel" />
         <conv:MachineDisplayStateToStatePillKindConverter x:Key="MachineStatePillKind" />
-
-        <!-- The rail's stat tiles: a metadata caption over a compact value. -->
-        <Style x:Key="RailTile" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-            <Setter Property="Padding" Value="10" />
-        </Style>
-        <!-- Half-width tiles leave roughly 90px for a caption, so the glyph runs at chrome size and
-             the label takes whatever is left rather than being cut off by a fixed-width sibling. -->
-        <Style x:Key="RailTileIcon" TargetType="components:IconGlyph">
-            <Setter Property="Width" Value="{StaticResource Size.Icon.Chrome}" />
-            <Setter Property="Height" Value="{StaticResource Size.Icon.Chrome}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
-            <Setter Property="Margin" Value="0,2,5,0" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-            <Setter Property="DockPanel.Dock" Value="Left" />
-        </Style>
-        <!-- Wraps rather than trims: "Pracovní plocha" does not fit one line in a half-width tile,
-             and the mockup sets it on two lines rather than clipping it. -->
-        <Style x:Key="RailTileCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-        <Style x:Key="RailTileValue" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="Margin" Value="0,5,0,0" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
-
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource Brush.Surface}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="520" />
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="{StaticResource Layout.PanelColumn}" />
         </Grid.ColumnDefinitions>
 
         <!-- ================= CONTENT COLUMN ================= -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <!--
-                Capped and left-aligned. The Stitch column is about 1010px wide and its cards are
-                roughly 340×220; letting the column run to the full width of a 1920 or 2560 window
-                stretched the same three cards to 480 and turned the thumbnail well into a letterbox.
-
-                A MaxWidth on the panel itself would not do it — a stretched element with a MaxWidth
-                centres, and a left-aligned StackPanel shrinks to its widest child instead of growing
-                to the cap. A single star column carrying the MaxWidth gives a bounded, left-anchored
-                column at every window size.
-            -->
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MaxWidth="1180" />
-                </Grid.ColumnDefinitions>
-            <StackPanel Margin="24">
-
-                <!-- Primary actions. Exactly one dominant action: Nový projekt. Importovat and Otevřít projekt are
-                     clearly secondary, the tour is a quiet text button, the tip of the day is a quiet card below. -->
-                <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded"
-                      RenderTransformOrigin="0.5,0.5" Margin="0,0,0,16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <components:LaseroAvatar Size="72" Margin="0,0,16,0" VerticalAlignment="Center"
-                                              AutomationProperties.Name="Kamil, průvodce aplikací" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Dobrý den, jsem Kamil" Style="{StaticResource PageTitle}" TextWrapping="Wrap" />
-                        <TextBlock Text="Nový projekt je první krok. Provedu návrhem, přípravou materiálu i kontrolou před gravírováním."
-                                   Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Assistant.Body}"
-                                   LineHeight="{StaticResource Size.Text.Assistant.LineHeight}"
-                                   TextWrapping="Wrap" Margin="0,4,12,0" />
-                    </StackPanel>
-                    <Button Grid.Column="2" Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}"
-                            VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Body}"
-                            ToolTip="Krátká prohlídka aplikace krok za krokem"
-                            AutomationProperties.Name="Prohlídka aplikace">
-                        <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
-                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
-                    </Button>
+        <components:PageScaffold Grid.Column="0">
+            <components:PageScaffold.Header>
+                <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded" RenderTransformOrigin="0.5,0.5">
+                    <components:PageHeader Title="Dobrý den, jsem Kamil"
+                                           Subtitle="Nový projekt je první krok. Provedu návrhem, přípravou materiálu i kontrolou před gravírováním.">
+                        <components:PageHeader.Leading>
+                            <components:LaseroAvatar Size="72" AutomationProperties.Name="Kamil, průvodce aplikací" />
+                        </components:PageHeader.Leading>
+                        <components:PageHeader.Actions>
+                            <Button Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}" FontSize="{StaticResource Size.Text.Body}"
+                                    ToolTip="Krátká prohlídka aplikace krok za krokem"
+                                    AutomationProperties.Name="Prohlídka aplikace">
+                                <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
+                                                      IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
+                            </Button>
+                        </components:PageHeader.Actions>
+                    </components:PageHeader>
                 </Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,16"
-                            AutomationProperties.AutomationId="HomeActions">
-                    <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,12,0"
-                            Padding="22,0" FontSize="{StaticResource Size.Text.Section}"
-                            ToolTip="Založit prázdný projekt · Ctrl+N" AutomationProperties.Name="Nový projekt">
-                        <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt"
-                                              Foreground="White" IconSize="{StaticResource Size.Icon.Xl}" TextMargin="10,0,0,0" />
-                    </Button>
-                    <!-- Deliberately generic: LoadFileCommand accepts SVG, bitmaps and G-code. Lasero
-                         has no DXF importer, so the label must not promise one. -->
-                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding ImportFromHomeCommand}" Margin="0,0,12,0"
-                            Height="{StaticResource Size.Control.Base}" Padding="16,0" VerticalAlignment="Center"
-                            ToolTip="Načíst SVG, obrázek nebo G-code a otevřít je v návrhu" AutomationProperties.Name="Importovat">
-                        <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat"
-                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
-                    </Button>
-                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding OpenProjectCommand}"
-                            Height="{StaticResource Size.Control.Base}" Padding="16,0" VerticalAlignment="Center"
-                            ToolTip="Otevřít uložený projekt · Ctrl+O" AutomationProperties.Name="Otevřít projekt">
-                        <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt"
-                                              IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
-                    </Button>
-                </StackPanel>
+            </components:PageScaffold.Header>
 
-                <!-- Tip dne: a quiet card between the actions and the work. A different surface from the
-                     contextual TipChip over the workspace (that one reacts to an event; this one rotates daily). -->
-                <components:TipOfDayCard Tip="{Binding Home.TipOfDay}" NextCommand="{Binding Home.NextTipCommand}"
-                                         Position="{Binding Home.TipPosition}" Count="{Binding Home.TipCount}"
-                                         Margin="0,0,0,8"
-                                         AutomationProperties.AutomationId="HomeTipOfDay"
-                                         AutomationProperties.Name="Tip dne" />
-
-                <!-- Pokračovat v práci -->
-                <TextBlock Text="Pokračovat v práci" Style="{StaticResource SectionHeading}"
-                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,8,0,16"
-                           Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}" />
-
-                <!-- The newest project gets the full-width feature; older entries stay in a
-                     horizontally scrolling shelf so none are hidden. -->
-                <components:ProjectThumbCard DataContext="{Binding Home.FeaturedProject}" Height="220" Margin="0,0,0,16"
-                    OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                    RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                    Visibility="{Binding DataContext.Home.FeaturedProject, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NotNullToVisibility}}" />
-
-                <ItemsControl ItemsSource="{Binding Home.OtherRecentProjectRows}" Margin="0,0,-16,16"
-                              Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <components:ProjectThumbCard
-                                Width="260" Margin="0,0,16,8"
-                                OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- Materials and job history share one calm vertical column. -->
+            <components:PageScaffold.Body>
                 <StackPanel>
-                    <StackPanel>
-                        <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Naposledy použité materiály" Style="{StaticResource SectionHeading}"
-                                       VerticalAlignment="Center" Margin="0,0,8,0" TextWrapping="Wrap" />
-                            <Button Grid.Column="1" Style="{StaticResource Button.Link}" Click="OnMaterialsClick"
-                                    Content="Vše →"
-                                    ToolTip="Otevřít knihovnu materiálů a přednastavení" />
-                        </Grid>
 
-                        <!-- Materials are a horizontal shelf; each usage row stays factual and compact. -->
+                    <!-- Primary actions. Exactly one dominant action: Nový projekt. Importovat and Otevřít projekt are
+                         clearly secondary, the tip of the day is a quiet card below. They wrap rather than clip. -->
+                    <WrapPanel Margin="0,0,-8,8" AutomationProperties.AutomationId="HomeActions">
+                        <Button Style="{StaticResource Button.Large}" Command="{Binding NewProjectCommand}" Margin="0,0,8,8"
+                                Padding="24,0" FontSize="{StaticResource Size.Text.Section}"
+                                ToolTip="Založit prázdný projekt · Ctrl+N" AutomationProperties.Name="Nový projekt">
+                            <components:IconLabel IconData="{StaticResource Glyph.New}" Text="Nový projekt"
+                                                  Foreground="White" IconSize="{StaticResource Size.Icon.Xl}" TextMargin="8,0,0,0" />
+                        </Button>
+                        <!-- Deliberately generic: LoadFileCommand accepts SVG, bitmaps and G-code. Lasero
+                             has no DXF importer, so the label must not promise one. -->
+                        <Button Style="{StaticResource Button.Secondary}" Command="{Binding ImportFromHomeCommand}" Margin="0,0,8,8"
+                                Height="{StaticResource Size.Control.Primary}" Padding="16,0" VerticalAlignment="Center"
+                                ToolTip="Načíst SVG, obrázek nebo G-code a otevřít je v návrhu" AutomationProperties.Name="Importovat">
+                            <components:IconLabel IconData="{StaticResource Glyph.Import}" Text="Importovat"
+                                                  IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
+                        </Button>
+                        <Button Style="{StaticResource Button.Secondary}" Command="{Binding OpenProjectCommand}" Margin="0,0,8,8"
+                                Height="{StaticResource Size.Control.Primary}" Padding="16,0" VerticalAlignment="Center"
+                                ToolTip="Otevřít uložený projekt · Ctrl+O" AutomationProperties.Name="Otevřít projekt">
+                            <components:IconLabel IconData="{StaticResource Glyph.Open}" Text="Otevřít projekt"
+                                                  IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Tip dne: a quiet card between the actions and the work. A different surface from the
+                         contextual TipChip over the workspace (that one reacts to an event; this one rotates daily). -->
+                    <components:TipOfDayCard Tip="{Binding Home.TipOfDay}" NextCommand="{Binding Home.NextTipCommand}"
+                                             Position="{Binding Home.TipPosition}" Count="{Binding Home.TipCount}"
+                                             Margin="0,0,0,32"
+                                             AutomationProperties.AutomationId="HomeTipOfDay"
+                                             AutomationProperties.Name="Tip dne" />
+
+                    <!-- Pokračovat v práci. The newest project gets the full-width feature; older entries stay in a
+                         horizontally scrolling shelf so none are hidden. -->
+                    <StackPanel Margin="0,0,0,32"
+                                Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
+                        <components:SectionHeader Title="Pokračovat v práci" Level="Page" />
+                        <components:ProjectThumbCard DataContext="{Binding Home.FeaturedProject}" Height="220" Margin="0,0,0,16"
+                            OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Visibility="{Binding DataContext.Home.FeaturedProject, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NotNullToVisibility}}" />
+                        <ItemsControl ItemsSource="{Binding Home.OtherRecentProjectRows}" Margin="0,0,-16,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <components:ProjectThumbCard
+                                        Width="260" Margin="0,0,16,8"
+                                        OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Materials: a horizontal shelf; each usage row stays factual and compact. -->
+                    <StackPanel Margin="0,0,0,32">
+                        <components:SectionHeader Title="Naposledy použité materiály" Level="Page">
+                            <components:SectionHeader.Action>
+                                <Button Style="{StaticResource Button.Link}" Click="OnMaterialsClick"
+                                        Content="Vše →"
+                                        ToolTip="Otevřít knihovnu materiálů a přednastavení" />
+                            </components:SectionHeader.Action>
+                        </components:SectionHeader>
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                                Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource BoolToVisibility}}">
+                                      Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource BoolToVisibility}}">
                             <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}">
                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Width="220" Margin="0,0,12,0" Padding="14" Background="{DynamicResource Brush.PanelRaised}"
+                                        <Border Width="220" Margin="0,0,12,0" Padding="16" Background="{DynamicResource Brush.PanelRaised}"
                                                 CornerRadius="{StaticResource Radius.Md}" components:RoundedClip.ToParentBorder="True">
                                             <components:MaterialUsageRow />
                                         </Border>
@@ -196,21 +138,13 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-
-                        <TextBlock Style="{StaticResource Text.Muted}" Text="Po dokončení úlohy se tady zobrazí použité materiály."
-                                Margin="0,0,0,24" TextWrapping="Wrap"
-                                Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}">
-                        </TextBlock>
+                        <TextBlock Style="{StaticResource Text.EmptyLine}" Text="Po dokončení úlohy se tady zobrazí použité materiály."
+                                   Visibility="{Binding Home.HasRecentMaterials, Converter={StaticResource InverseBoolToVisibility}}" />
                     </StackPanel>
 
-                    <StackPanel Margin="0,24,0,0">
-                        <!-- Same height as the materials header beside it (its "Vše" link is a 32px control), so the two
-                             section titles share a baseline. -->
-                        <Grid Margin="0,0,0,16" MinHeight="{StaticResource Size.Control.Compact}">
-                            <TextBlock Text="Poslední úloha" Style="{StaticResource SectionHeading}"
-                                       HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0" />
-                        </Grid>
-
+                    <!-- Poslední úloha -->
+                    <StackPanel>
+                        <components:SectionHeader Title="Poslední úloha" Level="Page" />
                         <components:ElevatedBorder Style="{StaticResource Card}" Padding="16" MinHeight="152"
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource BoolToVisibility}}">
                             <Grid>
@@ -232,10 +166,10 @@
                                     <TextBlock Text="{Binding Home.LastJobResultLabel}" Style="{StaticResource Text.Muted}"
                                                Margin="0,8,0,0" />
                                     <TextBlock Text="{Binding Home.LastJobMaterialLabel}" Style="{StaticResource Text.Muted}"
-                                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
+                                               Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
                                                Visibility="{Binding Home.LastJobMaterialLabel, Converter={StaticResource NotNullToVisibility}}" />
                                     <TextBlock Text="{Binding Home.LastJobCompletedLabel}" Style="{StaticResource Text.Muted}"
-                                               Margin="0,3,0,0" />
+                                               Margin="0,4,0,0" />
                                 </StackPanel>
 
                                 <Border Grid.Column="1" Width="64" Height="64" VerticalAlignment="Top"
@@ -247,17 +181,14 @@
                                 </Border>
                             </Grid>
                         </components:ElevatedBorder>
-
-                        <TextBlock Style="{StaticResource Text.Muted}" Text="Dokončené úlohy se zobrazí tady."
-                                Margin="0,0,0,12" TextWrapping="Wrap"
-                                Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <TextBlock Style="{StaticResource Text.EmptyLine}" Text="Dokončené úlohy se zobrazí tady."
+                                   Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}" />
                     </StackPanel>
                 </StackPanel>
-            </StackPanel>
-            </Grid>
-        </ScrollViewer>
+            </components:PageScaffold.Body>
+        </components:PageScaffold>
 
-        <!-- ================= DEVICE RAIL ================= -->
+        <!-- ================= DEVICE PANEL (the shared 360 px right panel) ================= -->
         <Border Grid.Column="1" Background="{DynamicResource Brush.Panel}"
                 BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
             <Grid>
@@ -266,87 +197,61 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Padding="16,14"
+                <Border Grid.Row="0" Padding="24,16,24,4"
                         BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                    <TextBlock Text="Zařízení" Style="{StaticResource PanelTitle}"
-                               VerticalAlignment="Center" Margin="0" />
+                    <components:SectionHeader Title="Zařízení" Level="Card" />
                 </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="16">
+                    <StackPanel Margin="24">
 
                         <!-- Identity and state. The pill reads MachineStatus.DisplayState, so it can
                              only say "Připraveno" when the controller has actually answered Idle. -->
-                        <Border Background="{DynamicResource Brush.PanelRaised}"
-                                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-                                CornerRadius="{StaticResource Radius.Lg}" Padding="16,20" Margin="0,0,0,24">
-                            <StackPanel HorizontalAlignment="Center">
-                                <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Blue" Size="56" HorizontalAlignment="Center" Margin="0,0,0,12" />
-                                <TextBlock Text="{Binding Home.DeviceName}" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
-                                <components:StatusBadge Margin="0,10,0,0" HorizontalAlignment="Center"
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Graphite" Size="32"
+                                                 VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Home.DeviceName}" FontSize="{StaticResource Size.Text.Body}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding Home.DeviceName}" />
+                                <components:StatusBadge Margin="0,4,0,0" HorizontalAlignment="Left"
                                                         StatusText="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateLabel}}"
                                                         Kind="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStatePillKind}}" />
                             </StackPanel>
-                        </Border>
+                        </Grid>
 
-                        <!-- Facts -->
-                        <Grid Margin="0,0,0,24"
-                              Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="12" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <Border Style="{StaticResource RailTile}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Frame}" Style="{StaticResource RailTileIcon}" />
-                                        <TextBlock Text="Pracovní plocha" Style="{StaticResource RailTileCaption}" />
-                                    </DockPanel>
-                                    <TextBlock Style="{StaticResource RailTileValue}" FontFamily="{StaticResource Font.Numeric}"
-                                               Typography.NumeralAlignment="Tabular">
+                        <!-- Facts: label muted on the left, value on the right, hairline between rows. -->
+                        <StackPanel Margin="0,0,0,24"
+                                    Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
+                            <components:FormRow Label="Pracovní plocha" ShowRule="True">
+                                <components:FormRow.Value>
+                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular">
                                         <Run Text="{Binding Settings.Machine.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
                                         <Run Text="×" />
                                         <Run Text="{Binding Settings.Machine.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
                                         <Run Text="mm" />
                                     </TextBlock>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Column="2" Style="{StaticResource RailTile}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Link}" Style="{StaticResource RailTileIcon}" />
-                                        <TextBlock Text="Připojení" Style="{StaticResource RailTileCaption}" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding Home.ConnectionSummaryLabel}" Style="{StaticResource RailTileValue}"
-                                               ToolTip="{Binding Home.DeviceConnectionLabel}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource RailTile}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <components:IconGlyph IconData="{StaticResource Glyph.Terminal}" Style="{StaticResource RailTileIcon}" />
-                                        <TextBlock Text="Firmware" Style="{StaticResource RailTileCaption}" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding Home.FirmwareLabel}" Style="{StaticResource RailTileValue}"
-                                               FontFamily="{StaticResource Font.Numeric}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+                                </components:FormRow.Value>
+                            </components:FormRow>
+                            <components:FormRow Label="Připojení" ShowRule="True">
+                                <components:FormRow.Value>
+                                    <TextBlock Text="{Binding Home.ConnectionSummaryLabel}" ToolTip="{Binding Home.DeviceConnectionLabel}" />
+                                </components:FormRow.Value>
+                            </components:FormRow>
+                            <components:FormRow Label="Firmware">
+                                <components:FormRow.Value>
+                                    <TextBlock Text="{Binding Home.FirmwareLabel}" FontFamily="{StaticResource Font.Numeric}" />
+                                </components:FormRow.Value>
+                            </components:FormRow>
+                        </StackPanel>
 
                         <!-- The one action Home's machine card needs: connect. Homing, framing, jogging and
                              the positioning beam are machine and job controls; they live on Zařízení and
                              Návrh (docs/screen-controls-matrix.md). -->
-                        <Button Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
+                        <Button Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch"
                                 Command="{Binding OpenDeviceWizardCommand}"
                                 Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
                                 ToolTip="Najít a připojit gravírku">

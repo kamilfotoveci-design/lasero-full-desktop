@@ -39,8 +39,11 @@ internal sealed class ShellHarness : IDisposable
             Task.FromResult(new GrblPortScanResult([], []));
     }
 
+    private readonly bool _previousReducedMotion = Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion;
+
     public ShellHarness(double width, double height, string? userId = null)
     {
+        Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion = true; // no mid-fade frames in a render
         _directory = Path.Combine(Path.GetTempPath(), "lasero-shell-harness", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_directory);
         string P(string name) => Path.Combine(_directory, name);
@@ -138,7 +141,9 @@ internal sealed class ShellHarness : IDisposable
         ViewModel.GCode.JobState = JobRunState.Idle;
         ViewModel.IsDirty = false;
         try { Window.Close(); } catch { /* the harness is throwaway */ }
+        try { if (ViewModel.Connection.IsConnected) ViewModel.Connection.DisconnectCommand.Execute(null); } catch { }
         try { Machine.Dispose(); } catch { }
+        Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion = _previousReducedMotion;
         try { Directory.Delete(_directory, true); } catch { }
     }
 }

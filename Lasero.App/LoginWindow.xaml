@@ -145,7 +145,7 @@
                     <Setter Property="Content">
                         <Setter.Value>
                             <StackPanel Orientation="Horizontal">
-                                <ProgressBar IsIndeterminate="True" Width="28" Height="3" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <ProgressBar IsIndeterminate="True" Width="28" Height="3" Margin="0,0,12,0" VerticalAlignment="Center" />
                                 <TextBlock Text="Přihlašuji…" VerticalAlignment="Center" />
                             </StackPanel>
                         </Setter.Value>
@@ -256,18 +256,18 @@
                                      Style="{StaticResource LoginPasswordField}"
                                      PasswordChanged="OnPasswordChanged"
                                      MaxLength="256"
-                                     Padding="10,0,44,0"
+                                     Padding="12,0,44,0"
                                      AutomationProperties.Name="Heslo" />
                         <TextBox x:Name="PasswordRevealInput"
                                  Style="{StaticResource LoginPasswordRevealField}"
                                  TextChanged="OnPasswordRevealChanged"
                                  MaxLength="256"
-                                 Padding="10,0,44,0"
+                                 Padding="12,0,44,0"
                                  Visibility="Collapsed"
                                  AutomationProperties.Name="Heslo (viditelné)" />
                         <ToggleButton x:Name="PasswordVisibilityToggle"
                                       Style="{StaticResource LoginRevealToggle}"
-                                      HorizontalAlignment="Right" Margin="0,0,3,0"
+                                      HorizontalAlignment="Right" Margin="0,0,4,0"
                                       Click="OnTogglePasswordVisibility"
                                       ToolTip="Zobrazit heslo"
                                       AutomationProperties.Name="Zobrazit heslo">
@@ -325,7 +325,7 @@
                             </Grid.ColumnDefinitions>
                             <components:IconGlyph IconData="{StaticResource Glyph.Info}"
                                                   Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                                  Margin="0,1,12,0" VerticalAlignment="Top"
+                                                  Margin="0,0,12,0" VerticalAlignment="Top"
                                                   Foreground="{StaticResource Brush.TextSecondary}" />
                             <TextBlock Grid.Column="1"
                                        Text="{Binding StatusMessage}"

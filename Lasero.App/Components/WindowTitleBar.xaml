@@ -11,7 +11,7 @@
     </UserControl.Resources>
     <Border Background="{StaticResource Brush.TitleBar}"
             BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
-            Padding="14,0">
+            Padding="16,0">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -24,7 +24,7 @@
                                   GridSize="{Binding IconGridSize, ElementName=Root}"
                                   Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                   Foreground="{StaticResource Brush.TextSecondary}"
-                                  VerticalAlignment="Center" Margin="0,0,9,0"
+                                  VerticalAlignment="Center" Margin="0,0,8,0"
                                   Visibility="{Binding IconData, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
             <TextBlock Grid.Column="1" Text="{Binding Title, ElementName=Root}" VerticalAlignment="Center"
                        FontFamily="{StaticResource Font.Display}"

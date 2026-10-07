@@ -68,7 +68,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Lg}" />
-            <Setter Property="Padding" Value="16" />
+            <Setter Property="Padding" Value="{StaticResource Layout.CardPadding}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Compact, ElementName=Root}" Value="True">
                     <Setter Property="Background" Value="Transparent" />
@@ -88,7 +88,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ChipSurface" Width="34" Height="34" CornerRadius="{StaticResource Radius.Md}"
+                <Border x:Name="ChipSurface" Width="32" Height="32" CornerRadius="{StaticResource Radius.Md}"
                         VerticalAlignment="Top" Margin="0,0,12,0"
                         Style="{StaticResource StatusChip}">
                     <components:IconGlyph x:Name="StatusGlyphIcon" Style="{StaticResource StatusGlyph}"
@@ -96,9 +96,9 @@
                 </Border>
 
                 <StackPanel x:Name="ContentStack" Grid.Column="1">
-                    <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Title, ElementName=Root}" Style="{StaticResource PanelTitle}" TextWrapping="Wrap" Margin="0" />
                     <TextBlock Text="{Binding Description, ElementName=Root}" Style="{StaticResource Text.Muted}"
-                               TextWrapping="Wrap" Margin="0,3,0,0"
+                               TextWrapping="Wrap" Margin="0,4,0,0"
                                Visibility="{Binding Description, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
                 </StackPanel>
 
@@ -124,7 +124,7 @@
             <ContentPresenter Content="{Binding Meta, ElementName=Root}" Margin="0,12,0,0"
                               Visibility="{Binding Meta, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0"
                         Visibility="{Binding HasActions, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
                 <Button Command="{Binding PrimaryCommand, ElementName=Root}"
                         Content="{Binding PrimaryLabel, ElementName=Root}"

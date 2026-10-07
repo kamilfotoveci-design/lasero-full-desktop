@@ -45,7 +45,7 @@
         <Style x:Key="ToolbarDivider" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Height" Value="20" />
-            <Setter Property="Margin" Value="9,0" />
+            <Setter Property="Margin" Value="8,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Background" Value="{DynamicResource Brush.PanelBorder}" />
         </Style>
@@ -61,22 +61,22 @@
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
             <Setter Property="MaxWidth" Value="220" />
             <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
         <Style x:Key="Tooltip.Shortcut" TargetType="TextBlock" BasedOn="{StaticResource Text.Faint}">
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
-            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource Brush.Panel}"
             BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Md}" Padding="12,7"
+            CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
             Effect="{StaticResource Shadow.Sheet}">
         <StackPanel Orientation="Horizontal">
             <TextBlock Text="Úprava uzlů" Style="{StaticResource Text.Muted}"
                        FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium"
-                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                       VerticalAlignment="Center" Margin="0,0,12,0" />
 
             <!-- Always-visible core: selection utilities -->
             <Button Style="{StaticResource Button.Ghost}" Padding="8,0" Height="{StaticResource Size.Control.Compact}"
@@ -170,7 +170,7 @@
                     Visibility="{Binding TargetCanvas.IsSelectedSubpathClosed, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
             <StackPanel Orientation="Horizontal"
                         Visibility="{Binding TargetCanvas.IsSelectedSubpathClosed, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnToggleClosedClick"
                         AutomationProperties.Name="Otevřít nebo uzavřít dráhu">
                     <!-- No dedicated open/closed-path icon exists in this app's icon set, and inventing
@@ -221,7 +221,7 @@
                     </TextBlock>
                 </Button>
 
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnReversePathClick" AutomationProperties.Name="Obrátit směr dráhy">
                     <Button.ToolTip>
                         <ToolTip>
@@ -237,7 +237,7 @@
                 <!-- LIGHTBURN_VECTOR_PARITY.md §22 — only meaningful at an internal node, not an
                      endpoint (nothing to break there); OnBreakAtNodeClick/BreakSelectedNode already
                      no-op safely for an endpoint, so this stays visible rather than flickering. -->
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnBreakAtNodeClick" AutomationProperties.Name="Rozdělit dráhu v uzlu">
                     <Button.ToolTip>
                         <ToolTip>
@@ -254,7 +254,7 @@
                      endpoint — Join only ever makes sense there. Visible (not collapsed) even when no
                      candidate is currently in range, so its own tooltip can explain why it is
                      disabled instead of the action seeming to not exist at all. -->
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnJoinClick"
                         Visibility="{Binding TargetCanvas.IsSelectedNodeOpenEndpoint, ElementName=Root, Converter={StaticResource BoolToVisibility}}"
                         IsEnabled="{Binding TargetCanvas.CanJoinSelectedEndpoint, ElementName=Root}"
@@ -295,7 +295,7 @@
                     Visibility="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
             <StackPanel Orientation="Horizontal"
                         Visibility="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnConvertSegmentClick" AutomationProperties.Name="Převést segment na křivku nebo přímku">
                     <Button.ToolTip>
                         <ToolTip>
@@ -353,7 +353,7 @@
                     </TextBlock>
                 </Button>
 
-                <Button Style="{StaticResource Button.Ghost}" Padding="10,0" Height="{StaticResource Size.Control.Compact}"
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnInsertMidpointClick" AutomationProperties.Name="Vložit uzel do poloviny segmentu">
                     <Button.ToolTip>
                         <ToolTip>

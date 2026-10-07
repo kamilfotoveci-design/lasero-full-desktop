@@ -71,8 +71,7 @@ public partial class LaseroDialogWindow : Window
     /// .KamilAssistantHost and Lasero.App.Views.DeviceSetup.DeviceWizardOverlay already use. The Window
     /// itself is not AllowsTransparency, so Window.Opacity would be a no-op - the fade runs on
     /// DialogSurface instead, which is fully opaque background anyway.</summary>
-    private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
-        && RenderCapability.Tier > 0;
+    private static bool AnimationsEnabled => Lasero.App.Controls.Motion.LaseroMotion.AnimationsEnabled;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

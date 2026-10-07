@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:components="clr-namespace:Lasero.App.Components"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="LASERO" Width="420" SizeToContent="Height" MaxHeight="620"
+        Title="LASERO" Width="440" SizeToContent="Height" MaxHeight="620"
         WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="NoResize"
         ShowInTaskbar="False" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <Window.Resources>
@@ -32,7 +32,7 @@
         <Grid components:RoundedClip.ToParentBorder="True">
             <Grid.RowDefinitions><RowDefinition Height="38" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
-            <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="14,0">
+            <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="16,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold" />
@@ -44,14 +44,14 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Margin="22,22,22,20">
+            <Grid Grid.Row="1" Margin="24">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="44" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                 <Border x:Name="IconSurface" Width="36" Height="36" CornerRadius="{StaticResource Radius.Pill}" VerticalAlignment="Top"
                         Background="{StaticResource Brush.InfoMuted}">
                     <components:IconGlyph x:Name="DialogIcon" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                           Foreground="{StaticResource Brush.Info}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                <StackPanel Grid.Column="1" Margin="12,0,0,0">
                     <TextBlock x:Name="TitleText" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
                                Foreground="{StaticResource Brush.TextPrimary}" TextWrapping="Wrap" />
                     <TextBlock x:Name="MessageText" Margin="0,8,0,0" FontSize="{StaticResource Size.Text.Body}" LineHeight="20"
@@ -59,17 +59,14 @@
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="2" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                    BorderThickness="0,1,0,0" Padding="16,12">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="CancelButton" Style="{StaticResource Button.Outline}" Click="OnCancelClick" MinWidth="88" Height="{StaticResource Size.Control.Primary}" Margin="0,0,8,0"
-                            ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
-                    <Button x:Name="SecondaryButton" Style="{StaticResource Button.Secondary}" Click="OnSecondaryClick" MinWidth="104" Height="{StaticResource Size.Control.Primary}" Margin="0,0,8,0"
-                            ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
-                    <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Click="OnPrimaryClick" MinWidth="120" Height="{StaticResource Size.Control.Primary}" IsDefault="True"
-                            ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
-                </StackPanel>
-            </Border>
+            <components:DialogFooter Grid.Row="2">
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Outline}" Click="OnCancelClick" MinWidth="88" Height="{StaticResource Size.Control.Primary}"
+                        ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
+                <Button x:Name="SecondaryButton" Style="{StaticResource Button.Outline}" Click="OnSecondaryClick" MinWidth="104" Height="{StaticResource Size.Control.Primary}"
+                        ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
+                <Button x:Name="PrimaryButton" Style="{StaticResource Button.Primary}" Click="OnPrimaryClick" MinWidth="120" Height="{StaticResource Size.Control.Primary}" IsDefault="True"
+                        ContentTemplate="{StaticResource DialogButtonLabelTemplate}" />
+            </components:DialogFooter>
         </Grid>
     </Border>
 </Window>

@@ -22,44 +22,37 @@
                                     CloseButtonName="Zavřít nastavení" />
     <Grid Grid.Row="1">
         <Grid.ColumnDefinitions><ColumnDefinition Width="0" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="66" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
-        <Border Visibility="Collapsed" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="14,22">
+        <Border Visibility="Collapsed" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="16,24">
             <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="10,0,0,26">
+                <StackPanel Orientation="Horizontal" Margin="12,0,0,28">
                     <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
                 </StackPanel>
-                <TextBlock Text="NASTAVENÍ" Style="{StaticResource Text.Heading}" Margin="10,0,0,8" />
-                <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,9" Margin="0,0,0,5">
-                    <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Foreground="{StaticResource Brush.Info}" Margin="0,0,10,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
+                <TextBlock Text="NASTAVENÍ" Style="{StaticResource Text.Heading}" Margin="12,0,0,8" />
+                <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="12,8" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Foreground="{StaticResource Brush.Info}" Margin="0,0,12,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
                 </Border>
-                <TextBlock Text="Připojení stroje a pohyb os najdete v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="10,14,10,0" />
-                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="10,18,10,18" />
-                <TextBlock Text="Verze 1.2.0" Style="{StaticResource Text.Muted}" Margin="10,0,0,0" />
+                <TextBlock Text="Připojení stroje a pohyb os najdete v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="12,16,12,0" />
+                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="12,20,12,20" />
+                <TextBlock Text="Verze 1.2.0" Style="{StaticResource Text.Muted}" Margin="12,0,0,0" />
             </StackPanel>
         </Border>
 
         <!-- Page heading lives outside the ScrollViewer so it can never scroll out of view. -->
-        <StackPanel Grid.Column="1" Grid.Row="0" Margin="36,24,36,16">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                <components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Lg}" Height="{StaticResource Size.Icon.Lg}" Margin="0,1,12,0" />
-                <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
-            </StackPanel>
-            <TextBlock Text="Upravte výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení."
-                       Style="{StaticResource Text.Muted}" Margin="32,0,0,0" />
-        </StackPanel>
+        <Border Grid.Column="1" Grid.Row="0" Padding="32,24,32,8">
+            <components:PageHeader Title="Nastavení"
+                                   Subtitle="Výchozí chování aplikace, zařízení a účtu. Změny se uloží po potvrzení." />
+        </Border>
 
-        <ScrollViewer Grid.Column="1" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="36,0,36,18">
+        <ScrollViewer Grid.Column="1" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="32,0,32,24">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,10,0">
+                    <StackPanel Margin="0,0,12,0">
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Lock}" Tone="Orange" VerticalAlignment="Center" />
-                                    <TextBlock Text="Bezpečnost a pracovní postup" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Bezpečnost a pracovní postup" IconData="{StaticResource Glyph.Lock}" Tone="Orange" />
                                 <TextBlock Text="Doporučené volby chrání materiál i stroj před nechtěným spuštěním."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,16" />
                                 <CheckBox x:Name="RequireFramingToggle" Content="Před spuštěním vyžadovat kontrolu rámování" Margin="0,0,0,12" />
@@ -69,15 +62,12 @@
                         </components:ElevatedBorder>
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Help}" Tone="Indigo" VerticalAlignment="Center" />
-                                    <TextBlock Text="Úvod a tipy" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Úvod a tipy" IconData="{StaticResource Glyph.Help}" Tone="Indigo" />
                                 <CheckBox x:Name="StartupAnimationToggle" Content="Úvodní animace při spuštění" Margin="0,0,0,12" />
                                 <TextBlock Text="Prohlídka aplikace a krátké tipy při první práci."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,12" />
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Click="OnReplayIntroClick" Margin="0,0,10,0"
+                                    <Button Click="OnReplayIntroClick" Margin="0,0,12,0"
                                             ToolTip="Uloží nastavení a znovu otevře úvodní obrazovku s prohlídkou"
                                             AutomationProperties.Name="Znovu zobrazit úvod">
                                         <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Znovu zobrazit úvod" />
@@ -93,25 +83,22 @@
                         </components:ElevatedBorder>
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.User}" Tone="Blue" VerticalAlignment="Center" />
-                                    <TextBlock Text="Účet Lasero" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Účet Lasero" IconData="{StaticResource Glyph.User}" Tone="Blue" />
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Account.Email}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="Přihlášení zůstane uložené v tomto počítači." Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
+                                        <TextBlock Text="Přihlášení zůstane uložené v tomto počítači." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Top">
                                         <TextBlock Text="Přihlášeno" FontWeight="SemiBold" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="Licenční klíč" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                <TextBlock Text="Licenční klíč" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <TextBox Text="{Binding Account.LicenseCode, UpdateSourceTrigger=PropertyChanged}" MaxLength="120" ToolTip="Licenční klíč z vašeho účtu Lasero" />
-                                    <Button Grid.Column="2" Command="{Binding Account.RedeemLicenseCommand}" Padding="14,0">
+                                    <Button Grid.Column="2" Command="{Binding Account.RedeemLicenseCommand}" Padding="16,0">
                                         <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Aktivovat" />
                                     </Button>
                                 </Grid>
@@ -123,26 +110,23 @@
                             </StackPanel>
                         </components:ElevatedBorder>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Graphite" VerticalAlignment="Center" />
-                                    <TextBlock Text="Výchozí zařízení" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Výchozí zařízení" IconData="{StaticResource Glyph.Device}" Tone="Graphite" />
                                 <TextBlock Text="Tyto hodnoty Lasero předvyplní při příštím připojení."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,-4,0,16" />
                                 <TextBlock Text="Sériový port" Style="{StaticResource Text.Muted}" />
-                                <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}" Margin="0,5,0,12" />
+                                <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort}" Margin="0,4,0,12" />
                                 <TextBlock Text="Přenosová rychlost" Style="{StaticResource Text.Muted}" />
-                                <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}" Margin="0,5,0,12" />
+                                <ComboBox ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate}" Margin="0,4,0,12" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="Stav" Style="{StaticResource Text.Muted}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Connection.StatusText}" HorizontalAlignment="Right" />
                                 </Grid>
-                                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,14,0,12" />
-                                <TextBlock Text="Profil laseru" Style="{StaticResource Text.Muted}" Margin="0,0,0,6" />
+                                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,16,0,12" />
+                                <TextBlock Text="Profil laseru" Style="{StaticResource Text.Muted}" Margin="0,0,0,8" />
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="100" /></Grid.ColumnDefinitions>
                                     <ComboBox SelectedValue="{Binding Materials.SelectedTechnology}" SelectedValuePath="Tag">
@@ -152,38 +136,35 @@
                                     </ComboBox>
                                     <ComboBox Grid.Column="2" ItemsSource="{Binding Materials.PowerClasses}" SelectedItem="{Binding Materials.SelectedPowerWatts}" ToolTip="Optický výkon ve wattech" />
                                 </Grid>
-                                <TextBlock Text="Pracovní plocha" Style="{StaticResource Text.Muted}" Margin="0,0,0,6" />
+                                <TextBlock Text="Pracovní plocha" Style="{StaticResource Text.Muted}" Margin="0,0,0,8" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="Šířka (mm)" Style="{StaticResource Text.Muted}" />
-                                        <TextBox x:Name="WorkAreaWidthInput" Text="{Binding Settings.Machine.WorkAreaWidthMm, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" />
+                                        <TextBox x:Name="WorkAreaWidthInput" Text="{Binding Settings.Machine.WorkAreaWidthMm, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Výška (mm)" Style="{StaticResource Text.Muted}" />
-                                        <TextBox x:Name="WorkAreaHeightInput" Text="{Binding Settings.Machine.WorkAreaHeightMm, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" />
+                                        <TextBox x:Name="WorkAreaHeightInput" Text="{Binding Settings.Machine.WorkAreaHeightMm, ValidatesOnExceptions=True, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Grid>
-                                <Button Command="{Binding Connection.RefreshPortsCommand}" HorizontalAlignment="Left" Margin="0,14,0,0">
+                                <Button Command="{Binding Connection.RefreshPortsCommand}" HorizontalAlignment="Left" Margin="0,16,0,0">
                                     <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Znovu vyhledat porty" />
                                 </Button>
                             </StackPanel>
                         </components:ElevatedBorder>
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}" Visibility="Collapsed">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <components:IconTile IconData="{StaticResource Glyph.CloudSync}" Tone="Blue" VerticalAlignment="Center" />
-                                    <TextBlock Text="Účet a synchronizace" Style="{StaticResource PanelTitle}" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                <components:SectionHeader Level="Card" Title="Účet a synchronizace" IconData="{StaticResource Glyph.CloudSync}" Tone="Blue" />
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Account.Email}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="Přihlášení je bezpečně uložené v tomto počítači." Style="{StaticResource Text.Muted}" Margin="0,3,0,0" />
+                                        <TextBlock Text="Přihlášení je bezpečně uložené v tomto počítači." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Top">
                                         <StackPanel Orientation="Horizontal">
-                                            <Ellipse Width="7" Height="7" Margin="0,0,7,0">
+                                            <Ellipse Width="7" Height="7" Margin="0,0,8,0">
                                                 <Ellipse.Style>
                                                     <Style TargetType="Ellipse">
                                                         <Setter Property="Fill" Value="{StaticResource Brush.Success}" />
@@ -211,7 +192,7 @@
                                     </Border>
                                 </Grid>
 
-                                <Border Background="{StaticResource Brush.Field}" CornerRadius="{StaticResource Radius.Md}" Padding="11" Margin="0,0,0,12">
+                                <Border Background="{StaticResource Brush.Field}" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,0,0,12">
                                     <StackPanel>
                                         <TextBlock Text="Lasero Pro je aktivní" FontWeight="SemiBold"
                                                    Visibility="{Binding Account.IsPremium, Converter={StaticResource BoolToVisibility}}" />
@@ -221,7 +202,7 @@
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="Aktivovat licenční klíč" Style="{StaticResource Text.Muted}" Margin="0,0,0,5" />
+                                <TextBlock Text="Aktivovat licenční klíč" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <TextBox Text="{Binding Account.LicenseCode, UpdateSourceTrigger=PropertyChanged}" MaxLength="120"
@@ -233,8 +214,8 @@
 
                                 <TextBlock Text="{Binding Account.StatusMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 <TextBlock Text="Osobní recepty vzorníku lze synchronizovat s účtem. Projekty zatím zůstávají bezpečně uložené jen v tomto počítači."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,9,0,0" />
-                                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,14,0,12" />
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,16,0,12" />
                                 <Button HorizontalAlignment="Left" Click="OnSignOutClick" ToolTip="Odstranit uložené přihlášení z tohoto počítače">
                                     <components:IconLabel IconData="{StaticResource Glyph.User}" Text="Odhlásit se" />
                                 </Button>
@@ -245,14 +226,12 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Border Grid.Column="1" Grid.Row="2" Background="{StaticResource Brush.TitleBar}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="28,12">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock x:Name="SettingsErrorText" Foreground="{StaticResource Brush.Danger}" VerticalAlignment="Center" Margin="0,0,16,0" TextWrapping="Wrap" />
-                <Button IsDefault="True" Style="{StaticResource PrimaryBlue}" Click="OnCloseClick" Padding="18,0">
-                    <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Uložit a zavřít" Foreground="{StaticResource Brush.OnAccent}" />
-                </Button>
-            </StackPanel>
-        </Border>
+        <components:DialogFooter Grid.Column="1" Grid.Row="2">
+            <TextBlock x:Name="SettingsErrorText" components:DialogFooter.IsLeading="True" Foreground="{StaticResource Brush.Danger}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button IsDefault="True" Style="{StaticResource Button.Primary}" Click="OnCloseClick" Height="{StaticResource Size.Control.Primary}" Padding="24,0">
+                <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Uložit a zavřít" Foreground="{StaticResource Brush.OnAccent}" />
+            </Button>
+        </components:DialogFooter>
     </Grid>
     </Grid>
     </Border>

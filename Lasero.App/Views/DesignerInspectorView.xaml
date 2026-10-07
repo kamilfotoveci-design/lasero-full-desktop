@@ -50,7 +50,7 @@
             <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
             <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
-            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Padding" Value="12,0" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -105,8 +105,8 @@
                     controller state, so a disconnected app names no machine and claims no readiness;
                     the full manual controls stay on the Device screen, one click away.
                 -->
-                <StackPanel Margin="16,14,16,14">
-                    <Grid Margin="0,0,0,10">
+                <StackPanel Margin="16,16,16,16">
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -133,7 +133,7 @@
                     </Grid>
 
                     <Border Background="{DynamicResource Brush.PanelRaised}"
-                            CornerRadius="{StaticResource Radius.Sm}" Padding="10,8">
+                            CornerRadius="{StaticResource Radius.Sm}" Padding="12,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -170,9 +170,9 @@
                     paths, text, shapes or groups. Background removal is provided through Lasero's
                     authenticated Gemini service; consent is requested before the source image is sent.
                 -->
-                <StackPanel Margin="16,14,16,14"
+                <StackPanel Margin="16,16,16,16"
                             Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Obrázek" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,10" />
+                    <TextBlock Text="Obrázek" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,12" />
 
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
@@ -180,7 +180,7 @@
                             Content="Odstranit pozadí"
                             ToolTip="Obrázek se odešle online službě Lasero (Gemini). Změnu lze vrátit pomocí Ctrl+Z." />
 
-                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource RowLabel}"
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Style="{StaticResource RowLabel}"
                                Text="Obrázek se odešle online službě Lasero (Gemini)."
                                Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}" />
 
@@ -227,9 +227,9 @@
                             <ProgressBar Width="72" Height="4" Minimum="0" Maximum="1"
                                          Value="{Binding Scene.BackgroundRemovalProgress}"
                                          IsIndeterminate="{Binding Scene.BackgroundRemovalIsIndeterminate}"
-                                         Margin="0,0,10,0" />
+                                         Margin="0,0,12,0" />
                             <TextBlock Text="{Binding Scene.BackgroundRemovalStatus}" VerticalAlignment="Center" Style="{StaticResource RowLabel}" />
-                            <Button Margin="10,0,0,0" Padding="8,2" MinHeight="24" Style="{StaticResource Button.Ghost}"
+                            <Button Margin="12,0,0,0" Padding="8,4" MinHeight="24" Style="{StaticResource Button.Ghost}"
                                     Command="{Binding Scene.CancelBackgroundRemovalCommand}"
                                     Content="Zrušit" ToolTip="Zrušit odstranění pozadí" />
                         </StackPanel>
@@ -250,7 +250,7 @@
                     per-operation enable, visibility, ordering, colour, duplicate and delete are all
                     still here or on the row's context menu.
                 -->
-                <StackPanel Margin="16,14,16,14">
+                <StackPanel Margin="16,16,16,16">
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -300,7 +300,7 @@
                                                     BorderBrush="Transparent"
                                                     BorderThickness="1"
                                                     CornerRadius="{StaticResource Radius.Sm}"
-                                                    Margin="0,1">
+                                                    Margin="0,0">
                                                 <ContentPresenter />
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -322,7 +322,7 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid MinHeight="44" Margin="6,0,6,0" Background="Transparent"
+                                <Grid MinHeight="44" Margin="8,0,8,0" Background="Transparent"
                                       Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
                                     <!--
                                         The menu's DataContext is the row's own layer, so every item
@@ -399,7 +399,7 @@
                                                               Converter={StaticResource IndexToLayerNumber}}" />
 
                                     <Border Grid.Column="1" Width="16" Height="16" CornerRadius="{StaticResource Radius.Xs}"
-                                            VerticalAlignment="Center" Margin="0,0,10,0"
+                                            VerticalAlignment="Center" Margin="0,0,12,0"
                                             Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                             BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
                                             ToolTip="Barva operace. Objekty stejné barvy se zpracují stejným nastavením" />
@@ -408,7 +408,7 @@
                                         <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                         <!-- Keep every production value visible. Individual tokens wrap as units,
                                              so a narrow inspector never cuts power or pass count mid-summary. -->
-                                        <WrapPanel Margin="0,1,0,0"
+                                        <WrapPanel Margin="0,0,0,0"
                                                    ToolTip="{Binding ProcessingSummary}"
                                                    automation:AutomationProperties.HelpText="{Binding ProcessingSummary}">
                                             <TextBlock Text="{Binding ModeLabel}" Style="{StaticResource Text.Muted}" Margin="0,0,8,0" />
@@ -490,7 +490,7 @@
                     <!-- No operations yet: only explain when one appears. No action here; the import
                          call-to-action lives once, in the empty-canvas card, plus the persistent
                          tool-rail import tool (docs/screen-controls-matrix.md, Redundant entry points). -->
-                    <StackPanel Margin="0,6,0,0">
+                    <StackPanel Margin="0,8,0,0">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Visible" />
@@ -513,7 +513,7 @@
                 <!-- Both bindings go through InspectorRoot: an element that sets its own DataContext
                      evaluates its other bindings against the new one, so a plain {Binding Scene…}
                      here would be looked up on the layer and silently never resolve. -->
-                <StackPanel Margin="16,14,16,20"
+                <StackPanel Margin="16,16,16,20"
                             Visibility="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot, Converter={StaticResource NotNullToVisibility}}"
                             DataContext="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot}">
 
@@ -522,8 +522,8 @@
                     <!-- The name is the first thing about an operation, so it is editable in place
                          rather than behind the context menu. -->
                     <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                             Height="{StaticResource Size.Control.Compact}" Padding="10,0"
-                             VerticalContentAlignment="Center" MaxLength="60" Margin="0,0,0,14"
+                             Height="{StaticResource Size.Control.Compact}" Padding="12,0"
+                             VerticalContentAlignment="Center" MaxLength="60" Margin="0,0,0,16"
                              ToolTip="Název operace" automation:AutomationProperties.Name="Název operace" />
 
                     <!-- Everything below is what the machine will actually do, so it goes down with
@@ -537,7 +537,7 @@
                             as before: catalogue plus saved presets. This row is deliberately the one
                             place a richer material picker would later slot into.
                         -->
-                        <Grid Margin="0,0,0,6">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -559,7 +559,7 @@
                         <!-- Režim -->
                         <StackPanel Margin="0,0,0,16"
                                     Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource InverseBoolToVisibility}}">
-                            <TextBlock Text="Režim zpracování" Style="{StaticResource RowLabel}" Margin="0,0,0,6" />
+                            <TextBlock Text="Režim zpracování" Style="{StaticResource RowLabel}" Margin="0,0,0,8" />
                             <Border Style="{StaticResource SegmentedTrack}">
                                 <UniformGrid Columns="3">
                                     <RadioButton Style="{StaticResource Segment.Compact}" GroupName="LayerModeSegments"
@@ -581,12 +581,12 @@
                         <!-- A raster layer has no mode to choose: the image is engraved line by line
                              and nothing else is available. -->
                         <Border Background="{DynamicResource Brush.PanelRaised}" CornerRadius="{StaticResource Radius.Sm}"
-                                Padding="10,8" Margin="0,0,0,16"
+                                Padding="12,8" Margin="0,0,0,16"
                                 Visibility="{Binding DataContext.Scene.IsSelectedLayerRaster, ElementName=InspectorRoot, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel>
                                 <TextBlock Text="Obrázek · řádkové gravírování" FontWeight="Medium" />
                                 <TextBlock Text="Převedeno do černobílého rastru metodou Stucki."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -639,7 +639,7 @@
                              disclosure: on a fill or a raster it is a primary number, not an
                              occasional one, and hiding it behind a toggle cost a click every time.
                              -->
-                        <Grid Style="{StaticResource FillOnlyRow}" Margin="0,14,0,0">
+                        <Grid Style="{StaticResource FillOnlyRow}" Margin="0,16,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -657,7 +657,7 @@
                             </Border>
                         </Grid>
 
-                        <TextBlock Margin="0,14,0,0" TextWrapping="Wrap">
+                        <TextBlock Margin="0,16,0,0" TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
                                     <Setter Property="Text" Value="Laser pojede po obrysu vektoru. Interval se použije až u výplně." />
@@ -702,7 +702,7 @@
             </Grid.RowDefinitions>
 
             <Button Grid.Row="0" Style="{StaticResource MachineControlLink}" HorizontalAlignment="Left"
-                    Margin="16,14,16,0" Padding="4,0,10,0"
+                    Margin="16,16,16,0" Padding="4,0,12,0"
                     Click="OnMachineControlBackClick"
                     ToolTip="Zpět na nastavení operace"
                     automation:AutomationProperties.Name="Zpět na nastavení operace">
@@ -715,7 +715,7 @@
             </Button>
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          Padding="16,10,16,16">
+                          Padding="16,12,16,16">
                 <views:MachinePanelView />
             </ScrollViewer>
         </Grid>

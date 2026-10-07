@@ -17,7 +17,7 @@
             Background="{DynamicResource Brush.Panel}"
             BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
             CornerRadius="{StaticResource Radius.Md}"
-            Padding="4,3,4,3">
+            Padding="4,4,4,4">
         <Border.Style>
             <Style TargetType="Border">
                 <Style.Triggers>
@@ -43,7 +43,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Grid Margin="8,0,6,0" VerticalAlignment="Center">
+            <Grid Margin="8,0,8,0" VerticalAlignment="Center">
                 <TextBox x:Name="Input"
                          Background="Transparent" BorderThickness="0" Padding="0,8"
                          FontSize="{StaticResource Size.Text.Assistant.Body}"
@@ -59,7 +59,7 @@
                      sent as the question the first time someone pressed Enter without looking. -->
                 <TextBlock Text="{Binding Placeholder, ElementName=Root}"
                            IsHitTestVisible="False"
-                           VerticalAlignment="Center" Margin="1,0,0,0">
+                           VerticalAlignment="Center" Margin="0,0,0,0">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource Kamil.MetaText}">
                             <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Body}" />

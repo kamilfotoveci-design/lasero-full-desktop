@@ -12,7 +12,7 @@
     <Border x:Name="Chip" MaxWidth="520"
             Background="{DynamicResource Brush.Panel}"
             BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Md}" Padding="14,6,6,6"
+            CornerRadius="{StaticResource Radius.Md}" Padding="16,8,8,8"
             UseLayoutRounding="True" SnapsToDevicePixels="True"
             Effect="{StaticResource Shadow.Tooltip}">
         <Border.RenderTransform><TranslateTransform x:Name="ChipOffset" /></Border.RenderTransform>
@@ -22,7 +22,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                 <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Brand}" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="TIP" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold"
                            Foreground="{StaticResource Brush.TextSecondary}" />

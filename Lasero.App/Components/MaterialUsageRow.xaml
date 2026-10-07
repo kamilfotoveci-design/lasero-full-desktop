@@ -6,7 +6,7 @@
     <!-- One row of Home's material list: icon tile, name, and a chip carrying the usage fact. The
          chip deliberately holds "how often / how recently" and not speed/power — job history records
          the material a job ran on, never the parameters it ran with. -->
-    <Border x:Name="Surface" Background="Transparent" Padding="12,10">
+    <Border x:Name="Surface" Background="Transparent" Padding="12,12">
         <Border.Style>
             <Style TargetType="Border">
                 <Style.Triggers>

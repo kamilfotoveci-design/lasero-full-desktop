@@ -90,13 +90,13 @@
                 <Border Background="{DynamicResource Brush.Panel}"
                         Visibility="{Binding HasThumbnail, Converter={StaticResource BoolToVisibility}}">
                     <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImage}}"
-                           Stretch="Uniform" Margin="10"
+                           Stretch="Uniform" Margin="12"
                            RenderOptions.BitmapScalingMode="HighQuality" />
                 </Border>
             </Grid>
 
             <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,1,0,0"
-                    Background="{DynamicResource Brush.Panel}" Padding="12,10">
+                    Background="{DynamicResource Brush.Panel}" Padding="12,12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

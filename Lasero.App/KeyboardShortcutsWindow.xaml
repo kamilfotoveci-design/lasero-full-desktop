@@ -16,12 +16,12 @@
             <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorder}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="Padding" Value="8,4" />
             <Setter Property="MinWidth" Value="88" />
             <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
         <Style x:Key="ShortcutRow" TargetType="Grid">
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
     </Window.Resources>
 
@@ -30,20 +30,18 @@
         <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <components:WindowTitleBar Title="Klávesové zkratky" IconData="{StaticResource Glyph.Help}"
                                     CloseButtonName="Zavřít klávesové zkratky" />
-    <Grid Grid.Row="1" Margin="28">
+    <Grid Grid.Row="1">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel Margin="0,0,0,22">
-            <TextBlock Text="Klávesové zkratky" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
-            <TextBlock Text="Rychlé ovládání návrhu bez přerušení práce na plátně."
-                       Style="{StaticResource Text.Muted}" Margin="0,6,0,0" />
-        </StackPanel>
+        <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,16">
+            <components:PageHeader Title="Klávesové zkratky" Subtitle="Rychlé ovládání návrhu bez přerušení práce na plátně." />
+        </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,24">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -52,7 +50,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Pohyb po plátně" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,14" />
+                    <TextBlock Text="Pohyb po plátně" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,16" />
 
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Posun plátna" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Kolečko + tažení" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Alternativní posun" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Mezerník + tažení" HorizontalAlignment="Center"/></Border></Grid>
@@ -62,7 +60,7 @@
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Přizpůsobit oknu" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="F / Ctrl + 0" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Přiblížit / oddálit" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + + / −" HorizontalAlignment="Center"/></Border></Grid>
 
-                    <TextBlock Text="Výběr a poloha" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,14" />
+                    <TextBlock Text="Výběr a poloha" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,16" />
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Přidat k výběru" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Shift + kliknutí" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Posunout o 0,5 mm" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Šipky" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Posunout o 5 mm" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Shift + šipky" HorizontalAlignment="Center"/></Border></Grid>
@@ -70,7 +68,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Úpravy objektů" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,14" />
+                    <TextBlock Text="Úpravy objektů" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,16" />
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Vybrat vše" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + A" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Kopírovat / vyjmout / vložit" TextWrapping="Wrap" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + C / X / V" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Duplikovat" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + D" HorizontalAlignment="Center"/></Border></Grid>
@@ -78,13 +76,13 @@
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Zpět" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + Z" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Znovu" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + Y / Ctrl + Shift + Z" HorizontalAlignment="Center"/></Border></Grid>
 
-                    <TextBlock Text="Nástroje návrhu" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,14" />
+                    <TextBlock Text="Nástroje návrhu" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,16" />
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Výběr / posun plátna" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="V / H" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Obdélník / elipsa" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="R / E" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Čára / text" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="L / T" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Trasovat vybranou bitmapu" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Alt + T" HorizontalAlignment="Center"/></Border></Grid>
 
-                    <TextBlock Text="Projekt" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,14" />
+                    <TextBlock Text="Projekt" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,16" />
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Nový projekt" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + N" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Otevřít projekt" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + O" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Uložit projekt" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Ctrl + S" HorizontalAlignment="Center"/></Border></Grid>
@@ -93,8 +91,9 @@
             </Grid>
         </ScrollViewer>
 
-        <Button Grid.Row="2" Content="Zavřít" HorizontalAlignment="Right" Margin="0,22,0,0"
-                MinWidth="96" IsDefault="True" IsCancel="True" Click="OnCloseClick" />
+        <components:DialogFooter Grid.Row="2">
+            <Button Content="Zavřít" Style="{StaticResource Button.Primary}" Height="{StaticResource Size.Control.Primary}" MinWidth="96" IsDefault="True" IsCancel="True" Click="OnCloseClick" />
+        </components:DialogFooter>
     </Grid>
     </Grid>
     </Border>

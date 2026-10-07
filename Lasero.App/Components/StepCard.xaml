@@ -5,7 +5,7 @@
              x:Name="Root">
     <Border Background="{StaticResource Brush.Panel}"
             BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Lg}" Padding="14,15">
+            CornerRadius="{StaticResource Radius.Lg}" Padding="16,16">
         <StackPanel>
             <Border Width="42" Height="42" CornerRadius="{StaticResource Radius.Md}"
                     Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Center">
@@ -15,11 +15,11 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <TextBlock Text="{Binding Title, ElementName=Root}" FontWeight="SemiBold"
-                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,14,0,0" />
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,16,0,0" />
             <TextBlock Text="{Binding Description, ElementName=Root}" Style="{StaticResource Text.Muted}"
-                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0" />
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0" />
             <Border Width="36" Height="36" CornerRadius="{StaticResource Radius.Md}"
-                    Background="{StaticResource Brush.Field}" HorizontalAlignment="Center" Margin="0,14,0,0">
+                    Background="{StaticResource Brush.Field}" HorizontalAlignment="Center" Margin="0,16,0,0">
                 <components:IconGlyph IconData="{Binding IconData, ElementName=Root}"
                                       Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
                                       Foreground="{StaticResource Brush.TextSecondary}" />
