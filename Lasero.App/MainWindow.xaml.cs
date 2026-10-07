@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         WindowFrameHook.Attach(this, TryFindResource("Brush.PanelBorderStrong") as System.Windows.Media.Brush);
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();
+        SizeChanged += (_, _) => _viewModel.IsCompactChrome = ActualWidth < ScreenChrome.CompactWidth;
         PreviewKeyDown += OnPreviewKeyDown;
         KeyDown += OnKeyDown;
 

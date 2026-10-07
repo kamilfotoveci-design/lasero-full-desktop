@@ -154,12 +154,31 @@ public partial class MainViewModel : ObservableObject
     public bool ShowDeviceSettingsShortcut => ScreenChrome.ShowDeviceSettingsShortcut(CurrentScreen);
     public bool ShowStripConnect => ScreenChrome.ShowStripConnect(CurrentScreen);
 
+    /// <summary>Set by the window when it is narrower than <see cref="ScreenChrome.CompactWidth"/>.</summary>
+    [ObservableProperty] private bool _isCompactChrome;
+
+    partial void OnIsCompactChromeChanged(bool value) => NotifyScreenChrome();
+
+    public bool ShowStripJobBadge => ScreenChrome.ShowJobBadge(CurrentScreen, GCode.JobState, IsCompactChrome);
+
+    /// <summary>The quiet next-step line under the Home and Zařízení headers; see <see cref="GuidanceText.ScreenNextStep"/>.</summary>
+    public string? ScreenNextStep => GuidanceText.ScreenNextStep(new ScreenHintContext(
+        CurrentScreen,
+        GCode.IsJobActive,
+        Connection.IsConnected,
+        Connection.IsConnecting,
+        Scene.Objects.Count > 0,
+        HasOpenProject,
+        Home.HasRecentProjects));
+
     private void NotifyScreenChrome()
     {
         OnPropertyChanged(nameof(ShowStripJobDetails));
         OnPropertyChanged(nameof(ShowStripJobActionZone));
         OnPropertyChanged(nameof(ShowDeviceSettingsShortcut));
         OnPropertyChanged(nameof(ShowStripConnect));
+        OnPropertyChanged(nameof(ShowStripJobBadge));
+        OnPropertyChanged(nameof(ScreenNextStep));
     }
 
     private static string DescribeScreen(AppScreen screen) => screen switch
@@ -171,8 +190,16 @@ public partial class MainViewModel : ObservableObject
         _ => "Lasero",
     };
 
-    partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(HasOpenProject));
-    partial void OnProjectPathChanged(string? value) => OnPropertyChanged(nameof(HasOpenProject));
+    partial void OnIsDirtyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasOpenProject));
+        OnPropertyChanged(nameof(ScreenNextStep));
+    }
+    partial void OnProjectPathChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasOpenProject));
+        OnPropertyChanged(nameof(ScreenNextStep));
+    }
 
     public MainViewModel(
         ConnectionViewModel connection,
@@ -233,6 +260,8 @@ public partial class MainViewModel : ObservableObject
             if (args.PropertyName is nameof(ConnectionViewModel.ConnectionError)
                 or nameof(ConnectionViewModel.IsConnected) or nameof(ConnectionViewModel.SelectedPort))
                 NotifyMachineBadge();
+            if (args.PropertyName is nameof(ConnectionViewModel.IsConnected) or nameof(ConnectionViewModel.IsConnecting))
+                OnPropertyChanged(nameof(ScreenNextStep));
         };
         _recoveryStore = recoveryStore;
         _recoveryStore.SwitchAccount(Account.UserId);
@@ -262,6 +291,10 @@ public partial class MainViewModel : ObservableObject
         Scene.Changed += OnSceneChanged;
         GCode.PlacementChanged += OnSceneChanged;
         Home.OpenRecentProjectRequested += OnOpenRecentProjectRequested;
+        Home.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(HomeViewModel.HasRecentProjects)) OnPropertyChanged(nameof(ScreenNextStep));
+        };
         GCode.JobCompleted += OnJobCompleted;
         Connection.PropertyChanged += OnConnectionPropertyChanged;
     }
@@ -379,7 +412,11 @@ public partial class MainViewModel : ObservableObject
         _settingsStore.Save();
     }
 
-    private void OnSceneChanged() => IsDirty = true;
+    private void OnSceneChanged()
+    {
+        IsDirty = true;
+        OnPropertyChanged(nameof(ScreenNextStep));
+    }
 
     /// <summary>Clear the prior account's live document after sign-out has resolved unsaved work.
     /// The caller must not invoke this while a physical job is active.</summary>

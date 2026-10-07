@@ -44,4 +44,15 @@ public static class ScreenChrome
     /// Chat have none of their own, so the strip keeps it. The connected/disconnected condition stays on
     /// the button itself.</summary>
     public static bool ShowStripConnect(AppScreen screen) => screen is AppScreen.Designer or AppScreen.Chat;
+
+    /// <summary>
+    /// The job badge ("Bez úlohy", "Návrh neodeslán"). On a compact window (under 1200 px) the strip has no room for it
+    /// beside the layer palette and the job buttons, and while the job is idle it says less than the next-step
+    /// message does, so it is shown only once a job has left Idle and Ready.
+    /// </summary>
+    public static bool ShowJobBadge(AppScreen screen, JobRunState state, bool compact)
+        => ShowJobDetails(screen, state) && (!compact || state is not (JobRunState.Idle or JobRunState.Ready));
+
+    /// <summary>The window width under which the strip drops the idle job badge.</summary>
+    public const double CompactWidth = 1200;
 }

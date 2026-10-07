@@ -564,6 +564,7 @@
          Home and the Designer inspector read as different products. VerticalAlignment stays local
          since, unlike PanelTitle, this header shares a row with reorder buttons at some call sites. -->
     <Style x:Key="InspectorGroupHeader" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="VerticalAlignment" Value="Center" />

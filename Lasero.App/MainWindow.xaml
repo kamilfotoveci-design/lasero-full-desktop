@@ -586,6 +586,7 @@
                             <StackPanel Orientation="Horizontal"
                                         Visibility="{Binding ShowStripJobDetails, Converter={StaticResource BoolToVisibility}}">
                             <components:StatusBadge Margin="12,0,0,0"
+                                                    Visibility="{Binding ShowStripJobBadge, Converter={StaticResource BoolToVisibility}}"
                                                     StatusText="{Binding GCode.JobBadgeLabel}"
                                                     Kind="{Binding GCode.JobState, Converter={StaticResource JobStateToPillKind}}">
                                 <components:StatusBadge.Style>

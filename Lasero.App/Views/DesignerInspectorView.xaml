@@ -105,17 +105,15 @@
                     controller state, so a disconnected app names no machine and claims no readiness;
                     the full manual controls stay on the Device screen, one click away.
                 -->
-                <StackPanel Margin="16,16,16,16">
+                <StackPanel Margin="24,20,24,20">
+                    <components:SectionHeader Level="Card" Title="Zařízení" />
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <components:IconGlyph IconData="{StaticResource Glyph.Device}"
-                                              Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}"
-                                              Foreground="{DynamicResource Brush.TextSecondary}"
-                                              VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="1" FontWeight="SemiBold" VerticalAlignment="Center"
+                        
+<TextBlock Grid.Column="1" FontWeight="SemiBold" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -170,7 +168,7 @@
                     paths, text, shapes or groups. Background removal is provided through Lasero's
                     authenticated Gemini service; consent is requested before the source image is sent.
                 -->
-                <StackPanel Margin="16,16,16,16"
+                <StackPanel Margin="24,20,24,20"
                             Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="Obrázek" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,12" />
 
@@ -250,7 +248,7 @@
                     per-operation enable, visibility, ordering, colour, duplicate and delete are all
                     still here or on the row's context menu.
                 -->
-                <StackPanel Margin="16,16,16,16">
+                <StackPanel Margin="24,20,24,20">
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -513,7 +511,7 @@
                 <!-- Both bindings go through InspectorRoot: an element that sets its own DataContext
                      evaluates its other bindings against the new one, so a plain {Binding Scene…}
                      here would be looked up on the layer and silently never resolve. -->
-                <StackPanel Margin="16,16,16,20"
+                <StackPanel Margin="24,20,24,20"
                             Visibility="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot, Converter={StaticResource NotNullToVisibility}}"
                             DataContext="{Binding DataContext.Scene.SelectedLayer, ElementName=InspectorRoot}">
 

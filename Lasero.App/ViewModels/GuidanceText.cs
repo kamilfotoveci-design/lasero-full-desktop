@@ -35,7 +35,14 @@ public static class GuidanceText
 
     /// <summary>The last step before Start when the laser is ready and the placement has not been
     /// checked yet. Preflight enforces it; this only says it before the operator presses Start.</summary>
-    public const string FramingNextStep = "Před spuštěním ověřte umístění tlačítkem Rámovat";
+    public const string FramingNextStep = "Další krok: Rámovat";
+
+    /// <summary>Framing is done and Start is available.</summary>
+    public const string StartNextStep = "Další krok: Spustit";
+
+    /// <summary>A design exists and no laser is connected. The preflight sentence (<see cref="NoMachine"/>) stays the
+    /// Start tooltip; the strip only names the step.</summary>
+    public const string ConnectNextStep = "Další krok: Připojit laser";
 
     /// <summary>
     /// The single most useful hint for the current canvas state, or null when the canvas already
@@ -85,7 +92,7 @@ public static class GuidanceText
     public static string? MachineNextStep(bool hasDesign, bool isConnected, bool isConnecting)
     {
         if (!hasDesign || isConnected || isConnecting) return null;
-        return NoMachine;
+        return ConnectNextStep;
     }
 
     /// <summary>
@@ -93,5 +100,42 @@ public static class GuidanceText
     /// Start is not available for another reason (then that reason speaks) or framing is not required.
     /// </summary>
     public static string? FramingStep(bool startAvailable, bool needsFraming) =>
-        startAvailable && needsFraming ? FramingNextStep : null;
+        startAvailable ? (needsFraming ? FramingNextStep : StartNextStep) : null;
+
+    /// <summary>
+    /// The quiet "what next" line under a screen header (Home, Zařízení). The strip carries its own for Návrh, see
+    /// <see cref="MachineNextStep"/> and <see cref="FramingStep"/>. Null whenever the screen already says it
+    /// (a job is running, a connection is in progress) so it never competes with a status.
+    /// </summary>
+    public static string? ScreenNextStep(ScreenHintContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.JobActive) return null;
+        switch (context.Screen)
+        {
+            case AppScreen.Home:
+                if (context.HasOpenProject) return "Další krok: Pokračovat v návrhu";
+                return context.HasRecentProjects
+                    ? "Další krok: Pokračovat v práci nebo založit nový projekt"
+                    : "Další krok: Nový projekt";
+            case AppScreen.Device:
+                if (context.IsConnecting) return null;
+                if (!context.IsConnected) return "Další krok: Připojit laser";
+                return context.HasDesign
+                    ? "Další krok: Rámovat v sekci Návrh"
+                    : "Další krok: Vytvořit nebo otevřít návrh";
+            default:
+                return null;
+        }
+    }
 }
+
+/// <summary>What <see cref="GuidanceText.ScreenNextStep"/> needs. Plain values, so the decision is testable without WPF.</summary>
+public sealed record ScreenHintContext(
+    AppScreen Screen,
+    bool JobActive,
+    bool IsConnected,
+    bool IsConnecting,
+    bool HasDesign,
+    bool HasOpenProject,
+    bool HasRecentProjects);

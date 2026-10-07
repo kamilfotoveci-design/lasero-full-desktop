@@ -170,7 +170,7 @@ public sealed class TipOfDayCardTests
         var home = App("Views", "HomeView.xaml");
         var actions = home.IndexOf("HomeActions", StringComparison.Ordinal);
         var tip = home.IndexOf("HomeTipOfDay", StringComparison.Ordinal);
-        var next = home.IndexOf("<!-- Pokračovat v práci -->", StringComparison.Ordinal);
+        var next = home.IndexOf("Title=\"Pokračovat v práci\"", StringComparison.Ordinal);
         Assert.True(actions > 0 && actions < tip && tip < next);
         Assert.Contains("Tip=\"{Binding Home.TipOfDay}\"", home);
         Assert.Contains("NextCommand=\"{Binding Home.NextTipCommand}\"", home);

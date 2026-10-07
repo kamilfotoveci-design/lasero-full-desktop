@@ -136,11 +136,22 @@ Labels are sentence case, short and action-oriented.
 
 ## Spacing
 
-Six steps: 4, 8, 12, 16, 24, 32. There is no seventh, and 32 is the largest gap anywhere in the
-product. 4 pairs an icon with its label; 8 separates sibling controls; 12 and 16 pad panels and
-property rows; 24 separates inspector sections; 32 pads dialogs and the splash.
+One grid: **8 px, with 4 px for tight pairs** (an icon and its label, a label and its value). Every literal
+`Margin` and `Padding` in markup is a multiple of 4, and `LayoutGridTests` fails the build of a view that is not
+(the one exemption is `LaseroTheme.xaml`, which holds control templates: focus-ring offsets, glyph insets and scroll
+thumb insets are device-pixel geometry of one control, not layout, and the render tests pin them).
 
-Compact but breathable. Professional desktop density, not SaaS whitespace.
+| Step | Use |
+|---|---|
+| 4 | icon and label, label and value, helper text under a field |
+| 8 | sibling controls, label above a field, buttons in a footer |
+| 12 | icon tile to its title, header to content inside a card |
+| 16 | cards in a row or column, items on a shelf, header to content of a page section |
+| 24 | card and panel padding, inspector section padding, dialog padding, header to content of a screen |
+| 32 | page margin, gap between page sections |
+
+32 is the largest gap anywhere. Optical corrections that cannot sit on the grid (a focus ring drawn 3 px outside its
+control) are listed with their reason in `LayoutGridTests`; adding to that list needs a reason too.
 
 ## Radius
 
@@ -163,12 +174,56 @@ arithmetic and a composite token would restate its scalar anyway.
 
 ## Layout
 
-Title bar 60px, navigation rail 184px, canvas flexible with a 420px minimum, inspector 360px
-(resizable 280–560), status strip 56px. One working header rather than stacked menu and command bars.
+The tokens live in `LaseroTheme.xaml` under "Layout system" and are the only names to reach for.
 
-Connection, jogging, work origin, framing and job execution stay beside the canvas, so operating the
-machine never replaces the design workspace. Panels use a 1px border and almost no elevation; the
-canvas stays the visual focus. Non-functional roadmap controls are not shown in production UI.
+| Token | Value | Meaning |
+|---|---|---|
+| `Layout.PagePadding` / `PagePaddingCompact` | 32 / 24 | around a screen's content; `PageScaffold` switches to 24 under 720 px |
+| `Layout.SectionGap` | 32 | between sections of a page |
+| `Layout.CardGap` | 16 | between cards, between shelf items |
+| `Layout.CardPadding` / `CardPaddingCompact` | 24 / 20 | inside a card (`Card`, `Card.Compact`) |
+| `Layout.InspectorPadding` | 24,20 | inside a docked panel section |
+| `Layout.DialogPadding` | 24 | body of a dialog or window |
+| `Layout.ContentMaxWidth` / `ReadingMaxWidth` | 1120 / 720 | a screen's column (left anchored), running text and subtitles |
+| `Layout.NavWidth` | 184 | left navigation; the Designer swaps in the 64 px tool rail |
+| `Layout.PanelWidth` | 360 | the one right panel width: Návrh inspector, Home device panel, Zařízení jog column |
+| `Layout.DialogWidth` | 440 | a confirm dialog |
+| `Layout.DialogFooterHeight` | 72 | the footer band of every dialog and tool window |
+
+Chrome: title bar 60, status strip 48, navigation 184, Designer rail 64, inspector 360 (resizable 340-560), canvas flexible with a
+420 minimum. Control heights: **Compact 36** (inline editors and toolbars; the brief asked for 32, kept at 36 because the
+hit target floor is 40, see open decisions), **Base 40** (default), **Primary 44**, Large 48; icon tiles 28, 32 where one leads a row.
+Icons 16 / 20 / 24 (`Size.Icon.Sm / Lg / Xl`), 18 in toolbars, stroke 1.75. Separators are hairlines (`Brush.PanelBorder`) only.
+
+### Shared patterns (use these, do not rebuild them)
+
+| Pattern | Where | What it fixes |
+|---|---|---|
+| `PageScaffold` | `Components/PageScaffold.cs` | the frame of every full screen: a header band that never scrolls, one scrolling column capped at 1120, page padding 32 or 24, white surface, scrollbar on the screen edge |
+| `PageHeader` | `Components/PageHeader.xaml` | title (30 Bold), one-line subtitle in plain Czech (neutral form), at most one action cluster on the right, an optional quiet "Další krok: ..." line (`NextStep`), an optional leading image (Home only) |
+| `SectionHeader` | `Components/SectionHeader.xaml` | page section (21 SemiBold, 16 below) or card title (17 SemiBold, 12 below), optional 28 px `IconTile`, optional trailing link; 32 px row so a link never moves the baseline |
+| `Card`, `Card.Compact` | `SharedUiStyles.xaml` | padding 24 / 20, radius 12, hairline, shadow through `ElevatedBorder`; a card inside a card is radius 8 with no shadow |
+| `InspectorSection` | `Components/InspectorSection.cs` | a hairline-separated section of a docked panel, 24,20 padding, card-level header; no card inside a panel |
+| `FormField` | `Components/FormField.xaml` | label above (Meta, muted), 8, the control, helper text below at 4; fields 16 apart |
+| `FormRow` | `Components/FormRow.xaml` | read-only label (Meta, muted, left) and value (Body Medium, right) in one 32 px row, optional hairline |
+| `DialogFooter` | `Components/DialogFooter.cs` | the footer of every dialog and tool window: buttons right aligned 8 apart, **Cancel left of the primary**, primary graphite (destructive primary red), leading hint or message at the left, 72 px band on the field gray with a hairline above |
+| `Text.EmptyLine` | `SharedUiStyles.xaml` | the only empty state: one muted line of plain Czech, never a box, an icon or a button |
+| `Text.NextStep` | `SharedUiStyles.xaml` | the quiet next-step line, one per screen; it is not a tip (no close button, no counter) |
+| Tooltip | `LaseroTheme.xaml` | one style: 14 px, padding 12,8, hairline, radius 6, wraps at 340 |
+
+Components that host content written by the screen (`PageScaffold`, `InspectorSection`) are code-only classes: a UserControl
+whose own XAML registers names cannot also host named children (MC3093), and every screen names something.
+
+### Screen anatomy
+
+1. **Header** (`PageHeader`): what this screen is, in one sentence. One primary action at most, right or below.
+2. **Content**: sections 32 apart, cards 16 apart, one dominant action per state, empty shelves are one `Text.EmptyLine`.
+3. **Right panel** (360): header `SectionHeader` (card level) on a hairline, content padded 24.
+4. **Next step**: Home and Zařízení show it under the subtitle (`GuidanceText.ScreenNextStep`), Návrh shows it in the status strip
+   (`Další krok: Připojit laser / Rámovat / Spustit`). It is hidden while a job runs or a connection is in progress.
+
+Dialogs: title bar (window chrome), a `PageHeader` band on white for tool windows or the icon-and-title body for a confirm dialog, body at
+24 padding, `DialogFooter`. Order is always Cancel, then the optional secondary choice, then the primary.
 
 ## Elevation
 

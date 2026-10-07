@@ -147,7 +147,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
     [Fact]
     public void ConnectALaserIsTheNextStepOnlyOnceThereIsADesignAndNoMachine()
     {
-        Assert.Equal(GuidanceText.NoMachine, GuidanceText.MachineNextStep(hasDesign: true, isConnected: false, isConnecting: false));
+        Assert.Equal(GuidanceText.ConnectNextStep, GuidanceText.MachineNextStep(hasDesign: true, isConnected: false, isConnecting: false));
         Assert.Null(GuidanceText.MachineNextStep(hasDesign: false, isConnected: false, isConnecting: false));
         Assert.Null(GuidanceText.MachineNextStep(hasDesign: true, isConnected: true, isConnecting: false));
         Assert.Null(GuidanceText.MachineNextStep(hasDesign: true, isConnected: false, isConnecting: true));
@@ -157,7 +157,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
     public void FramingIsTheNextStepOnlyWhenStartIsOtherwiseAvailable()
     {
         Assert.Equal(GuidanceText.FramingNextStep, GuidanceText.FramingStep(startAvailable: true, needsFraming: true));
-        Assert.Null(GuidanceText.FramingStep(startAvailable: true, needsFraming: false));
+        Assert.Equal(GuidanceText.StartNextStep, GuidanceText.FramingStep(startAvailable: true, needsFraming: false));
         Assert.Null(GuidanceText.FramingStep(startAvailable: false, needsFraming: true));
         Assert.Contains("Rámovat", GuidanceText.FramingNextStep, StringComparison.Ordinal);
     }
@@ -201,7 +201,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         }, []));
 
         Assert.Contains(nameof(GCodeViewModel.StatusStripMessage), changed);
-        Assert.Equal(GuidanceText.NoMachine, gcode.StatusStripMessage);
+        Assert.Equal(GuidanceText.ConnectNextStep, gcode.StatusStripMessage);
     }
 
     [Fact]
@@ -477,7 +477,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         var texts = new List<string>
         {
             GuidanceText.NoSelection, GuidanceText.NoMachine,
-            TipCatalog.Find(TipCatalog.EmptyCanvas)!.Text, GuidanceText.FramingNextStep, StartSummary.SimulatorNote,
+            TipCatalog.Find(TipCatalog.EmptyCanvas)!.Text, GuidanceText.FramingNextStep, GuidanceText.StartNextStep, GuidanceText.ConnectNextStep, StartSummary.SimulatorNote,
             StartSummary.Build(Summary()), StartSummary.Build(Summary(simulator: true, framed: false)),
             UserFacingErrors.ConnectionLost(new IOException()), UserFacingErrors.ConnectionLostDuringJob(),
             UserFacingErrors.RecoveryFailed(new IOException()),

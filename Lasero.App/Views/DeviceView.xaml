@@ -32,7 +32,7 @@
 
     <components:PageScaffold>
         <components:PageScaffold.Header>
-            <components:PageHeader Title="Zařízení" Subtitle="Připojení, poloha a ruční ovládání gravírky na jednom místě.">
+            <components:PageHeader Title="Zařízení" NextStep="{Binding ScreenNextStep}" Subtitle="Připojení, poloha a ruční ovládání gravírky na jednom místě.">
                 <components:PageHeader.Actions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Badge.Aligned}" VerticalAlignment="Center" Margin="0,0,8,0">
@@ -337,16 +337,14 @@
                                 <components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit ruční pohyb" />
                             </Button>
 
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Button Command="{Binding Jog.HomeCommand}"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
-                                <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout ($X)" /></Button>
-                            </Grid>
-                            <Grid Margin="0,8,0,0">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nastavit nulu zde" /></Button>
-                                <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Přejít na nulu XY" /></Button>
-                            </Grid>
+                            <!-- One column: at 312 px a pair of these labels ("Odemknout ($X)", "Nastavit nulu zde") is cut off, and a
+                                 cut-off machine command is worse than a taller list. -->
+                            <StackPanel>
+                                <Button Command="{Binding Jog.HomeCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
+                                <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout ($X)" /></Button>
+                                <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nastavit nulu zde" /></Button>
+                                <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Přejít na nulu XY" /></Button>
+                            </StackPanel>
                             <Expander Header="Pokročilé ovládání" Margin="0,12,0,0">
                                 <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
                                         ToolTip="Resetuje řídicí jednotku stroje. Použijte pouze při chybě nebo nereagujícím zařízení.">

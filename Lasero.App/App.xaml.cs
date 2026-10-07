@@ -34,6 +34,12 @@ public partial class App : Application
         TextOptions.TextHintingModeProperty.OverrideMetadata(
             typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Fixed, FrameworkPropertyMetadataOptions.Inherits));
 
+        // The Window style in LaseroTheme sets Inter 15 px, but an implicit style is keyed by exact type and never reaches
+        // MainWindow or the other Window subclasses, so every TextBlock without its own style fell back to Segoe UI at
+        // 12 px (below the 13 px floor, and not the product typeface). A default on the Window metadata would not help,
+        // inheritance only carries values that are set, so each window gets the two values locally as it loads.
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(ApplyTypographyDefaults));
+
         // WPF's stock focus visual is a dotted black rectangle. Every Lasero control with its own ring sets
         // FocusVisualStyle to null and draws it in its template; anything that does not (tab items, list rows,
         // a focusable host) would otherwise fall back to the dotted rectangle. This makes the fallback the same
@@ -47,6 +53,20 @@ public partial class App : Application
         {
             Log.Warning(ex, "Could not replace the default focus visual");
         }
+    }
+
+    /// <summary>Sets Inter 15 px on a window that did not choose its own. Internal for the typography test.</summary>
+    internal static void ApplyTypographyDefaults(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Window window || !ReferenceEquals(e.OriginalSource, window)) return;
+        if (DependencyPropertyHelper.GetValueSource(window, System.Windows.Controls.Control.FontSizeProperty).BaseValueSource
+            is BaseValueSource.Default or BaseValueSource.Inherited
+            && window.TryFindResource("Size.Text.Body") is double size)
+            window.FontSize = size;
+        if (DependencyPropertyHelper.GetValueSource(window, System.Windows.Controls.Control.FontFamilyProperty).BaseValueSource
+            is BaseValueSource.Default or BaseValueSource.Inherited
+            && window.TryFindResource("Font.Ui") is FontFamily family)
+            window.FontFamily = family;
     }
 
     private static Style CreateFocusVisualFallback()

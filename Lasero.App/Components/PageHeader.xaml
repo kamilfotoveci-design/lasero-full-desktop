@@ -20,6 +20,9 @@
                        AutomationProperties.HeadingLevel="Level1" />
             <TextBlock x:Name="SubtitleText" Text="{Binding Subtitle, ElementName=Root}" Style="{StaticResource PageSubtitle}"
                        TextWrapping="Wrap" MaxWidth="{StaticResource Layout.ReadingMaxWidth}" HorizontalAlignment="Left" />
+            <TextBlock x:Name="NextStepText" Text="{Binding NextStep, ElementName=Root}" Style="{StaticResource Text.NextStep}"
+                       Margin="0,8,0,0" MaxWidth="{StaticResource Layout.ReadingMaxWidth}" HorizontalAlignment="Left" Visibility="Collapsed"
+                       AutomationProperties.AutomationId="PageNextStep" />
         </StackPanel>
         <ContentPresenter x:Name="ActionsHost" Grid.Column="2" Content="{Binding Actions, ElementName=Root}" VerticalAlignment="Center" />
     </Grid>

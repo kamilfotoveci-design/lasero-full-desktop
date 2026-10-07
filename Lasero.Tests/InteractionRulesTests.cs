@@ -411,11 +411,11 @@ public sealed class InteractionRulesTests
         var host = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "Views", "Kamil", "KamilAssistantHost.xaml.cs"));
         Assert.Contains("new Rect(SafeMargin, ContextBarClearance,", host, StringComparison.Ordinal);
 
-        // The clearance has to cover the bar's real position in MainWindow.xaml: 30px inset plus a
+        // The clearance has to cover the bar's real position in MainWindow.xaml: 32px inset plus a
         // bar that is up to 68px tall (text selected, scrollbar showing), plus a gap.
         var window = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "MainWindow.xaml"));
-        Assert.Contains("Margin=\"12,30,12,0\"", window, StringComparison.Ordinal);
-        Assert.True(Lasero.App.Views.Kamil.KamilAssistantHost.ContextBarClearance >= 30 + 68);
+        Assert.Contains("Margin=\"12,32,12,0\"", window, StringComparison.Ordinal);
+        Assert.True(Lasero.App.Views.Kamil.KamilAssistantHost.ContextBarClearance >= 32 + 68);
     }
 
     private static string Root()

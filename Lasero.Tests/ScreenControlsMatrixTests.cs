@@ -99,7 +99,7 @@ public sealed class ScreenControlsMatrixTests
         Assert.Contains("Binding ShowDeviceSettingsShortcut", main, StringComparison.Ordinal);
         // The palette stays Designer-only, as does KAMIL.
         Assert.Contains("ItemsSource=\"{Binding Scene.LayerPalette}\"", main, StringComparison.Ordinal);
-        Assert.Matches(@"Grid\.Column=""1""[^>]*Margin=""19,0,20,0""\s+Visibility=""\{Binding CurrentScreen, Converter=\{StaticResource EnumEqualsVisibility\}, ConverterParameter=Designer\}""", main);
+        Assert.Matches(@"Grid\.Column=""1""[^>]*Margin=""20,0,20,0""\s+Visibility=""\{Binding CurrentScreen, Converter=\{StaticResource EnumEqualsVisibility\}, ConverterParameter=Designer\}""", main);
         // The strip keeps one fixed height so nothing jumps between screens or job states.
         Assert.Contains("<RowDefinition Height=\"48\" />", main, StringComparison.Ordinal);
     }

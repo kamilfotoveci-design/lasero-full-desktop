@@ -36,7 +36,7 @@
         <components:PageScaffold Grid.Column="0">
             <components:PageScaffold.Header>
                 <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded" RenderTransformOrigin="0.5,0.5">
-                    <components:PageHeader Title="Dobrý den, jsem Kamil"
+                    <components:PageHeader Title="Dobrý den, jsem Kamil" NextStep="{Binding ScreenNextStep}"
                                            Subtitle="Nový projekt je první krok. Provedu návrhem, přípravou materiálu i kontrolou před gravírováním.">
                         <components:PageHeader.Leading>
                             <components:LaseroAvatar Size="72" AutomationProperties.Name="Kamil, průvodce aplikací" />

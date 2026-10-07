@@ -16,7 +16,7 @@
         <!-- One contextual hint -->
         <Border x:Name="HintChip" Visibility="Collapsed" IsHitTestVisible="True"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom" MaxWidth="440"
-                Margin="44,0,0,20"
+                Margin="44,0,336,20"
                 Background="{DynamicResource Brush.Panel}"
                 BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1"
                 CornerRadius="{StaticResource Radius.Md}" Padding="12,8,4,8"

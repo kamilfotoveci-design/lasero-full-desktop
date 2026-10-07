@@ -22,7 +22,15 @@ public partial class PageHeader : UserControl
         nameof(Actions), typeof(object), typeof(PageHeader),
         new PropertyMetadata(null, (d, e) => ((PageHeader)d).ActionsHost.Margin = new Thickness(e.NewValue is null ? 0 : 24, 0, 0, 0)));
 
+    public static readonly DependencyProperty NextStepProperty = DependencyProperty.Register(
+        nameof(NextStep), typeof(string), typeof(PageHeader),
+        new PropertyMetadata(null, (d, e) =>
+            ((PageHeader)d).NextStepText.Visibility = string.IsNullOrWhiteSpace((string?)e.NewValue) ? Visibility.Collapsed : Visibility.Visible));
+
     public PageHeader() => InitializeComponent();
+
+    /// <summary>The quiet "Další krok: ..." line under the subtitle. Empty hides it. One per screen, never a tip.</summary>
+    public string? NextStep { get => (string?)GetValue(NextStepProperty); set => SetValue(NextStepProperty, value); }
 
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
 

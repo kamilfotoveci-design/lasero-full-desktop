@@ -22,8 +22,6 @@ public sealed class LayoutGridTests
     /// <summary>File name and exact value. Each entry is an optical offset, never a spacing choice.</summary>
     private static readonly HashSet<(string File, string Value)> Optical =
     [
-        ("LaseroTheme.xaml", "-3"),         // checkbox and toggle focus ring: 2 px ring plus a 1 px gap outside the box
-        ("LaseroTheme.xaml", "0,0,-9,0"),   // slider fill runs on under the 18 px thumb to its centre
         ("SharedUiStyles.xaml", "-6,0,0,0"),// inline title input: pulls the text back over its own 6 px padding
         ("DesignerToolRail.xaml", "-1,0,0,0"), // selected marker overlaps the pill edge by its half width
         ("DesignerToolRail.xaml", "-3"),    // rail focus ring, same rule as the checkbox
@@ -33,6 +31,9 @@ public sealed class LayoutGridTests
     {
         var root = RepositoryRoot();
         return Directory.EnumerateFiles(Path.Combine(root, "Lasero.App"), "*.xaml", SearchOption.AllDirectories)
+            // LaseroTheme.xaml holds control templates: focus-ring offsets, glyph insets, scroll-thumb insets. Those are
+            // device-pixel geometry of one control, not layout, and are pinned by the render tests (TintRenderTests).
+            .Where(path => !path.EndsWith("LaseroTheme.xaml", StringComparison.Ordinal))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                         && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
     }
