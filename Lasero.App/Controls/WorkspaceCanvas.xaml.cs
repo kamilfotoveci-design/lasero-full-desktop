@@ -22,7 +22,10 @@ public partial class WorkspaceCanvas : UserControl
     private double _offsetXMm;
     private double _offsetYMm;
     private Ellipse? _marker;
-    private readonly List<Path> _completedChunkPaths = [];
+    private readonly List<Path?> _completedChunkPaths = [];
+    private int _redrawVersion;
+    private int _documentLayerInsertIndex;
+    private CancellationTokenSource? _layerBuildCancellation;
     private Path? _partialCompletedPath;
     private int _visibleCompletedChunks;
     private int _completedSegmentCount;
@@ -157,6 +160,9 @@ public partial class WorkspaceCanvas : UserControl
 
     private void Redraw()
     {
+        _layerBuildCancellation?.Cancel();
+        _layerBuildCancellation = null;
+        _redrawVersion++;
         DrawCanvas.Children.Clear();
         TopRuler.Children.Clear();
         LeftRuler.Children.Clear();
@@ -197,29 +203,13 @@ public partial class WorkspaceCanvas : UserControl
 
         if (Document is not null)
         {
-            AddSegmentPath(0, Document.Segments.Count, segment => segment.LaserOn,
-                BurnStroke, 1.6, dashArray: null);
-            AddSegmentPath(0, Document.Segments.Count, segment => !segment.LaserOn && !segment.IsRapid,
-                TravelStroke, 0.75, dashArray: null);
-            AddSegmentPath(0, Document.Segments.Count, segment => !segment.LaserOn && segment.IsRapid,
-                TravelStroke, 0.75, dashArray: new DoubleCollection { 4, 2 });
-
+            // The three toolpath layers can hold hundreds of thousands of segments. They are built on a
+            // worker thread and added when ready (see BeginBuildToolpathLayers); the completed-so-far
+            // chunks are only built when the simulation reaches them.
+            _documentLayerInsertIndex = DrawCanvas.Children.Count;
+            BeginBuildToolpathLayers(Document);
             for (var start = 0; start < Document.Segments.Count; start += CompletedChunkSize)
-            {
-                var geometry = BuildSegmentGeometry(start, Math.Min(CompletedChunkSize, Document.Segments.Count - start));
-                var path = new Path
-                {
-                    Data = geometry,
-                    Stroke = CompletedStroke,
-                    StrokeThickness = 1.8,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
-                    IsHitTestVisible = false,
-                    Visibility = Visibility.Collapsed,
-                };
-                DrawCanvas.Children.Add(path);
-                _completedChunkPaths.Add(path);
-            }
+                _completedChunkPaths.Add(null);
 
             _partialCompletedPath = new Path
             {
@@ -246,9 +236,9 @@ public partial class WorkspaceCanvas : UserControl
 
         var fullChunks = target / CompletedChunkSize;
         for (var index = Math.Min(_visibleCompletedChunks, fullChunks); index < fullChunks && index < _completedChunkPaths.Count; index++)
-            _completedChunkPaths[index].Visibility = Visibility.Visible;
+            EnsureChunkPath(index).Visibility = Visibility.Visible;
         for (var index = fullChunks; index < _visibleCompletedChunks && index < _completedChunkPaths.Count; index++)
-            _completedChunkPaths[index].Visibility = Visibility.Collapsed;
+            if (_completedChunkPaths[index] is { } hidden) hidden.Visibility = Visibility.Collapsed;
         _visibleCompletedChunks = fullChunks;
 
         var partialCount = target - fullChunks * CompletedChunkSize;
@@ -258,26 +248,112 @@ public partial class WorkspaceCanvas : UserControl
         _completedSegmentCount = target;
     }
 
-    private void AddSegmentPath(
-        int start,
-        int count,
-        Func<GCodeSegment, bool> predicate,
-        Brush stroke,
-        double thickness,
-        DoubleCollection? dashArray)
+    private Path EnsureChunkPath(int index)
     {
-        var geometry = BuildSegmentGeometry(start, count, predicate);
-        if (geometry is null) return;
-        DrawCanvas.Children.Add(new Path
+        if (_completedChunkPaths[index] is { } existing) return existing;
+        var geometry = BuildSegmentGeometry(index * CompletedChunkSize, Math.Min(CompletedChunkSize, Document!.Segments.Count - index * CompletedChunkSize));
+        var path = new Path
         {
             Data = geometry,
-            Stroke = stroke,
-            StrokeThickness = thickness,
-            StrokeDashArray = dashArray,
+            Stroke = CompletedStroke,
+            StrokeThickness = 1.8,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
             IsHitTestVisible = false,
-        });
+            Visibility = Visibility.Collapsed,
+        };
+        // Keep the partial (in-progress) path on top of the finished chunks.
+        var partialIndex = _partialCompletedPath is null ? -1 : DrawCanvas.Children.IndexOf(_partialCompletedPath);
+        if (partialIndex >= 0) DrawCanvas.Children.Insert(partialIndex, path);
+        else DrawCanvas.Children.Add(path);
+        _completedChunkPaths[index] = path;
+        return path;
+    }
+
+    /// <summary>
+    /// Builds the burn, travel and rapid layers in one pass on a worker thread and adds them to the
+    /// canvas when done. Consecutive segments that share an end point become one polyline, so a job of
+    /// several hundred thousand tiny segments is a few thousand figures rather than several hundred
+    /// thousand. A newer redraw cancels and supersedes a build still in flight.
+    /// </summary>
+    private void BeginBuildToolpathLayers(GCodeDocument document)
+    {
+        var version = _redrawVersion;
+        var cancellation = _layerBuildCancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
+        var scale = _scale;
+        var offsetX = _offsetXMm;
+        var offsetY = _offsetYMm;
+        var height = ActualHeight;
+        var dispatcher = Dispatcher;
+
+        _ = Task.Run(() => BuildToolpathLayers(document.Segments, scale, offsetX, offsetY, height, token), token)
+            .ContinueWith(task =>
+            {
+                if (!task.IsCompletedSuccessfully) return;
+                dispatcher.BeginInvoke(() =>
+                {
+                    if (version != _redrawVersion) return;
+                    var (burn, travel, rapid) = task.Result;
+                    var index = Math.Min(_documentLayerInsertIndex, DrawCanvas.Children.Count);
+                    foreach (var (geometry, stroke, thickness, dashes) in new[]
+                             {
+                                 (burn, BurnStroke, 1.6, (DoubleCollection?)null),
+                                 (travel, TravelStroke, 0.75, null),
+                                 (rapid, TravelStroke, 0.75, new DoubleCollection { 4, 2 }),
+                             })
+                    {
+                        if (geometry is null) continue;
+                        DrawCanvas.Children.Insert(index++, new Path
+                        {
+                            Data = geometry,
+                            Stroke = stroke,
+                            StrokeThickness = thickness,
+                            StrokeDashArray = dashes,
+                            StrokeStartLineCap = PenLineCap.Round,
+                            StrokeEndLineCap = PenLineCap.Round,
+                            StrokeLineJoin = PenLineJoin.Round,
+                            IsHitTestVisible = false,
+                        });
+                    }
+                });
+            }, TaskScheduler.Default);
+    }
+
+    internal static (StreamGeometry? Burn, StreamGeometry? Travel, StreamGeometry? Rapid) BuildToolpathLayers(
+        IReadOnlyList<GCodeSegment> segments, double scale, double offsetXMm, double offsetYMm, double height,
+        CancellationToken cancellationToken)
+    {
+        var geometries = new[] { new StreamGeometry(), new StreamGeometry(), new StreamGeometry() };
+        var contexts = geometries.Select(geometry => geometry.Open()).ToArray();
+        var lastEnd = new Point?[3];
+        var any = new bool[3];
+
+        for (var index = 0; index < segments.Count; index++)
+        {
+            if ((index & 0xFFF) == 0) cancellationToken.ThrowIfCancellationRequested();
+            var segment = segments[index];
+            var layer = segment.LaserOn ? 0 : segment.IsRapid ? 2 : 1;
+            var start = new Point(MarginPx + (segment.Start.X - offsetXMm) * scale, height - MarginPx - (segment.Start.Y - offsetYMm) * scale);
+            var end = new Point(MarginPx + (segment.End.X - offsetXMm) * scale, height - MarginPx - (segment.End.Y - offsetYMm) * scale);
+
+            // Rapids are dashed, and a dash pattern restarts per figure: keep each move its own figure.
+            var continues = layer != 2 && lastEnd[layer] is { } previous && previous == start;
+            if (!continues) contexts[layer].BeginFigure(start, isFilled: false, isClosed: false);
+            contexts[layer].LineTo(end, isStroked: true, isSmoothJoin: false);
+            lastEnd[layer] = end;
+            any[layer] = true;
+        }
+
+        foreach (var context in contexts) context.Close();
+        StreamGeometry? Finish(int layer)
+        {
+            if (!any[layer]) return null;
+            geometries[layer].Freeze();
+            return geometries[layer];
+        }
+
+        return (Finish(0), Finish(1), Finish(2));
     }
 
     private StreamGeometry? BuildSegmentGeometry(
