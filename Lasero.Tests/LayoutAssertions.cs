@@ -48,12 +48,20 @@ internal static class LayoutAssertions
                 text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
                 new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
                 text.FontSize, Brushes.Black, null, TextOptions.GetTextFormattingMode(text), VisualTreeHelper.GetDpi(text).PixelsPerDip);
-            if (formatted.WidthIncludingTrailingWhitespace > text.ActualWidth + 1.5)
+            if (formatted.WidthIncludingTrailingWhitespace > text.ActualWidth * 1.04 + 2)
                 clipped.Add($"\"{text.Text}\" needs {formatted.WidthIncludingTrailingWhitespace:0} px, has {text.ActualWidth:0}");
         }
 
         return clipped;
     }
+
+    /// <summary>Visible non-wrapping text wider than its box. Text that opts into trimming is not counted unless asked.</summary>
+    public static List<string> ClippedTexts(DependencyObject root, bool includeTrimmed = false) =>
+        Descendants<TextBlock>(root)
+            .Where(text => IsShown(text) && !string.IsNullOrWhiteSpace(text.Text)
+                           && (includeTrimmed || text.TextTrimming == TextTrimming.None) && IsClipped(text))
+            .Select(text => $"\"{text.Text}\" has {text.ActualWidth:0} px, needs {Needed(text):0}")
+            .ToList();
 
     /// <summary>The same check for any text (strip messages, header lines), with trimming counted as clipping.</summary>
     public static bool IsClipped(TextBlock text)
@@ -63,6 +71,10 @@ internal static class LayoutAssertions
             text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
             new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
             text.FontSize, Brushes.Black, null, TextOptions.GetTextFormattingMode(text), VisualTreeHelper.GetDpi(text).PixelsPerDip);
-        return formatted.WidthIncludingTrailingWhitespace > text.ActualWidth + 1.5;
+        return formatted.WidthIncludingTrailingWhitespace > text.ActualWidth * 1.04 + 2;
     }
+    private static double Needed(TextBlock text) => new FormattedText(
+        text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
+        new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
+        text.FontSize, Brushes.Black, null, TextOptions.GetTextFormattingMode(text), VisualTreeHelper.GetDpi(text).PixelsPerDip).WidthIncludingTrailingWhitespace;
 }

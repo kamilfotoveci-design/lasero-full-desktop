@@ -79,60 +79,49 @@
                                 </Grid>
                             </Border>
 
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Režim" Style="{StaticResource Text.Muted}" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Ellipse Width="9" Height="9" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding MachineStatus.Mode, Converter={StaticResource ModeToLabel}}" FontWeight="SemiBold" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Posuv" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,4,0,0">
-                                        <Run Text="{Binding MachineStatus.FeedRate, StringFormat={}{0:0}, Mode=OneWay}" /><Run Text=" mm/min" />
-                                    </TextBlock>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Výkon" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" FontWeight="SemiBold" Margin="0,4,0,0">
-                                        <Run Text="{Binding MachineStatus.SpindleSpeed, StringFormat={}{0:0}, Mode=OneWay}" />
-                                    </TextBlock>
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
-                                    <StackPanel>
-                                        <TextBlock Text="Poloha stroje" Style="{StaticResource Text.Muted}" />
-                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Margin="0,8,0,0">
+                            <!-- Label muted on the left, value on the right, one 32 px row each: the same pattern as every other
+                                 read-only fact in the product, and it never clips at any column width. -->
+                            <StackPanel Margin="0,0,0,4">
+                                <components:FormRow Label="Režim" ShowRule="True">
+                                    <components:FormRow.Value>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" Fill="{Binding MachineStatus.Mode, Converter={StaticResource ModeToBrush}}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding MachineStatus.Mode, Converter={StaticResource ModeToLabel}}" />
+                                        </StackPanel>
+                                    </components:FormRow.Value>
+                                </components:FormRow>
+                                <components:FormRow Label="Posuv" ShowRule="True">
+                                    <components:FormRow.Value>
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular">
+                                            <Run Text="{Binding MachineStatus.FeedRate, StringFormat={}{0:0}, Mode=OneWay}" /><Run Text=" mm/min" />
+                                        </TextBlock>
+                                    </components:FormRow.Value>
+                                </components:FormRow>
+                                <components:FormRow Label="Výkon" ShowRule="True">
+                                    <components:FormRow.Value>
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular"
+                                                   Text="{Binding MachineStatus.SpindleSpeed, StringFormat={}{0:0}, Mode=OneWay}" />
+                                    </components:FormRow.Value>
+                                </components:FormRow>
+                                <components:FormRow Label="Poloha stroje" ShowRule="True">
+                                    <components:FormRow.Value>
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular">
                                             <Run Text="X " /><Run Text="{Binding MachineStatus.MachineX, StringFormat={}{0:0.000}, Mode=OneWay}" />
-                                            <Run Text="   Y " /><Run Text="{Binding MachineStatus.MachineY, StringFormat={}{0:0.000}, Mode=OneWay}" />
-                                            <Run Text="   Z " /><Run Text="{Binding MachineStatus.MachineZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
+                                            <Run Text="  Y " /><Run Text="{Binding MachineStatus.MachineY, StringFormat={}{0:0.000}, Mode=OneWay}" />
+                                            <Run Text="  Z " /><Run Text="{Binding MachineStatus.MachineZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                         </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
-                                    <StackPanel>
-                                        <TextBlock Text="Pracovní poloha" Style="{StaticResource Text.Muted}" />
-                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Margin="0,8,0,0">
+                                    </components:FormRow.Value>
+                                </components:FormRow>
+                                <components:FormRow Label="Pracovní poloha">
+                                    <components:FormRow.Value>
+                                        <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular">
                                             <Run Text="X " /><Run Text="{Binding MachineStatus.WorkX, StringFormat={}{0:0.000}, Mode=OneWay}" />
-                                            <Run Text="   Y " /><Run Text="{Binding MachineStatus.WorkY, StringFormat={}{0:0.000}, Mode=OneWay}" />
-                                            <Run Text="   Z " /><Run Text="{Binding MachineStatus.WorkZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
+                                            <Run Text="  Y " /><Run Text="{Binding MachineStatus.WorkY, StringFormat={}{0:0.000}, Mode=OneWay}" />
+                                            <Run Text="  Z " /><Run Text="{Binding MachineStatus.WorkZ, StringFormat={}{0:0.000}, Mode=OneWay}" />
                                         </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                                    </components:FormRow.Value>
+                                </components:FormRow>
+                            </StackPanel>
 
                             <TextBlock Text="{Binding MachineStatus.TriggeredPins, StringFormat=Piny: {0}}" FontFamily="{StaticResource Font.Numeric}"
                                        Foreground="{DynamicResource Brush.Danger}" Margin="0,12,0,0"
@@ -160,12 +149,7 @@
                             <ItemsControl ItemsSource="{Binding DeviceSetup.Details}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Muted}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="Medium"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="220" />
-                                        </Grid>
+                                        <components:FormRow Label="{Binding Label}" Value="{Binding Value}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

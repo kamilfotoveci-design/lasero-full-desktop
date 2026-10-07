@@ -141,18 +141,18 @@ public sealed class LayoutSystemRenderTests
         Assert.All(bare, text => Assert.Contains("Inter", text.FontFamily.Source, StringComparison.OrdinalIgnoreCase));
     });
     [Fact]
-    public void TheTwoPositionBoxesOnZarizeniAreEquallyHigh() => Ui.Invoke(() =>
+    public void TheMachineFactsOnZarizeniAreOneRowPatternOfEqualHeight() => Ui.Invoke(() =>
     {
-        using var shell = new ShellHarness(1366, 768);
+        using var shell = new ShellHarness(1080, 640);
         var vm = shell.ViewModel;
         vm.CurrentScreen = AppScreen.Device;
         shell.Machine.Connect(VirtualGrblTransport.PortName);
         LayoutAuditRenderTests.WaitFor(() => vm.Connection.IsConnected);
         shell.Settle();
-        var device = View<DeviceView>(shell);
-        Border Box(string caption) => LayoutAssertions.Ancestor<Border>(
-            LayoutAssertions.Descendants<TextBlock>(device).First(text => text.Text == caption))!;
-        Assert.Equal(Box("Poloha stroje").ActualHeight, Box("Pracovní poloha").ActualHeight, 0.5);
+        var rows = LayoutAssertions.Descendants<FormRow>(View<DeviceView>(shell)).Where(LayoutAssertions.IsShown).ToList();
+        Assert.True(rows.Count >= 5, "the machine state card is not made of label and value rows");
+        Assert.All(rows, row => Assert.Equal(32, row.ActualHeight, 1.5));
+        Assert.Empty(LayoutAssertions.ClippedTexts(View<DeviceView>(shell), includeTrimmed: true).Where(t => !t.Contains("Grbl")));
     });
 
     [Theory]

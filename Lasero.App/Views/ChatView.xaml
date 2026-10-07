@@ -152,8 +152,9 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="440" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}"
-                                Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                                  Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="440" Margin="0,16" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}">
                         <components:LaseroAvatar Size="48" HorizontalAlignment="Center" />
                         <TextBlock Text="Co chcete na tomto návrhu upravit" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,4" />
                         <TextBlock Text="Kamil poradí s materiálem, parametry i bezpečným testem."
@@ -168,6 +169,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
+                    </ScrollViewer>
 
                     <ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                   ScrollChanged="OnMessageScrollChanged"
