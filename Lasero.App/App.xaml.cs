@@ -55,18 +55,28 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Sets Inter 15 px on a window that did not choose its own. Internal for the typography test.</summary>
+    /// <summary>
+    /// Gives a window the values the Window style in LaseroTheme intends but cannot deliver to subclasses: Inter 15 px,
+    /// whole-pixel layout and snapped glyph rendering. Each is set locally only when the window did not choose its own,
+    /// because inheritance carries set values, not metadata defaults. Internal for the layout tests.
+    /// </summary>
     internal static void ApplyTypographyDefaults(object sender, RoutedEventArgs e)
     {
         if (sender is not Window window || !ReferenceEquals(e.OriginalSource, window)) return;
-        if (DependencyPropertyHelper.GetValueSource(window, System.Windows.Controls.Control.FontSizeProperty).BaseValueSource
-            is BaseValueSource.Default or BaseValueSource.Inherited
-            && window.TryFindResource("Size.Text.Body") is double size)
+
+        static bool Unset(DependencyObject target, DependencyProperty property) =>
+            DependencyPropertyHelper.GetValueSource(target, property).BaseValueSource
+                is BaseValueSource.Default or BaseValueSource.Inherited;
+
+        if (Unset(window, System.Windows.Controls.Control.FontSizeProperty) && window.TryFindResource("Size.Text.Body") is double size)
             window.FontSize = size;
-        if (DependencyPropertyHelper.GetValueSource(window, System.Windows.Controls.Control.FontFamilyProperty).BaseValueSource
-            is BaseValueSource.Default or BaseValueSource.Inherited
-            && window.TryFindResource("Font.Ui") is FontFamily family)
+        if (Unset(window, System.Windows.Controls.Control.FontFamilyProperty) && window.TryFindResource("Font.Ui") is FontFamily family)
             window.FontFamily = family;
+        if (Unset(window, FrameworkElement.UseLayoutRoundingProperty)) window.UseLayoutRounding = true;
+        if (Unset(window, UIElement.SnapsToDevicePixelsProperty)) window.SnapsToDevicePixels = true;
+        if (Unset(window, TextOptions.TextFormattingModeProperty)) TextOptions.SetTextFormattingMode(window, TextFormattingMode.Display);
+        if (Unset(window, TextOptions.TextRenderingModeProperty)) TextOptions.SetTextRenderingMode(window, TextRenderingMode.ClearType);
+        if (Unset(window, TextOptions.TextHintingModeProperty)) TextOptions.SetTextHintingMode(window, TextHintingMode.Fixed);
     }
 
     private static Style CreateFocusVisualFallback()

@@ -75,8 +75,7 @@ public partial class KamilAssistantHost : UserControl
     /// <summary>Honours the system's "show animations in Windows" setting, and the graphics tier —
     /// on a software-rendered session the transitions would be a stutter rather than a cue. Either
     /// way the state change itself is identical; only the motion is skipped.</summary>
-    private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
-        && System.Windows.Media.RenderCapability.Tier > 0;
+    private static bool AnimationsEnabled => Lasero.App.Controls.Motion.LaseroMotion.AnimationsEnabled;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

@@ -150,3 +150,33 @@ button per surface and its label says which flow it runs: "Připojit automaticky
 and shown as read-only text: "Zjištěno: ..." or "Obecný GRBL". The model catalogue stays in `Lasero.Core`
 (`MachineCompatibilityCatalog`, `KnownMachineProfiles`) for detection and for the refusal to connect to an
 unverified profile; no customer view binds it (`ConnectionPortChoiceTests`).
+
+## Next step line and compact strip (2026-10 layout pass)
+
+Every screen answers "where do I go next" in one quiet line, never a second tip. It is not a control, has no close button
+and no counter, and is hidden while a job runs or a connection is in progress. The wording is decided in one place,
+`GuidanceText` (`ScreenNextStep` for the page header, `MachineNextStep` and `FramingStep` for the status strip), neutral form,
+always starting "Další krok: ".
+
+| Screen and state | Where it shows | Text |
+|---|---|---|
+| Home, nothing yet | under the subtitle | Další krok: Nový projekt |
+| Home, recent projects | under the subtitle | Další krok: Pokračovat v práci nebo založit nový projekt |
+| Home, project open | under the subtitle | Další krok: Pokračovat v návrhu |
+| Zařízení, disconnected | under the subtitle | Další krok: Připojit laser |
+| Zařízení, connected, no design | under the subtitle | Další krok: Vytvořit nebo otevřít návrh |
+| Zařízení, connected, design | under the subtitle | Další krok: Rámovat v sekci Návrh |
+| Návrh, design and no machine | status strip | Další krok: Připojit laser |
+| Návrh, framing required and Start available | status strip | Další krok: Rámovat |
+| Návrh, framed and Start available | status strip | Další krok: Spustit |
+| Chat | none (the composer is the one action) | |
+
+The preflight sentences (`JobPreflight`) stay the Start and Frame tooltips; the strip only names the step. A message such as an
+error still wins over the suggestion.
+
+The strip drops the idle job badge ("Bez úlohy", "Návrh neodeslán") when the window is under 1200 px wide
+(`ScreenChrome.ShowJobBadge`), so the next step is never cut to a few letters at 1080. Once a job leaves Idle and Ready the badge is back.
+
+One primary per screen state: Home Nový projekt, Zařízení Připojit laser automaticky (disconnected) or Zkusit znovu (error),
+Chat the send button, Návrh none of the strip buttons is graphite (Rámovat is secondary, Spustit is the red job button).
+`LayoutSystemSourceTests.NoScreenCarriesTwoCompetingPrimaryButtons` pins the views.

@@ -42,8 +42,7 @@ public partial class DeviceWizardOverlay : UserControl
     /// <summary>Honours the system's "show animations in Windows" setting and the graphics tier,
     /// exactly like <see cref="Lasero.App.Views.Kamil.KamilAssistantHost"/> does — the state change
     /// itself is identical either way, only the motion is skipped.</summary>
-    private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
-        && System.Windows.Media.RenderCapability.Tier > 0;
+    private static bool AnimationsEnabled => Lasero.App.Controls.Motion.LaseroMotion.AnimationsEnabled;
 
     /// <summary>Opens the overlay with a fresh wizard instance. A new <see cref="DeviceWizardViewModel"/>
     /// per run is deliberate — see <c>MainViewModel.CreateDeviceWizard</c> — so reopening always starts

@@ -47,7 +47,7 @@ internal static class LayoutAssertions
             var formatted = new FormattedText(
                 text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
                 new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
-                text.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(text).PixelsPerDip);
+                text.FontSize, Brushes.Black, null, TextOptions.GetTextFormattingMode(text), VisualTreeHelper.GetDpi(text).PixelsPerDip);
             if (formatted.WidthIncludingTrailingWhitespace > text.ActualWidth + 1.5)
                 clipped.Add($"\"{text.Text}\" needs {formatted.WidthIncludingTrailingWhitespace:0} px, has {text.ActualWidth:0}");
         }
@@ -62,7 +62,7 @@ internal static class LayoutAssertions
         var formatted = new FormattedText(
             text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
             new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
-            text.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(text).PixelsPerDip);
+            text.FontSize, Brushes.Black, null, TextOptions.GetTextFormattingMode(text), VisualTreeHelper.GetDpi(text).PixelsPerDip);
         return formatted.WidthIncludingTrailingWhitespace > text.ActualWidth + 1.5;
     }
 }

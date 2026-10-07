@@ -125,6 +125,21 @@ public sealed class LayoutSystemRenderTests
         Assert.True(clipped.Count == 0, "Clipped button labels:\n" + string.Join('\n', clipped.Distinct()));
     });
 
+
+    [Fact]
+    public void EveryElementInTheShellRoundsLayoutToWholePixelsAndUsesTheProductTypeface() => Ui.Invoke(() =>
+    {
+        using var shell = new ShellHarness(1366, 768);
+        shell.Settle();
+        var deep = LayoutAssertions.Descendants<TextBlock>(shell.Window).Where(t => t.IsVisible).ToList();
+        Assert.NotEmpty(deep);
+        Assert.True(shell.Window.UseLayoutRounding, "the window itself does not round layout");
+        Assert.All(deep, text => Assert.True(text.UseLayoutRounding, $"\"{text.Text}\" does not round layout"));
+        // The unstyled default is Inter 15 (the 13 px floor and one typeface), not WPF's Segoe 12.
+        var bare = deep.Where(t => !string.IsNullOrWhiteSpace(t.Text) && t.ReadLocalValue(TextBlock.FontSizeProperty) == DependencyProperty.UnsetValue).ToList();
+        Assert.All(bare, text => Assert.True(text.FontSize >= 13, $"\"{text.Text}\" renders at {text.FontSize}"));
+        Assert.All(bare, text => Assert.Contains("Inter", text.FontFamily.Source, StringComparison.OrdinalIgnoreCase));
+    });
     [Fact]
     public void TheTwoPositionBoxesOnZarizeniAreEquallyHigh() => Ui.Invoke(() =>
     {

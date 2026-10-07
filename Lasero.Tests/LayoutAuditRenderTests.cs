@@ -95,6 +95,14 @@ public sealed class LayoutAuditRenderTests
             vm.CurrentScreen = AppScreen.Designer; Shot("designer-running");
             vm.GCode.JobState = JobRunState.Idle;
             vm.CurrentScreen = AppScreen.Home; Shot("home-connected");
+            if (width == 1366)
+            {
+                foreach (var dpi in new[] { 120.0, 144.0, 192.0 })
+                {
+                    vm.CurrentScreen = AppScreen.Home; shell.Render($"home-connected-{size}-{dpi}dpi", dpi);
+                    vm.CurrentScreen = AppScreen.Device; shell.Render($"device-connected-{size}-{dpi}dpi", dpi);
+                }
+            }
         });
     }
 
@@ -168,25 +176,32 @@ public sealed class LayoutAuditRenderTests
     public void Overlays(int width, int height)
     {
         if (!Enabled) return;
+        var size = $"{width}x{height}";
         InlineTextEditorRenderTests.Ui.Invoke(() =>
         {
             using var shell = new ShellHarness(width, height, userId: "audit-user");
             var vm = shell.ViewModel;
-            var size = $"{width}x{height}";
             var tour = (Lasero.App.Tour.TourOverlay)shell.Window.FindName("TourHost");
+            var chip = (Lasero.App.Tour.TipChip)shell.Window.FindName("TipChipHost");
             tour.ForceStatic = true;
-            vm.Guidance.RecordWelcome(Lasero.App.Tour.WelcomeChoice.Skipped);
+            chip.ForceStatic = true;
+
+            // On the developer machine the legacy onboarding marker makes the account an existing user, so ask for the
+            // welcome and the tips explicitly.
+            vm.Guidance.ResetIntro();
+            tour.ShowWelcome();
+            shell.Render($"welcome-{size}");
+            tour.Cancel();
+            ShellHarness.Pump();
+            vm.Guidance.ResetTips();
 
             vm.CurrentScreen = AppScreen.Designer;
             vm.Guidance.TryOfferTip(Lasero.App.Tour.TipCatalog.Connect);
             shell.Render($"tip-chip-{size}");
             vm.Guidance.DismissTip();
 
-            vm.OpenDeviceWizardCommand.Execute(null);
-            shell.Render($"wizard-intro-{size}");
-
             vm.CurrentScreen = AppScreen.Home;
-            shell.Window.Dispatcher.Invoke(() => vm.ReplayTourCommand.Execute(null));
+            vm.ReplayTourCommand.Execute(null);
             shell.Render($"tour-step1-{size}");
             for (var i = 2; i <= 4; i++)
             {
@@ -194,6 +209,19 @@ public sealed class LayoutAuditRenderTests
                 shell.Render($"tour-step{i}-{size}");
             }
             tour.Cancel();
+        });
+
+        InlineTextEditorRenderTests.Ui.Invoke(() =>
+        {
+            using var shell = new ShellHarness(width, height);
+            var overlay = (Lasero.App.Views.DeviceSetup.DeviceWizardOverlay)shell.Window.FindName("DeviceWizardOverlayHost");
+            var wizard = shell.ViewModel.CreateDeviceWizard();
+            overlay.Show(wizard);
+            foreach (var step in new[] { DeviceWizardStep.Intro, DeviceWizardStep.Results, DeviceWizardStep.Setup, DeviceWizardStep.Done })
+            {
+                wizard.Step = step;
+                shell.Render($"wizard-{step.ToString().ToLowerInvariant()}-{size}");
+            }
         });
     }
 }
