@@ -157,7 +157,7 @@ public sealed class CanvasBenchmarks(ITestOutputHelper output)
         rig.SetZoomCentred(100);
         var random = new Random(9);
         var points = Enumerable.Range(0, 200).Select(_ => new Point(60 + random.NextDouble() * 1400, 60 + random.NextDouble() * 760)).ToArray();
-        Perf.Measure(scenario, "hit-test: scene click (HitTestScene)", 100, i => rig.Call("HitTestScene", points[i % points.Length]),
+        Perf.Measure(scenario, "hit-test: scene click (HitTestScene)", 100, i => rig.Call("HitTestScene", points[Math.Abs(i) % points.Length]),
             output: output);
 
         // ---- marquee select: rubber band over half the bed ----
@@ -196,6 +196,7 @@ public sealed class CanvasBenchmarks(ITestOutputHelper output)
             ?? objects.First(o => o.IsVectorPath);
         var nodes = target.VectorPath!.Subpaths[0].Nodes.Count;
         var scenarioName = $"{scenario} ({nodes}-node path)";
+        Perf.Note($"{scenarioName}: node-edit stage start");
 
         // Frame the path so most nodes are on screen, as when a person edits it.
         var bounds = target.WorldBounds();
@@ -223,7 +224,7 @@ public sealed class CanvasBenchmarks(ITestOutputHelper output)
             .Select(i => new Point(700 + 300 * Math.Cos(i / 10.0), 440 + 300 * Math.Sin(i / 10.0))).ToArray();
         Perf.Measure(scenarioName, "ui: node-edit hover (UpdateNodeEditHover)", 80, i =>
         {
-            rig.Call("UpdateNodeEditHover", screenPoints[i % screenPoints.Length]);
+            rig.Call("UpdateNodeEditHover", screenPoints[Math.Abs(i) % screenPoints.Length]);
             rig.Layout();
         }, between: rig.Flush, output: output);
 
