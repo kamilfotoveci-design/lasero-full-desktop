@@ -510,7 +510,7 @@ public partial class SceneCanvas : UserControl
         // later in z-order) frames it rather than leaving the placement rectangle empty.
         if (obj.IsRaster)
         {
-            var image = TryLoadRasterPreview(obj);
+            var image = CreateRasterPreviewVisual(obj);
             if (image is not null)
             {
                 DrawCanvas.Children.Add(image);
@@ -561,24 +561,32 @@ public partial class SceneCanvas : UserControl
         .GroupBy(shape => (Set: shape.GeometrySetId, Layer: shape.LayerId, Color: shape.LayerColor))
         .ToList();
 
-    /// <summary>Loads the same processed grayscale pixels used by raster G-code. The canvas therefore
-    /// previews what will be engraved instead of showing a misleading full-color source image.</summary>
-    private static Image? TryLoadRasterPreview(SceneObject obj)
+    /// <summary>
+    /// The image shown under a raster object's outline. It is created empty and filled in when the
+    /// display-resolution preview has been decoded on a worker thread (see RasterPreviewLoader), so
+    /// adding or rebuilding a scene with big photos never freezes the window while they decode. A missing
+    /// or corrupt file leaves it blank and the canvas falls back to the outline alone.
+    /// </summary>
+    private Image? CreateRasterPreviewVisual(SceneObject obj)
     {
-        try
+        if (obj.RasterFilePath is null || obj.RasterOptions is null) return null;
+        var image = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
+        var load = RasterPreviewLoader.GetAsync(obj.RasterFilePath);
+        if (load.IsCompletedSuccessfully)
         {
-            if (obj.RasterFilePath is null || obj.RasterOptions is null) return null;
-            var preview = ProcessedImagePreviewRenderer.RenderFileForCanvas(obj.RasterFilePath, obj.RasterOptions);
-            return new Image { Source = preview, Stretch = Stretch.Fill, IsHitTestVisible = false };
+            image.Source = load.Result;
+            return image;
         }
-        catch (Exception ex)
+
+        load.ContinueWith(task => Dispatcher.BeginInvoke(() =>
         {
-            // Missing or corrupt source file — fall back to the outline-only rendering rather than
-            // taking the canvas down. Logged because a silently blank raster looks identical to a
-            // raster that simply has not been drawn yet.
-            Log.Warning(ex, "Could not build the canvas preview for raster {Path}", obj.RasterFilePath);
-            return null;
-        }
+            // Only if this very visual is still the one on the canvas (the object may have been
+            // removed, replaced or the scene rebuilt while the decode ran).
+            if (task.IsCompletedSuccessfully && task.Result is { } bitmap &&
+                _rasterImageVisuals.TryGetValue(obj, out var current) && ReferenceEquals(current, image))
+                image.Source = bitmap;
+        }), TaskScheduler.Default);
+        return image;
     }
 
     private void RemoveObjectVisuals(SceneObject obj)
