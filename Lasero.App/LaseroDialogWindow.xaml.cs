@@ -106,6 +106,9 @@ public partial class LaseroDialogWindow : Window
         });
     }
 
+    /// <summary>Builds the dialog without showing it. Used by the offscreen layout renders.</summary>
+    public static LaseroDialogWindow Create(LaseroDialogOptions options) => new(options);
+
     public static LaseroDialogChoice Show(Window? owner, LaseroDialogOptions options)
     {
         var dialog = new LaseroDialogWindow(options);

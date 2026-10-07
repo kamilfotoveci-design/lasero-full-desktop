@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using Lasero.App;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
+using Lasero.Core.Jobs;
 using Lasero.Core.Machines;
 using Lasero.Core.LaseroApi;
 
@@ -70,7 +71,7 @@ internal sealed class ShellHarness : IDisposable
         ViewModel = new MainViewModel(
             connection, machineStatus, jog, console, scene, gcode, account, home, materials, chat, kamil,
             recovery, settings, recent, jobs,
-            () => throw new InvalidOperationException("The wizard is built by the audit when needed."));
+            () => new DeviceWizardViewModel(new DeviceScanner(new GrblMachineFactory(), () => Array.Empty<string>()), connection, Machine, settings));
 
         var removal = new BackgroundRemovalCoordinator(scene, new NoBackgroundRemoval());
         Window = new MainWindow(ViewModel, removal, new BackgroundRemovalConsentStore(P("consent.json")))
@@ -133,6 +134,9 @@ internal sealed class ShellHarness : IDisposable
 
     public void Dispose()
     {
+        // MainWindow.OnClosing opens a modal question for a running job or unsaved changes; a throwaway harness has neither.
+        ViewModel.GCode.JobState = JobRunState.Idle;
+        ViewModel.IsDirty = false;
         try { Window.Close(); } catch { /* the harness is throwaway */ }
         try { Machine.Dispose(); } catch { }
         try { Directory.Delete(_directory, true); } catch { }

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Lasero.App;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
 using Lasero.Core.Jobs;
@@ -84,6 +85,105 @@ public sealed class LayoutAuditRenderTests
             vm.CurrentScreen = AppScreen.Designer; Shot("designer-running");
             vm.GCode.JobState = JobRunState.Idle;
             vm.CurrentScreen = AppScreen.Home; Shot("home-connected");
+        });
+    }
+
+    // ----------------------------------------------------------------------------- windows and overlays
+
+    internal static void ShowRender(Window window, string name, double width, double height, double dpi = 96, Action? prepare = null)
+    {
+        window.Width = width;
+        window.Height = height;
+        window.ShowActivated = false;
+        window.ShowInTaskbar = false;
+        window.Topmost = false;
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        window.Left = -20000;
+        window.Top = -20000;
+        try
+        {
+            window.Show();
+            ShellHarness.Pump();
+            prepare?.Invoke();
+            window.UpdateLayout();
+            ShellHarness.Pump();
+            var bitmap = new RenderTargetBitmap(
+                (int)Math.Round(window.ActualWidth * dpi / 96), (int)Math.Round(window.ActualHeight * dpi / 96), dpi, dpi, PixelFormats.Pbgra32);
+            bitmap.Render(window);
+            ShellHarness.Save(bitmap, name);
+        }
+        finally { window.Close(); }
+    }
+
+    [Fact]
+    public void Windows()
+    {
+        if (!Enabled) return;
+        InlineTextEditorRenderTests.Ui.Invoke(() =>
+        {
+            using var shell = new ShellHarness(1366, 768);
+            var vm = shell.ViewModel;
+            vm.Scene.DrawPrimitive(DesignerTool.Rectangle, new Position(10, 10, 0), new Position(90, 70, 0));
+
+            ShowRender(new SettingsWindow(vm, _ => true), "win-settings-980x1500", 980, 1500);
+            ShowRender(new SettingsWindow(vm, _ => true), "win-settings-980x728", 980, 728);
+            ShowRender(new MaterialsWindow(vm), "win-materials-1180x720", 1180, 720);
+            ShowRender(new MaterialsWindow(vm), "win-materials-1080x600", 1080, 600);
+            ShowRender(new DeviceSettingsWindow(vm), "win-device-settings", 900, 760);
+            ShowRender(new KeyboardShortcutsWindow(), "win-shortcuts", 760, 720);
+            ShowRender(new PreviewWindow(vm), "win-job-preview", 1120, 760);
+            ShowRender(new LoginWindow(vm.Account), "win-login", 780, 572);
+            ShowRender(new OffsetPathWindow(new OffsetPathViewModel(vm.Scene.SelectedObjects.ToList())), "win-offset", 960, 660);
+            var photo = SamplePhoto();
+            ShowRender(new BitmapTraceWindow(new BitmapTraceViewModel(photo, 80)), "win-trace", 1080, 720);
+            ShowRender(new RasterImportWindow(new RasterImportViewModel(shell.Machine, vm.SettingsStore, photo, 80, 3000, 100, 254)), "win-raster-import", 1080, 720);
+
+            ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Neuložené změny",
+                "Projekt obsahuje změny, které ještě nejsou uložené. Uložte je, abyste o svou práci nepřišli.",
+                "Uložit projekt", SecondaryText: "Neukládat", CancelText: "Zrušit", Tone: LaseroDialogTone.Warning)), "dlg-save", 420, 300);
+            ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Nalezena záloha projektu",
+                "Aplikace byla ukončena bez uložení. Lze obnovit poslední automaticky uloženou verzi.",
+                "Obnovit", SecondaryText: null, CancelText: "Zahodit", Tone: LaseroDialogTone.Information)), "dlg-recovery", 420, 300);
+            ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Probíhající úloha",
+                "Laser právě zpracovává úlohu. Před ukončením aplikace je nutné úlohu bezpečně zastavit.",
+                "Zastavit a ukončit", CancelText: "Zůstat v aplikaci", Tone: LaseroDialogTone.Danger, DestructivePrimary: true)), "dlg-confirm-danger", 420, 300);
+            ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Importovat soubor",
+                "Soubor je větší než pracovní plocha a bude zmenšen.", "Rozumím", CancelText: null)), "dlg-info", 420, 300);
+        });
+    }
+
+    [Theory]
+    [InlineData(1366, 768)]
+    [InlineData(1080, 640)]
+    public void Overlays(int width, int height)
+    {
+        if (!Enabled) return;
+        InlineTextEditorRenderTests.Ui.Invoke(() =>
+        {
+            using var shell = new ShellHarness(width, height, userId: "audit-user");
+            var vm = shell.ViewModel;
+            var size = $"{width}x{height}";
+            var tour = (Lasero.App.Tour.TourOverlay)shell.Window.FindName("TourHost");
+            tour.ForceStatic = true;
+            vm.Guidance.RecordWelcome(Lasero.App.Tour.WelcomeChoice.Skipped);
+
+            vm.CurrentScreen = AppScreen.Designer;
+            vm.Guidance.TryOfferTip(Lasero.App.Tour.TipCatalog.Connect);
+            shell.Render($"tip-chip-{size}");
+            vm.Guidance.DismissTip();
+
+            vm.OpenDeviceWizardCommand.Execute(null);
+            shell.Render($"wizard-intro-{size}");
+
+            vm.CurrentScreen = AppScreen.Home;
+            shell.Window.Dispatcher.Invoke(() => vm.ReplayTourCommand.Execute(null));
+            shell.Render($"tour-step1-{size}");
+            for (var i = 2; i <= 4; i++)
+            {
+                ((System.Windows.Controls.Button)tour.FindName("NextButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                shell.Render($"tour-step{i}-{size}");
+            }
+            tour.Cancel();
         });
     }
 }
