@@ -63,6 +63,10 @@ internal static class SceneHitTester
         for (var objectIndex = objects.Count - 1; objectIndex >= 0; objectIndex--)
         {
             var obj = objects[objectIndex];
+            // Whole-object rejection first: most objects are nowhere near the pointer, and copying
+            // every point of every object into world space just to discover that is what made a click
+            // on a large scene cost tens of milliseconds.
+            if (!MayReach(obj, pointerWorld, toleranceMm)) continue;
             var shapes = obj.GetWorldShapes();
             for (var shapeIndex = shapes.Count - 1; shapeIndex >= 0; shapeIndex--)
             {
@@ -90,6 +94,46 @@ internal static class SceneHitTester
             .ThenByDescending(candidate => candidate.ZIndex)
             .ThenByDescending(candidate => candidate.ShapeIndex)
             .ToList();
+    }
+
+    // Bounds of the points actually stored in a shape list (not SceneObject.LocalBounds, which is a
+    // separately persisted value). Keyed by the immutable list, so replacing the shapes naturally
+    // invalidates it.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IReadOnlyList<ImportedShape>, BoundsBox> LocalPointBounds = new();
+
+    private sealed class BoundsBox(Lasero.Core.GCode.BoundingBox2D bounds)
+    {
+        public Lasero.Core.GCode.BoundingBox2D Bounds { get; } = bounds;
+    }
+
+    /// <summary>
+    /// A conservative test: false only when the pointer is certainly farther than the tolerance from
+    /// every point of the object. The object's local point bounds are mapped through its (affine)
+    /// transform, so the axis-aligned box of the mapped corners contains every world point.
+    /// </summary>
+    private static bool MayReach(SceneObject obj, Position pointerWorld, double toleranceMm)
+    {
+        var local = LocalPointBounds.GetValue(obj.LocalShapes, shapes =>
+        {
+            var box = Lasero.Core.GCode.BoundingBox2D.Empty;
+            foreach (var shape in shapes)
+                foreach (var point in shape.Points)
+                    box = box.Include(point.X, point.Y);
+            return new BoundsBox(box);
+        }).Bounds;
+        if (local.IsEmpty) return false;
+
+        var world = Lasero.Core.GCode.BoundingBox2D.Empty;
+        foreach (var (x, y) in new[] { (local.MinX, local.MinY), (local.MaxX, local.MinY), (local.MaxX, local.MaxY), (local.MinX, local.MaxY) })
+        {
+            var mapped = obj.Transform.Apply(new Position(x, y, 0), obj.LocalPivot);
+            world = world.Include(mapped.X, mapped.Y);
+        }
+
+        // A hair of slack absorbs floating-point differences between mapping corners and mapping points.
+        var slack = toleranceMm + 1e-6 * (1 + Math.Abs(world.MaxX) + Math.Abs(world.MaxY));
+        return pointerWorld.X >= world.MinX - slack && pointerWorld.X <= world.MaxX + slack &&
+               pointerWorld.Y >= world.MinY - slack && pointerWorld.Y <= world.MaxY + slack;
     }
 
     private static Lasero.Core.GCode.BoundingBox2D BoundsOf(ImportedShape shape)
