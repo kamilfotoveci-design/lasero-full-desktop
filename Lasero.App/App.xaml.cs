@@ -215,8 +215,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         var jobState = _host?.Services.GetService<GCodeViewModel>()?.JobState;
+        StartupSplash.Current?.CloseNow(); // never leave the splash behind on exit
         if (jobState is JobRunState.Running or JobRunState.Paused or JobRunState.Framing)
-            StartupSplash.Current?.CloseNow(); // never leave the splash over an error dialog
             StopMachineAfterFatalError();
         _host?.Services.GetService<ILaserMachine>()?.Dispose();
         _host?.StopAsync().GetAwaiter().GetResult();
