@@ -975,8 +975,38 @@ public partial class SceneCanvas : UserControl
         });
     }
 
+    /// <summary>
+    /// Above this many contour points in the selection the crawl is switched off. A dashed stroke is
+    /// re-tessellated on every animation tick, and for a very dense selection (a traced bitmap, a
+    /// 20 000-segment SVG) that keeps the render pipeline saturated: the dispatcher never reaches idle
+    /// and input latency suffers. The dashed outline itself is still drawn, just not animated.
+    /// </summary>
+    internal const int MarchingAntsPointBudget = 6000;
+
+    private bool SelectionTooDenseToAnimate()
+    {
+        if (ViewModel is null) return false;
+        var total = 0;
+        foreach (var obj in ViewModel.SelectedObjects)
+        {
+            foreach (var shape in obj.LocalShapes)
+            {
+                total += shape.Points.Count;
+                if (total > MarchingAntsPointBudget) return true;
+            }
+        }
+
+        return false;
+    }
+
     private void StartMarchingAnts()
     {
+        if (SelectionTooDenseToAnimate())
+        {
+            StopMarchingAnts();
+            return;
+        }
+
         if (_antsRunning) return;
         _antsRunning = true;
 
