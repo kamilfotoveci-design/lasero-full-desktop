@@ -69,8 +69,22 @@ public partial class App : Application
     /// <summary>Longest the start waits for the stored session to be refreshed over the network.</summary>
     internal const int SessionResumeCapMilliseconds = 3000;
 
+    /// <summary>False inside a test runner (or any host that is not the Lasero.App executable).</summary>
+    internal static bool IsRealApplicationProcess() =>
+        string.Equals(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name, "Lasero.App", StringComparison.OrdinalIgnoreCase);
+
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // Under a test runner the entry assembly is the runner, not Lasero.App. The tests create an App only to get the
+        // theme resources; the real start (log file, session.dat, settings, splash, sign-in, main window) must never run
+        // against the developer's own profile.
+        if (!IsRealApplicationProcess())
+        {
+            base.OnStartup(e);
+            Lasero.App.Input.InteractionBehaviors.Register();
+            return;
+        }
+
         base.OnStartup(e);
         Lasero.App.Input.InteractionBehaviors.Register();
 

@@ -253,15 +253,6 @@
                                 Visibility="{Binding Home.HasLastJob, Converter={StaticResource InverseBoolToVisibility}}" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,24,0,0" HorizontalAlignment="Left"
-                            AutomationProperties.AutomationId="HomeTipOfDay">
-                    <TextBlock Text="Tip dne" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextSecondary}"
-                               VerticalAlignment="Center" />
-                    <TextBlock x:Name="TipOfDayText" Text="{Binding Home.TipOfDay}" Style="{StaticResource Text.Muted}"
-                               Margin="10,0,0,0" TextWrapping="Wrap" MaxWidth="600" VerticalAlignment="Center" />
-                    <Button Style="{StaticResource Button.Quiet}" Command="{Binding Home.NextTipCommand}" Content="Další tip"
-                            Margin="8,0,0,0" Padding="8,0" MinHeight="0" VerticalAlignment="Center" />
-                </StackPanel>
             </StackPanel>
             </Grid>
         </ScrollViewer>
