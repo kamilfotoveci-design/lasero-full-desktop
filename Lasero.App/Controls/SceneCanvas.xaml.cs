@@ -265,6 +265,9 @@ public partial class SceneCanvas : UserControl
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
     private void OnViewModelContentChanged()
     {
+        // Power, speed and passes edits change the job, not the picture.
+        if (ViewModel is { ChangedAffectsCanvas: false }) return;
+
         // A command or a layer change may have altered fills, visibility or colour of any object; the
         // geometry cache keeps this to a few property writes per object when nothing really changed.
         if (ViewModel is not null)

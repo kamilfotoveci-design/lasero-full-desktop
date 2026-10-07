@@ -243,12 +243,30 @@ public partial class SceneViewModel : ObservableObject
     }
 
     private void HookLayer(Lasero.Core.Layers.LayerSettings layer) => layer.PropertyChanged += OnLayerPropertyChanged;
+    /// <summary>
+    /// False while <see cref="Changed"/> is being raised for an edit that cannot change what the canvas
+    /// draws (a layer's power, speed, passes, line interval, name or output switch). Job generation
+    /// still hears about every change; the canvas uses this to skip a full refresh of every object.
+    /// </summary>
+    public bool ChangedAffectsCanvas { get; private set; } = true;
+
+    private static bool LayerPropertyAffectsCanvas(string? propertyName) =>
+        propertyName is null or "" or nameof(Lasero.Core.Layers.LayerSettings.Color)
+            or nameof(Lasero.Core.Layers.LayerSettings.Mode)
+            or nameof(Lasero.Core.Layers.LayerSettings.IsVisible)
+            or nameof(Lasero.Core.Layers.LayerSettings.IsRaster)
+            or nameof(Lasero.Core.Layers.LayerSettings.Id);
+
     private void OnLayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        foreach (var item in Objects)
-            item.InvalidateLayerAppearance();
+        var affectsCanvas = LayerPropertyAffectsCanvas(e.PropertyName);
+        if (affectsCanvas)
+            foreach (var item in Objects)
+                item.InvalidateLayerAppearance();
         NotifyLayerStateChanged();
-        Changed?.Invoke();
+        ChangedAffectsCanvas = affectsCanvas;
+        try { Changed?.Invoke(); }
+        finally { ChangedAffectsCanvas = true; }
     }
 
     private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item => UsesLayer(item, layer));
