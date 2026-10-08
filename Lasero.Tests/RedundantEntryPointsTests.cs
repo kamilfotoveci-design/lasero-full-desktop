@@ -95,6 +95,26 @@ public sealed class RedundantEntryPointsTests
         Assert.Contains("Text=\"Najet domů\"", device, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DeviceWizardUsesOneConnectActionForAutomaticAndManualPortModes()
+    {
+        var wizard = Read("Views", "DeviceSetup", "DeviceWizardOverlay.xaml");
+        var introStart = wizard.IndexOf("x:Name=\"IntroLayer\"", StringComparison.Ordinal);
+        var scanStart = introStart < 0 ? -1 : wizard.IndexOf("x:Name=\"ScanningLayer\"", introStart, StringComparison.Ordinal);
+        Assert.True(introStart >= 0 && scanStart > introStart, "the wizard intro layer is missing");
+        var intro = wizard[introStart..scanStart];
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(wizard,
+            "<Button\\b[^>]*Command=\"\\{Binding ConnectSelectedCommand\\}\"").Cast<System.Text.RegularExpressions.Match>());
+        Assert.Contains("Visibility=\"{Binding IsIntro, Converter={StaticResource BoolToVisibility}}\"", wizard, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Připojit\"", wizard, StringComparison.Ordinal);
+        Assert.DoesNotContain("Připojit laser automaticky", intro, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"{Binding IsManualConnection, Mode=TwoWay}\"", intro, StringComparison.Ordinal);
+        Assert.Contains("SelectedItem=\"{Binding Connection.SelectedManualPortOption}\"", intro, StringComparison.Ordinal);
+        Assert.DoesNotContain("Connection.ConnectCommand", intro, StringComparison.Ordinal);
+        Assert.DoesNotContain("Připojit ručně", intro, StringComparison.Ordinal);
+    }
+
     // ------------------------------------------------------------------ generic scan
 
     /// <summary>

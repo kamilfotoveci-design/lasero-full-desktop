@@ -23,7 +23,7 @@ public enum DeviceWizardStep
 /// the wizard's job is to do it in order and explain each step, not to add a second way to drive
 /// the machine.
 /// </summary>
-public partial class DeviceWizardViewModel : ObservableObject
+public partial class DeviceWizardViewModel : ObservableObject, IDisposable
 {
     private readonly DeviceScanner _scanner;
     private readonly ConnectionViewModel _connection;
@@ -40,6 +40,7 @@ public partial class DeviceWizardViewModel : ObservableObject
     [ObservableProperty] private string? _setupMessage;
     [ObservableProperty] private string _machineName = "Laserové zařízení";
     [ObservableProperty] private bool _isEnablingLaserMode;
+    [ObservableProperty] private bool _isManualConnection;
 
     /// <summary>True once a connection attempt against <see cref="SelectedMachine"/> has run to
     /// completion without the controller actually ending up connected — wrong/busy port, cable
@@ -78,7 +79,35 @@ public partial class DeviceWizardViewModel : ObservableObject
         _connection = connection;
         _machine = machine;
         _settingsStore = settingsStore;
+        _connection.PropertyChanged += OnConnectionPropertyChanged;
     }
+
+    public bool CanConnectSelected => Step == DeviceWizardStep.Intro
+        && !_connection.IsConnecting
+        && !_connection.IsDetecting
+        && (IsManualConnection
+            ? _connection.SelectedManualPortOption is not null && _connection.ConnectCommand.CanExecute(null)
+            : CanAutoConnect());
+
+    private void OnConnectionPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(ConnectionViewModel.SelectedManualPortOption)
+            or nameof(ConnectionViewModel.SelectedPort)
+            or nameof(ConnectionViewModel.IsConnecting)
+            or nameof(ConnectionViewModel.IsDetecting))
+        {
+            OnPropertyChanged(nameof(CanConnectSelected));
+            ConnectSelectedCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    partial void OnIsManualConnectionChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanConnectSelected));
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
+    }
+
+    public void Dispose() => _connection.PropertyChanged -= OnConnectionPropertyChanged;
 
     public bool IsIntro => Step == DeviceWizardStep.Intro;
     public bool IsScanning => Step == DeviceWizardStep.Scanning;
@@ -107,10 +136,44 @@ public partial class DeviceWizardViewModel : ObservableObject
         OnPropertyChanged(nameof(CanFinish));
         UseSelectedMachineCommand.NotifyCanExecuteChanged();
         AutoConnectCommand.NotifyCanExecuteChanged();
+        ConnectSelectedCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanConnectSelected));
         FinishCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanAutoConnect() => Step != DeviceWizardStep.Scanning && !_connection.IsConnecting && !_connection.IsDetecting;
+
+    private bool CanExecuteConnectSelected() => CanConnectSelected;
+
+    /// <summary>The one connect action on the intro step. Automatic mode searches GRBL ports;
+    /// manual mode opens the selected COM port and continues through the same identification step.</summary>
+    [RelayCommand(CanExecute = nameof(CanExecuteConnectSelected))]
+    private async Task ConnectSelected()
+    {
+        if (!IsManualConnection)
+        {
+            await AutoConnect().ConfigureAwait(true);
+            return;
+        }
+
+        var option = _connection.SelectedManualPortOption;
+        if (option?.PortName is not { Length: > 0 } portName) return;
+
+        var machine = new DiscoveredMachine(portName, _connection.BaudRate, null,
+            new GrblDeviceProfile { FirmwareBanner = _connection.DetectedDevice?.FirmwareBanner });
+        FoundMachines.Clear();
+        SelectedMachine = machine;
+        ConnectFailed = false;
+        Step = DeviceWizardStep.Scanning;
+        ScanStatus = $"Připojuji k {portName}…";
+
+        if (await ConnectMachineAsync(machine).ConfigureAwait(true)) return;
+
+        FoundMachines.Add(machine);
+        Step = DeviceWizardStep.Results;
+        OnPropertyChanged(nameof(FoundNothing));
+        OnPropertyChanged(nameof(FoundSomething));
+    }
 
     /// <summary>The primary action: find a GRBL controller on the serial ports and connect to it without
     /// asking for a model, port or baud rate. Runs only from this click. One controller is connected

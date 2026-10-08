@@ -184,13 +184,14 @@
                             </Grid>
 
                             <TextBlock Text="Přidat zařízení" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
-                            <TextBlock Text="Laser je potřeba zapnout a připojit datovým USB kabelem, potom klepnout na Připojit laser automaticky. Model ani port není třeba vybírat, LASERO řadič GRBL najde samo. Porty se zkoušejí jen po tomto klepnutí, nikdy při spuštění. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
+                            <TextBlock Text="Laser je potřeba zapnout a připojit datovým USB kabelem, potom klepnout na Připojit. Model ani port není třeba vybírat, LASERO řadič GRBL najde samo. Porty se zkoušejí jen po tomto klepnutí, nikdy při spuštění. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
 
                             <!-- Progressive disclosure: manual port/baud entry, for the rare machine
                                  the automatic scan cannot see. Reuses ConnectionViewModel's own
                                  existing manual controls — no second connection path. -->
                             <ToggleButton x:Name="ManualToggle" Style="{StaticResource ToggleButton.Link}"
                                           HorizontalAlignment="Center" Margin="0,24,0,0"
+                                          IsChecked="{Binding IsManualConnection, Mode=TwoWay}"
                                           automation:AutomationProperties.Name="Upřesnit">
                                 <components:IconLabel IconData="{StaticResource Glyph.ChevronDown}" Text="Upřesnit" IconSize="{StaticResource Size.Icon.Sm}" />
                             </ToggleButton>
@@ -218,10 +219,6 @@
                                                   Height="{StaticResource Size.Control.Base}"
                                                   automation:AutomationProperties.Name="Rychlost přenosu" />
                                     </Grid>
-                                    <Button Style="{StaticResource Button.Regular}" Margin="0,12,0,0" HorizontalAlignment="Left"
-                                            Command="{Binding Connection.ConnectCommand}">
-                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit ručně" />
-                                    </Button>
                                 </StackPanel>
                             </components:ElevatedBorder>
                         </StackPanel>
@@ -576,10 +573,11 @@
                                     Visibility="{Binding IsIntro, Converter={StaticResource BoolToVisibility}}">
                                 <components:IconLabel IconData="{StaticResource Glyph.Search}" Text="Vyzkoušet simulátor" />
                             </Button>
-                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding AutoConnectCommand}"
+                            <Button Style="{StaticResource PrimaryBlue}" Command="{Binding ConnectSelectedCommand}"
                                     Visibility="{Binding IsIntro, Converter={StaticResource BoolToVisibility}}"
+                                    IsEnabled="{Binding CanConnectSelected}"
                                     IsDefault="True">
-                                <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit laser automaticky" Foreground="White" />
+                                <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit" Foreground="White" />
                             </Button>
 
                             <Button Content="Zastavit hledání" Command="{Binding CancelScanCommand}"

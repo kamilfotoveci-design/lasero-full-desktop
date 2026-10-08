@@ -59,6 +59,7 @@ public sealed class LayoutSystemRenderTests
     [Theory]
     [InlineData(1366, 768)]
     [InlineData(1080, 640)]
+    [InlineData(1000, 640)]
     public void TheSelectionBarWrapsInsteadOfScrollingAndEveryFieldStaysInsideIt(int width, int height) => Ui.Invoke(() =>
     {
         using var shell = new ShellHarness(width, height);
@@ -68,6 +69,12 @@ public sealed class LayoutSystemRenderTests
         shell.Settle();
         var bar = View<SelectionPropertiesBar>(shell);
         Assert.True(bar.IsVisible, "no selection bar for a selected text");
+        var textCluster = Assert.IsType<StackPanel>(bar.FindName("TextCluster"));
+        var textDivider = Assert.IsType<Border>(bar.FindName("TextClusterDivider"));
+        var clusterBounds = LayoutAssertions.BoundsIn(textCluster, bar);
+        var dividerBounds = LayoutAssertions.BoundsIn(textDivider, bar);
+        Assert.True(Math.Abs((clusterBounds.Top + clusterBounds.Height / 2) - (dividerBounds.Top + dividerBounds.Height / 2)) <= 1,
+            $"the text divider is stranded on another row at {width}x{height}");
         var wrap = LayoutAssertions.Descendants<WrapPanel>(bar).First();
         for (DependencyObject? up = wrap; up is not null && !ReferenceEquals(up, bar); up = VisualTreeHelper.GetParent(up))
             Assert.False(up is ScrollViewer, "the selection bar scrolls sideways instead of wrapping");

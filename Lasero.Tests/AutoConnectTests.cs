@@ -73,6 +73,26 @@ public sealed class AutoConnectTests : IDisposable
     }
 
     [Fact]
+    public async Task ManualWizardConnectUsesTheSelectedComPortWithoutRunningAutomaticScan()
+    {
+        var scanner = new FakeScanner(new GrblPortScanResult([], []));
+        var (connection, settings, machine) = Create(scanner);
+        using var wizard = CreateWizard(connection, machine, settings);
+        var simulatorPort = connection.ManualPortOptions.Single(option => option.PortName == VirtualGrblTransport.PortName);
+        connection.SelectedManualPortOption = simulatorPort;
+        wizard.IsManualConnection = true;
+
+        Assert.True(wizard.ConnectSelectedCommand.CanExecute(null));
+        await wizard.ConnectSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, scanner.Calls);
+        Assert.Equal(DeviceWizardStep.Setup, wizard.Step);
+        Assert.True(connection.IsConnected);
+        Assert.Equal(VirtualGrblTransport.PortName, connection.SelectedPort);
+        machine.Dispose();
+    }
+
+    [Fact]
     public async Task SeveralControllersAreListedForAChoiceAndNothingIsConnected()
     {
         var scanner = new FakeScanner(new GrblPortScanResult([Found("COM3"), Found("COM7", "Grbl 1.1f ['$' for help]", "Alarm")], []));

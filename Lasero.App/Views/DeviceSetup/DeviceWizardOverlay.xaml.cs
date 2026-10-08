@@ -111,6 +111,7 @@ public partial class DeviceWizardOverlay : UserControl
     {
         if (_viewModel is null) return;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.Dispose();
         _viewModel = null;
     }
 

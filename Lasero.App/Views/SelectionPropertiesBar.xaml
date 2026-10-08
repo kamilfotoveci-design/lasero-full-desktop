@@ -220,48 +220,47 @@
                 </Button>
 
                 <!-- ============ Text ============ -->
-                <Border Style="{StaticResource BarDivider}"
-                        Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}" />
-
-                <StackPanel Orientation="Horizontal"
-                            IsEnabled="{Binding Scene.CanEditSelectedText}"
+                <StackPanel x:Name="TextCluster" Orientation="Horizontal"
                             Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
-                    <TextBox Width="118" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
-                             VerticalContentAlignment="Center" Padding="12,0" Margin="0,0,8,0"
-                             automation:AutomationProperties.Name="Znění textu" ToolTip="Znění textu"
-                             Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
-                    <!-- Each family renders in itself, so the list is browsable by eye. -->
-                    <ComboBox Width="112" Height="{StaticResource Size.Control.Compact}" Margin="0,0,8,0"
-                              ItemsSource="{Binding Scene.FontFamilies}"
-                              SelectedItem="{Binding Scene.SelectedTextFontFamily}"
-                              MaxDropDownHeight="320"
-                              automation:AutomationProperties.Name="Písmo"
-                              ToolTip="Písmo, kterým je text vysázený">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Border Style="{StaticResource BarField}" Width="78" Margin="0,0,8,0"
-                            ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}"
-                                     automation:AutomationProperties.Name="Výška písma v milimetrech"
-                                     Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
-                        </DockPanel>
-                    </Border>
-                    <ToggleButton Style="{StaticResource Toggle.Icon}"
-                                  IsChecked="{Binding Scene.SelectedTextBold}"
-                                  ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
-                        <TextBlock Text="B" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Section}" />
-                    </ToggleButton>
-                    <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="4,0,0,0"
-                                  IsChecked="{Binding Scene.SelectedTextItalic}"
-                                  ToolTip="Kurzíva" AutomationProperties.Name="Kurzíva">
-                        <TextBlock Text="I" FontStyle="Italic" FontSize="{StaticResource Size.Text.Section}" FontFamily="Georgia, Times New Roman" />
-                    </ToggleButton>
+                    <Border x:Name="TextClusterDivider" Style="{StaticResource BarDivider}" />
+                    <StackPanel Orientation="Horizontal" IsEnabled="{Binding Scene.CanEditSelectedText}">
+                        <TextBox Width="118" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
+                                 VerticalContentAlignment="Center" Padding="12,0" Margin="0,0,8,0"
+                                 automation:AutomationProperties.Name="Znění textu" ToolTip="Znění textu"
+                                 Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
+                        <!-- Each family renders in itself, so the list is browsable by eye. -->
+                        <ComboBox Width="112" Height="{StaticResource Size.Control.Compact}" Margin="0,0,8,0"
+                                  ItemsSource="{Binding Scene.FontFamilies}"
+                                  SelectedItem="{Binding Scene.SelectedTextFontFamily}"
+                                  MaxDropDownHeight="320"
+                                  automation:AutomationProperties.Name="Písmo"
+                                  ToolTip="Písmo, kterým je text vysázený">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Border Style="{StaticResource BarField}" Width="78" Margin="0,0,8,0"
+                                ToolTip="Výška písma v milimetrech, před vlastním zvětšením objektu">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
+                                <TextBox Style="{StaticResource UnitField.Input}"
+                                         automation:AutomationProperties.Name="Výška písma v milimetrech"
+                                         Text="{Binding Scene.SelectedTextHeight, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
+                            </DockPanel>
+                        </Border>
+                        <ToggleButton Style="{StaticResource Toggle.Icon}"
+                                      IsChecked="{Binding Scene.SelectedTextBold}"
+                                      ToolTip="Tučné" AutomationProperties.Name="Tučné písmo">
+                            <TextBlock Text="B" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Section}" />
+                        </ToggleButton>
+                        <ToggleButton Style="{StaticResource Toggle.Icon}" Margin="4,0,0,0"
+                                      IsChecked="{Binding Scene.SelectedTextItalic}"
+                                      ToolTip="Kurzíva" AutomationProperties.Name="Kurzíva">
+                            <TextBlock Text="I" FontStyle="Italic" FontSize="{StaticResource Size.Text.Section}" FontFamily="Georgia, Times New Roman" />
+                        </ToggleButton>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- ============ Uspořádání ============ -->
