@@ -57,4 +57,36 @@ public static class ProcessedImagePreviewRenderer
         bitmap.Freeze();
         return bitmap;
     }
+
+    public static BitmapSource RenderSource(GrayscaleImage image)
+    {
+        var pixels = image.Luminance.ToArray();
+        var bitmap = BitmapSource.Create(image.Width, image.Height, 96, 96, PixelFormats.Gray8, null, pixels, image.Width);
+        bitmap.Freeze();
+        return bitmap;
+    }
+}
+
+/// <summary>Creates a bounded preview source without changing the full-resolution job path.</summary>
+internal static class RasterImportPreviewScaler
+{
+    public static GrayscaleImage Downsample(GrayscaleImage source, int maximumDimension, CancellationToken cancellationToken)
+    {
+        var scale = Math.Min(1d, maximumDimension / (double)Math.Max(source.Width, source.Height));
+        if (scale >= 1) return source;
+        var width = Math.Max(1, (int)Math.Round(source.Width * scale));
+        var height = Math.Max(1, (int)Math.Round(source.Height * scale));
+        var pixels = new byte[width * height];
+        for (var y = 0; y < height; y++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var sourceY = Math.Min(source.Height - 1, (int)((y + 0.5) / scale));
+            for (var x = 0; x < width; x++)
+            {
+                var sourceX = Math.Min(source.Width - 1, (int)((x + 0.5) / scale));
+                pixels[y * width + x] = source.Luminance[sourceY * source.Width + sourceX];
+            }
+        }
+        return new GrayscaleImage { Width = width, Height = height, Luminance = pixels };
+    }
 }

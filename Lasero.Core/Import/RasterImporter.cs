@@ -76,6 +76,7 @@ public static class RasterImporter
         Invert = options.Invert,
         NoiseReduction = options.NoiseReduction,
         Sharpen = options.Sharpen,
+        SharpenRadius = options.SharpenRadius,
         EdgeEnhance = options.EdgeEnhance,
         UseDithering = options.UseDithering,
         DitheringAlgorithm = options.DitheringAlgorithm,

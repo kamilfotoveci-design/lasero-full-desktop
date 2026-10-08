@@ -134,7 +134,7 @@ public sealed class RasterImporterTests : IDisposable
             new AppSettingsStore(Path.Combine(_directory, "settings.json")), path,
             targetWidthMm: 100, feedRatePerMinute: 3000, maxPower: 100, dpi: 254)
         {
-            SelectedDithering = RasterImportViewModel.DitheringChoices.Single(choice => choice.Algorithm is null),
+            SelectedDithering = RasterImportViewModel.DitheringChoices.Single(choice => choice.UseThreshold),
         };
 
         var options = viewModel.BuildOptions();

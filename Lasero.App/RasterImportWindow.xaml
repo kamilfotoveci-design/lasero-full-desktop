@@ -40,15 +40,32 @@
         <Border Grid.Column="0" Grid.Row="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="24">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}">
+                <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}" Padding="12">
                     <Grid>
-                        <Image Source="{Binding PreviewImageSource}" Stretch="Uniform" Margin="16" RenderOptions.BitmapScalingMode="HighQuality" />
-                        <TextBlock Text="Připravuji náhled…" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Visibility="{Binding IsPreviewComputing, Converter={StaticResource BoolToVisibility}}" />
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <TextBlock Text="PŮVODNÍ" Style="{StaticResource Text.Muted}" FontWeight="SemiBold" Margin="4,0,0,8" />
+                        <TextBlock Grid.Column="2" Text="VÝSLEDEK" Style="{StaticResource Text.Muted}" FontWeight="SemiBold" Margin="4,0,0,8" />
+                        <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource Brush.Background}" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
+                            <Viewbox Stretch="Uniform"><Image Source="{Binding OriginalImageSource}" Width="{Binding PreviewImageWidthDip}" Height="{Binding PreviewImageHeightDip}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><TransformGroup><ScaleTransform ScaleX="{Binding PreviewZoom}" ScaleY="{Binding PreviewZoom}" /><TranslateTransform X="{Binding PreviewPanX}" Y="{Binding PreviewPanY}" /></TransformGroup></Image.RenderTransform></Image></Viewbox>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="2" Background="{StaticResource Brush.Background}" CornerRadius="{StaticResource Radius.Md}" ClipToBounds="True">
+                            <Grid>
+                                <Viewbox Stretch="Uniform"><Image Source="{Binding PreviewImageSource}" Width="{Binding PreviewImageWidthDip}" Height="{Binding PreviewImageHeightDip}" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><TransformGroup><ScaleTransform ScaleX="{Binding PreviewZoom}" ScaleY="{Binding PreviewZoom}" /><TranslateTransform X="{Binding PreviewPanX}" Y="{Binding PreviewPanY}" /></TransformGroup></Image.RenderTransform></Image></Viewbox>
+                                <TextBlock Text="Zpracovávám…" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Visibility="{Binding IsPreviewComputing, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                            <Button Style="{StaticResource Button.GhostIcon}" Content="−" Click="OnZoomOutClick" ToolTip="Oddálit náhled" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="100 %" Click="OnResetZoomClick" ToolTip="Náhled v měřítku 1:1" />
+                            <Button Style="{StaticResource Button.GhostIcon}" Content="+" Click="OnZoomInClick" ToolTip="Přiblížit náhled" />
+                        </StackPanel>
                     </Grid>
                 </Border>
                 <Grid Grid.Row="1" Margin="0,12,0,0">
                     <StackPanel>
+                        <TextBlock Text="{Binding ProcessedDimensionsLabel}" Style="{StaticResource Text.Muted}" Margin="0,0,0,8" />
                         <TextBlock FontSize="{StaticResource Size.Text.Meta}" Foreground="{StaticResource Brush.TextSecondary}">
                             <Run Text="Rozměr úlohy: " /><Run Text="{Binding PlannedJob.Bounds.Width, StringFormat={}{0:0.0}, Mode=OneWay}" /><Run Text=" × " /><Run Text="{Binding PlannedJob.Bounds.Height, StringFormat={}{0:0.0}, Mode=OneWay}" /><Run Text=" mm" />
                         </TextBlock>
@@ -81,40 +98,43 @@
                     </StackPanel>
                 </components:ElevatedBorder>
 
-                <!--
-                    No engraving parameters here. Speed, power, passes and line spacing belong to the
-                    layer, which is already the single source of truth for what is sent to GRBL - see
-                    SceneObject.BuildRasterOutputOptions, which overrides whatever the import chose with
-                    the layer's own values. Asking for them twice meant the operator set numbers that
-                    the job then ignored.
-
-                    No tone mode either. Grayscale and threshold were choices about how to turn photo
-                    pixels into laser dots, which is not a decision an owner should have to research;
-                    Stucki dithering is the right answer for a diode laser at every size, and it was
-                    already the default.
-                -->
                 <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                     <StackPanel>
-                        <TextBlock Text="Vzhled obrázku" Style="{StaticResource PanelTitle}" />
-                        <CheckBox Content="Obrátit světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,4,0,0" />
-                    </StackPanel>
-                </components:ElevatedBorder>
-
-                <components:ElevatedBorder Style="{StaticResource InspectorSection}">
-                    <StackPanel>
-                        <TextBlock Text="Doladění obrazu" Style="{StaticResource PanelTitle}" />
-                        <Border Background="{StaticResource Brush.SelectedSurface}"
-                                BorderBrush="{StaticResource Brush.SelectedBorder}"
-                                BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
-                            <StackPanel>
-                                <TextBlock Text="Automaticky vyladěno" Foreground="{StaticResource Brush.TextPrimary}" FontWeight="SemiBold" />
-                                <TextBlock Text="Fotografie byla lokálně analyzována a připravena pro čisté gravírování. Jas, kontrast, detaily i dithering nastavuje Lasero automaticky."
-                                           Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Border>
-                        <!-- Processing values remain observable and testable, but are intentionally
-                             not customer-facing. The local photo analysis owns these decisions. -->
-                        <StackPanel Visibility="Collapsed">
+                        <TextBlock Text="Vzhled a převod" Style="{StaticResource PanelTitle}" />
+                        <TextBlock Text="Předvolba" Style="{StaticResource Text.Muted}" Margin="0,4,0,4" />
+                        <WrapPanel>
+                            <Button Style="{StaticResource Button.Ghost}" Content="Fotografie" Tag="Fotografie" Click="OnBuiltInPresetClick" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="Dřevo" Tag="Dřevo" Click="OnBuiltInPresetClick" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="Kůže" Tag="Kůže" Click="OnBuiltInPresetClick" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="Logo" Tag="Logo" Click="OnBuiltInPresetClick" />
+                        </WrapPanel>
+                        <Grid Margin="0,8,0,4">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <ComboBox x:Name="UserPresetCombo" ItemsSource="{Binding UserPresets}" DisplayMemberPath="Name"
+                                      SelectionChanged="OnUserPresetSelectionChanged" ToolTip="Moje předvolby úprav obrazu" />
+                            <Button Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Uložit" Click="OnSavePresetClick" />
+                        </Grid>
+                        <WrapPanel>
+                            <Button Style="{StaticResource Button.Ghost}" Content="Importovat…" Click="OnImportPresetClick" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="Exportovat…" Click="OnExportPresetClick" />
+                            <Button Style="{StaticResource Button.Ghost}" Content="Smazat" Click="OnDeletePresetClick" />
+                        </WrapPanel>
+                        <TextBlock Text="Způsob převodu" Style="{StaticResource Text.Muted}" Margin="0,8,0,4" />
+                        <ComboBox ItemsSource="{Binding AvailableDitheringChoices}" SelectedItem="{Binding SelectedDithering}" DisplayMemberPath="Label" />
+                        <TextBlock Text="{Binding SelectedDithering.Hint}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <CheckBox Content="Obrátit světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,12,0,8" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Jas" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Brightness, StringFormat={}{0:0}}" Style="{StaticResource Text.Numeric}" />
+                        </Grid>
+                        <Slider Minimum="-100" Maximum="100" Value="{Binding Brightness, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Rozestup řádků (mm)" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Grid.Column="1" Text="{Binding LineIntervalMm, StringFormat={}{0:0.###}}" Style="{StaticResource Text.Numeric}" />
+                        </Grid>
+                        <TextBox Text="{Binding Dpi, StringFormat={}{0:0.##}, UpdateSourceTrigger=LostFocus}" Margin="0,4,0,12" ToolTip="Rozlišení v DPI" />
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <TextBlock Text="Jas" Style="{StaticResource Text.Muted}" />
@@ -129,19 +149,31 @@
                         <Slider Minimum="-100" Maximum="100" Value="{Binding Contrast, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Gamma" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Gamma, StringFormat={}{0:0.00}}" Style="{StaticResource Text.Numeric}" />
+                        </Grid>
+                        <Slider Minimum="0.1" Maximum="3" TickFrequency="0.01" Value="{Binding Gamma, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <TextBlock Text="Doostření" Style="{StaticResource Text.Muted}" />
                             <TextBlock Grid.Column="1" Text="{Binding Sharpen, StringFormat={}{0:0}}" Style="{StaticResource Text.Numeric}" />
                         </Grid>
                         <Slider Minimum="0" Maximum="100" Value="{Binding Sharpen, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Poloměr doostření" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Grid.Column="1" Text="{Binding SharpenRadius}" Style="{StaticResource Text.Numeric}" />
+                        </Grid>
+                        <Slider Minimum="1" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding SharpenRadius}" Margin="0,4,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Práh" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Grid.Column="1" Text="{Binding ThresholdValue}" Style="{StaticResource Text.Numeric}" />
+                        </Grid>
+                        <Slider Minimum="0" Maximum="255" Value="{Binding ThresholdValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
 
-                        <Expander Header="Pokročilé nastavení">
+                        <Expander Header="Další úpravy">
                             <StackPanel Margin="0,12,0,0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock Text="Gamma" Style="{StaticResource Text.Muted}" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Gamma, StringFormat={}{0:0.00}}" Style="{StaticResource Text.Numeric}" />
-                                </Grid>
-                                <Slider Minimum="0.1" Maximum="3" TickFrequency="0.01" Value="{Binding Gamma, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="Expozice" Style="{StaticResource Text.Muted}" />
@@ -187,14 +219,8 @@
                             </StackPanel>
                         </Expander>
 
-                        <TextBlock Text="Dithering" Style="{StaticResource Text.Muted}" Margin="0,12,0,4" />
-                        <ComboBox ItemsSource="{Binding DitheringChoices}"
-                                  SelectedItem="{Binding SelectedDithering}"
-                                  DisplayMemberPath="Label"
-                                  ToolTip="{Binding SelectedDithering.Hint}" />
-                        <TextBlock Text="{Binding SelectedDithering.Hint}" Style="{StaticResource Text.Muted}"
-                                   TextWrapping="Wrap" Margin="0,8,0,0" />
-                        </StackPanel>
+                        <Button Style="{StaticResource Button.Ghost}" Content="Obnovit doporučené úpravy" Command="{Binding ResetAllCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding OriginalDimensionsLabel}" Style="{StaticResource Text.Muted}" Margin="0,8,0,0" />
                     </StackPanel>
                 </components:ElevatedBorder>
             </StackPanel>

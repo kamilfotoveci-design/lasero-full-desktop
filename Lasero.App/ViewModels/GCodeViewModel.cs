@@ -152,6 +152,7 @@ public partial class GCodeViewModel : ObservableObject
     /// is easy to miss, so the shell shows the reason in a dialog.</summary>
     public event Action<string, string>? StartBlocked;
     public event Action? PlacementChanged;
+    public event Action<string, RasterImportOptions>? RasterImportRequested;
 
     public event EventHandler<JobCompletedEventArgs>? JobCompleted;
 
@@ -221,8 +222,6 @@ public partial class GCodeViewModel : ObservableObject
                     RequestRegenerate();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
-                    // Put the photo on the canvas immediately. Image tone and engraving settings can
-                    // be changed later from its context menu, without blocking import on a dialog.
                     var rasterOptions = new RasterImportOptions
                     {
                         TargetWidthMm = ImportWidthMm,
@@ -230,11 +229,7 @@ public partial class GCodeViewModel : ObservableObject
                         FeedRatePerMinute = 3000,
                         MaxPower = RasterMaxPower,
                     };
-                    _scene.ImportRasterFile(dialog.FileName, rasterOptions);
-                    ImportKind = ImportKind.Raster;
-                    FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "Obrázek byl přidán na plátno. Velikost lze upravit přímo na plátně; nastavení obrázku se otevře pravým kliknutím.";
-                    RequestRegenerate();
+                    RasterImportRequested?.Invoke(dialog.FileName, rasterOptions);
                     break;
                 default:
                     ImportGCodeFile(dialog.FileName);
@@ -251,6 +246,15 @@ public partial class GCodeViewModel : ObservableObject
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
         }
+    }
+
+    public void AcceptRasterImport(string path, RasterImportOptions options)
+    {
+        _scene.ImportRasterFile(path, options);
+        ImportKind = ImportKind.Raster;
+        FileLabel = Path.GetFileName(path);
+        LastMessage = "Obrázek byl připraven a přidán do návrhu.";
+        RequestRegenerate();
     }
 
     private void ImportGCodeFile(string path)

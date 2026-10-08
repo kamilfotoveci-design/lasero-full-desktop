@@ -77,7 +77,7 @@ internal sealed class ShellHarness : IDisposable
             () => new DeviceWizardViewModel(new DeviceScanner(new GrblMachineFactory(), () => Array.Empty<string>()), connection, Machine, settings));
 
         var removal = new BackgroundRemovalCoordinator(scene, new NoBackgroundRemoval());
-        Window = new MainWindow(ViewModel, removal, new BackgroundRemovalConsentStore(P("consent.json")))
+        Window = new MainWindow(ViewModel, Machine, removal, new BackgroundRemovalConsentStore(P("consent.json")))
         {
             Width = width,
             Height = height,

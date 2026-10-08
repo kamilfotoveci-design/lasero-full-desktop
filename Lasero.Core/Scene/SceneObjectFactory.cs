@@ -61,7 +61,8 @@ public static class SceneObjectFactory
     [SupportedOSPlatform("windows")]
     public static SceneObject FromRaster(string filePath, RasterImportOptions options, string name, Layers.LayerSettings layer)
     {
-        var (widthMm, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, options.TargetWidthMm);
+        var (widthMm, defaultHeightMm) = RasterImporter.GetPlacedSizeMm(filePath, options.TargetWidthMm);
+        var heightMm = options.TargetHeightMm is > 0 ? options.TargetHeightMm.Value : defaultHeightMm;
         var bounds = new BoundingBox2D(0, 0, widthMm, heightMm);
         var pivot = new Position(widthMm / 2, heightMm / 2, 0);
 

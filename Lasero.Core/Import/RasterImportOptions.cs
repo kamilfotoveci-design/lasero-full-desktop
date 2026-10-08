@@ -34,6 +34,7 @@ public sealed record RasterImportOptions
     public bool Invert { get; init; }
     public double NoiseReduction { get; init; }
     public double Sharpen { get; init; }
+    public int SharpenRadius { get; init; } = 1;
     public double EdgeEnhance { get; init; }
 
     /// <summary>Deterministic error-diffusion dithering instead of continuous grayscale power. Takes

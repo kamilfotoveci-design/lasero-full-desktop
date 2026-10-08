@@ -12,6 +12,7 @@ using Lasero.App.Views.Kamil;
 using Lasero.App.Views.DeviceSetup;
 using Lasero.Core.BackgroundRemoval;
 using Lasero.Core.Grbl;
+using Lasero.Core.Machines;
 using Lasero.Core.Jobs;
 using Lasero.Core.Scene;
 using Serilog;
@@ -24,22 +25,27 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private readonly BackgroundRemovalCoordinator _backgroundRemoval;
     private readonly BackgroundRemovalConsentStore _backgroundRemovalConsent;
+    private readonly ILaserMachine _laserMachine;
     private MaterialsWindow? _materialsWindow;
     private PreviewWindow? _previewWindow;
 
     public MainWindow(
         MainViewModel viewModel,
+        ILaserMachine laserMachine,
         BackgroundRemovalCoordinator backgroundRemoval,
         BackgroundRemovalConsentStore backgroundRemovalConsent)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _laserMachine = laserMachine;
         _backgroundRemoval = backgroundRemoval;
         _backgroundRemovalConsent = backgroundRemovalConsent;
         DataContext = viewModel;
         _viewModel.GCode.SimulationStarted += OnSimulationStarted;
         _viewModel.GCode.StartBlocked += OnStartBlocked;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
+        _viewModel.GCode.RasterImportRequested += OnRasterImportRequested;
+        _viewModel.Scene.RasterEditRequested += OnRasterEditRequested;
         _viewModel.Scene.BackgroundRemovalRequested += OnBackgroundRemovalRequested;
         _viewModel.Scene.OffsetRequested += OnOffsetRequested;
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
@@ -66,6 +72,34 @@ public partial class MainWindow : Window
         _autosaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _autosaveTimer.Tick += (_, _) => _viewModel.SaveRecoverySnapshot();
         _autosaveTimer.Start();
+    }
+
+    private void OnRasterImportRequested(string path, Lasero.Core.Import.RasterImportOptions options)
+    {
+        var viewModel = new RasterImportViewModel(_laserMachine, _viewModel.SettingsStore, path,
+            options.TargetWidthMm, options.FeedRatePerMinute, options.MaxPower, options.Dpi,
+            options, RasterImagePresetStore.CreateDefault());
+        var window = new RasterImportWindow(viewModel) { Owner = this };
+        if (window.ShowDialog() == true)
+            _viewModel.GCode.AcceptRasterImport(path, viewModel.BuildOptions());
+    }
+
+    private void OnRasterEditRequested(SceneObject source)
+    {
+        if (source.RasterFilePath is not { } path || source.RasterOptions is not { } options) return;
+        options = options with
+        {
+            TargetWidthMm = source.LocalBounds.Width * Math.Abs(source.Transform.ScaleX),
+            TargetHeightMm = source.LocalBounds.Height * Math.Abs(source.Transform.ScaleY),
+        };
+        var viewModel = new RasterImportViewModel(_laserMachine, _viewModel.SettingsStore, path,
+            options.TargetWidthMm, options.FeedRatePerMinute, options.MaxPower, options.Dpi,
+            options, RasterImagePresetStore.CreateDefault());
+        var window = new RasterImportWindow(viewModel) { Owner = this };
+        if (window.ShowDialog() != true) return;
+        if (_viewModel.Scene.ApplyRasterOptions(source, viewModel.BuildOptions())
+            && _viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
+            _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
     }
 
     // "F" fits the view, matching LightBurn/Illustrator/Photoshop convention — deliberately a

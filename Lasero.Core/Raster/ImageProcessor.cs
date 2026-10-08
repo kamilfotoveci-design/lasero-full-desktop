@@ -43,6 +43,9 @@ public sealed record ImageProcessingOptions
     /// <summary>0..100 unsharp mask.</summary>
     public double Sharpen { get; init; }
 
+    /// <summary>Radius in pixels for unsharp masking. One preserves the original 3x3 kernel exactly.</summary>
+    public int SharpenRadius { get; init; } = 1;
+
     /// <summary>0..100 Laplacian edge add, for fine structure that would otherwise dissolve into the
     /// dither.</summary>
     public double EdgeEnhance { get; init; }
@@ -80,7 +83,8 @@ public static class ImageProcessor
         // grain is smoothed before anything sharpens it, and edge enhancement lands last so it acts
         // on the already-sharpened image rather than competing with it.
         if (options.NoiseReduction > 0) tone = BoxBlurBlend(tone, width, height, options.NoiseReduction / 100.0);
-        if (options.Sharpen > 0) tone = UnsharpMask(tone, width, height, options.Sharpen / 100.0 * 2.5);
+        if (options.Sharpen > 0) tone = UnsharpMask(tone, width, height, options.Sharpen / 100.0 * 2.5,
+            Math.Clamp(options.SharpenRadius, 1, 4));
         if (options.EdgeEnhance > 0) tone = LaplacianAdd(tone, width, height, options.EdgeEnhance / 100.0 * 1.2);
 
         // Dithering still wins over threshold, which is the one place this deliberately does not follow
@@ -155,13 +159,32 @@ public static class ImageProcessor
         });
 
     /// <summary>Unsharp mask: [0,-s,0; -s,1+4s,-s; 0,-s,0].</summary>
-    private static double[] UnsharpMask(double[] tone, int width, int height, double s) =>
-        Convolve(tone, width, height, (source, x, y) =>
-            source[(y - 1) * width + x] * -s +
-            source[y * width + x - 1] * -s +
-            source[y * width + x] * (1 + 4 * s) +
-            source[y * width + x + 1] * -s +
-            source[(y + 1) * width + x] * -s);
+    private static double[] UnsharpMask(double[] tone, int width, int height, double s, int radius)
+    {
+        if (radius == 1)
+            return Convolve(tone, width, height, (source, x, y) =>
+                source[(y - 1) * width + x] * -s +
+                source[y * width + x - 1] * -s +
+                source[y * width + x] * (1 + 4 * s) +
+                source[y * width + x + 1] * -s +
+                source[(y + 1) * width + x] * -s);
+
+        return Convolve(tone, width, height, (source, x, y) =>
+        {
+            var sum = 0.0;
+            var count = 0;
+            for (var dy = -radius; dy <= radius; dy++)
+            for (var dx = -radius; dx <= radius; dx++)
+            {
+                var sampleX = Math.Clamp(x + dx, 0, width - 1);
+                var sampleY = Math.Clamp(y + dy, 0, height - 1);
+                sum += source[sampleY * width + sampleX];
+                count++;
+            }
+            var blur = sum / count;
+            return source[y * width + x] + (source[y * width + x] - blur) * s;
+        });
+    }
 
     /// <summary>Laplacian edge add: the original plus its own second derivative.</summary>
     private static double[] LaplacianAdd(double[] tone, int width, int height, double k) =>

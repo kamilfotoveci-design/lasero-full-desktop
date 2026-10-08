@@ -17,13 +17,13 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _threshold = 128;
     [ObservableProperty] private TraceMode _mode = TraceMode.FilledShapes;
     [ObservableProperty] private ThresholdMode _thresholdMode = ThresholdMode.Manual;
-    [ObservableProperty] private TraceQuality _quality = TraceQuality.Balanced;
-    [ObservableProperty] private double _detail = 0.5;
+    [ObservableProperty] private TraceQuality _quality = TraceQuality.HighFidelity;
+    [ObservableProperty] private double _detail = 0.8;
     [ObservableProperty] private double _noiseRemoval;
     [ObservableProperty] private double _contrast;
     // A modest cubic fit preserves small letter details without reproducing pixel stair steps.
-    [ObservableProperty] private double _simplificationPixels = 0.4;
-    [ObservableProperty] private int _minimumFeaturePixels = 2;
+    [ObservableProperty] private double _simplificationPixels = 0.25;
+    [ObservableProperty] private int _minimumFeaturePixels = 1;
     [ObservableProperty] private bool _invert;
     [ObservableProperty] private bool _isComputing;
     [ObservableProperty] private string? _statusMessage;

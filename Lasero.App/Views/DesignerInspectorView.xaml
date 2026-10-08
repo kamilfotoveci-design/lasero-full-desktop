@@ -172,6 +172,11 @@
                             Visibility="{Binding Scene.IsSelectedRaster, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="Obrázek" Style="{StaticResource InspectorGroupHeader}" Margin="0,0,0,12" />
 
+                    <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch" Height="36"
+                            Command="{Binding Scene.EditSelectedRasterCommand}"
+                            Content="Upravit obrázek"
+                            ToolTip="Upravit rozměr, tóny a způsob převodu na gravírovací body." />
+
                     <Button Style="{StaticResource Button.Outline}" HorizontalAlignment="Stretch" Height="36"
                             Command="{Binding Scene.RemoveSelectedBackgroundCommand}"
                             Visibility="{Binding Scene.CanRemoveSelectedBackground, Converter={StaticResource BoolToVisibility}}"

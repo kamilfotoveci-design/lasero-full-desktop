@@ -123,6 +123,7 @@ public partial class SceneViewModel : ObservableObject
 
     public bool CanUniteSelection => UniteSelectionDisabledReason is null;
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
+    public bool CanEditSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, RasterOptions: not null };
 
     /// <summary>Null when Offset Path is available; otherwise a specific Czech explanation of whichever
     /// precondition fails. CanOffsetSelection derives from this — see UniteSelectionDisabledReason for
@@ -185,6 +186,7 @@ public partial class SceneViewModel : ObservableObject
 
     public event Action? Changed;
     public event Action<SceneObject>? TraceRasterRequested;
+    public event Action<SceneObject>? RasterEditRequested;
     public event Action<SceneObject>? BackgroundRemovalRequested;
     public event Action? BackgroundRemovalCancelRequested;
     public event Action<string>? VectorOperationRejected;
@@ -350,6 +352,7 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedHeight));
         OnPropertyChanged(nameof(CanEditSelectedPosition));
         OnPropertyChanged(nameof(CanTransformSelectedObject));
+        OnPropertyChanged(nameof(CanEditSelectedRaster));
     }
 
     private (double X, double Y) NextCascadeOffset()
@@ -379,6 +382,30 @@ public partial class SceneViewModel : ObservableObject
         var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path), layer);
         PlaceAndAdd(obj, [layer]);
         FileImported?.Invoke();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditSelectedRaster))]
+    private void EditSelectedRaster()
+    {
+        if (CanEditSelectedRaster && Selected is { } raster)
+            RasterEditRequested?.Invoke(raster);
+    }
+
+    public bool ApplyRasterOptions(SceneObject source, RasterImportOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(options);
+        if (!Objects.Contains(source) || source.IsLocked || source.RasterFilePath is not { } path) return false;
+        var layerId = source.LocalShapes.FirstOrDefault()?.LayerId ?? Guid.Empty;
+        var layer = Layers.FirstOrDefault(item => item.Id == layerId) ?? SceneObjectFactory.CreateRasterLayer(options);
+        var replacement = SceneObjectFactory.FromRaster(path, options, source.Name, layer);
+        replacement.Transform = source.Transform.WithPivotMoved(source.LocalPivot, replacement.LocalPivot);
+        replacement.IsVisible = source.IsVisible;
+        replacement.IsLocked = source.IsLocked;
+        replacement.IncludeInOutput = source.IncludeInOutput;
+        Execute(new ReplaceObjectsCommand(Scene, [source], [replacement]));
+        SelectedObjects.ReplaceWith([replacement]);
+        return true;
     }
 
     [RelayCommand(CanExecute = nameof(CanTraceSelectedRaster))]
@@ -2037,6 +2064,7 @@ public partial class SceneViewModel : ObservableObject
         CutCommand.NotifyCanExecuteChanged();
         PasteCommand.NotifyCanExecuteChanged();
         SelectAllCommand.NotifyCanExecuteChanged();
+        EditSelectedRasterCommand.NotifyCanExecuteChanged();
         AlignLeftCommand.NotifyCanExecuteChanged();
         AlignCenterHorizontalCommand.NotifyCanExecuteChanged();
         AlignRightCommand.NotifyCanExecuteChanged();
