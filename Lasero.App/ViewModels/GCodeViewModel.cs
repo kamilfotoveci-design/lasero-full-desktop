@@ -218,7 +218,7 @@ public partial class GCodeViewModel : ObservableObject
                     ImportKind = ImportKind.Svg;
                     FileLabel = Path.GetFileName(dialog.FileName);
                     LastMessage = "SVG bylo přidáno do návrhu. Objekt lze přesunout, otočit nebo změnit jeho velikost.";
-                    RegenerateFromScene();
+                    RequestRegenerate();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
                     // Put the photo on the canvas immediately. Image tone and engraving settings can
@@ -234,7 +234,7 @@ public partial class GCodeViewModel : ObservableObject
                     ImportKind = ImportKind.Raster;
                     FileLabel = Path.GetFileName(dialog.FileName);
                     LastMessage = "Obrázek byl přidán na plátno. Velikost lze upravit přímo na plátně; nastavení obrázku se otevře pravým kliknutím.";
-                    RegenerateFromScene();
+                    RequestRegenerate();
                     break;
                 default:
                     ImportGCodeFile(dialog.FileName);
@@ -291,7 +291,7 @@ public partial class GCodeViewModel : ObservableObject
             _controllerLaserModeEnabled = profile?.LaserModeEnabled;
             if ((previousMaximumS != _controllerMaximumS || previousLaserModeEnabled != _controllerLaserModeEnabled)
                 && _scene.Objects.Count > 0 && ImportKind != ImportKind.GCode)
-                RegenerateFromScene();
+                RequestRegenerate();
             RefreshCommands();
         }
 
@@ -299,9 +299,104 @@ public partial class GCodeViewModel : ObservableObject
         else dispatcher.BeginInvoke((Action)Apply);
     }
 
+    /// <summary>Raised on the UI thread when the job document has been (re)built or cleared.</summary>
+    public event Action? JobDocumentRebuilt;
+
+    private int _regenerationVersion;
+    private CancellationTokenSource? _regenerationCancellation;
+
+    /// <summary>True while the job for the current scene is being prepared on a worker thread.</summary>
+    [ObservableProperty] private bool _isPreparingJob;
+
+    /// <summary>
+    /// Prepares the job for the scene without blocking the window: the scene is copied (cheaply, geometry
+    /// is shared), the G-code is built and parsed on a worker thread with the same
+    /// <see cref="SceneJobBuilder"/> the synchronous path uses, and the result is applied on the UI thread
+    /// only if nothing changed meanwhile. Until it is applied the document counts as out of date, so
+    /// Start, Frame and preflight can never act on a job that no longer matches the design: they rebuild
+    /// synchronously (see <see cref="EnsureSceneDocumentCurrent"/>) and supersede this run.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanRegenerate))]
-    private void RegenerateFromScene()
+    private async Task RegenerateFromSceneAsync()
     {
+        _controllerMaximumS = ReadControllerMaximumS();
+        if (_controllerMaximumS is not { } maximumS || !double.IsFinite(maximumS) || maximumS <= 0)
+        {
+            RegenerateFromSceneNow();
+            return;
+        }
+
+        RefreshEffectivePlacement();
+        var placement = _placement;
+        var snapshot = SceneJobBuilder.Snapshot(_scene.Scene);
+        _regenerationCancellation?.Cancel();
+        var cancellation = _regenerationCancellation = new CancellationTokenSource();
+        var version = ++_regenerationVersion;
+        _sceneDocumentDirty = true; // the shown job is being replaced; nothing may run from it meanwhile
+        IsPreparingJob = true;
+        LastMessage = "Připravuji úlohu…";
+
+        GCodeDocument document;
+        try
+        {
+            document = await Task.Run(() =>
+            {
+                var token = cancellation.Token;
+                var baseLines = SceneJobBuilder.BuildLines(snapshot, maximumS, 0, 0, token);
+                var baseDocument = GCodeParser.Parse(baseLines, "Scéna");
+                var offset = placement?.CalculateOffset(baseDocument.BoundingBox) ?? (0d, 0d);
+                var lines = offset == (0d, 0d)
+                    ? baseLines
+                    : SceneJobBuilder.BuildLines(snapshot, maximumS, offset.Item1, offset.Item2, token);
+                token.ThrowIfCancellationRequested();
+                return GCodeParser.Parse(lines, SceneJobLabel);
+            }, cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // superseded by a newer run or a synchronous rebuild, which own the state now
+        }
+        catch (Exception ex)
+        {
+            if (version == _regenerationVersion)
+            {
+                IsPreparingJob = false;
+                Log.Warning(ex, "Preparing the job failed");
+                LastMessage = "Úlohu se nepodařilo připravit. Lze to zkusit znovu.";
+            }
+
+            return;
+        }
+
+        if (version != _regenerationVersion || cancellation.IsCancellationRequested) return;
+        IsPreparingJob = false;
+        SetDocument(document, SceneJobLabel);
+        _sceneDocumentDirty = false;
+        UpdatePlacementLabel();
+        if (LastMessage == "Připravuji úlohu…") LastMessage = null;
+        JobDocumentRebuilt?.Invoke();
+    }
+
+    /// <summary>Starts preparing the job in the background and returns at once.</summary>
+    private void RequestRegenerate()
+    {
+        if (!CanRegenerate()) return;
+        _ = RegenerateFromSceneAsync();
+    }
+
+    private void SupersedePendingRegeneration()
+    {
+        _regenerationVersion++;
+        _regenerationCancellation?.Cancel();
+        if (IsPreparingJob) IsPreparingJob = false;
+        if (LastMessage == "Připravuji úlohu…") LastMessage = null;
+    }
+
+    /// <summary>Synchronous rebuild on the calling thread. Used where the result is needed immediately
+    /// (before a job is checked and sent, framed or previewed) and by the machine profile update.</summary>
+    private void RegenerateFromSceneNow()
+    {
+        SupersedePendingRegeneration();
         _controllerMaximumS = ReadControllerMaximumS();
         if (_controllerMaximumS is not { } maximumS || !double.IsFinite(maximumS) || maximumS <= 0)
         {
@@ -338,53 +433,15 @@ public partial class GCodeViewModel : ObservableObject
         UpdatePlacementLabel();
     }
 
-    private List<string> BuildSceneGCode(double offsetX, double offsetY)
-    {
-        var lines = new List<string>();
-        var document = _scene.Scene.ToImportedDocument(offsetX, offsetY);
+    private List<string> BuildSceneGCode(double offsetX, double offsetY) =>
+        SceneJobBuilder.BuildLines(_scene.Scene, _controllerMaximumS!.Value, offsetX, offsetY);
 
-        // The layer list is the manufacturing order for both vectors and bitmaps. Raster jobs used
-        // to be appended after every vector regardless of the order shown in the UI.
-        foreach (var layer in Layers.Where(item => item.IsEnabled))
-        {
-            if (layer.IsRaster)
-            {
-                foreach (var obj in _scene.Objects.Where(item =>
-                             item.IsVisible && item.IncludeInOutput && item.IsRaster && UsesLayer(item, layer)))
-                {
-                    var outputOptions = obj.BuildRasterOutputOptions(layer, offsetX, offsetY);
-                    if (outputOptions is not null)
-                        lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions, _controllerMaximumS!.Value));
-                }
-                continue;
-            }
-
-            var shapes = document.Shapes.Where(shape => shape.LayerId != Guid.Empty
-                ? shape.LayerId == layer.Id
-                : shape.LayerColor.IsApproximately(layer.Color)).ToList();
-            if (shapes.Count == 0) continue;
-
-            lines.AddRange(ToolpathBuilder.BuildGCode(new ImportedDocument
-            {
-                Shapes = shapes,
-                Layers = [layer],
-                BoundingBox = document.BoundingBox,
-                SourceFileName = document.SourceFileName,
-            }, _controllerMaximumS!.Value));
-        }
-
-        return lines;
-    }
-
-    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
-        item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
-            ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color)) ||
-        layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty);
+    private static bool UsesLayer(SceneObject item, LayerSettings layer) => SceneJobBuilder.UsesLayer(item, layer);
 
     private void OnSceneChanged()
     {
         if (ImportKind == ImportKind.GCode) return;
+        SupersedePendingRegeneration(); // a job prepared from the previous scene must not be applied
         _sceneDocumentDirty = true;
         IsCurrentDocumentFramed = false;
         if (!IsJobActive && JobState is (JobRunState.Ready or JobRunState.Completed))
@@ -398,7 +455,7 @@ public partial class GCodeViewModel : ObservableObject
 
         if (_sceneDocumentDirty ||
             (refreshCurrentPosition && PlacementMode == JobPlacementMode.CurrentPosition))
-            RegenerateFromScene();
+            RegenerateFromSceneNow();
     }
 
     private void SetDocument(GCodeDocument document, string pathOrLabel)
@@ -595,7 +652,7 @@ public partial class GCodeViewModel : ObservableObject
         IsCurrentDocumentFramed = false;
         RefreshEffectivePlacement();
         if (_scene.Objects.Count > 0 && ImportKind != ImportKind.GCode)
-            RegenerateFromScene();
+            RequestRegenerate();
         PlacementChanged?.Invoke();
         LastMessage = value == JobPlacementMode.CurrentPosition
             ? "Úloha začne v aktuální poloze laseru. Polohu lze změnit šipkami před rámováním nebo spuštěním."
@@ -607,7 +664,7 @@ public partial class GCodeViewModel : ObservableObject
         if (PlacementMode != JobPlacementMode.CurrentPosition) return;
         RefreshEffectivePlacement();
         if (_scene.Objects.Count > 0 && ImportKind != ImportKind.GCode)
-            RegenerateFromScene();
+            RequestRegenerate();
         PlacementChanged?.Invoke();
     }
 
@@ -699,9 +756,14 @@ public partial class GCodeViewModel : ObservableObject
         && JobState is not (JobRunState.Running or JobRunState.Paused or JobRunState.Framing);
 
     [RelayCommand(CanExecute = nameof(CanPreviewSimulation))]
-    private void PreviewSimulation()
+    private async Task PreviewSimulation()
     {
-        EnsureSceneDocumentCurrent(refreshCurrentPosition: true);
+        if (_scene.Objects.Count > 0 &&
+            (_sceneDocumentDirty || PlacementMode == JobPlacementMode.CurrentPosition) &&
+            CanRegenerate() && ReadControllerMaximumS() is > 0)
+            await RegenerateFromSceneAsync();
+        else
+            EnsureSceneDocumentCurrent(refreshCurrentPosition: true);
         if (Document is null || _timeEstimate is null) return;
 
         EstimatedTimeLabel = FormatDuration(EstimatedDuration);
