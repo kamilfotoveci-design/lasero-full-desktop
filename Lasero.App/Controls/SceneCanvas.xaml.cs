@@ -116,10 +116,7 @@ public partial class SceneCanvas : UserControl
     private const double ObjectStrokePx = 1.4;
     private const double HoverStrokePx = 2;
     private readonly Dictionary<SceneObject, Image> _rasterImageVisuals = new();
-    private readonly List<Line> _gridLines = new();
     private readonly List<FrameworkElement> _selectionVisuals = new();
-    private readonly List<UIElement> _topRulerVisuals = new();
-    private readonly List<UIElement> _leftRulerVisuals = new();
     private Rectangle? _bedRectVisual;
     private Rectangle? _rubberBandVisual;
     private Path? _toolPreviewVisual;
@@ -461,7 +458,6 @@ public partial class SceneCanvas : UserControl
         foreach (var obj in _objectVisuals.Keys.ToList())
             RemoveObjectVisuals(obj);
         DrawCanvas.Children.Clear();
-        _gridLines.Clear();
         _selectionVisuals.Clear();
         _worldSpaceSelectionVisuals.Clear();
         _geometryCache.Clear();
@@ -773,16 +769,51 @@ public partial class SceneCanvas : UserControl
         return new PathGeometry(figures) { FillRule = FillRule.Nonzero };
     }
 
+    // The grid, bed and rulers are persistent visuals whose geometry is replaced on every view change:
+    // two paths for the grid lines (minor and axis), one rectangle for the bed, one path of ticks per
+    // ruler and a reused TextBlock per tick label. They used to be created, measured and discarded
+    // again on every pan and zoom step, which was most of what a pan cost once the artwork itself
+    // stopped being rebuilt.
+    private Path? _gridMinorPath;
+    private Path? _gridAxisPath;
+    private Path? _topTicksPath;
+    private Path? _leftTicksPath;
+    private readonly Dictionary<string, TextBlock> _topLabels = new();
+    private readonly Dictionary<string, TextBlock> _leftLabels = new();
+    private readonly Dictionary<string, Size> _labelSizes = new();
+    private FontFamily? _rulerFont;
+
+    private void EnsureGridVisuals()
+    {
+        if (_bedRectVisual is null)
+        {
+            _bedRectVisual = new Rectangle
+            {
+                Fill = (Brush)FindResource("Brush.Canvas.WorkArea"),
+                Stroke = (Brush)FindResource("Brush.Canvas.WorkAreaBorder"),
+                StrokeThickness = 1,
+                IsHitTestVisible = false,
+            };
+        }
+
+        _gridMinorPath ??= new Path { Stroke = (Brush)FindResource("Brush.Canvas.GridMinor"), StrokeThickness = 1, IsHitTestVisible = false };
+        _gridAxisPath ??= new Path { Stroke = (Brush)FindResource("Brush.Canvas.GridMajor"), StrokeThickness = 1.2, IsHitTestVisible = false };
+
+        // RebuildAll clears the canvas children; re-attach in z-order (bed, grid, axes) behind everything.
+        if (_bedRectVisual.Parent is null)
+        {
+            DrawCanvas.Children.Insert(0, _bedRectVisual);
+            DrawCanvas.Children.Insert(1, _gridMinorPath);
+            DrawCanvas.Children.Insert(2, _gridAxisPath);
+        }
+    }
+
     private void RedrawGrid()
     {
-        foreach (var line in _gridLines) DrawCanvas.Children.Remove(line);
-        _gridLines.Clear();
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
+        EnsureGridVisuals();
 
         var step = RulerMath.PickStep(_scale);
-
-        var gridBrush = (Brush)FindResource("Brush.Canvas.GridMinor");
-        var axisBrush = (Brush)FindResource("Brush.Canvas.GridMajor");
 
         // The grid belongs to the bed, not to the viewport. Drawn across the whole canvas it used to
         // run out over the surround, which is nearly black in this theme — a dark grid line on it is
@@ -793,63 +824,87 @@ public partial class SceneCanvas : UserControl
         var bedTop = hasBed ? ToCanvasY(WorkAreaHeightMm) : 0;
         var bedBottom = hasBed ? ToCanvasY(0) : ActualHeight;
 
+        var minor = new StreamGeometry();
+        var axis = new StreamGeometry();
         var firstX = RulerMath.FirstTick(_offsetXMm, step);
-        for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
-        {
-            var px = ToCanvasX(x);
-            if (hasBed && (px < bedLeft - 0.5 || px > bedRight + 0.5)) continue;
-            var line = new Line
-            {
-                X1 = px, X2 = px, Y1 = bedTop, Y2 = bedBottom,
-                Stroke = Math.Abs(x) < 1e-6 ? axisBrush : gridBrush,
-                StrokeThickness = Math.Abs(x) < 1e-6 ? 1.2 : 1,
-                IsHitTestVisible = false,
-            };
-            DrawCanvas.Children.Insert(0, line); // always behind object paths, regardless of insertion order among grid lines
-            _gridLines.Add(line);
-        }
-
         var firstY = RulerMath.FirstTick(_offsetYMm, step);
-        for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
+        using (var minorContext = minor.Open())
+        using (var axisContext = axis.Open())
         {
-            var py = ToCanvasY(y);
-            if (hasBed && (py < bedTop - 0.5 || py > bedBottom + 0.5)) continue;
-            var line = new Line
+            for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
             {
-                X1 = bedLeft, X2 = bedRight, Y1 = py, Y2 = py,
-                Stroke = Math.Abs(y) < 1e-6 ? axisBrush : gridBrush,
-                StrokeThickness = Math.Abs(y) < 1e-6 ? 1.2 : 1,
-                IsHitTestVisible = false,
-            };
-            DrawCanvas.Children.Insert(0, line);
-            _gridLines.Add(line);
+                var px = ToCanvasX(x);
+                if (hasBed && (px < bedLeft - 0.5 || px > bedRight + 0.5)) continue;
+                var context = Math.Abs(x) < 1e-6 ? axisContext : minorContext;
+                context.BeginFigure(new Point(px, bedTop), false, false);
+                context.LineTo(new Point(px, bedBottom), true, false);
+            }
+
+            for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
+            {
+                var py = ToCanvasY(y);
+                if (hasBed && (py < bedTop - 0.5 || py > bedBottom + 0.5)) continue;
+                var context = Math.Abs(y) < 1e-6 ? axisContext : minorContext;
+                context.BeginFigure(new Point(bedLeft, py), false, false);
+                context.LineTo(new Point(bedRight, py), true, false);
+            }
         }
 
-        // Bed rectangle drawn LAST and inserted at index 0 last, so it ends up behind every grid
-        // line just added above (each Insert(0, ...) call above only pushed prior lines back, so
-        // inserting the bed now — after all of them — is what actually lands it furthest back).
-        if (_bedRectVisual is not null) DrawCanvas.Children.Remove(_bedRectVisual);
-        if (WorkAreaWidthMm > 0 && WorkAreaHeightMm > 0)
+        minor.Freeze();
+        axis.Freeze();
+        _gridMinorPath!.Data = minor;
+        _gridAxisPath!.Data = axis;
+
+        if (hasBed)
         {
-            _bedRectVisual = new Rectangle
-            {
-                Width = Math.Max(0, WorkAreaWidthMm * _scale),
-                Height = Math.Max(0, WorkAreaHeightMm * _scale),
-                Fill = (Brush)FindResource("Brush.Canvas.WorkArea"),
-                Stroke = (Brush)FindResource("Brush.Canvas.WorkAreaBorder"),
-                StrokeThickness = 1,
-                IsHitTestVisible = false,
-            };
+            _bedRectVisual!.Width = Math.Max(0, WorkAreaWidthMm * _scale);
+            _bedRectVisual.Height = Math.Max(0, WorkAreaHeightMm * _scale);
             Canvas.SetLeft(_bedRectVisual, ToCanvasX(0));
             Canvas.SetTop(_bedRectVisual, ToCanvasY(WorkAreaHeightMm));
-            DrawCanvas.Children.Insert(0, _bedRectVisual);
+            _bedRectVisual.Visibility = Visibility.Visible;
         }
         else
         {
-            _bedRectVisual = null;
+            _bedRectVisual!.Visibility = Visibility.Collapsed;
         }
 
         RedrawRulers(step, firstX, firstY);
+    }
+
+    private Size LabelSize(string text)
+    {
+        if (_labelSizes.TryGetValue(text, out var size)) return size;
+        var probe = new TextBlock { Text = text, FontSize = 11, FontFamily = _rulerFont };
+        probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        if (_labelSizes.Count > 2000) _labelSizes.Clear();
+        return _labelSizes[text] = probe.DesiredSize;
+    }
+
+    private TextBlock RulerLabel(Dictionary<string, TextBlock> labels, Canvas ruler, string text, Brush brush)
+    {
+        if (labels.TryGetValue(text, out var label)) return label;
+        label = new TextBlock { Text = text, FontSize = 11, FontFamily = _rulerFont, Foreground = brush };
+        labels[text] = label;
+        ruler.Children.Add(label);
+        return label;
+    }
+
+    private static void RetireUnusedLabels(Dictionary<string, TextBlock> labels, HashSet<string> used, Canvas ruler)
+    {
+        List<string>? drop = null;
+        foreach (var (text, label) in labels)
+        {
+            if (used.Contains(text)) continue;
+            label.Visibility = Visibility.Collapsed;
+            if (labels.Count > 400) (drop ??= []).Add(text);
+        }
+
+        if (drop is null) return;
+        foreach (var text in drop)
+        {
+            ruler.Children.Remove(labels[text]);
+            labels.Remove(text);
+        }
     }
 
     // Ruler strips are separate fixed-size Canvases (TopRuler/LeftRuler) sharing the same Grid
@@ -857,52 +912,72 @@ public partial class SceneCanvas : UserControl
     // matching grid line drawn into DrawCanvas at the same coordinates.
     private void RedrawRulers(double step, double firstX, double firstY)
     {
-        foreach (var el in _topRulerVisuals) TopRuler.Children.Remove(el);
-        foreach (var el in _leftRulerVisuals) LeftRuler.Children.Remove(el);
-        _topRulerVisuals.Clear();
-        _leftRulerVisuals.Clear();
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
 
         var tickBrush = (Brush)FindResource("Brush.PanelBorder");
         var labelBrush = (Brush)FindResource("Brush.TextSecondary");
-        // FontFamily is inherited from the Window and these labels aren't in the visual
-        // tree yet when measured, so an explicit FontFamily keeps Measure() honest about
-        // the width they'll actually render at (an unparented element has no inheritance
-        // context and would otherwise measure against the default WPF font, not Inter).
-        var labelFont = (FontFamily)FindResource("Font.Numeric");
+        // FontFamily is inherited from the Window and these labels aren't in the visual tree yet when
+        // measured, so an explicit FontFamily keeps Measure() honest about the width they will render at.
+        _rulerFont ??= (FontFamily)FindResource("Font.Numeric");
 
-        for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
+        if (_topTicksPath is null || _topTicksPath.Parent is null)
         {
-            var px = ToCanvasX(x);
-            var tick = new Line { X1 = px, X2 = px, Y1 = TopRuler.ActualHeight - 6, Y2 = TopRuler.ActualHeight, Stroke = tickBrush, StrokeThickness = 1 };
-            TopRuler.Children.Add(tick);
-            _topRulerVisuals.Add(tick);
-
-            var label = new TextBlock { Text = FormatTickMm(x), FontSize = 11, FontFamily = labelFont, Foreground = labelBrush };
-            label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            if (px + 3 + label.DesiredSize.Width > TopRuler.ActualWidth) continue;
-
-            Canvas.SetLeft(label, px + 3);
-            Canvas.SetTop(label, 2);
-            TopRuler.Children.Add(label);
-            _topRulerVisuals.Add(label);
+            _topTicksPath = new Path { Stroke = tickBrush, StrokeThickness = 1, IsHitTestVisible = false };
+            _leftTicksPath = new Path { Stroke = tickBrush, StrokeThickness = 1, IsHitTestVisible = false };
+            // The ruler canvases are cleared only by their owner; labels cached from a previous owner are stale.
+            _topLabels.Clear();
+            _leftLabels.Clear();
+            TopRuler.Children.Clear();
+            LeftRuler.Children.Clear();
+            TopRuler.Children.Add(_topTicksPath);
+            LeftRuler.Children.Add(_leftTicksPath);
         }
 
-        for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
+        var topTicks = new StreamGeometry();
+        var leftTicks = new StreamGeometry();
+        var usedTop = new HashSet<string>();
+        var usedLeft = new HashSet<string>();
+        using (var topContext = topTicks.Open())
+        using (var leftContext = leftTicks.Open())
         {
-            var py = ToCanvasY(y);
-            var tick = new Line { X1 = LeftRuler.ActualWidth - 6, X2 = LeftRuler.ActualWidth, Y1 = py, Y2 = py, Stroke = tickBrush, StrokeThickness = 1 };
-            LeftRuler.Children.Add(tick);
-            _leftRulerVisuals.Add(tick);
+            for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
+            {
+                var px = ToCanvasX(x);
+                topContext.BeginFigure(new Point(px, TopRuler.ActualHeight - 6), false, false);
+                topContext.LineTo(new Point(px, TopRuler.ActualHeight), true, false);
 
-            var label = new TextBlock { Text = FormatTickMm(y), FontSize = 11, FontFamily = labelFont, Foreground = labelBrush };
-            label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            if (!RulerLabelLayout.FitsVertically(py, label.DesiredSize.Height, LeftRuler.ActualHeight)) continue;
-            Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - label.DesiredSize.Width));
-            Canvas.SetTop(label, py - label.DesiredSize.Height / 2);
-            LeftRuler.Children.Add(label);
-            _leftRulerVisuals.Add(label);
+                var text = FormatTickMm(x);
+                if (px + 3 + LabelSize(text).Width > TopRuler.ActualWidth) continue;
+                var label = RulerLabel(_topLabels, TopRuler, text, labelBrush);
+                Canvas.SetLeft(label, px + 3);
+                Canvas.SetTop(label, 2);
+                label.Visibility = Visibility.Visible;
+                usedTop.Add(text);
+            }
+
+            for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
+            {
+                var py = ToCanvasY(y);
+                leftContext.BeginFigure(new Point(LeftRuler.ActualWidth - 6, py), false, false);
+                leftContext.LineTo(new Point(LeftRuler.ActualWidth, py), true, false);
+
+                var text = FormatTickMm(y);
+                var size = LabelSize(text);
+                if (!RulerLabelLayout.FitsVertically(py, size.Height, LeftRuler.ActualHeight)) continue;
+                var label = RulerLabel(_leftLabels, LeftRuler, text, labelBrush);
+                Canvas.SetLeft(label, Math.Max(1, LeftRuler.ActualWidth - 8 - size.Width));
+                Canvas.SetTop(label, py - size.Height / 2);
+                label.Visibility = Visibility.Visible;
+                usedLeft.Add(text);
+            }
         }
+
+        topTicks.Freeze();
+        leftTicks.Freeze();
+        _topTicksPath.Data = topTicks;
+        _leftTicksPath!.Data = leftTicks;
+        RetireUnusedLabels(_topLabels, usedTop, TopRuler);
+        RetireUnusedLabels(_leftLabels, usedLeft, LeftRuler);
     }
 
     private static string FormatTickMm(double valueMm) =>
