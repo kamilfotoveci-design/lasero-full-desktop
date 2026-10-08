@@ -1,5 +1,7 @@
 using System.IO;
 using System.Reflection;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Lasero.App;
 using Lasero.App.ViewModels;
@@ -55,13 +57,27 @@ public sealed class AsyncJobGenerationTests : IDisposable
     [Fact]
     public void JobBuiltFromASnapshotIsLineForLineTheJobBuiltFromTheLiveScene()
     {
-        var scene = MixedScene().Scene;
+        Ui.Invoke(() =>
+        {
+            var scene = MixedScene();
+            var rasterPath = LayoutAuditRenderTests.WritePng(Path.Combine(_directory, "snapshot-raster.png"), (dc, width, height) =>
+            {
+                dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+                dc.DrawRectangle(Brushes.Black, null, new Rect(12, 18, width - 24, height - 36));
+            });
+            scene.ImportRasterFile(rasterPath, new Lasero.Core.Import.RasterImportOptions
+            {
+                TargetWidthMm = 12,
+                Dpi = 127,
+                UseDithering = true,
+            });
 
-        var live = SceneJobBuilder.BuildLines(scene, 1000, 3.5, -2);
-        var snapshot = SceneJobBuilder.BuildLines(SceneJobBuilder.Snapshot(scene), 1000, 3.5, -2);
+            var live = SceneJobBuilder.BuildLines(scene.Scene, 1000, 3.5, -2);
+            var snapshot = SceneJobBuilder.BuildLines(SceneJobBuilder.Snapshot(scene.Scene), 1000, 3.5, -2);
 
-        Assert.True(live.Count > 100);
-        Assert.Equal(live, snapshot);
+            Assert.True(live.Count > 100);
+            Assert.Equal(live, snapshot);
+        });
     }
 
     [Fact]
@@ -144,10 +160,24 @@ public sealed class AsyncJobGenerationTests : IDisposable
             Assert.Null(viewModel.Document);
             Assert.False(viewModel.IsPreparingJob);
 
-            // What Start, Frame and preview-before-run call: it rebuilds on the spot from the design as it is now.
-            typeof(GCodeViewModel).GetMethod("EnsureSceneDocumentCurrent", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(viewModel, [false]);
+            // Start rebuilds before evaluating preflight. This fake machine is disconnected, so the action exits
+            // at the safety gate before opening a confirmation or sending any machine command.
+            InvokeActionThroughPreflight(viewModel, "RunJob");
             Assert.NotNull(viewModel.Document);
             Assert.Equal(SceneJobBuilder.BuildLines(scene.Scene, 1000, 0, 0), viewModel.Document!.RawLines.ToList());
+
+            item = scene.Objects[1];
+            scene.Execute(new TransformObjectCommand(item, item.Transform, item.Transform with { X = 91 }));
+            InvokeActionThroughPreflight(viewModel, "RunFraming");
+            Assert.Equal(SceneJobBuilder.BuildLines(scene.Scene, 1000, 0, 0), viewModel.Document!.RawLines.ToList());
         });
+    }
+
+    private static void InvokeActionThroughPreflight(GCodeViewModel viewModel, string methodName)
+    {
+        var method = typeof(GCodeViewModel).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var task = (Task)method.Invoke(viewModel, null)!;
+        Assert.True(task.IsCompleted, $"{methodName} should rebuild synchronously before its preflight gate");
+        task.GetAwaiter().GetResult();
     }
 }
