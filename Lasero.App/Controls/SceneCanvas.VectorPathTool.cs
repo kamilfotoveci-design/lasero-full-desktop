@@ -1009,12 +1009,12 @@ public partial class SceneCanvas
     /// losing them the moment a live frame is rendered.</summary>
     private void RenderVectorPathLive(SceneObject obj, VectorPath path)
     {
-        var session = _nodeDragSession ??= new VectorPathDragSession(obj.LocalShapes);
-        // The property-changed handler would repaint the object and the whole overlay once more for this
-        // same assignment; this method repaints the object itself and the caller redraws the overlay.
-        _suppressObjectRepaint = true;
-        try { obj.LocalShapes = session.BuildPreviewShapes(path, VectorPathDefaultColor); }
-        finally { _suppressObjectRepaint = false; }
+        // The drag is drawn from the working path (see VectorPathRenderSource), a frozen cubic geometry
+        // built from the nodes. Re-flattening every node into LocalShapes on each pointer move, only for
+        // FinishNodeEditDrag to restore the original shapes before commit, cost tens of milliseconds on a
+        // path with thousands of nodes and fed nothing: snapping uses candidates built at drag start and
+        // the commit flattens the final path once. The session still pins the pre-drag shapes.
+        _nodeDragSession ??= new VectorPathDragSession(obj.LocalShapes);
         UpdateObjectGeometry(obj);
     }
 
