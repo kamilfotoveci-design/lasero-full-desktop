@@ -109,3 +109,16 @@ rulers. Our edge is calm, labelled and guided.
 ## Unverified so far (nobody has seen it live)
 Hover/focus/pressed/animation timing, popups and context menus, multi-monitor DPI beyond offscreen, splash cold start with a
 recovery backup, real laser behaviour, Release-build performance numbers, installer GUI pages, signing.
+
+## Update (perf agent stopped): async job generation lives on `origin/wip/perf-rest` (`fa1722c`, UNVERIFIED)
+
+The performance agent was stopped by the owner before its final full-suite run. Its last work is committed on branch
+`wip/perf-rest` (based on `8a76896`): `Lasero.Core/Jobs/SceneJobBuilder.cs` (immutable scene snapshot + same build function),
+async cancellable job generation in `GCodeViewModel.cs`, `Lasero.Core/Scene/SceneObject.cs` change,
+`Lasero.Tests/AsyncJobGenerationTests.cs` and `AsyncJobMachineBase.cs`. Before merging: rebase onto the tip, build, run the
+full suite, and require (1) sync == async equivalence on the same scene, (2) golden G-code tests green, (3) Start, Frame and
+preflight force a synchronous rebuild whenever the prepared job is stale (a job prepared in the background must never be sent
+after the design changed), (4) `NeutralFormCopyTests` green (the agent once overwrote neutral copy by mistake in
+`GCodeViewModel.cs`: keep upstream's strings). If any of this cannot be satisfied quickly, drop the branch; it is not required
+for the installer. Off-thread SVG/raster import parsing was NOT started. Do this BEFORE task C (job preview), because the preview
+builds on the same off-thread toolpath builder.
