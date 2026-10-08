@@ -59,6 +59,60 @@ public sealed class LayoutSystemRenderTests
     [Theory]
     [InlineData(1366, 768)]
     [InlineData(1080, 640)]
+    public void TheSelectionBarWrapsInsteadOfScrollingAndEveryFieldStaysInsideIt(int width, int height) => Ui.Invoke(() =>
+    {
+        using var shell = new ShellHarness(width, height);
+        var vm = shell.ViewModel;
+        vm.CurrentScreen = AppScreen.Designer;
+        vm.Scene.AddText("LASERO", new Position(60, 60, 0), 20);
+        shell.Settle();
+        var bar = View<SelectionPropertiesBar>(shell);
+        Assert.True(bar.IsVisible, "no selection bar for a selected text");
+        var wrap = LayoutAssertions.Descendants<WrapPanel>(bar).First();
+        for (DependencyObject? up = wrap; up is not null && !ReferenceEquals(up, bar); up = VisualTreeHelper.GetParent(up))
+            Assert.False(up is ScrollViewer, "the selection bar scrolls sideways instead of wrapping");
+        Assert.True(bar.ActualHeight <= 100, $"the bar is {bar.ActualHeight:0} px high (two rows at most)");
+        var bounds = LayoutAssertions.BoundsIn(bar, shell.Window);
+        foreach (var box in LayoutAssertions.Descendants<TextBox>(bar).Where(LayoutAssertions.IsShown))
+        {
+            var b = LayoutAssertions.BoundsIn(box, shell.Window);
+            Assert.True(b.Left >= bounds.Left - 1 && b.Right <= bounds.Right + 1 && b.Top >= bounds.Top - 1 && b.Bottom <= bounds.Bottom + 1,
+                $"a field sticks out of the selection bar at {width}x{height}");
+        }
+
+        // The bar floats over the canvas, so the canvas keeps its height whatever the bar does.
+        var canvas = (FrameworkElement)shell.Window.FindName("DesignerCanvas");
+        Assert.True(canvas.ActualHeight >= height - 60 - 48 - 4, $"the canvas is only {canvas.ActualHeight:0} px high");
+        Assert.True(bounds.Right <= shell.Window.ActualWidth && bounds.Left >= 0, "the bar leaves the window");
+    });
+
+    [Theory]
+    [InlineData(1366, 768)]
+    [InlineData(1080, 640)]
+    public void HomeIsTitledDomuHasNoKamilHeaderAndKeepsOneDominantAction(int width, int height) => Ui.Invoke(() =>
+    {
+        using var shell = new ShellHarness(width, height);
+        shell.ViewModel.CurrentScreen = AppScreen.Home;
+        shell.Settle();
+        var home = View<HomeView>(shell);
+        var header = LayoutAssertions.Descendants<PageHeader>(home).First();
+        Assert.Equal("Domů", header.Title);
+        Assert.Empty(LayoutAssertions.Descendants<LaseroAvatar>(home));
+        Assert.DoesNotContain(LayoutAssertions.Descendants<TextBlock>(home), t => t.Text.Contains("jsem Kamil"));
+        Assert.False(string.IsNullOrWhiteSpace(header.Subtitle));
+        Assert.DoesNotContain('?', header.Subtitle);
+        Assert.DoesNotContain('!', header.Subtitle);
+        Assert.Contains(LayoutAssertions.Descendants<TextBlock>(home), t => t.Text == "Prohlídka aplikace");
+        Assert.Contains(LayoutAssertions.Descendants<TextBlock>(home), t => t.Text == "Další krok: Nový projekt");
+        Assert.NotEmpty(LayoutAssertions.Descendants<TipOfDayCard>(home));
+        var start = LayoutAssertions.Descendants<Button>(home).First(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Nový projekt");
+        Assert.Equal((double)Application.Current.FindResource("Size.Control.Large"), start.ActualHeight, 1);
+        Assert.False(LayoutAssertions.IsClipped(LayoutAssertions.Descendants<TextBlock>(header).First(t => t.Text == header.Subtitle)));
+    });
+
+    [Theory]
+    [InlineData(1366, 768)]
+    [InlineData(1080, 640)]
     public void HomeContentAlignsToTheHeaderEdgeAndTheRailIsThePanelWidth(int width, int height) => Ui.Invoke(() =>
     {
         using var shell = new ShellHarness(width, height);

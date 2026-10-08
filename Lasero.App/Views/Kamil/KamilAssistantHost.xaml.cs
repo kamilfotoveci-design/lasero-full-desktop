@@ -722,9 +722,9 @@ public partial class KamilAssistantHost : UserControl
     private const double SafeMargin = 16;
 
     /// <summary>Distance from the top of the workspace to just under the selection bar: the 30px inset
-    /// in MainWindow.xaml, the bar's height, and a gap. The bar is tallest, about 68px, when a text
+    /// in MainWindow.xaml, the bar's height, and a gap. The bar is tallest, about 98px (two rows), when a text
     /// object is selected, because its horizontal scrollbar appears; that is the case measured here.</summary>
-    internal const double ContextBarClearance = 32 + 68 + 8;
+    internal const double ContextBarClearance = 32 + 98 + 8;
     private const double AnchorGap = 12;
 
     /// <summary>

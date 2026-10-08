@@ -35,22 +35,17 @@
         <!-- ================= CONTENT COLUMN ================= -->
         <components:PageScaffold Grid.Column="0">
             <components:PageScaffold.Header>
-                <Grid x:Name="KamilWelcome" Loaded="OnKamilWelcomeLoaded" RenderTransformOrigin="0.5,0.5">
-                    <components:PageHeader Title="Dobrý den, jsem Kamil" NextStep="{Binding ScreenNextStep}"
-                                           Subtitle="Nový projekt je první krok. Provedu návrhem, přípravou materiálu i kontrolou před gravírováním.">
-                        <components:PageHeader.Leading>
-                            <components:LaseroAvatar Size="72" AutomationProperties.Name="Kamil, průvodce aplikací" />
-                        </components:PageHeader.Leading>
-                        <components:PageHeader.Actions>
-                            <Button Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}" FontSize="{StaticResource Size.Text.Body}"
-                                    ToolTip="Krátká prohlídka aplikace krok za krokem"
-                                    AutomationProperties.Name="Prohlídka aplikace">
-                                <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
-                                                      IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
-                            </Button>
-                        </components:PageHeader.Actions>
-                    </components:PageHeader>
-                </Grid>
+                <components:PageHeader Title="Domů" NextStep="{Binding ScreenNextStep}"
+                                       Subtitle="Začít lze novým projektem, importem nebo otevřením uloženého souboru.">
+                    <components:PageHeader.Actions>
+                        <Button Style="{StaticResource Button.Quiet}" Command="{Binding ReplayTourCommand}"
+                                ToolTip="Krátká prohlídka aplikace krok za krokem"
+                                AutomationProperties.Name="Prohlídka aplikace">
+                            <components:IconLabel IconData="{StaticResource Glyph.Help}" Text="Prohlídka aplikace"
+                                                  IconSize="{StaticResource Size.Icon.Md}" TextMargin="8,0,0,0" />
+                        </Button>
+                    </components:PageHeader.Actions>
+                </components:PageHeader>
             </components:PageScaffold.Header>
 
             <components:PageScaffold.Body>

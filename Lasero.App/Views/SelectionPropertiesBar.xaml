@@ -105,11 +105,10 @@
             CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
             Effect="{StaticResource Shadow.Sheet}"
             Visibility="{Binding Scene.HasSelection, Converter={StaticResource BoolToVisibility}}">
-        <!-- A safety net, not a normal state: at the window's 1080px minimum with text selected the
-             row genuinely cannot fit, and scrolling it beats clipping a field in half. -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                      Focusable="False">
-            <StackPanel Orientation="Horizontal">
+        <!-- Wraps into a second row when the canvas is narrow (a 1080 px window with text selected). A row of fields that
+             scrolls sideways hides the very values it exists to show, and a clipped field is worse. The bar floats over the
+             canvas, so a second row costs the layout nothing. -->
+        <WrapPanel Orientation="Horizontal">
 
                 <!-- ============ Poloha ============ -->
                 <StackPanel Orientation="Horizontal"
@@ -472,7 +471,6 @@
                         <MenuItem Header="Zahrnout do úlohy" IsCheckable="True" IsChecked="{Binding Scene.Selected.IncludeInOutput}" />
                     </MenuItem>
                 </Menu>
-            </StackPanel>
-        </ScrollViewer>
+        </WrapPanel>
     </Border>
 </UserControl>

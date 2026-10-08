@@ -415,7 +415,7 @@ public sealed class InteractionRulesTests
         // bar that is up to 68px tall (text selected, scrollbar showing), plus a gap.
         var window = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "MainWindow.xaml"));
         Assert.Contains("Margin=\"12,32,12,0\"", window, StringComparison.Ordinal);
-        Assert.True(Lasero.App.Views.Kamil.KamilAssistantHost.ContextBarClearance >= 32 + 68);
+        Assert.True(Lasero.App.Views.Kamil.KamilAssistantHost.ContextBarClearance >= 32 + 98);
     }
 
     private static string Root()

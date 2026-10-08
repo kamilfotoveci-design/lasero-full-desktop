@@ -235,9 +235,10 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("<views:NodeEditToolbar HorizontalAlignment=\"Center\" VerticalAlignment=\"Top\"", mainWindow, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding IsNodeEditActive, ElementName=DesignerCanvas, Converter={StaticResource InverseBoolToVisibility}}\"", mainWindow, StringComparison.Ordinal);
 
-        // Sideways scroll rather than a clipped field, for the window's 1080px minimum with text
-        // selected. A half-cut millimetre value is the one thing a precision tool must not show.
-        Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", bar, StringComparison.Ordinal);
+        // Wraps into a second row rather than scrolling sideways or clipping a field (owner decision 2026-10): a half-cut
+        // millimetre value is the one thing a precision tool must not show, and a hidden one is no better.
+        Assert.Contains("<WrapPanel Orientation=\"Horizontal\">", bar, StringComparison.Ordinal);
+        Assert.DoesNotContain("HorizontalScrollBarVisibility=\"Auto\"", bar, StringComparison.Ordinal);
 
         // The inspector is one flat column now — no tabs, and no card nested inside a card.
         Assert.DoesNotContain("PropertiesTabRadio", inspector, StringComparison.Ordinal);
