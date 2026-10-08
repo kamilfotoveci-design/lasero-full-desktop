@@ -40,7 +40,7 @@ public partial class SceneViewModel : ObservableObject
 
     /// <summary>Multi-select set the canvas maintains (rubber-band / shift-click). The property panel
     /// (round 1) only edits a single object, so Selected mirrors this when exactly one is selected.</summary>
-    public ObservableCollection<SceneObject> SelectedObjects { get; } = new();
+    public SelectionCollection SelectedObjects { get; } = new();
 
     public IReadOnlyList<RgbColor> LayerPalette { get; } =
     [
@@ -436,8 +436,7 @@ public partial class SceneViewModel : ObservableObject
         }
 
         Execute(new ReplaceObjectsCommand(Scene, [source], tracedObjects, result.Document.Layers));
-        SelectedObjects.Clear();
-        foreach (var tracedObject in tracedObjects) SelectedObjects.Add(tracedObject);
+        SelectedObjects.ReplaceWith(tracedObjects);
         ActiveTool = DesignerTool.Select;
     }
 
@@ -705,9 +704,7 @@ public partial class SceneViewModel : ObservableObject
     {
         if (layer is null) return;
         SelectedLayer = layer;
-        SelectedObjects.Clear();
-        foreach (var item in Objects.Where(item => UsesLayer(item, layer)))
-            SelectedObjects.Add(item);
+        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, layer)).ToList());
     }
 
     [RelayCommand]
@@ -955,9 +952,7 @@ public partial class SceneViewModel : ObservableObject
         var command = new DuplicateObjectsCommand(Scene, sources, new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
         Execute(command);
 
-        SelectedObjects.Clear();
-        foreach (var clone in command.Clones)
-            SelectedObjects.Add(clone);
+        SelectedObjects.ReplaceWith(command.Clones);
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -975,9 +970,7 @@ public partial class SceneViewModel : ObservableObject
         var command = new DuplicateObjectsCommand(Scene, _clipboard, new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
         Execute(command);
 
-        SelectedObjects.Clear();
-        foreach (var clone in command.Clones)
-            SelectedObjects.Add(clone);
+        SelectedObjects.ReplaceWith(command.Clones);
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -992,9 +985,7 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSelectAll))]
     private void SelectAll()
     {
-        SelectedObjects.Clear();
-        foreach (var obj in Objects)
-            SelectedObjects.Add(obj);
+        SelectedObjects.ReplaceWith(Objects.ToList());
     }
 
     private bool CanAlign() => SelectedObjects.Count >= 2;
@@ -1477,8 +1468,7 @@ public partial class SceneViewModel : ObservableObject
             Execute(new ReplaceObjectsCommand(Scene, removed, added));
         }
 
-        SelectedObjects.Clear();
-        foreach (var item in added) SelectedObjects.Add(item);
+        SelectedObjects.ReplaceWith(added);
     }
 
     /// <summary>Wraps one source's offset VectorPath into a new node-editable SceneObject, preserving

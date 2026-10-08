@@ -225,6 +225,7 @@ public partial class SceneCanvas : UserControl
             newVm.ProjectLoaded += canvas.OnProjectLoaded;
             newVm.PropertyChanged += canvas.OnViewModelPropertyChanged;
         }
+        canvas._geometryCache.Clear();
         canvas.RebuildAll();
         canvas.UpdateToolCursor();
     }
@@ -238,6 +239,13 @@ public partial class SceneCanvas : UserControl
     private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (ViewModel is { IsLoadingProject: true }) return; // rebuilt once in OnProjectLoaded
+        if (ViewModel is { IsApplyingCommand: true })
+        {
+            // A command that adds or replaces many objects (a trace makes hundreds) ends in Changed;
+            // rebuild once there instead of once per object.
+            _rebuildAfterCommand = true;
+            return;
+        }
         // A normal append/delete should touch only that object's visuals. Rebuilding the whole
         // canvas also decodes every existing raster preview from disk and makes large designs feel
         // slow. Keep the full path for reorders, resets, auto-fit and active inline text editing.
@@ -270,8 +278,18 @@ public partial class SceneCanvas : UserControl
     }
 
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
+    private bool _rebuildAfterCommand;
+
     private void OnViewModelContentChanged()
     {
+        if (_rebuildAfterCommand)
+        {
+            _rebuildAfterCommand = false;
+            RebuildAll();
+            ResyncNodeEditAfterExternalChange();
+            return;
+        }
+
         // Power, speed and passes edits change the job, not the picture.
         if (ViewModel is { ChangedAffectsCanvas: false }) return;
 
@@ -456,11 +474,10 @@ public partial class SceneCanvas : UserControl
         }
 
         foreach (var obj in _objectVisuals.Keys.ToList())
-            RemoveObjectVisuals(obj);
+            RemoveObjectVisuals(obj, keepGeometry: true);
         DrawCanvas.Children.Clear();
         _selectionVisuals.Clear();
         _worldSpaceSelectionVisuals.Clear();
-        _geometryCache.Clear();
         _rubberBandVisual = null;
         _toolPreviewVisual = null;
 
@@ -470,6 +487,11 @@ public partial class SceneCanvas : UserControl
         {
             foreach (var obj in ViewModel.Objects)
                 AddObjectVisuals(obj);
+
+            // Geometry is kept across a rebuild for objects that are still here; drop what is gone.
+            if (_geometryCache.Count > _objectVisuals.Count)
+                foreach (var stale in _geometryCache.Keys.Where(key => !_objectVisuals.ContainsKey(key)).ToList())
+                    _geometryCache.Remove(stale);
 
             if (_autoFit)
             {
@@ -585,7 +607,7 @@ public partial class SceneCanvas : UserControl
         return image;
     }
 
-    private void RemoveObjectVisuals(SceneObject obj)
+    private void RemoveObjectVisuals(SceneObject obj, bool keepGeometry = false)
     {
         if (_rasterImageVisuals.Remove(obj, out var image))
             DrawCanvas.Children.Remove(image);
@@ -600,7 +622,7 @@ public partial class SceneCanvas : UserControl
             DrawCanvas.Children.Remove(path);
         }
         _objectVisuals.Remove(obj);
-        _geometryCache.Remove(obj);
+        if (!keepGeometry) _geometryCache.Remove(obj);
         obj.PropertyChanged -= OnObjectPropertyChanged;
     }
 
@@ -2261,6 +2283,9 @@ public partial class SceneCanvas : UserControl
             var worldMinY = ToWorldY(top + h);
             var worldMaxY = ToWorldY(top);
 
+            // One selection change for the whole marquee, not one per object it touches.
+            var selection = ViewModel.SelectedObjects.ToList();
+            var inSelection = new HashSet<SceneObject>(selection);
             foreach (var obj in ViewModel.Objects)
             {
                 if (obj.IsLocked || !IsObjectVisibleOnCanvas(obj)) continue;
@@ -2268,10 +2293,16 @@ public partial class SceneCanvas : UserControl
                 var intersects = b.MinX <= worldMaxX && b.MaxX >= worldMinX && b.MinY <= worldMaxY && b.MaxY >= worldMinY;
                 if (!intersects) continue;
                 if (_marqueeSubtracts)
-                    ViewModel.SelectedObjects.Remove(obj);
-                else if (!ViewModel.SelectedObjects.Contains(obj))
-                    ViewModel.SelectedObjects.Add(obj);
+                {
+                    if (inSelection.Remove(obj)) selection.Remove(obj);
+                }
+                else if (inSelection.Add(obj))
+                {
+                    selection.Add(obj);
+                }
             }
+
+            ViewModel.SelectedObjects.ReplaceWith(selection);
         }
     }
 
