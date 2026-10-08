@@ -314,7 +314,43 @@ public partial class SceneViewModel : ObservableObject
 
     /// <summary>Executed by every mutating gesture the canvas performs (drag-move/rotate/resize on
     /// MouseUp, keyboard nudge) — kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
-    public void Execute(ISceneCommand command) => _commandStack.Execute(command);
+    public void Execute(ISceneCommand command) => ApplyCommand(() => _commandStack.Execute(command));
+
+    private int _commandDepth;
+    private bool _selectedTransformNotificationPending;
+
+    /// <summary>
+    /// True while a command is being executed, undone or redone. Every such operation ends in
+    /// <see cref="Changed"/>, which makes the canvas refresh once; per-object notifications in between
+    /// would repaint the scene and the whole selection overlay once for each object of a multi-object
+    /// command (quadratic in the selection size).
+    /// </summary>
+    public bool IsApplyingCommand => _commandDepth > 0;
+
+    private void ApplyCommand(Action operation)
+    {
+        _commandDepth++;
+        try { operation(); }
+        finally { _commandDepth--; }
+
+        // The inspector's X/Y/size fields describe the whole selection; tell them once, afterwards.
+        if (_commandDepth == 0 && _selectedTransformNotificationPending)
+        {
+            _selectedTransformNotificationPending = false;
+            NotifySelectedTransformChanged();
+        }
+    }
+
+    private void NotifySelectedTransformChanged()
+    {
+        OnPropertyChanged(nameof(SelectedX));
+        OnPropertyChanged(nameof(SelectedY));
+        OnPropertyChanged(nameof(SelectedRotation));
+        OnPropertyChanged(nameof(SelectedWidth));
+        OnPropertyChanged(nameof(SelectedHeight));
+        OnPropertyChanged(nameof(CanEditSelectedPosition));
+        OnPropertyChanged(nameof(CanTransformSelectedObject));
+    }
 
     private (double X, double Y) NextCascadeOffset()
     {
@@ -876,7 +912,7 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanUndoExecute))]
     private void Undo()
     {
-        _commandStack.Undo();
+        ApplyCommand(_commandStack.Undo);
         ReconcileSelectionWithScene();
     }
     private bool CanUndoExecute() => CanUndo;
@@ -884,7 +920,7 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRedoExecute))]
     private void Redo()
     {
-        _commandStack.Redo();
+        ApplyCommand(_commandStack.Redo);
         ReconcileSelectionWithScene();
     }
 
@@ -2343,13 +2379,8 @@ public partial class SceneViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(SceneObject.Transform))
         {
-            OnPropertyChanged(nameof(SelectedX));
-            OnPropertyChanged(nameof(SelectedY));
-            OnPropertyChanged(nameof(SelectedRotation));
-            OnPropertyChanged(nameof(SelectedWidth));
-            OnPropertyChanged(nameof(SelectedHeight));
-            OnPropertyChanged(nameof(CanEditSelectedPosition));
-            OnPropertyChanged(nameof(CanTransformSelectedObject));
+            if (IsApplyingCommand) _selectedTransformNotificationPending = true; // raised once when the command ends
+            else NotifySelectedTransformChanged();
         }
         else if (e.PropertyName == nameof(SceneObject.IsLocked))
         {

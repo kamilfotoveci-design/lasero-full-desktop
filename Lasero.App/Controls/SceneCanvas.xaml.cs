@@ -607,6 +607,8 @@ public partial class SceneCanvas : UserControl
     private void OnObjectPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not SceneObject obj || _suppressObjectRepaint) return;
+        // A command ends in SceneViewModel.Changed, which refreshes every object and the overlay once.
+        if (ViewModel is { IsApplyingCommand: true }) return;
         if (e.PropertyName is not (nameof(SceneObject.Transform) or nameof(SceneObject.IsVisible) or
             nameof(SceneObject.IncludeInOutput) or nameof(SceneObject.LocalShapes))) return;
 
