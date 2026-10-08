@@ -155,25 +155,27 @@ and `device-connected-*-120/144/192dpi` for 125, 150 and 200 percent). Regenerat
 
 | Screen | Defects fixed | Left open |
 |---|---|---|
-| Home | PageHeader with the greeting and one next-step line, one tip card, `SectionHeader` for every section, `Text.EmptyLine` for empty shelves, device panel 360 with label and value rows, actions wrap instead of clipping | The greeting is the title (owner question 1). Two empty sections still print two headings |
-| Návrh | inspector sections 24,20 with the same header size, status strip says "Další krok: Připojit laser / Rámovat / Spustit", idle job badge dropped under 1200 px, hint chip no longer runs under the zoom cluster, shape tool corner mark back on the icon corner | Selection bar still scrolls horizontally under about 1100 px (owner question 4). Tool rail and node toolbar only snapped to the grid |
+| Home | PageHeader with the greeting and one next-step line, one tip card, `SectionHeader` for every section, `Text.EmptyLine` for empty shelves, device panel 360 with label and value rows, actions wrap instead of clipping | Two empty sections still print two headings |
+| Návrh | inspector sections 24,20 with the same header size, status strip says "Další krok: Připojit laser / Rámovat / Spustit", idle job badge dropped under 1200 px, hint chip no longer runs under the zoom cluster, shape tool corner mark back on the icon corner | Tool rail and node toolbar only snapped to the grid |
 | Materiály | PageHeader, DialogFooter | the swatch grid is still clipped by the footer at 1080x600 (it scrolls) |
-| Zařízení | PageScaffold, equal card paddings, 17 px card titles everywhere (the status card had 13 px bold), machine state as label and value rows, one-column jog buttons so no command name is cut, jog pad cells 52 in a 60 grid, empty box replaced by one line, labels wrap on a shared row | Two connect buttons in the disconnected state (decision pending since the entry-point audit) |
+| Zařízení | PageScaffold, equal card paddings, 17 px card titles everywhere (the status card had 13 px bold), machine state as label and value rows, one-column jog buttons so no command name is cut, jog pad cells 52 in a 60 grid, empty box replaced by one line, labels wrap on a shared row | none (one Připojit, decided 2026-10-08) |
 | Chat | PageHeader, one rounded container instead of two corner-mismatched panels, history header and empty line, composer 44 | none |
 | Settings, Device settings, Raster, Trace, Offset, Shortcuts, Materials | one header band (`PageHeader`), one footer (`DialogFooter`), Offset gets the standard title bar | Preview window keeps its breadcrumb header |
 | Dialogs | `DialogFooter`, body padding 24, width 440, secondary choice is outline like Cancel | |
-| Wizard, tour, tip chip | rendered at both sizes, motion flag honoured so the audit sees the final frame | wizard copy is in the imperative (owner question 5) |
+| Wizard, tour, tip chip | rendered at both sizes, motion flag honoured so the audit sees the final frame | none (copy converted to the neutral form) |
 | Login, splash | not changed beyond tokens, they are the brand layouts | |
 
 Unverified: live hover, pressed and focus on controls, animation timing, popups and context menus, real multi-monitor DPI
 (125, 150 and 200 percent are offscreen renders at the monitor DPI of the machine).
 
-### Open decisions for the owner
+### Owner decisions (2026-10-08), all applied
 
-1. Home title: keep "Dobrý den, jsem Kamil" (brand moment) or use "Domů" like Zařízení and Chat.
-2. Page background: Home, Zařízení and Chat are now one white surface (Zařízení and Chat were the gray canvas). Keep, or gray everywhere.
-3. Control heights: Compact stays 36 (the brief said 32, the hit-target floor is 40). Choose 32 for inline editors only, or keep 36.
-4. Selection bar under about 1100 px: scroll (today), wrap into two rows, or move size fields into the inspector.
-5. Czech copy still uses the imperative in the wizard, Zařízení cards and some dialogs ("Zapněte", "Zkontrolujte"). Convert to the neutral form in one pass?
-6. Designer: the tool rail replaces the left navigation, so no nav item shows "Návrh" selected there. Add a quiet label or accept it.
-7. Two connect buttons on Zařízení when disconnected, and "Najet domů" twice (already listed in `screen-controls-matrix.md`).
+1. Home is titled **Domů** with the shared header, a neutral one-line subtitle, the quiet "Další krok" line and "Prohlídka aplikace"; the Kamil greeting and avatar are gone (Kamil lives in the assistant panel and the tour).
+2. One white surface for Home, Zařízení and Chat.
+3. Compact control height stays 36.
+4. The selection bar wraps into two rows (about 98 px) instead of scrolling; at 1080x640 and 1366x768 the canvas keeps its full height (the bar floats) and `TheSelectionBarWrapsInsteadOfScrollingAndEveryFieldStaysInsideIt` checks every field is inside the bar.
+5. Neutral-form copy everywhere in `Lasero.App`, `Lasero.Core` and `Lasero.Persistence`; `NeutralFormCopyTests` fails on any finite second person form ("Zapněte", "můžete", "váš", "prosím", ...).
+6. The Návrh nav label is unchanged.
+7. Zařízení has one connect button (**Připojit**, runs the selected port) and one homing control (**Najet domů**; the jog pad centre is a dot; homing is also refused while a job is active and the tooltip says why).
+
+Renders after these decisions: `E:/lasero-layout-renders/after`.
