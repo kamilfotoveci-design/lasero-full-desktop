@@ -110,7 +110,7 @@ public partial class SceneCanvas : UserControl
     private readonly MatrixTransform _viewTransform = new();
     private readonly MatrixTransform _previewTransform = new();
     private readonly Dictionary<SceneObject, ObjectGeometryEntry> _geometryCache = new();
-    private readonly HashSet<FrameworkElement> _worldSpaceSelectionVisuals = new();
+    private readonly Dictionary<FrameworkElement, SceneObject> _worldSpaceSelectionVisuals = new();
     private double _appliedStrokeScale = double.NaN;
     private bool _suppressObjectRepaint;
     private const double ObjectStrokePx = 1.4;
@@ -669,7 +669,9 @@ public partial class SceneCanvas : UserControl
         }
 
         var opacity = obj.IncludeInOutput ? 1.0 : 0.4;
-        var strokeThickness = ObjectStrokePx / _scale;
+        var strokeThickness = ObjectStrokePx / (_scale * entry.ScaleMagnitude(obj.Transform));
+        var viewTransform = entry.ViewTransform(_viewTransform);
+        var previewing = _dragStartTransforms.ContainsKey(obj);
         for (var i = 0; i < groups.Count; i++)
         {
             var group = groups[i];
@@ -683,6 +685,8 @@ public partial class SceneCanvas : UserControl
             var path = paths[i];
             var geometry = GetGroupGeometry(obj, entry, i);
             if (!ReferenceEquals(path.Data, geometry)) path.Data = geometry;
+            // A live move preview owns the transform until it is cleared.
+            if (!previewing && !ReferenceEquals(path.RenderTransform, viewTransform)) path.RenderTransform = viewTransform;
             var brush = FrozenBrush(layerColor);
             path.Stroke = brush;
             path.StrokeThickness = strokeThickness;
@@ -1070,22 +1074,22 @@ public partial class SceneCanvas : UserControl
     /// </summary>
     private void DrawObjectAnts(SceneObject obj)
     {
-        var geometry = GetAntsGeometry(obj);
+        var geometry = GetAntsGeometry(obj, out var entry);
         if (geometry is null) return;
 
         var ants = new Path
         {
             Data = geometry,
             Stroke = SelectionBrush,
-            StrokeThickness = 1.6 / _scale,
+            StrokeThickness = 1.6 / (_scale * entry.ScaleMagnitude(obj.Transform)),
             Fill = null,
             IsHitTestVisible = false,
-            RenderTransform = _viewTransform,
+            RenderTransform = entry.ViewTransform(_viewTransform),
         };
         ApplyMarchingAnts(ants);
         DrawCanvas.Children.Add(ants);
         _selectionVisuals.Add(ants);
-        _worldSpaceSelectionVisuals.Add(ants);
+        _worldSpaceSelectionVisuals[ants] = obj;
     }
 
     /// <summary>Dashes the shape and ties its dash offset to the shared crawl.</summary>
@@ -1379,7 +1383,7 @@ public partial class SceneCanvas : UserControl
         foreach (var path in paths)
         {
             path.Stroke = SelectionBrush;
-            path.StrokeThickness = HoverStrokePx / _scale;
+            path.StrokeThickness = StrokeThickness(obj, HoverStrokePx);
         }
     }
 
@@ -2126,23 +2130,37 @@ public partial class SceneCanvas : UserControl
         foreach (var obj in _dragStartTransforms.Keys.Where(item => !item.IsLocked))
         {
             if (_objectVisuals.TryGetValue(obj, out var paths))
-                foreach (var path in paths) path.RenderTransform = _previewTransform;
+            {
+                var transform = PreviewTransformOf(obj);
+                foreach (var path in paths) path.RenderTransform = transform;
+            }
+
             if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = translation;
         }
         foreach (var visual in _selectionVisuals)
-            visual.RenderTransform = _worldSpaceSelectionVisuals.Contains(visual) ? _previewTransform : translation;
+            visual.RenderTransform = _worldSpaceSelectionVisuals.TryGetValue(visual, out var owner) ? PreviewTransformOf(owner) : translation;
     }
+
+    private Transform ViewTransformOf(SceneObject obj) =>
+        _geometryCache.TryGetValue(obj, out var entry) ? entry.ViewTransform(_viewTransform) : _viewTransform;
+
+    private Transform PreviewTransformOf(SceneObject obj) =>
+        _geometryCache.TryGetValue(obj, out var entry) ? entry.PreviewTransform(_previewTransform) : _previewTransform;
 
     private void ClearMovePreview()
     {
         foreach (var obj in _dragStartTransforms.Keys)
         {
             if (_objectVisuals.TryGetValue(obj, out var paths))
-                foreach (var path in paths) path.RenderTransform = _viewTransform;
+            {
+                var transform = ViewTransformOf(obj);
+                foreach (var path in paths) path.RenderTransform = transform;
+            }
+
             if (_rasterImageVisuals.TryGetValue(obj, out var image)) image.RenderTransform = Transform.Identity;
         }
         foreach (var visual in _selectionVisuals)
-            visual.RenderTransform = _worldSpaceSelectionVisuals.Contains(visual) ? _viewTransform : Transform.Identity;
+            visual.RenderTransform = _worldSpaceSelectionVisuals.TryGetValue(visual, out var owner) ? ViewTransformOf(owner) : Transform.Identity;
     }
 
     private void ScheduleExpensiveDragUpdate(Point screen)
