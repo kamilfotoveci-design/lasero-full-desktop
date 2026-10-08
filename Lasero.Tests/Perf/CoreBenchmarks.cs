@@ -38,7 +38,7 @@ public sealed class CoreBenchmarks(ITestOutputHelper output)
             var rng = new Random(2);
             var pointers = Enumerable.Range(0, 100).Select(_ => new Position(rng.NextDouble() * 400, rng.NextDouble() * 400, 0)).ToArray();
             Perf.Measure(name, "core: SceneHitTester.HitTest (one click)", 100, i =>
-                Lasero.App.Controls.SceneHitTester.HitTest(vm.Objects, pointers[i % pointers.Length], 4, layerMode), output: output);
+                Lasero.App.Controls.SceneHitTester.HitTest(vm.Objects, pointers[Math.Abs(i) % pointers.Length], 4, layerMode), output: output);
 
             Perf.Measure(name, "core: WorldBounds for every object", 50, _ =>
             {

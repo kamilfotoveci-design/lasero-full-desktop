@@ -127,7 +127,7 @@ public sealed class PipelineBenchmarks(ITestOutputHelper output)
         Perf.Measure(scenario, "ui: select image", 20, i =>
         {
             vm.SelectedObjects.Clear();
-            vm.SelectedObjects.Add(vm.Objects[i % vm.Objects.Count]);
+            vm.SelectedObjects.Add(vm.Objects[Math.Abs(i) % vm.Objects.Count]);
             rig.Layout();
         }, between: rig.Flush, output: output);
         Perf.Measure(scenario, "ui: transform commit (move selected image)", 12, i =>
@@ -272,7 +272,7 @@ public sealed class PipelineBenchmarks(ITestOutputHelper output)
         // Project save / load
         var path = Path.Combine(PerfEnvironment.AssetsDirectory, $"project-{scenario}.lasero");
         Perf.Measure(scenario, "core: CreateProject + Save", 3, _ => ProjectFileSerializer.Save(path, vm.CreateProject()),
-            warmup: 1, output: output, note: $"{new FileInfo(path).Length / 1024:N0} KB");
+            warmup: 1, output: output, note: "project file written");
         LaseroProjectFile? loaded = null;
         Perf.Measure(scenario, "core: ProjectFileSerializer.Load", 3, _ => loaded = ProjectFileSerializer.Load(path),
             warmup: 1, output: output);
