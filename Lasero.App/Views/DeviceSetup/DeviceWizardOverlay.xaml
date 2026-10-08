@@ -184,7 +184,7 @@
                             </Grid>
 
                             <TextBlock Text="Přidat zařízení" Style="{StaticResource StepHeadline}" Margin="0,20,0,0" />
-                            <TextBlock Text="Zapněte laser, připojte jej datovým USB kabelem a klepněte na Připojit laser automaticky. Model ani port vybírat nemusíte, LASERO řadič GRBL najde samo. Porty se zkoušejí jen po tomto klepnutí, nikdy při spuštění. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
+                            <TextBlock Text="Laser je potřeba zapnout a připojit datovým USB kabelem, potom klepnout na Připojit laser automaticky. Model ani port není třeba vybírat, LASERO řadič GRBL najde samo. Porty se zkoušejí jen po tomto klepnutí, nikdy při spuštění. Bez laseru lze vyzkoušet simulátor." Style="{StaticResource StepSubtext}" />
 
                             <!-- Progressive disclosure: manual port/baud entry, for the rare machine
                                  the automatic scan cannot see. Reuses ConnectionViewModel's own
@@ -202,7 +202,7 @@
                                     <TextBlock Text="Ruční připojení" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding Connection.DetectedMachineText}" Style="{StaticResource Text.Muted}" Margin="0,4,0,8"
                                                automation:AutomationProperties.Name="Zjištěné zařízení" />
-                                    <TextBlock Text="Ruční připojení je určeno pro řadič, který automatické hledání nenašlo. Port najdete ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
+                                    <TextBlock Text="Ruční připojení je určeno pro řadič, který automatické hledání nenašlo. Port je vidět ve Správci zařízení Windows v části Porty (COM a LPT), obvyklá rychlost je 115200. Připojení otevře pouze vybraný port."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,12" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -256,7 +256,7 @@
 
                             <StackPanel Visibility="{Binding FoundSomething, Converter={StaticResource BoolToVisibility}}">
                                 <TextBlock Text="Nalezená zařízení" Style="{StaticResource PanelTitle}" HorizontalAlignment="Center" TextAlignment="Center" />
-                                <TextBlock Text="Vyberte zařízení, které chcete používat."
+                                <TextBlock Text="Zařízení, které se má používat, lze vybrat ze seznamu."
                                            Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,20" />
 
                                 <ListBox ItemsSource="{Binding FoundMachines}" SelectedItem="{Binding SelectedMachine}"
@@ -373,7 +373,7 @@
                                                                               Foreground="{StaticResource Brush.Warning}" Margin="0,0,12,0" />
                                                         <StackPanel>
                                                             <TextBlock Text="Připojení se nezdařilo" FontWeight="SemiBold" />
-                                                            <TextBlock Text="Zkontrolujte, zda je zařízení zapnuté a datový USB kabel pevně zapojený, potom zkuste připojení znovu."
+                                                            <TextBlock Text="Je potřeba ověřit, zda je zařízení zapnuté a datový USB kabel pevně zapojený, potom lze připojení zkusit znovu."
                                                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="320" Margin="0,4,0,12" />
                                                         </StackPanel>
                                                     </StackPanel>
@@ -408,7 +408,7 @@
                                     <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Margin="0,0,0,8">
                                         <StackPanel>
                                             <TextBlock Text="Kabel jen pro nabíjení" FontWeight="SemiBold" />
-                                            <TextBlock Text="Použijte datový USB kabel. Některé kabely přenášejí jen napájení a port se ve Windows neobjeví."
+                                            <TextBlock Text="Je potřeba datový USB kabel. Některé kabely přenášejí jen napájení a port se ve Windows neobjeví."
                                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                         </StackPanel>
                                     </components:ElevatedBorder>
@@ -422,7 +422,7 @@
                                     <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}">
                                         <StackPanel>
                                             <TextBlock Text="Port drží jiný program" FontWeight="SemiBold" />
-                                            <TextBlock Text="Zavřete LightBurn, LaserGRBL nebo sériový monitor. Port smí být otevřený jen v jednom programu."
+                                            <TextBlock Text="LightBurn, LaserGRBL nebo sériový monitor je potřeba zavřít. Port smí být otevřený jen v jednom programu."
                                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                         </StackPanel>
                                     </components:ElevatedBorder>
@@ -488,7 +488,7 @@
                                      automation:AutomationProperties.Name="Název zařízení" />
 
                             <TextBlock Text="Pracovní plocha neodpovídá" Style="{StaticResource FieldLabel}" />
-                            <TextBlock Text="Načteno ze zařízení ($130 a $131). Přepište, pokud rozměry neodpovídají skutečnému stroji."
+                            <TextBlock Text="Načteno ze zařízení ($130 a $131). Pokud rozměry neodpovídají skutečnému stroji, lze je přepsat."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                                 <Border Style="{StaticResource UnitField.Shell}" Width="126" Height="{StaticResource Size.Control.Base}">
@@ -556,7 +556,7 @@
                                 <Run Text="Pracovní plocha " /><Run Text="{Binding Connection.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
                                 <Run Text=" × " /><Run Text="{Binding Connection.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" /><Run Text=" mm" />
                             </TextBlock>
-                            <TextBlock Text="Před ostrou úlohou vždy ověřte umístění rámováním."
+                            <TextBlock Text="Před ostrou úlohou je vždy potřeba ověřit umístění rámováním."
                                        Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" Margin="0,12,0,0" />
                         </StackPanel>
                     </Grid>

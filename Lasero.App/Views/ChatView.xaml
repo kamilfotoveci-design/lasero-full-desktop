@@ -156,7 +156,7 @@
                                   Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibility}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="440" Margin="0,16" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}">
                         <components:LaseroAvatar Size="48" HorizontalAlignment="Center" />
-                        <TextBlock Text="Co chcete na tomto návrhu upravit" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                        <TextBlock Text="Co je na tomto návrhu potřeba upravit" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,4" />
                         <TextBlock Text="Kamil poradí s materiálem, parametry i bezpečným testem."
                                    TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Brush.TextSecondary}" LineHeight="20" />
                         <ItemsControl ItemsSource="{Binding Chat.SuggestedQuestions}" Margin="0,20,0,0">

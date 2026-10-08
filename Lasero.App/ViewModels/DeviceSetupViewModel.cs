@@ -78,7 +78,7 @@ public partial class DeviceSetupViewModel : ObservableObject
         ProcessStatus.Progress => "Nastavení gravírky",
         ProcessStatus.Success => "Gravírka je připravena",
         ProcessStatus.Error => "Gravírku se nepodařilo připojit",
-        _ => "Připojte gravírku",
+        _ => "Připojení gravírky",
     };
 
     public string Description => Status switch
@@ -92,8 +92,8 @@ public partial class DeviceSetupViewModel : ObservableObject
         ProcessStatus.Success =>
             _connection.IdentificationMessage ?? "Lasero rozpoznalo zařízení a načetlo jeho parametry.",
         ProcessStatus.Error =>
-            _connection.ConnectionError ?? "LASERO se nepodařilo připojit ke stroji. Zkontrolujte USB kabel a zkuste to znovu.",
-        _ => "Zapněte laser a připojte jej datovým USB kabelem. Po klepnutí na Připojit laser automaticky LASERO samo najde řadič GRBL na portech COM, model ani port vybírat nemusíte. Porty se nezkoušejí bez vašeho klepnutí. Návrh lze upravovat i bez laseru.",
+            _connection.ConnectionError ?? "LASERO se nepodařilo připojit ke stroji. Je potřeba zkontrolovat USB kabel, potom lze připojení zkusit znovu.",
+        _ => "Laser je potřeba zapnout a připojit datovým USB kabelem. Po klepnutí na Připojit LASERO použije zvolený port, ve výchozím stavu Automaticky samo najde řadič GRBL na portech COM, model ani port není třeba vybírat. Porty se nezkoušejí bez klepnutí. Návrh lze upravovat i bez laseru.",
     };
 
     /// <summary>A bar only while something is genuinely running, and indeterminate throughout: GRBL
@@ -110,15 +110,15 @@ public partial class DeviceSetupViewModel : ObservableObject
     /// </summary>
     public string? PrimaryLabel => Status switch
     {
-        ProcessStatus.Waiting => "Připojit laser automaticky",
-        ProcessStatus.Error => "Zkusit znovu",
+        ProcessStatus.Waiting => "Připojit",
+        ProcessStatus.Error => "Připojit znovu",
         _ => null,
     };
 
     public ICommand? PrimaryCommand => Status switch
     {
-        ProcessStatus.Waiting => _connection.SmartConnectCommand,
-        ProcessStatus.Error => _connection.ConnectCommand,
+        ProcessStatus.Waiting => _connection.ConnectSelectedCommand,
+        ProcessStatus.Error => _connection.ConnectSelectedCommand,
         _ => null,
     };
 

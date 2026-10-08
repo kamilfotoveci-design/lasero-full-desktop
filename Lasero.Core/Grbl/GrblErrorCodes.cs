@@ -25,7 +25,7 @@ public static class GrblErrorCodes
         [6] = "Příkaz G53 je platný pouze s G0 nebo G1.",
         [7] = "Slovo G-code se na jednom řádku opakuje vícekrát.",
         [8] = "Příkaz není v aktuálním režimu povolen.",
-        [9] = "G-code je uzamčený. Zařízení odemkněte příkazem $X.",
+        [9] = "G-code je uzamčený. Zařízení lze odemknout příkazem $X.",
         [10] = "Na řádku G-code chybí požadovaná osa.",
         [11] = "Řádek obsahuje příliš mnoho slov G-code.",
         [12] = "Hodnota překračuje podporované rozlišení řídicí jednotky.",
@@ -59,7 +59,7 @@ public static class GrblErrorCodes
     {
         [1] = "Během pohybu byl aktivován hardwarový limit. Stroj byl bezpečně zastaven.",
         [2] = "Cílová pozice překračuje pracovní prostor stroje.",
-        [3] = "Během pohybu došlo k resetu. Znovu najeďte do výchozí polohy.",
+        [3] = "Během pohybu došlo k resetu. Je potřeba znovu najet do výchozí polohy.",
         [4] = "Najetí do výchozí polohy selhalo: koncový spínač nebyl nalezen včas.",
         [5] = "Najetí do výchozí polohy selhalo: koncový spínač zůstal aktivní.",
         [6] = "Najetí do výchozí polohy selhalo při druhém dotyku spínače.",

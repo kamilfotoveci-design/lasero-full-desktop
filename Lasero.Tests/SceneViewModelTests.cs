@@ -832,7 +832,7 @@ public class SceneViewModelTests
         viewModel.Objects.Add(single);
         viewModel.SelectedObjects.Add(single);
 
-        Assert.Equal("Vyberte alespoň dva tvary.", viewModel.UniteSelectionDisabledReason);
+        Assert.Equal("Je potřeba vybrat alespoň dva tvary.", viewModel.UniteSelectionDisabledReason);
     }
 
     [Fact]
@@ -843,7 +843,7 @@ public class SceneViewModelTests
         viewModel.Objects.Add(raster);
         viewModel.SelectedObjects.Add(raster);
 
-        Assert.Equal("Bitmapu nelze sjednotit ani kombinovat — vyberte pouze vektory.", viewModel.UniteSelectionDisabledReason);
+        Assert.Equal("Bitmapu nelze sjednotit ani kombinovat. Lze vybrat pouze vektory.", viewModel.UniteSelectionDisabledReason);
     }
 
     [Fact]
@@ -852,7 +852,7 @@ public class SceneViewModelTests
         var (viewModel, back, _) = MakeOverlappingSquaresFixture();
         back.IsLocked = true;
 
-        Assert.Equal("Zamknuté objekty nelze sjednotit ani kombinovat — nejprve je odemkněte.", viewModel.UniteSelectionDisabledReason);
+        Assert.Equal("Zamknuté objekty nelze sjednotit ani kombinovat. Nejprve je potřeba je odemknout.", viewModel.UniteSelectionDisabledReason);
     }
 
     [Fact]
@@ -896,7 +896,7 @@ public class SceneViewModelTests
         viewModel.Objects.Add(raster);
         viewModel.SelectedObjects.Add(raster);
 
-        Assert.Equal("Bitmapu nelze posunout offsetem — vyberte vektor.", viewModel.OffsetSelectionDisabledReason);
+        Assert.Equal("Bitmapu nelze posunout offsetem. Lze vybrat vektor.", viewModel.OffsetSelectionDisabledReason);
     }
 
     [Fact]
@@ -910,7 +910,7 @@ public class SceneViewModelTests
         viewModel.Objects.Add(single);
         viewModel.SelectedObjects.Add(single);
 
-        Assert.Equal("Zamknuté objekty nelze upravit offsetem — nejprve je odemkněte.", viewModel.OffsetSelectionDisabledReason);
+        Assert.Equal("Zamknuté objekty nelze upravit offsetem. Nejprve je potřeba je odemknout.", viewModel.OffsetSelectionDisabledReason);
     }
 
     [Fact]

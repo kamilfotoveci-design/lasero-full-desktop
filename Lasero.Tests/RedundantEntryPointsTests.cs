@@ -79,16 +79,20 @@ public sealed class RedundantEntryPointsTests
     }
 
     [Fact]
-    public void DeviceScreenHasOneDisconnectAndOnePrimaryConnect()
+    public void DeviceScreenHasOneDisconnectOnePrimaryConnectAndOneHomingControl()
     {
         var device = Read("Views", "DeviceView.xaml");
         // Disconnect lives in the status card (DeviceSetup.SecondaryCommand), not again in the port card.
         Assert.DoesNotContain("Connection.DisconnectCommand", device, StringComparison.Ordinal);
-        // The manual connect button is the quiet path next to the port picker, never a second primary. It is one
-        // command for both flows: Automaticky scans every port, a chosen port connects to it.
-        var at = device.IndexOf("Connection.ConnectSelectedCommand", StringComparison.Ordinal);
-        var start = device.LastIndexOf("<Button", at, StringComparison.Ordinal);
-        Assert.DoesNotContain("Button.Primary", device.Substring(start, at - start), StringComparison.Ordinal);
+        // The one connect button is the status card's primary, which runs the selected port (Automaticky scans, a chosen COM port
+        // connects to it). The port card below it only chooses; it carries no connect button of its own.
+        Assert.DoesNotContain("Connection.ConnectSelectedCommand", device, StringComparison.Ordinal);
+        Assert.DoesNotContain("Connection.SmartConnectCommand", device, StringComparison.Ordinal);
+        Assert.DoesNotContain("Connection.ConnectCommand", device, StringComparison.Ordinal);
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(device, @"PrimaryCommand=""{Binding DeviceSetup.PrimaryCommand}""").Count);
+        // Homing moves the whole machine: one labelled control, the jog pad centre is decoration.
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(device, @"Jog.HomeCommand").Count);
+        Assert.Contains("Text=\"Najet domů\"", device, StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------------ generic scan
@@ -106,7 +110,6 @@ public sealed class RedundantEntryPointsTests
         ["Views/Kamil/KamilAssistantHost.xaml|DataContext.UseQuickPromptCommand"] = "suggestion chips in two layouts, one at a time",
         ["Views/DeviceSetup/DeviceWizardOverlay.xaml|ScanCommand"] = "wizard steps are mutually exclusive layers",
         ["Views/DeviceSetup/DeviceWizardOverlay.xaml|AutoConnectCommand"] = "wizard steps are mutually exclusive layers",
-        ["Views/DeviceView.xaml|Jog.HomeCommand"] = "jog pad centre plus labelled Najet domů; OWNER DECISION, homing moves the machine",
         ["Views/MachinePanelView.xaml|Connection.ConnectCommand"] = "header chip vs Připojení tab; panel is only reachable in machine-control mode, which nothing enters today",
         ["SettingsWindow.xaml|Account.RedeemLicenseCommand"] = "licence states are mutually exclusive",
         ["MaterialsWindow.xaml|AddCommand"] = "empty list vs list footer, mutually exclusive",

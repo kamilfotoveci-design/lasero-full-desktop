@@ -61,7 +61,7 @@ public partial class DeviceWizardViewModel : ObservableObject
     [ObservableProperty] private string? _scanReport;
 
     /// <summary>The headline sentence for the "nothing found" screen.</summary>
-    [ObservableProperty] private string _nothingFoundSummary = "Zkontrolujte USB kabel a zapnutí gravírky, potom zkuste hledání znovu.";
+    [ObservableProperty] private string _nothingFoundSummary = "Je potřeba zkontrolovat USB kabel a zapnutí gravírky, potom lze hledání zopakovat.";
 
     /// <summary>How long <see cref="UseSelectedMachine"/> waits for the controller to identify
     /// itself before treating the attempt as failed. Internal so tests can shrink it instead of
@@ -184,9 +184,9 @@ public partial class DeviceWizardViewModel : ObservableObject
     private static (string Report, string Summary) DescribeNothingFound(GrblPortScanResult? result)
     {
         if (result is null)
-            return (string.Empty, "Automatické hledání teď nelze spustit. Zařízení připojte ručně v části Upřesnit.");
+            return (string.Empty, "Automatické hledání teď nelze spustit. Zařízení lze připojit ručně v části Upřesnit.");
         if (result.PortsExamined == 0)
-            return (string.Empty, "Windows nehlásí žádný port COM. Zkontrolujte, že je laser zapnutý a připojený datovým USB kabelem, a případně nainstalujte ovladač CH340 nebo CP210x.");
+            return (string.Empty, "Windows nehlásí žádný port COM. Je potřeba ověřit, že je laser zapnutý a připojený datovým USB kabelem, případně nainstalovat ovladač CH340 nebo CP210x.");
 
         var lines = result.Others.Select(other => $"{other.PortName} - " + other.Outcome switch
         {
@@ -198,7 +198,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         });
         var examined = result.PortsExamined;
         return (string.Join(Environment.NewLine, lines),
-            $"Prohledáno portů COM: {examined}. Žádný neodpověděl jako GRBL. Zkontrolujte kabel, ovladač a zda port nedrží jiný program.");
+            $"Prohledáno portů COM: {examined}. Žádný neodpověděl jako GRBL. Je potřeba zkontrolovat kabel, ovladač a zda port nedrží jiný program.");
     }
 
     partial void OnSelectedMachineChanged(DiscoveredMachine? value)
@@ -242,7 +242,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         catch (Exception exception)
         {
             Log.Warning(exception, "Device scan failed");
-            ScanStatus = "Hledání se nezdařilo. Zkontrolujte USB kabel a zkuste to znovu.";
+            ScanStatus = "Hledání se nezdařilo. Je potřeba zkontrolovat USB kabel, potom lze hledání zopakovat.";
         }
 
         Step = DeviceWizardStep.Results;
@@ -307,7 +307,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         if (machine.IsAutoDetected && identified) MachineName = _connection.ActiveMachineName;
         SetupMessage = identified
             ? _connection.IdentificationMessage
-            : "Zařízení je připojené, ale jeho nastavení se nepodařilo načíst. Rozměry pracovní plochy zadejte ručně.";
+            : "Zařízení je připojené, ale jeho nastavení se nepodařilo načíst. Rozměry pracovní plochy je potřeba zadat ručně.";
         Step = DeviceWizardStep.Setup;
         OnPropertyChanged(nameof(CanFinish));
         return true;
@@ -369,7 +369,7 @@ public partial class DeviceWizardViewModel : ObservableObject
         catch (Exception exception)
         {
             Log.Warning(exception, "Enabling GRBL laser mode failed");
-            SetupMessage = "Laserový režim se nepodařilo zapnout. Zkontrolujte, zda je zařízení v klidu, a zkuste to znovu.";
+            SetupMessage = "Laserový režim se nepodařilo zapnout. Je potřeba ověřit, zda je zařízení v klidu, potom lze akci zopakovat.";
         }
         finally
         {

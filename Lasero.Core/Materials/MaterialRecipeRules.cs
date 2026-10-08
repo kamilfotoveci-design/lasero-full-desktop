@@ -49,7 +49,7 @@ public static class MaterialRecipeRules
         _ => "Laser nejdřív vyplní plochu a potom projede obrys.",
     };
 
-    public const string CutSafetyHint = "Před řezáním si recept vyzkoušejte na odřezku.";
+    public const string CutSafetyHint = "Před řezáním je vhodné recept vyzkoušet na odřezku.";
 
     /// <summary>First free "Nový materiál", "Nový materiál 2", ... ignoring case.</summary>
     public static string UniqueName(string baseName, IEnumerable<string> existing)

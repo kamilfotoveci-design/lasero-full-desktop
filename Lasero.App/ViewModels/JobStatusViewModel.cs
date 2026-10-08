@@ -90,7 +90,7 @@ public partial class JobStatusViewModel : ObservableObject
     public string Description => _job.JobState switch
     {
         JobRunState.Preparing => "Příkazy pro gravírku se generují a připravuje se přenos.",
-        JobRunState.Framing => "Gravírka projíždí obrys návrhu. Zkontrolujte jeho polohu na materiálu.",
+        JobRunState.Framing => "Gravírka projíždí obrys návrhu. Polohu je potřeba zkontrolovat na materiálu.",
         JobRunState.Running => _job.JobSourceLabel,
         JobRunState.Ready => _job.StartBlockedReason
             ?? "Návrh je uvnitř pracovní plochy a nastavení operací je platné. Spuštění se ještě potvrdí souhrnem.",
@@ -102,7 +102,7 @@ public partial class JobStatusViewModel : ObservableObject
             _job.PreflightMessage ?? _job.LastMessage ?? "Podrobnosti jsou v protokolu aplikace.",
         // Idle with a document loaded: the gate itself is the useful sentence, and it is the same
         // text the Start button's tooltip shows, so the two cannot disagree.
-        _ => _job.StartBlockedReason ?? "Zkontrolujte rámování a parametry vrstev.",
+        _ => _job.StartBlockedReason ?? "Je potřeba zkontrolovat rámování a parametry vrstev.",
     };
 
     public bool ShowsProgress => _job.JobState

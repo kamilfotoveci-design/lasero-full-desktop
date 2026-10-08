@@ -225,7 +225,7 @@ public partial class MainWindow : Window
         {
             var save = LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                 "Neuložené změny",
-                "Projekt obsahuje změny, které ještě nejsou uložené. Uložte je, abyste o svou práci nepřišli.",
+                "Projekt obsahuje změny, které ještě nejsou uložené. Uložením se práce zachová.",
                 "Uložit projekt",
                 SecondaryText: "Neukládat",
                 CancelText: "Zrušit",
@@ -300,7 +300,7 @@ public partial class MainWindow : Window
         {
             LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
                 "Připojování zařízení",
-                "Počkejte na dokončení připojování a odhlášení opakujte.",
+                "Odhlásit lze po dokončení připojování.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Warning));
@@ -310,7 +310,7 @@ public partial class MainWindow : Window
         {
             LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
                 "Probíhající úloha",
-                "Před odhlášením bezpečně dokončete nebo zastavte probíhající úlohu.",
+                "Před odhlášením je potřeba bezpečně dokončit nebo zastavit probíhající úlohu.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Warning));
@@ -320,7 +320,7 @@ public partial class MainWindow : Window
         if (!_viewModel.IsDirty) return true;
         var decision = LaseroDialogWindow.Show(owner, new LaseroDialogOptions(
             "Neuložené změny",
-            "Před odhlášením uložte projekt, jinak budou neuložené změny zahozeny.",
+            "Před odhlášením je potřeba projekt uložit, jinak budou neuložené změny zahozeny.",
             "Uložit projekt",
             SecondaryText: "Zahodit změny",
             CancelText: "Zrušit odhlášení",
@@ -373,7 +373,7 @@ public partial class MainWindow : Window
             Log.Error(ex, "Failed to create vector text");
             LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                 "Text se nepodařilo vytvořit",
-                "Text nelze převést na vektorové křivky. Zkuste jiný font nebo menší velikost.",
+                "Text nelze převést na vektorové křivky. Lze zkusit jiný font nebo menší velikost.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
@@ -428,7 +428,7 @@ public partial class MainWindow : Window
             Log.Error(ex, "Failed to trace bitmap {RasterPath}", source.RasterFilePath);
             LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                 "Bitmapu nelze trasovat",
-                "Obrázek se nepodařilo převést na vektorové obrysy. Zkuste jiný formát nebo zkontrolujte, zda je soubor dostupný.",
+                "Obrázek se nepodařilo převést na vektorové obrysy. Lze zkusit jiný formát nebo ověřit, zda je soubor dostupný.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
@@ -446,7 +446,7 @@ public partial class MainWindow : Window
             {
                 var consent = LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                     "Odstranění pozadí online",
-                    "Vybraný obrázek se odešle přes zabezpečené připojení službě Lasero a zpracuje se modelem Gemini. Obrázek opustí váš počítač. Toto upozornění se zobrazí jen jednou. Pokračujte jen pokud s odesláním souhlasíte.",
+                    "Vybraný obrázek se odešle přes zabezpečené připojení službě Lasero a zpracuje se modelem Gemini. Obrázek opustí tento počítač. Toto upozornění se zobrazí jen jednou. Pokračovat lze jen se souhlasem s odesláním.",
                     "Odeslat a zpracovat",
                     CancelText: "Zrušit"));
                 if (consent != LaseroDialogChoice.Primary) return;
@@ -827,7 +827,7 @@ public partial class MainWindow : Window
         {
             var restored = LaseroDialogWindow.Show(this, new LaseroDialogOptions(
                 "Nalezena záloha projektu",
-                "LASERO našlo automatickou zálohu neuložené práce. Můžete pokračovat tam, kde jste skončili.",
+                "LASERO našlo automatickou zálohu neuložené práce. Pokračovat lze tam, kde práce skončila.",
                 "Obnovit projekt",
                 SecondaryText: "Zahodit zálohu",
                 CancelText: null,

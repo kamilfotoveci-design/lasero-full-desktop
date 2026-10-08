@@ -23,12 +23,7 @@
             <Setter Property="Margin" Value="4" />
             <Setter Property="Padding" Value="12" />
         </Style>
-        <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
-            <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        </Style>
-    </UserControl.Resources>
+            </UserControl.Resources>
 
     <components:PageScaffold>
         <components:PageScaffold.Header>
@@ -158,8 +153,8 @@
 
                     <components:ElevatedBorder Style="{StaticResource Card}" Margin="0,0,0,16">
                         <StackPanel>
-                            <components:SectionHeader Level="Card" Title="Ruční připojení" />
-                            <TextBlock Text="Přenos probíhá přes zvolený port COM. Číslo portu je v části Porty ve Správci zařízení Windows; obvyklá rychlost přenosu je 115200 Bd."
+                            <components:SectionHeader Level="Card" Title="Port a rychlost" />
+                            <TextBlock Text="Tlačítko Připojit výše použije zvolený port. Automaticky prohledá všechny porty COM. Číslo portu je v části Porty ve Správci zařízení Windows, obvyklá rychlost přenosu je 115200 Bd."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -220,19 +215,7 @@
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                                 </DockPanel>
                             </Border>
-                            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                <Button Style="{StaticResource Button.Secondary}"
-                                        Command="{Binding Connection.ConnectSelectedCommand}" Margin="0,0,8,0"
-                                        Visibility="{Binding Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}">
-                                    <Grid>
-                                        <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="{Binding Connection.ConnectButtonText}"
-                                                              Visibility="{Binding Connection.IsConnecting, Converter={StaticResource InverseBoolToVisibility}}" />
-                                        <TextBlock Text="Připojování…" FontWeight="SemiBold"
-                                                   Visibility="{Binding Connection.IsConnecting, Converter={StaticResource BoolToVisibility}}" />
-                                    </Grid>
-                                </Button>
-                            </StackPanel>
-                            <TextBlock Text="{Binding Connection.DetectedMachineText}" Style="{StaticResource Text.Muted}" Margin="0,12,0,0"
+                                                        <TextBlock Text="{Binding Connection.DetectedMachineText}" Style="{StaticResource Text.Muted}" Margin="0,12,0,0"
                                        AutomationProperties.Name="Zjištěné zařízení" />
                             <TextBlock Text="{Binding Connection.FirmwareBanner}" Style="{StaticResource Text.Muted}" FontFamily="{StaticResource Font.Numeric}"
                                        TextWrapping="Wrap" Margin="0,12,0,0"
@@ -288,7 +271,10 @@
                                     <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Posunout hlavu nahoru (osa Y plus)" AutomationProperties.Name="Posunout nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                     <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Posunout vpravo nahoru" AutomationProperties.Name="Posunout vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                     <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="Posunout hlavu vlevo (osa X minus)" AutomationProperties.Name="Posunout vlevo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
-                                    <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Hlava se přesune do výchozí polohy. Uvolněte pracovní prostor" AutomationProperties.Name="Najet do výchozí polohy"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
+                                    <!-- Decoration only: the centre of the pad is not a control. Homing moves the whole machine, so it has exactly one
+                                         labelled entry point (Najet domů) that can say why it is unavailable. -->
+                                    <Border Grid.Row="1" Grid.Column="1" Width="12" Height="12" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.PanelBorderStrong}" IsHitTestVisible="False" Focusable="False" />
                                     <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="Posunout hlavu vpravo (osa X plus)" AutomationProperties.Name="Posunout vpravo"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                     <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Posunout vlevo dolů" AutomationProperties.Name="Posunout vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
                                     <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Posunout hlavu dolů (osa Y minus)" AutomationProperties.Name="Posunout dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" /></Button>
@@ -318,14 +304,15 @@
                             <!-- One column: at 312 px a pair of these labels ("Odemknout ($X)", "Nastavit nulu zde") is cut off, and a
                                  cut-off machine command is worse than a taller list. -->
                             <StackPanel>
-                                <Button Command="{Binding Jog.HomeCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
+                                <Button Command="{Binding Jog.HomeCommand}" Margin="0,0,0,8" AutomationProperties.AutomationId="JogHome" ToolTipService.ShowOnDisabled="True"
+                                        ToolTip="{Binding Jog.HomeTooltip}"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
                                 <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout ($X)" /></Button>
                                 <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nastavit nulu zde" /></Button>
                                 <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Přejít na nulu XY" /></Button>
                             </StackPanel>
                             <Expander Header="Pokročilé ovládání" Margin="0,12,0,0">
                                 <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
-                                        ToolTip="Resetuje řídicí jednotku stroje. Použijte pouze při chybě nebo nereagujícím zařízení.">
+                                        ToolTip="Resetuje řídicí jednotku stroje. Určeno jen pro chybu nebo nereagující zařízení.">
                                     <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Resetovat řídicí jednotku" />
                                 </Button>
                             </Expander>
@@ -341,7 +328,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Příprava gravírování" Style="{StaticResource PanelTitle}" Margin="0" />
-                                    <TextBlock Text="Před spuštěním zkontrolujte umístění návrhu na materiálu." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                                    <TextBlock Text="Před spuštěním je potřeba zkontrolovat umístění návrhu na materiálu." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <Border Grid.Column="1" Style="{StaticResource Badge}" Padding="8,4" VerticalAlignment="Top">
                                     <TextBlock Text="{Binding GCode.JobState, Converter={StaticResource JobStateToLabel}}" FontWeight="SemiBold" />
@@ -406,7 +393,7 @@
                             <TextBlock Text="{Binding GCode.LastMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12"
                                        Visibility="{Binding GCode.LastMessage, Converter={StaticResource NotNullToVisibility}}" />
 
-                            <TextBlock Text="Spuštění, pozastavení a zastavení úlohy najdete vždy ve spodní liště."
+                            <TextBlock Text="Spuštění, pozastavení a zastavení úlohy jsou vždy ve spodní liště."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </StackPanel>
                     </components:ElevatedBorder>
@@ -422,7 +409,7 @@
                             </Expander.Header>
                         <Grid Height="240" Margin="0,16,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <TextBlock Text="Přímé příkazy používejte pouze tehdy, pokud znáte GRBL."
+                            <TextBlock Text="Přímé příkazy jsou určeny pro ty, kdo GRBL znají."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <Border Grid.Row="1" Background="{DynamicResource Brush.Field}" BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}">
                                 <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto" Padding="12">

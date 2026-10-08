@@ -36,8 +36,8 @@ public partial class ChatViewModel : ObservableObject
     public bool IsOffline => _account.IsOffline;
     public bool CanUseOnline => _account.IsSignedIn && !_account.IsOffline;
     public string AvailabilityText => IsOffline
-        ? "Offline — historii můžete číst, nové zprávy vyžadují internet."
-        : "Online — Kamil používá kontext vaší gravírky a projektu.";
+        ? "Offline — historii lze číst, nové zprávy vyžadují internet."
+        : "Online — Kamil používá kontext připojené gravírky a projektu.";
 
     /// <summary>
     /// Supplies the workspace context sent with every question — selected material, operation and
@@ -141,18 +141,18 @@ public partial class ChatViewModel : ObservableObject
         catch (TaskCanceledException)
         {
             RestoreFailedMessage(pendingMessage, text);
-            StatusMessage = "Odpověď trvala příliš dlouho. Zkontrolujte připojení a zkuste to znovu.";
+            StatusMessage = "Odpověď trvala příliš dlouho. Je potřeba zkontrolovat připojení, potom lze zprávu odeslat znovu.";
         }
         catch (HttpRequestException)
         {
             RestoreFailedMessage(pendingMessage, text);
-            StatusMessage = "Lasero Chat je offline. Zpráva zůstala připravená; odešlete ji po připojení.";
+            StatusMessage = "Lasero Chat je offline. Zpráva zůstala připravená a odešle se po připojení.";
         }
         catch (Exception exception)
         {
             RestoreFailedMessage(pendingMessage, text);
             Log.Warning(exception, "Lasero Chat request failed");
-            StatusMessage = "Zprávu se nepodařilo zpracovat. Zkuste to prosím znovu.";
+            StatusMessage = "Zprávu se nepodařilo zpracovat. Lze ji odeslat znovu.";
         }
         finally
         {

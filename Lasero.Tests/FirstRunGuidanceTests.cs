@@ -54,7 +54,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         var hint = GuidanceText.DesignerHint(Context(objects: 3, selected: 0));
 
         Assert.NotNull(hint);
-        Assert.Equal("Vyberte objekt, jehož vlastnosti chcete upravit", hint.Text);
+        Assert.Equal("Vlastnosti lze upravit po výběru objektu", hint.Text);
         Assert.Equal("no-selection", hint.Key);
     }
 
@@ -178,7 +178,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
 
         var disconnected = Assert.Single(result.Issues, issue => issue.Code == "device.disconnected");
         Assert.Equal(GuidanceText.NoMachine, disconnected.Message);
-        Assert.Contains("Připojte laser", GuidanceText.NoMachine, StringComparison.Ordinal);
+        Assert.Contains("připojit laser", GuidanceText.NoMachine, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -244,10 +244,10 @@ public sealed class FirstRunGuidanceTests : IDisposable
         scene.Execute(new AddObjectCommand(scene.Scene, second, []));
 
         scene.SelectedObjects.Clear();
-        Assert.Equal("Vyberte alespoň dva objekty, aby je šlo zarovnat", scene.AlignDisabledReason);
+        Assert.Equal("K zarovnání je potřeba vybrat alespoň dva objekty", scene.AlignDisabledReason);
 
         scene.SelectedObjects.Add(first);
-        Assert.Contains("Vyberte alespoň dva objekty", scene.AlignDisabledReason, StringComparison.Ordinal);
+        Assert.Contains("vybrat alespoň dva objekty", scene.AlignDisabledReason, StringComparison.Ordinal);
 
         scene.SelectedObjects.Add(second);
         Assert.Null(scene.AlignDisabledReason);
@@ -382,7 +382,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
         var text = StartSummary.Build(Summary() with { HasCutLayerWithoutRecipe = true });
 
         Assert.Contains("řezací vrstva nemá přiřazený materiálový recept", text, StringComparison.Ordinal);
-        Assert.Contains("Ověřte výkon a rychlost na vzorku", text, StringComparison.Ordinal);
+        Assert.Contains("Výkon a rychlost je potřeba ověřit na vzorku", text, StringComparison.Ordinal);
         Assert.DoesNotContain("materiálový recept", StartSummary.Build(Summary()), StringComparison.Ordinal);
     }
 
@@ -412,7 +412,7 @@ public sealed class FirstRunGuidanceTests : IDisposable
     {
         var text = UserFacingErrors.ConnectionFailed(new InvalidCastException("Unable to cast object"), "COM3");
 
-        Assert.Equal("LASERO se nepodařilo připojit ke stroji. Zkontrolujte USB kabel a napájení laseru a zkuste to znovu.", text);
+        Assert.Equal("LASERO se nepodařilo připojit ke stroji. Je potřeba zkontrolovat USB kabel a napájení laseru, potom lze zkusit akci znovu.", text);
     }
 
     [Fact]

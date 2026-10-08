@@ -33,7 +33,7 @@
                 <Border Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="12,8" Margin="0,0,0,4">
                     <StackPanel Orientation="Horizontal"><components:IconGlyph IconData="{StaticResource Glyph.Settings}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Foreground="{StaticResource Brush.Info}" Margin="0,0,12,0" /><TextBlock Text="Obecné" Foreground="{StaticResource Brush.Info}" FontWeight="SemiBold" /></StackPanel>
                 </Border>
-                <TextBlock Text="Připojení stroje a pohyb os najdete v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="12,16,12,0" />
+                <TextBlock Text="Připojení stroje a pohyb os jsou v hlavní sekci Zařízení." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="12,16,12,0" />
                 <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="12,20,12,20" />
                 <TextBlock Text="Verze 1.2.0" Style="{StaticResource Text.Muted}" Margin="12,0,0,0" />
             </StackPanel>
@@ -97,7 +97,7 @@
                                 <TextBlock Text="Licenční klíč" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBox Text="{Binding Account.LicenseCode, UpdateSourceTrigger=PropertyChanged}" MaxLength="120" ToolTip="Licenční klíč z vašeho účtu Lasero" />
+                                    <TextBox Text="{Binding Account.LicenseCode, UpdateSourceTrigger=PropertyChanged}" MaxLength="120" ToolTip="Licenční klíč z účtu Lasero" />
                                     <Button Grid.Column="2" Command="{Binding Account.RedeemLicenseCommand}" Padding="16,0">
                                         <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Aktivovat" />
                                     </Button>
@@ -206,7 +206,7 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <TextBox Text="{Binding Account.LicenseCode, UpdateSourceTrigger=PropertyChanged}" MaxLength="120"
-                                             ToolTip="Licenční klíč z vašeho účtu Lasero" />
+                                             ToolTip="Licenční klíč z účtu Lasero" />
                                     <Button Grid.Column="2" Command="{Binding Account.RedeemLicenseCommand}" Padding="12,0">
                                         <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Aktivovat" />
                                     </Button>

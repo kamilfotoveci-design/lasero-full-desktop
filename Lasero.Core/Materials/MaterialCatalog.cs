@@ -71,7 +71,7 @@ public static class MaterialCatalog
     private static void AddDiode(List<MaterialRecipe> r)
     {
         Add(r, LaserTechnology.Diode, 5, "wood", E(3000,60,1,300), C(150,100,4));
-        Add(r, LaserTechnology.Diode, 5, "plywood", E(2500,65,1,300), C(100,100,6, warning:"Na 5 W je řezání překližky hraniční: počítejte s mnoha průchody, dlouhým časem a stálým dohledem."));
+        Add(r, LaserTechnology.Diode, 5, "plywood", E(2500,65,1,300), C(100,100,6, warning:"Na 5 W je řezání překližky hraniční: je třeba počítat s mnoha průchody, dlouhým časem a stálým dohledem."));
         Add(r, LaserTechnology.Diode, 5, "acrylic", E(2000,55,1,300, note:"Pouze barevný akryl", compatibility:MaterialCompatibility.Suitable), C(80,100,5, compatibility:MaterialCompatibility.NotRecommended, warning:"Čirý akryl je pro diodový laser téměř průhledný."));
         Add(r, LaserTechnology.Diode, 5, "leather", E(3000,40,1,300), C(200,100,3));
         Add(r, LaserTechnology.Diode, 5, "anodized", E(1500,100,1,300, note:"Výsledek závisí na barvě anodizace", compatibility:MaterialCompatibility.Suitable));

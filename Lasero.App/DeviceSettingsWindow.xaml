@@ -116,7 +116,7 @@
                               Visibility="{Binding IsChecked, ElementName=WorkspaceTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="28,24">
                         <TextBlock Text="Rozměry a profil" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
-                        <TextBlock Text="Pracovní plocha se po připojení načte z GRBL parametrů $130 a $131. Hodnoty zde můžete opravit a uložit jako výchozí."
+                        <TextBlock Text="Pracovní plocha se po připojení načte z GRBL parametrů $130 a $131. Hodnoty zde lze opravit a uložit jako výchozí."
                                    Style="{StaticResource Text.Muted}" TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left" Margin="0,4,0,20" />
 
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
@@ -243,7 +243,7 @@
                                         <ComboBox ItemsSource="{Binding ViewModel.Connection.CommonBaudRates}" SelectedItem="{Binding Draft.BaudRate}" />
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Text="Připojené zařízení nejdříve odpojte, pokud chcete změnit port nebo rychlost."
+                                <TextBlock Text="Port nebo rychlost lze změnit až po odpojení zařízení."
                                            Style="{StaticResource Text.Muted}" Margin="0,12,0,0" />
                             </StackPanel>
                         </components:ElevatedBorder>

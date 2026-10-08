@@ -86,7 +86,7 @@
             <Button x:Name="ZoomPicker" Style="{StaticResource Button.Ghost}"
                     Height="{StaticResource Size.Control.Compact}" MinHeight="{StaticResource Size.Control.Compact}" Padding="8,0" MinWidth="58"
                     Click="OnZoomPickerClick"
-                    ToolTip="Přiblížení plátna. Kliknutím zvolíte přednastavenou hodnotu" AutomationProperties.Name="Měřítko plátna">
+                    ToolTip="Přiblížení plátna. Kliknutím lze zvolit přednastavenou hodnotu" AutomationProperties.Name="Měřítko plátna">
                 <Button.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="25 %" Tag="25" Click="OnZoomPresetClick" />

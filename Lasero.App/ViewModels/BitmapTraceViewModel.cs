@@ -160,8 +160,8 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
             ColoredPreviewPaths = preview.ColoredPaths;
             StatusMessage = preview.Result.ContourCount == 0
                 ? options.Mode == TraceMode.FilledShapes
-                    ? "Nebyly nalezeny žádné obrysy. Zkuste upravit práh nebo zapnout invertování."
-                    : "Nebyly nalezeny žádné obrysy. Zkuste jiný režim nebo upravit rozpoznání."
+                    ? "Nebyly nalezeny žádné obrysy. Lze upravit práh nebo zapnout invertování."
+                    : "Nebyly nalezeny žádné obrysy. Lze zvolit jiný režim nebo upravit rozpoznání."
                 : options.Mode == TraceMode.Color
                     ? "Náhled je připravený. Barevné plochy ukazují výsledné vektorové vrstvy."
                     : "Náhled je připravený. Zvýrazněná křivka ukazuje výsledný Bézierův vektor.";

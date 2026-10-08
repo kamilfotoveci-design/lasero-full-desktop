@@ -63,7 +63,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
             lock (_lifecycleLock)
             {
                 if (State != GrblConnectionState.Disconnected)
-                    throw new InvalidOperationException("Před změnou profilu odpojte zařízení.");
+                    throw new InvalidOperationException("Profil lze změnit až po odpojení zařízení.");
                 MachineCompatibilityCatalog.Get(value);
                 _compatibilityId = value;
             }
@@ -100,7 +100,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
         lock (_lifecycleLock)
         {
             if (State != GrblConnectionState.Disconnected)
-                throw new InvalidOperationException("Spojení už existuje — nejprve jej odpojte.");
+                throw new InvalidOperationException("Spojení už existuje. Nejprve je potřeba jej odpojit.");
 
             MachineCompatibilityCatalog.RequireDirectConnection(_compatibilityId);
             Interlocked.Exchange(ref _disconnecting, 0);
@@ -211,7 +211,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
             }
             var completion = new TaskCompletionSource<GrblCommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (!queue.TryAdd(new QueuedCommand(line, completion, Volatile.Read(ref _commandGeneration))))
-                completion.TrySetResult(GrblCommandResult.Failure("Fronta příkazů je plná. Počkejte na dokončení probíhající operace."));
+                completion.TrySetResult(GrblCommandResult.Failure("Fronta příkazů je plná. Je potřeba počkat na dokončení probíhající operace."));
             return completion.Task;
         }
     }
@@ -266,7 +266,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
                 if (State != GrblConnectionState.Connected || queryGeneration != Volatile.Read(ref _commandGeneration))
                     throw new IOException("Nastavení zařízení pochází z ukončeného nebo resetovaného spojení.");
                 if (powerProfileVersion != Volatile.Read(ref _powerProfileVersion))
-                    throw new IOException("Nastavení výkonu se mezitím změnilo. Načtěte profil zariadenia znovu.");
+                    throw new IOException("Nastavení výkonu se mezitím změnilo. Je potřeba profil zařízení načíst znovu.");
                 SetDeviceProfile(GrblDeviceProfileParser.Parse(settings, FirmwareBanner));
             }
             return settings;

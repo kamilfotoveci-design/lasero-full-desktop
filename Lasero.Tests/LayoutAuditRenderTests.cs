@@ -71,7 +71,7 @@ public sealed class LayoutAuditRenderTests
             vm.CurrentScreen = AppScreen.Device; Shot("device-disconnected");
             vm.Connection.IsConnecting = true; Shot("device-connecting");
             vm.Connection.IsConnecting = false;
-            vm.Connection.ConnectionError = "Spojení s gravírkou se přerušilo. Zkontrolujte kabel USB.";
+            vm.Connection.ConnectionError = "Spojení s gravírkou se přerušilo. Je potřeba zkontrolovat kabel USB.";
             Shot("device-error");
             vm.Connection.ConnectionError = null;
 
@@ -157,7 +157,7 @@ public sealed class LayoutAuditRenderTests
             ShowRender(new RasterImportWindow(new RasterImportViewModel(shell.Machine, vm.SettingsStore, photo, 80, 3000, 100, 254)), "win-raster-import", 1080, 720);
 
             ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Neuložené změny",
-                "Projekt obsahuje změny, které ještě nejsou uložené. Uložte je, abyste o svou práci nepřišli.",
+                "Projekt obsahuje změny, které ještě nejsou uložené. Uložením se práce zachová.",
                 "Uložit projekt", SecondaryText: "Neukládat", CancelText: "Zrušit", Tone: LaseroDialogTone.Warning)), "dlg-save", 420, 300);
             ShowRender(LaseroDialogWindow.Create(new LaseroDialogOptions("Nalezena záloha projektu",
                 "Aplikace byla ukončena bez uložení. Lze obnovit poslední automaticky uloženou verzi.",

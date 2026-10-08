@@ -57,7 +57,7 @@ public partial class ConnectionViewModel : ObservableObject
     public bool IsAutomaticPort => SelectedPortOption?.IsAutomatic ?? true;
 
     /// <summary>One primary connect button: its label says which of the two flows it runs.</summary>
-    public string ConnectButtonText => IsAutomaticPort ? "Připojit automaticky" : "Připojit k vybranému portu";
+    public string ConnectButtonText => "Připojit";
 
     /// <summary>Read-only result of recognising the machine. "Obecný GRBL" until the controller has answered.</summary>
     public string DetectedMachineText => IsConnected && DetectedDevice is not null && !string.IsNullOrWhiteSpace(ActiveMachineName)
@@ -182,7 +182,7 @@ public partial class ConnectionViewModel : ObservableObject
                 if (cancellationToken.IsCancellationRequested || !IsConnected) return;
                 if (profile.NumericSettings.Count < 4)
                 {
-                    IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Zkontrolujte vybraný port a zda zařízení používá firmware GRBL.";
+                    IdentificationMessage = "Zařízení neodpovědělo jako řadič GRBL. Je potřeba ověřit vybraný port a zda zařízení používá firmware GRBL.";
                     return;
                 }
                 var knownMachine = KnownMachineProfiles.Match(profile);
@@ -203,7 +203,7 @@ public partial class ConnectionViewModel : ObservableObject
                 {
                     WorkAreaWidthMm = profile.MaxTravelXmm ?? knownMachine?.WorkAreaWidthMm ?? WorkAreaWidthMm;
                     WorkAreaHeightMm = profile.MaxTravelYmm ?? knownMachine?.WorkAreaHeightMm ?? WorkAreaHeightMm;
-                    WorkspaceMessage = "Rozměry byly načteny ze zařízení. Uložte je jako výchozí, pokud jsou správné.";
+                    WorkspaceMessage = "Rozměry byly načteny ze zařízení. Pokud jsou správné, lze je uložit jako výchozí.";
                 }
 
                 IdentificationMessage = DescribeIdentification(profile);
@@ -220,7 +220,7 @@ public partial class ConnectionViewModel : ObservableObject
         {
             Log.Warning(ex, "GRBL device identification failed");
             RunOnUiThread(() =>
-                IdentificationMessage = "Laser je připojen, ale jeho nastavení se nepodařilo načíst. Odpojte jej, zkontrolujte USB kabel a připojte se znovu.");
+                IdentificationMessage = "Laser je připojen, ale jeho nastavení se nepodařilo načíst. Je potřeba zařízení odpojit, zkontrolovat USB kabel a připojit znovu.");
         }
     }
 
@@ -233,7 +233,7 @@ public partial class ConnectionViewModel : ObservableObject
 
         var message = $"Zařízení nalezeno - pracovní plocha {_settingsStore.Current.Machine.WorkAreaWidthMm:0.#} × {_settingsStore.Current.Machine.WorkAreaHeightMm:0.#} mm.";
         if (profile.MaxTravelXmm is null || profile.MaxTravelYmm is null)
-            message += " Řadič nehlásí rozměry ($130, $131), ověřte pracovní plochu ručně.";
+            message += " Řadič nehlásí rozměry ($130, $131), pracovní plochu je potřeba ověřit ručně.";
         if (profile.MaxSpindleSpeed is null)
             message += " Řadič nehlásí maximální hodnotu S ($30), před spuštěním úlohy ji bude nutné nastavit.";
         if (profile.LaserModeEnabled is null)

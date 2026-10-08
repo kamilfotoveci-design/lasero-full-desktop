@@ -24,7 +24,7 @@ public enum BackgroundRemovalOutcome
 /// </summary>
 public sealed class BackgroundRemovalCoordinator
 {
-    public const string GenericFailureMessage = "Odstranění pozadí se nezdařilo. Zkuste to znovu.";
+    public const string GenericFailureMessage = "Odstranění pozadí se nezdařilo. Lze to zkusit znovu.";
 
     private readonly SceneViewModel _scene;
     private readonly IBackgroundRemovalService _service;

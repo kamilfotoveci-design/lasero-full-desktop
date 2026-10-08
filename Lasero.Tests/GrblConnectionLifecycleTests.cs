@@ -41,7 +41,7 @@ public sealed class GrblConnectionLifecycleTests
         var result = await pending.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.False(result.IsOk);
         Assert.Equal(9, received!.Value.Code);
-        Assert.Contains("odemkněte", received.Value.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("odemknout", received.Value.Message, StringComparison.OrdinalIgnoreCase);
         Assert.NotNull(connection.ActiveAlert);
         Assert.Equal(MachineAlertKind.Error, connection.ActiveAlert!.Kind);
         Assert.Equal(9, connection.ActiveAlert.Code);

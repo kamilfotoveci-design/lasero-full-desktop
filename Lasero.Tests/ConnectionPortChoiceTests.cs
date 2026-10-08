@@ -57,7 +57,8 @@ public sealed class ConnectionPortChoiceTests
             var text = File.ReadAllText(Path.Combine(new[] { Root(), "Lasero.App" }.Concat(relative.Split('/')).ToArray()));
             Assert.Contains("Connection.PortOptions", text, StringComparison.Ordinal);
             Assert.Contains("Connection.SelectedPortOption", text, StringComparison.Ordinal);
-            Assert.Contains("Connection.ConnectSelectedCommand", text, StringComparison.Ordinal);
+            // Zařízení has the one Připojit as the status card primary (DeviceSetupViewModel), the machine panel binds it directly.
+            Assert.Contains(relative.EndsWith("DeviceView.xaml", StringComparison.Ordinal) ? "DeviceSetup.PrimaryCommand" : "Connection.ConnectSelectedCommand", text, StringComparison.Ordinal);
         }
     }
 
@@ -93,7 +94,7 @@ public sealed class ConnectionPortChoiceTests
     public void ConnectionStringsFollowTheBrandTextRules()
     {
         var vm = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "ViewModels", "ConnectionViewModel.cs"));
-        foreach (var text in new[] { "Připojit automaticky", "Připojit k vybranému portu", "Zjištěno: ", "Obecný GRBL", "Automaticky" })
+        foreach (var text in new[] { "Připojit", "Zjištěno: ", "Obecný GRBL", "Automaticky" })
         {
             Assert.Contains(text, vm, StringComparison.Ordinal);
             Assert.DoesNotContain("?", text);

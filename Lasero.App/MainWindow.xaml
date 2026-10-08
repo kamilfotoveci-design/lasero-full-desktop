@@ -486,7 +486,7 @@
                           DragCompleted="OnInspectorSplitterDragCompleted"
                           Focusable="False"
                           AutomationProperties.Name="Změnit šířku panelu vlastností"
-                          ToolTip="Přetažením změníte šířku panelu"
+                          ToolTip="Přetažením lze změnit šířku panelu"
                           Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}">
                 <GridSplitter.Template>
                     <ControlTemplate TargetType="GridSplitter">
@@ -663,7 +663,7 @@
                      selected layer is ringed. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,20,0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                            ToolTip="Barva určuje, jak laser objekt zpracuje. Vyberte objekt a kliknutím na barvu mu ji přiřaďte">
+                            ToolTip="Barva určuje, jak laser objekt zpracuje. Po výběru objektu ji lze přiřadit kliknutím na barvu">
                     <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -713,7 +713,7 @@
                     <Button Style="{StaticResource JobPausedActionButton}" Command="{Binding GCode.PauseResumeCommand}" AutomationProperties.Name="Pokračovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
                             Padding="16,0" Margin="0,0,12,0"
-                            ToolTip="Naváže od místa pozastavení. Nejprve zkontrolujte, že nic nebrání pohybu hlavy">
+                            ToolTip="Naváže od místa pozastavení. Nejprve je potřeba ověřit, že nic nebrání pohybu hlavy">
                         <components:IconLabel IconData="{StaticResource Glyph.Play}" Text="Pokračovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
                     </Button>
                     <Button Style="{StaticResource JobActiveStopButton}"

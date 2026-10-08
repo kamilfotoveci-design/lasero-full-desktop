@@ -27,7 +27,7 @@ public sealed record DesignerHintContext(
 /// </summary>
 public static class GuidanceText
 {
-    public const string NoSelection = "Vyberte objekt, jehož vlastnosti chcete upravit";
+    public const string NoSelection = "Vlastnosti lze upravit po výběru objektu";
 
     /// <summary>Same sentence <see cref="JobPreflight"/> gives as the reason Start is unavailable, so
     /// the strip, the tooltip and the preflight can never disagree about it.</summary>
@@ -57,30 +57,30 @@ public static class GuidanceText
         {
             return context.SelectedNodeCount switch
             {
-                0 => new CanvasHint("nodes-none", "Vyberte uzel kliknutím nebo více uzlů tažením výběrového obdélníku"),
-                1 => new CanvasHint("nodes-one", "Uzel přesunete tažením, pravým tlačítkem zobrazíte akce pro uzel"),
-                _ => new CanvasHint("nodes-many", "Vybrané uzly přesunete tažením, pravým tlačítkem na uzel zobrazíte další akce"),
+                0 => new CanvasHint("nodes-none", "Uzel lze vybrat kliknutím, více uzlů tažením výběrového obdélníku"),
+                1 => new CanvasHint("nodes-one", "Uzel lze přesunout tažením, pravým tlačítkem se zobrazí akce pro uzel"),
+                _ => new CanvasHint("nodes-many", "Vybrané uzly lze přesunout tažením, pravým tlačítkem na uzel se zobrazí další akce"),
             };
         }
 
         switch (context.ActiveTool)
         {
             case DesignerTool.Text:
-                return new CanvasHint("tool-text", "Kliknutím na plátno vložíte text, jeho znění upravíte přímo na plátně");
+                return new CanvasHint("tool-text", "Kliknutím na plátno se vloží text, jeho znění lze upravit přímo na plátně");
             case DesignerTool.Line:
-                return new CanvasHint("tool-line", "Klikáním přidávejte body čáry, dokončíte ji dvojklikem nebo klávesou Enter");
+                return new CanvasHint("tool-line", "Klikáním se přidávají body čáry, dvojklikem nebo klávesou Enter se čára dokončí");
             case DesignerTool.Select:
                 break;
             case DesignerTool.Pan:
                 return null;
             default:
-                return new CanvasHint("tool-shape", "Tažením po plátně nakreslíte tvar");
+                return new CanvasHint("tool-shape", "Tažením po plátně se nakreslí tvar");
         }
 
         if (context.ObjectCount == 0) return null;
         if (context.SelectedCount == 0) return new CanvasHint("no-selection", NoSelection);
         if (context.SelectedCount == 1 && context.SelectedIsVectorPath)
-            return new CanvasHint("path-selected", "Dvojklikem na vybranou dráhu upravíte její uzly");
+            return new CanvasHint("path-selected", "Dvojklikem na vybranou dráhu lze upravit její uzly");
         return null;
     }
 

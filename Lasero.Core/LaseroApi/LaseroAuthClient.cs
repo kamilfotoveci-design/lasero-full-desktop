@@ -48,7 +48,7 @@ public sealed class LaseroAuthClient
 
         var response = await _http.PostAsync(RefreshUrl, form, ct);
         if (!response.IsSuccessStatusCode)
-            throw new LaseroAuthException("Obnovení přihlášení se nezdařilo. Přihlaste se prosím znovu.");
+            throw new LaseroAuthException("Obnovení přihlášení se nezdařilo. Je potřeba se přihlásit znovu.");
 
         var result = await response.Content.ReadFromJsonAsync<RefreshResponse>(cancellationToken: ct)
             ?? throw new LaseroAuthException("Server nevrátil žádná data.");
@@ -76,10 +76,10 @@ public sealed class LaseroAuthClient
     {
         "EMAIL_NOT_FOUND" => "Účet s tímto e-mailem nebyl nalezen.",
         "INVALID_PASSWORD" or "INVALID_LOGIN_CREDENTIALS" => "Nesprávný e-mail nebo heslo.",
-        "INVALID_EMAIL" => "Zadejte platný e-mail.",
-        "MISSING_PASSWORD" => "Zadejte heslo.",
+        "INVALID_EMAIL" => "E-mail není platný.",
+        "MISSING_PASSWORD" => "Heslo chybí.",
         "USER_DISABLED" => "Tento účet byl deaktivován.",
-        "TOO_MANY_ATTEMPTS_TRY_LATER" => "Příliš mnoho pokusů. Zkuste to za chvíli.",
+        "TOO_MANY_ATTEMPTS_TRY_LATER" => "Příliš mnoho pokusů. Lze to zkusit za chvíli.",
         "WEAK_PASSWORD" => "Heslo je příliš slabé.",
         null => "Přihlášení se nezdařilo.",
         _ => $"Přihlášení se nezdařilo ({firebaseCode}).",

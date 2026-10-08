@@ -169,7 +169,7 @@ public sealed class ScreenSpecimenTests
         public ObservableCollection<RecentProjectEntry> RecentProjects { get; } = new();
         public string DeviceName => "Žádné zařízení";
         public string ConnectionSummaryLabel => "Nepřipojeno";
-        public string DeviceConnectionLabel => "Připojte gravírku kabelem USB";
+        public string DeviceConnectionLabel => "Gravírku je potřeba připojit kabelem USB";
         public string FirmwareLabel => "Neznámo";
         public string TipOfDay => "Před výrobou vždy zkontrolujte náhled a polohu materiálu.";
         public int TipPosition => 3;

@@ -264,7 +264,7 @@ public partial class MaterialsViewModel : ObservableObject
         }
         catch (MaterialSyncConflictException conflict)
         {
-            SyncStatus = $"Vzorník se změnil na jiném zařízení ({conflict.ServerSnapshot.Items.Count} receptů). Spusťte synchronizaci znovu.";
+            SyncStatus = $"Vzorník se změnil na jiném zařízení ({conflict.ServerSnapshot.Items.Count} receptů). Synchronizaci je potřeba spustit znovu.";
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
@@ -347,7 +347,7 @@ public partial class MaterialsViewModel : ObservableObject
     private static bool ConfirmDeleteWithDialog(MaterialPreset preset) => LaseroDialogWindow.Show(
         Application.Current.MainWindow, new LaseroDialogOptions(
             "Smazat recept",
-            $"Recept „{preset.Name}“ bude smazán z vašich receptů. Vrátit ho lze jen vytvořením znovu.",
+            $"Recept „{preset.Name}“ bude smazán z osobních receptů. Vrátit ho lze jen vytvořením znovu.",
             "Smazat recept",
             CancelText: "Ponechat",
             Tone: LaseroDialogTone.Danger,

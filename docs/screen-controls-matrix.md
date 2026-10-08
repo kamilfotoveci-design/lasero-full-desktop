@@ -118,8 +118,8 @@ bound to two buttons (allow-list with reasons).
 |---|---|---|---|
 | 1 | Importovat grafiku: rail tool, empty-canvas card, inspector Operace empty state (Návrh, empty design) | Keep only the rail tool. Removed the inspector button and (2026-10-06) the permanent empty-canvas card | Rail is the persistent, discoverable tool (tooltip "Importovat SVG, obrázek nebo G-code"; no Ctrl+I exists, so the tooltip names none). The inspector only explains: "Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek" (14 px). The empty canvas is explained by one tip, `TipCatalog.EmptyCanvas`, through the quiet tip chip: once per account, 1.5 s after an empty Návrh with the Select tool, auto-hides after 16 s or on the first object, tool change, canvas click or leaving the screen, back only after "Obnovit tipy". The tip carries no button |
 | 2 | Připojit: strip button plus Home device rail "Připojit zařízení" (Home, disconnected) | Removed the strip button on Home | Same intent twice on one screen. The rail card is the explanatory connect state |
-| 3 | Připojit: strip button plus status card "Připojit laser automaticky", both `SmartConnectCommand` (Zařízení, disconnected) | Removed the strip button on Zařízení | Identical command and label meaning. Návrh and Chat keep the strip button, they have no connect of their own |
-| 4 | Připojit zařízení (port card) next to the status card primary (Zařízení, disconnected) | Converted: now a Secondary button labelled "Připojit k vybranému portu" | Two primary connect buttons competed. The status card is the primary path; the port card is the manual path for a known port |
+| 3 | Připojit: strip button plus status card "Připojit" (formerly "Připojit laser automaticky"), both `SmartConnectCommand` (Zařízení, disconnected) | Removed the strip button on Zařízení | Identical command and label meaning. Návrh and Chat keep the strip button, they have no connect of their own |
+| 4 | Připojit zařízení (port card) next to the status card primary (Zařízení, disconnected) | Removed (owner, 2026-10-08). The port card only chooses the port and speed; the status card primary is the one **Připojit**, which connects with the selected port (Automaticky scans every port, a chosen COM port connects to it). "Připojit k vybranému portu" and "Připojit automaticky" no longer exist | Two connect buttons on one screen competed, and two labels for one intent made the state harder to read |
 | 5 | Odpojit: status card secondary plus port card Odpojit (Zařízení, connected) | Removed the port card button | Same `DisconnectCommand` twice. The status card slot always offers it while connected (Progress and Success) |
 | 6 | Nastavení zařízení: title bar plus Zařízení page header | Already resolved (title bar hidden on Zařízení and Home) | Kept as is |
 | 7 | Rámovat / Spustit: strip plus machine panel | No duplicate | Strip is Návrh-only; Zařízení has "Zkontrolovat oblast" while the strip button is hidden there. Machine panel in the inspector is unreachable today (`IsMachineControlMode` is never set) |
@@ -137,16 +137,16 @@ bound to two buttons (allow-list with reasons).
 |---|---|---|
 | KAMIL launchers on Návrh: floating head plus tool rail "Kamil" | Keep both, or drop the rail entry | Keep the head (it is the assistant's presence); the rail entry is the keyboard-reachable route today, so it stays until the head is focusable |
 | Nastavení and Účet in the nav rail (both open Settings) | Keep Účet as identity, or make it display only | Keep: the card shows who is signed in, a different job from the Nastavení label |
-| Najet domů twice on Zařízení (jog pad centre icon plus labelled button) | Keep both, or remove the labelled one | Keep both for now: homing moves the machine, so safety review should decide, not a layout pass |
-| Zařízení: "Připojit k vybranému portu" next to the status card CTA | Keep as Secondary, or fold into "Upřesnit" disclosure like the wizard | Fold into a disclosure once the status card is validated with a first-time owner |
+| Najet domů twice on Zařízení (jog pad centre icon plus labelled button) | **Decided 2026-10-08:** one control. The labelled Najet domů stays, the pad centre is a non-interactive dot | `JogViewModel.CanHome` is also refused while a job is Preparing, Framing, Running or Paused (`IsJobActive`, supplied by the shell), as before when disconnected, stale, not Idle or Alarm, or the positioning laser is lit; the tooltip says which (`HomeBlockedReason`) |
+| Zařízení: "Připojit k vybranému portu" next to the status card CTA | **Decided 2026-10-08:** removed, see row 4 | |
 
 ## Connection choice (2026-10, owner decision)
 
 The customer never picks an engraver model. The connection list offers "Automaticky" (scan every port, the
 default) and the available COM ports by friendly name ("COM3 - USB-SERIAL CH340"), with a refresh action; the
 last manual choice is remembered (`Device.PreferredPort`, none means Automaticky). There is one primary connect
-button per surface and its label says which flow it runs: "Připojit automaticky" or "Připojit k vybranému portu"
-(`ConnectionViewModel.ConnectSelectedCommand`). The machine is recognised from the controller (banner, `$I`, `$$`)
+button per surface, labelled **Připojit** (since 2026-10-08 the label no longer changes with the port; the selector says which
+flow runs): Automaticky scans every port, a chosen COM port connects to it (`ConnectionViewModel.ConnectSelectedCommand`). The machine is recognised from the controller (banner, `$I`, `$$`)
 and shown as read-only text: "Zjištěno: ..." or "Obecný GRBL". The model catalogue stays in `Lasero.Core`
 (`MachineCompatibilityCatalog`, `KnownMachineProfiles`) for detection and for the refusal to connect to an
 unverified profile; no customer view binds it (`ConnectionPortChoiceTests`).

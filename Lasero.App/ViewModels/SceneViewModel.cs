@@ -104,9 +104,9 @@ public partial class SceneViewModel : ObservableObject
         get
         {
             if (SelectedObjects.Count == 0) return "Nic není vybráno.";
-            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze sjednotit ani kombinovat — vyberte pouze vektory.";
-            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze sjednotit ani kombinovat — nejprve je odemkněte.";
-            if (SelectedObjects.SelectMany(item => item.LocalShapes).Count() < 2) return "Vyberte alespoň dva tvary.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze sjednotit ani kombinovat. Lze vybrat pouze vektory.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze sjednotit ani kombinovat. Nejprve je potřeba je odemknout.";
+            if (SelectedObjects.SelectMany(item => item.LocalShapes).Count() < 2) return "Je potřeba vybrat alespoň dva tvary.";
             if (SelectedObjects.SelectMany(item => item.LocalShapes).Any(shape => !shape.IsClosed || shape.Points.Count < 3))
                 return "Výběr obsahuje otevřenou dráhu — booleovské operace vyžadují uzavřené tvary.";
             return null;
@@ -116,8 +116,8 @@ public partial class SceneViewModel : ObservableObject
     /// selected objects, so a single object has nothing to align to.</summary>
     public string? AlignDisabledReason => SelectedObjects.Count switch
     {
-        0 => "Vyberte alespoň dva objekty, aby je šlo zarovnat",
-        1 => "Vyberte alespoň dva objekty, aby je šlo zarovnat. Jeden objekt nemá k čemu zarovnat",
+        0 => "K zarovnání je potřeba vybrat alespoň dva objekty",
+        1 => "K zarovnání je potřeba vybrat alespoň dva objekty. Jeden objekt nemá k čemu zarovnat",
         _ => null,
     };
 
@@ -134,8 +134,8 @@ public partial class SceneViewModel : ObservableObject
         get
         {
             if (SelectedObjects.Count == 0) return "Nic není vybráno.";
-            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze posunout offsetem — vyberte vektor.";
-            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze upravit offsetem — nejprve je odemkněte.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze posunout offsetem. Lze vybrat vektor.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze upravit offsetem. Nejprve je potřeba je odemknout.";
             if (!SelectedObjects.SelectMany(item => item.GetWorldShapes()).Any(shape => shape.Points.Count >= 2))
                 return "Vybraný tvar neobsahuje žádnou dráhu k posunutí.";
             return null;
@@ -1624,7 +1624,7 @@ public partial class SceneViewModel : ObservableObject
     }
 
     private void RejectVectorUnion(string reason) => VectorOperationRejected?.Invoke(
-        $"Vektory nebyly změněny. {reason} Zkontrolujte překrývající se nebo velmi tenké části a zkuste výběr znovu.");
+        $"Vektory nebyly změněny. {reason} Je potřeba zkontrolovat překrývající se nebo velmi tenké části, potom lze výběr zkusit znovu.");
 
     private static List<ImportedShape> ToImportedShapes(
         IReadOnlyList<IReadOnlyList<Position>> rings,

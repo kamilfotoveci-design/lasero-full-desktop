@@ -181,7 +181,7 @@
                 <Button x:Name="PillLayer" Style="{StaticResource Kamil.MinimizedAvatar}"
                         Command="{Binding OpenQuickAskCommand}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                        ToolTip="Kamil — zeptejte se bez opuštění pracovní plochy"
+                        ToolTip="Kamil — dotazy lze klást bez opuštění pracovní plochy"
                         automation:AutomationProperties.Name="Otevřít asistenta Kamil">
                     <Button.RenderTransform>
                         <TranslateTransform x:Name="PillOffset" />
@@ -378,7 +378,7 @@
                             <TextBlock Text="Kamil pomůže s návrhem a nastavením" FontWeight="SemiBold"
                                        FontSize="{StaticResource Size.Text.Assistant.Body}"
                                        HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
-                            <TextBlock Text="Doporučení vždy ověřte na odřezku, než pustíte ostrou úlohu."
+                            <TextBlock Text="Doporučení je vždy potřeba ověřit na odřezku před ostrou úlohou."
                                        Style="{StaticResource Kamil.MetaText}" TextWrapping="Wrap"
                                        TextAlignment="Center" Margin="0,4,0,0" />
                             <ItemsControl ItemsSource="{Binding QuickPrompts}" Margin="0,16,0,0"

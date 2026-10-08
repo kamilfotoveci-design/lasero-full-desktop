@@ -29,7 +29,7 @@ public sealed class ShapeToolTooltipConverter : IValueConverter
         if (value is not DesignerTool tool || !ShapeToolCatalog.IsShapeTool(tool))
             return "Tvary — obdélník, elipsa, mnohoúhelníky a hvězdy";
         var def = ShapeToolCatalog.Get(tool);
-        return $"{def.TooltipText} — přidržte nebo klikněte pravým tlačítkem pro další tvary";
+        return $"{def.TooltipText} — přidržením nebo pravým tlačítkem lze zvolit další tvary";
     }
 
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture) =>

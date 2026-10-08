@@ -63,8 +63,29 @@ public partial class JogViewModel : ObservableObject
     // The positioning laser reports Idle to GRBL — CanManualMotion alone would happily let Jog/Home/
     // GoToWorkZero run while the beam is physically lit. Every motion command must also check this.
     private bool CanManualMotionWithLaserOff() => CanManualMotion() && !IsPositioningLaserOn;
-    private bool CanHome() => IsConnected() && HasFreshStatus() && !IsPositioningLaserOn
+    /// <summary>Supplied by the shell: true while a job is Preparing, Framing, Running or Paused. Homing sends the head to the
+    /// machine origin, so it must never start under a job, whatever the controller happens to report between two moves.</summary>
+    public Func<bool>? IsJobActive { get; set; }
+
+    private bool JobActive() => IsJobActive?.Invoke() == true;
+
+    private bool CanHome() => !JobActive() && IsConnected() && HasFreshStatus() && !IsPositioningLaserOn
         && _connection.LastStatus?.Mode is GrblMachineMode.Idle or GrblMachineMode.Alarm;
+
+    /// <summary>Why Najet domů is unavailable, or null when it is available. A disabled machine action says why.</summary>
+    public string? HomeBlockedReason =>
+        JobActive() ? "Při probíhající úloze nelze najíždět do výchozí polohy."
+        : !IsConnected() ? "Do výchozí polohy lze najet po připojení zařízení."
+        : !HasFreshStatus() ? "Čeká se na aktuální stav zařízení."
+        : IsPositioningLaserOn ? "Do výchozí polohy lze najet po vypnutí polohovacího laseru."
+        : (_connection.LastStatus?.Mode is GrblMachineMode.Idle or GrblMachineMode.Alarm) ? null
+        : "Zařízení se právě pohybuje nebo není v klidu.";
+
+    /// <summary>The tooltip of the one Najet domů control.</summary>
+    public string HomeTooltip => HomeBlockedReason ?? "Hlava se pohne do výchozí polohy. Pracovní prostor musí být volný.";
+
+    /// <summary>Re-evaluates the job guard after the job state changed.</summary>
+    public void RefreshJobGuard() => RunOnUiThread(NotifyMachineStateChanged);
     private bool CanUnlock() => IsConnected()
         && (_connection.LastStatus?.Mode == GrblMachineMode.Alarm
             || _connection.ActiveAlert?.Kind == MachineAlertKind.Alarm);
@@ -247,7 +268,7 @@ public partial class JogViewModel : ObservableObject
     {
         if (!ConfirmAction(new LaseroDialogOptions(
                 "Přesun na pracovní nulu",
-                "Hlava se přesune na pracovní nulu XY rychloposuvem (G0) plnou rychlostí. Před pokračováním zkontrolujte, že je dráha volná.",
+                "Hlava se přesune na pracovní nulu XY rychloposuvem (G0) plnou rychlostí. Před pokračováním je potřeba ověřit, že je dráha volná.",
                 "Přesunout",
                 CancelText: "Zrušit",
                 Tone: LaseroDialogTone.Warning))) return;
@@ -271,6 +292,8 @@ public partial class JogViewModel : ObservableObject
         GoToWorkZeroCommand.NotifyCanExecuteChanged();
         CanJogToPoint = CanManualMotion();
         OnPropertyChanged(nameof(CanUsePositioningLaser));
+        OnPropertyChanged(nameof(HomeBlockedReason));
+        OnPropertyChanged(nameof(HomeTooltip));
     }
 
     partial void OnStepSizeMmChanged(double value) => NotifyXyJogCommands();

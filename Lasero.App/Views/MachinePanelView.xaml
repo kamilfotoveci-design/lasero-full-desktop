@@ -33,12 +33,7 @@
             <Setter Property="Margin" Value="4" />
             <Setter Property="Padding" Value="12" />
         </Style>
-        <Style x:Key="JogHomeButton" TargetType="Button" BasedOn="{StaticResource JogPadButton}">
-            <Setter Property="Background" Value="{StaticResource Brush.SelectedSurface}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.SelectedBorder}" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        </Style>
-    </UserControl.Resources>
+            </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -241,7 +236,10 @@
                         <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYPosCommand}" ToolTip="Posunout hlavu nahoru (osa Y plus)"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUp}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosYPosCommand}" ToolTip="Posunout hlavu vpravo nahoru"><components:IconGlyph IconData="{StaticResource Glyph.ArrowUpRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegCommand}" ToolTip="Posunout hlavu vlevo (osa X minus)"><components:IconGlyph IconData="{StaticResource Glyph.ArrowLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
-                        <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource JogHomeButton}" Command="{Binding Jog.HomeCommand}" ToolTip="Hlava se přesune do výchozí polohy. Uvolněte pracovní prostor"><components:IconGlyph IconData="{StaticResource Glyph.MachineHome}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
+                        <!-- Decoration only: the centre of the pad is not a control. Homing moves the whole machine, so it has exactly one
+                             labelled entry point (Najet domů) that can say why it is unavailable. -->
+                        <Border Grid.Row="1" Grid.Column="1" Width="12" Height="12" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                CornerRadius="{StaticResource Radius.Pill}" Background="{StaticResource Brush.PanelBorderStrong}" IsHitTestVisible="False" Focusable="False" />
                         <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXPosCommand}" ToolTip="Posunout hlavu vpravo (osa X plus)"><components:IconGlyph IconData="{StaticResource Glyph.ArrowRight}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogXNegYNegCommand}" ToolTip="Posunout hlavu vlevo dolů"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDownLeft}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
                         <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource JogPadButton}" Command="{Binding Jog.JogYNegCommand}" ToolTip="Posunout hlavu dolů (osa Y minus)"><components:IconGlyph IconData="{StaticResource Glyph.ArrowDown}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></Button>
@@ -260,11 +258,13 @@
                         <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.SetOriginHereCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Nula zde" /></Button>
                         <Button Grid.Column="2" Style="{StaticResource Button.Secondary}" Command="{Binding Jog.GoToWorkZeroCommand}"><components:IconLabel IconData="{StaticResource Glyph.Origin}" Text="Na nulu XY" /></Button>
                     </Grid>
+                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.HomeCommand}" Margin="0,0,0,8" ToolTipService.ShowOnDisabled="True"
+                            ToolTip="{Binding Jog.HomeTooltip}"><components:IconLabel IconData="{StaticResource Glyph.MachineHome}" Text="Najet domů" /></Button>
                     <Button Style="{StaticResource Button.Secondary}" Command="{Binding Jog.UnlockCommand}" Margin="0,0,0,8"><components:IconLabel IconData="{StaticResource Glyph.Unlock}" Text="Odemknout zařízení ($X)" /></Button>
                     <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.CancelJogCommand}"><components:IconLabel IconData="{StaticResource Glyph.Stop}" Text="Zastavit ruční pohyb" /></Button>
                     <Expander Header="Pokročilé ovládání" Margin="0,8,0,0">
                         <Button Style="{StaticResource Button.Danger}" Command="{Binding Jog.SoftResetCommand}" Margin="0,8,0,0"
-                                ToolTip="Resetuje řídicí jednotku. Použijte pouze při chybě nebo nereagujícím stroji.">
+                                ToolTip="Resetuje řídicí jednotku. Určeno jen pro chybu nebo nereagující stroj.">
                             <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Resetovat řídicí jednotku" />
                         </Button>
                     </Expander>
@@ -275,7 +275,7 @@
                              the panel edge. -->
 <DockPanel>
                             <components:IconGlyph DockPanel.Dock="Left" VerticalAlignment="Top" IconData="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Md}" Height="{StaticResource Size.Icon.Md}" Margin="0,0,8,0" Foreground="{StaticResource Brush.Info}" />
-                            <TextBlock Text="Pro přesné polohování použijte menší krok. Návrat na pracovní nulu provede tlačítko Na nulu XY."
+                            <TextBlock Text="Pro přesné polohování slouží menší krok. Návrat na pracovní nulu provede tlačítko Na nulu XY."
                                        Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
                         </DockPanel>
                     </Border>

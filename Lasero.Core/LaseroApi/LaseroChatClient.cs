@@ -103,13 +103,13 @@ public sealed class LaseroChatClient
 
         using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new LaseroChatException(LaseroChatFailure.Authentication, "Platnost přihlášení skončila. Přihlaste se prosím znovu.");
+            throw new LaseroChatException(LaseroChatFailure.Authentication, "Platnost přihlášení skončila. Je potřeba se přihlásit znovu.");
         if ((int)response.StatusCode == 429)
-            throw new LaseroChatException(LaseroChatFailure.RateLimited, "Kamil je nyní vytížený. Zkuste zprávu odeslat za chvíli.");
+            throw new LaseroChatException(LaseroChatFailure.RateLimited, "Kamil je nyní vytížený. Zprávu lze odeslat za chvíli.");
 
         var payload = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new LaseroChatException(LaseroChatFailure.Server, "Lasero Chat nyní neodpovídá. Zkuste to prosím znovu.");
+            throw new LaseroChatException(LaseroChatFailure.Server, "Lasero Chat nyní neodpovídá. Lze to zkusit znovu.");
 
         try
         {
@@ -123,7 +123,7 @@ public sealed class LaseroChatClient
 
             return !string.IsNullOrWhiteSpace(text)
                 ? text.Trim()
-                : throw new LaseroChatException(LaseroChatFailure.InvalidResponse, "Kamil vrátil prázdnou odpověď. Zkuste otázku položit znovu.");
+                : throw new LaseroChatException(LaseroChatFailure.InvalidResponse, "Kamil vrátil prázdnou odpověď. Otázku lze položit znovu.");
         }
         catch (LaseroChatException)
         {

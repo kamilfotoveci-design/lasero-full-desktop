@@ -49,13 +49,13 @@ public static class StartSummary
             $"Umístění: {input.PlacementLabel}",
             $"Rámování: {framing}",
             input.SettingsSummary + (input.HasCutLayerWithoutRecipe
-                ? "\nPozor: řezací vrstva nemá přiřazený materiálový recept. Ověřte výkon a rychlost na vzorku."
+                ? "\nPozor: řezací vrstva nemá přiřazený materiálový recept. Výkon a rychlost je potřeba ověřit na vzorku."
                 : string.Empty),
             $"Odhadovaný čas: {input.EstimatedTime}",
             string.Empty,
             input.IsSimulator
                 ? "Po potvrzení se úloha odehraje na simulátoru, žádný fyzický laser nebude pracovat."
                 : "Po potvrzení laser okamžitě začne pracovat. Zastavit jej lze tlačítkem Zastavit.",
-            "Před spuštěním zkontrolujte materiál, odsávání a ochranný kryt.");
+            "Před spuštěním je potřeba zkontrolovat materiál, odsávání a ochranný kryt.");
     }
 }

@@ -167,7 +167,7 @@
 
         <Border Grid.Row="0" Padding="32,32,32,16">
             <components:PageHeader Title="Vzorník materiálů"
-                                   Subtitle="Bezpečné výchozí hodnoty jsou dostupné offline. Před ostrou úlohou je vždy ověřte na odřezku.">
+                                   Subtitle="Bezpečné výchozí hodnoty jsou dostupné offline. Před ostrou úlohou je vždy potřeba hodnoty ověřit na odřezku.">
                 <components:PageHeader.Actions>
                     <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -253,7 +253,7 @@
                                                       Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                       HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
                                 <TextBlock Text="Žádný materiál neodpovídá filtrům" FontWeight="SemiBold" Margin="0,12,0,0" />
-                                <TextBlock Text="Změňte typ laseru, výkon nebo hledaný výraz." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                                <TextBlock Text="Lze změnit typ laseru, výkon nebo hledaný výraz." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
                             </StackPanel>
                             <ScrollViewer x:Name="SwatchScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                           Visibility="{Binding HasSwatchCards, Converter={StaticResource BoolToVisibility}}">
@@ -341,7 +341,7 @@
                                                     <Border Grid.Row="2" Padding="16,12" Background="{StaticResource Brush.PanelRaised}"
                                                             BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0">
                                                         <Grid>
-                                                            <TextBlock Text="Klikněte na požadovaný odstín" Style="{StaticResource Text.Muted}"
+                                                            <TextBlock Text="Odstín lze zvolit kliknutím" Style="{StaticResource Text.Muted}"
                                                                        Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVisibility}}" />
                                                             <StackPanel Orientation="Horizontal" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
                                                                 <TextBlock Text="{Binding SelectedCell.Speed, StringFormat={}{0:0} mm/min}" FontWeight="SemiBold" />
@@ -368,8 +368,8 @@
                                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
                                                           Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                           HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
-                                    <TextBlock Text="Vyberte odstín" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
-                                    <TextBlock Text="Klikněte na políčko ve vzorníku. Rychlost a výkon se nastaví automaticky."
+                                    <TextBlock Text="Odstín zatím není zvolen" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
+                                    <TextBlock Text="Kliknutím na políčko ve vzorníku se rychlost a výkon nastaví automaticky."
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center"
                                                MaxWidth="230" Margin="0,4,0,0" />
                                 </StackPanel>
@@ -429,7 +429,7 @@
                     <!-- One plain sentence so a first-time owner knows what a recipe is and where it is used. -->
                     <StackPanel Grid.Row="0" Margin="0,0,0,12">
                         <TextBlock x:Name="RecipeHelpText" FontSize="{StaticResource Size.Text.Body}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}"
-                                   Text="Recept je uložené nastavení rychlosti, výkonu a počtu průchodů pro jeden materiál. V Návrhu ho použijete přes Použít na operaci." />
+                                   Text="Recept je uložené nastavení rychlosti, výkonu a počtu průchodů pro jeden materiál. V Návrhu ho lze použít přes Použít na operaci." />
                         <TextBlock FontSize="{StaticResource Size.Text.Body}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource Brush.Warning}"
                                    Text="{Binding CutSafetyHint}"
                                    Visibility="{Binding HasCutPreset, Converter={StaticResource BoolToVisibility}}" />
@@ -442,8 +442,8 @@
                                     Visibility="{Binding HasPresets, Converter={StaticResource InverseBoolToVisibility}}">
                                 <StackPanel HorizontalAlignment="Center" MaxWidth="560">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}" Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
-                                    <TextBlock Text="Zatím nemáte žádný vlastní recept" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
-                                    <TextBlock Text="Přidejte první recept a upravte ho podle svého materiálu. Hodnoty se ukládají samy."
+                                    <TextBlock Text="Zatím není žádný vlastní recept" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
+                                    <TextBlock Text="První recept lze přidat a upravit podle materiálu. Hodnoty se ukládají samy."
                                                FontSize="{StaticResource Size.Text.Body}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,16" />
                                     <Button x:Name="AddFirstRecipeButton" Style="{StaticResource PrimaryBlue}" Command="{Binding AddCommand}"
                                             HorizontalAlignment="Center" Padding="20,0" ToolTip="Vytvořit první vlastní recept"
@@ -476,7 +476,7 @@
                                                         <TextBox FontSize="{StaticResource Size.Text.Body}" Height="{StaticResource Size.Control.Base}" VerticalContentAlignment="Center" MaxLength="80"
                                                                  Text="{Binding Name, UpdateSourceTrigger=LostFocus, ValidatesOnDataErrors=True}"
                                                                  AutomationProperties.Name="Název materiálu"
-                                                                 ToolTip="Jak recept poznáte v seznamu, například Překližka 3 mm" />
+                                                                 ToolTip="Název, podle kterého se recept pozná v seznamu, například Překližka 3 mm" />
                                                     </StackPanel>
                                                     <StackPanel Width="200" Margin="0,0,12,8">
                                                         <TextBlock Text="Režim" FontSize="{StaticResource Size.Text.Body}" FontWeight="Medium" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,4" />

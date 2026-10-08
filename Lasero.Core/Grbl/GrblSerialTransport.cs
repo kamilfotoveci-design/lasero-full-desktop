@@ -35,7 +35,7 @@ public sealed class GrblSerialTransport : IGrblTransport
     public void Open(string portName, int baudRate)
     {
         if (IsOpen)
-            throw new InvalidOperationException("Port je již otevřený. Nejprve jej zavřete.");
+            throw new InvalidOperationException("Port je již otevřený. Nejprve je potřeba jej zavřít.");
 
         var port = new SerialPort(portName, baudRate)
         {

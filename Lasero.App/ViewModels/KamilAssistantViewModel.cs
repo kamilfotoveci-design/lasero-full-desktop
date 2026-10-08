@@ -221,7 +221,7 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     public string ApplyRecommendationTooltip => _scene.SelectedLayer is { } layer
         ? $"Nastaví rychlost, výkon a průchody na operaci „{layer.Name}“"
-        : "Nejdřív vyberte operaci v panelu vpravo";
+        : "Nejdřív je potřeba zvolit operaci v panelu vpravo";
 
     /// <summary>
     /// Whether a card still describes the operation it was originally about. Every recommendation

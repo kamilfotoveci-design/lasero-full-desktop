@@ -65,7 +65,7 @@ public partial class ConsoleViewModel : ObservableObject
             var app = Application.Current;
             if (app is null || LaseroDialogWindow.Show(app.MainWindow, new LaseroDialogOptions(
                     "Potvrdit přímý příkaz stroji",
-                    $"Příkaz „{text}“ může pohnout strojem, změnit pracovní nulu nebo zapnout laser. Odesílejte jej pouze tehdy, když rozumíte jeho účinku.",
+                    $"Příkaz „{text}“ může pohnout strojem, změnit pracovní nulu nebo zapnout laser. Odeslat jej lze jen při znalosti jeho účinku.",
                     "Odeslat příkaz",
                     CancelText: "Zrušit",
                     Tone: LaseroDialogTone.Danger,

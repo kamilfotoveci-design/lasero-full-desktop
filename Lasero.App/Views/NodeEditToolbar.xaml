@@ -269,7 +269,7 @@
                                             <Setter Property="Text" Value="Spojí tento konec s nejbližším otevřeným koncem jiné dráhy." />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding TargetCanvas.CanJoinSelectedEndpoint, ElementName=Root}" Value="False">
-                                                    <Setter Property="Text" Value="Žádný jiný otevřený konec není poblíž. Přesuňte dráhy blíž k sobě, nebo tento uzel přetáhněte na cílový konec." />
+                                                    <Setter Property="Text" Value="Žádný jiný otevřený konec není poblíž. Dráhy lze přesunout blíž k sobě, nebo lze tento uzel přetáhnout na cílový konec." />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

@@ -247,9 +247,11 @@ public partial class MainViewModel : ObservableObject
             Connection.SelectedPort,
             Lasero.Core.Grbl.VirtualGrblTransport.IsVirtualPort(Connection.SelectedPort));
         Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
+        // Homing is refused while a job is active; the Jog view model asks, the shell answers.
+        Jog.IsJobActive = () => GCode.IsJobActive;
         GCode.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(GCodeViewModel.JobState)) NotifyScreenChrome();
+            if (args.PropertyName == nameof(GCodeViewModel.JobState)) { NotifyScreenChrome(); Jog.RefreshJobGuard(); }
         };
         MachineStatus.PropertyChanged += (_, args) =>
         {
@@ -513,7 +515,7 @@ public partial class MainViewModel : ObservableObject
         {
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
                 "Projekt nebyl nalezen",
-                "Vybraný soubor už na tomto místě není. Otevřete projekt přímo z Lasero a zvolte jeho nové umístění.",
+                "Vybraný soubor už na tomto místě není. Projekt lze otevřít přímo z Lasero a zvolit jeho nové umístění.",
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Warning));

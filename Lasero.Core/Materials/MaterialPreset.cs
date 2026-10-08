@@ -57,9 +57,9 @@ public sealed partial class MaterialPreset : ObservableObject, System.ComponentM
 
     public string this[string columnName] => columnName switch
     {
-        nameof(Name) when string.IsNullOrWhiteSpace(Name) => "Zadejte název materiálu.",
+        nameof(Name) when string.IsNullOrWhiteSpace(Name) => "Název materiálu chybí.",
         nameof(Name) when Name.Trim().Length > 80 => "Název může mít nejvýše 80 znaků.",
-        nameof(Name) when HasDuplicateName => "Recept s tímto názvem už máte. Zvolte jiný název.",
+        nameof(Name) when HasDuplicateName => "Recept s tímto názvem už existuje. Lze zvolit jiný název.",
         nameof(Speed) when !double.IsFinite(Speed) || Speed is < MaterialRecipeRules.MinSpeed or > MaterialRecipeRules.MaxSpeed =>
             "Rychlost musí být mezi 10 a 12000 mm/min.",
         nameof(Power) when !double.IsFinite(Power) || Power is < MaterialRecipeRules.MinPower or > MaterialRecipeRules.MaxPower =>

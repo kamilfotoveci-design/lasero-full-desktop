@@ -217,7 +217,7 @@ public partial class GCodeViewModel : ObservableObject
                     _scene.ImportSvgFile(dialog.FileName, ImportWidthMm);
                     ImportKind = ImportKind.Svg;
                     FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "SVG bylo přidáno do návrhu. Objekt můžete přesunout, otočit nebo změnit jeho velikost.";
+                    LastMessage = "SVG bylo přidáno do návrhu. Objekt lze přesunout, otočit nebo změnit jeho velikost.";
                     RegenerateFromScene();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp":
@@ -233,7 +233,7 @@ public partial class GCodeViewModel : ObservableObject
                     _scene.ImportRasterFile(dialog.FileName, rasterOptions);
                     ImportKind = ImportKind.Raster;
                     FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "Obrázek byl přidán na plátno. Velikost upravíte přímo na plátně; nastavení obrázku otevřete pravým kliknutím.";
+                    LastMessage = "Obrázek byl přidán na plátno. Velikost lze upravit přímo na plátně; nastavení obrázku se otevře pravým kliknutím.";
                     RegenerateFromScene();
                     break;
                 default:
@@ -501,7 +501,7 @@ public partial class GCodeViewModel : ObservableObject
     /// </summary>
     public string StartActionTooltip => CanRun()
         ? (NeedsFramingBeforeStart
-            ? "Nejprve ověřte umístění tlačítkem Rámovat, bez toho se úloha nespustí"
+            ? "Nejprve je potřeba ověřit umístění tlačítkem Rámovat, bez toho se úloha nespustí"
             : "Zobrazí souhrn úlohy ke schválení. Laser se rozjede až po potvrzení")
         // The cached reason is only refreshed by machine events, so a tooltip asked for before the first
         // one (right after launch) would otherwise be empty. Ask the gate directly in that case.
@@ -517,7 +517,7 @@ public partial class GCodeViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusStripMessage));
     }
     public string FrameActionTooltip => CanFrame()
-        ? "Hlava projede obrys úlohy se slabým viditelným paprskem, abyste ověřili umístění na materiálu"
+        ? "Hlava projede obrys úlohy se slabým viditelným paprskem, aby bylo možné ověřit umístění na materiálu"
         : FrameBlockedReason ?? DescribeBlockedAction(EvaluatePreflight(includeFramingRequirement: false));
 
     partial void OnJobStateChanged(JobRunState value)
@@ -545,7 +545,7 @@ public partial class GCodeViewModel : ObservableObject
             JobRunState.Preparing => "Úloha se právě připravuje.",
             JobRunState.Framing => "Právě probíhá rámování.",
             JobRunState.Running => "Úloha už běží.",
-            JobRunState.Paused => "Úloha je pozastavená. Pokračujte v ní, nebo ji zastavte.",
+            JobRunState.Paused => "Úloha je pozastavená. Pokračovat lze tlačítkem Pokračovat, nebo ji lze zastavit.",
             _ => "Úlohu zatím nelze spustit.",
         };
     }
@@ -598,7 +598,7 @@ public partial class GCodeViewModel : ObservableObject
             RegenerateFromScene();
         PlacementChanged?.Invoke();
         LastMessage = value == JobPlacementMode.CurrentPosition
-            ? "Úloha začne v aktuální poloze laseru. Polohu můžete změnit šipkami před rámováním nebo spuštěním."
+            ? "Úloha začne v aktuální poloze laseru. Polohu lze změnit šipkami před rámováním nebo spuštěním."
             : "Úloha používá absolutní souřadnice návrhu. Bod 0,0 odpovídá pracovní nule stroje.";
     }
 
@@ -617,7 +617,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             JobPlacementMode.AbsoluteCoordinates => "0,0 odpovídá pracovní nule stroje",
             JobPlacementMode.CurrentPosition when _connection.LastStatus is null =>
-                "Připojte zařízení pro načtení aktuální polohy",
+                "Aktuální poloha se načte po připojení zařízení",
             _ => $"{OriginAnchorLabel(OriginAnchor)}: X {PlacementReferenceX:0.###} · Y {PlacementReferenceY:0.###} mm",
         };
     }
@@ -867,7 +867,7 @@ public partial class GCodeViewModel : ObservableObject
         if (!ReferenceEquals(confirmedDocument, Document) || !preflight.CanStart)
         {
             JobState = JobRunState.Ready;
-            PreflightMessage = preflight.FirstBlockingIssue?.Message ?? "Úloha se změnila. Zkontrolujte ji a spusťte znovu.";
+            PreflightMessage = preflight.FirstBlockingIssue?.Message ?? "Úloha se změnila. Je potřeba ji zkontrolovat a spustit znovu.";
             LastMessage = PreflightMessage;
             if (PreflightMessage is { Length: > 0 } recheckReason) StartBlocked?.Invoke("Spuštění není možné", recheckReason);
             RefreshCommands();
@@ -897,7 +897,7 @@ public partial class GCodeViewModel : ObservableObject
             ProgressPercent = 100;
             RemainingDuration = TimeSpan.Zero;
             RemainingTimeLabel = FormatDuration(RemainingDuration);
-            LastMessage = $"Gravírování bylo dokončeno za {FormatDuration(ElapsedDuration)}. Zkontrolujte výsledek na materiálu.";
+            LastMessage = $"Gravírování bylo dokončeno za {FormatDuration(ElapsedDuration)}. Výsledek je potřeba zkontrolovat na materiálu.";
             JobCompleted?.Invoke(this, new JobCompletedEventArgs
             {
                 Name = label,

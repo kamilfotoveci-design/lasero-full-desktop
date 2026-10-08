@@ -374,7 +374,7 @@
                                             <MenuItem Header="Duplikovat vrstvu"
                                                       Command="{Binding PlacementTarget.Tag.Scene.DuplicateSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <MenuItem Header="Odstranit vrstvu"
-                                                      ToolTip="Vrstvu nelze odstranit, dokud ji používá nějaký tvar. Nejdřív tvary přiřaďte do jiné vrstvy."
+                                                      ToolTip="Vrstvu nelze odstranit, dokud ji používá nějaký tvar. Nejdřív je potřeba tvary přiřadit do jiné vrstvy."
                                                       ToolTipService.ShowOnDisabled="True"
                                                       Command="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
@@ -424,10 +424,10 @@
                                                     <TextBlock>
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Text" Value="Vrstva se nevyrábí. Kliknutím ji zařadíte do úlohy." />
+                                                                <Setter Property="Text" Value="Vrstva se nevyrábí. Kliknutím se zařadí do úlohy." />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsEnabled}" Value="True">
-                                                                        <Setter Property="Text" Value="Vrstva se vyrábí. Kliknutím ji z úlohy vyřadíte." />
+                                                                        <Setter Property="Text" Value="Vrstva se vyrábí. Kliknutím se z úlohy vyřadí." />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -455,10 +455,10 @@
                                                     <TextBlock>
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Text" Value="Vrstva je skrytá. Kliknutím ji zobrazíte." />
+                                                                <Setter Property="Text" Value="Vrstva je skrytá. Kliknutím se zobrazí." />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsVisible}" Value="True">
-                                                                        <Setter Property="Text" Value="Vrstva je vidět. Kliknutím ji skryjete." />
+                                                                        <Setter Property="Text" Value="Vrstva je vidět. Kliknutím se skryje." />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -591,7 +591,7 @@
                         <!-- Parametry. Slider for reach, field for precision — the field is the value
                              a production job is set by, so it is never the slider alone. -->
                         <components:ParameterSlider Label="Výkon" Unit="%" Margin="0,0,0,16"
-                                                    ToolTip="Jak silně laser pálí. Vyšší výkon vypálí hlouběji a tmavěji, u řezání prořízne materiál. Začněte nízkou hodnotou a ověřte ji na odřezku"
+                                                    ToolTip="Jak silně laser pálí. Vyšší výkon vypálí hlouběji a tmavěji, u řezání prořízne materiál. Začít je vhodné nízkou hodnotou, ověřenou na odřezku"
                                                     Minimum="0" Maximum="100"
                                                     TickFrequency="1" SmallChange="1" LargeChange="5"
                                                     FieldWidth="88"

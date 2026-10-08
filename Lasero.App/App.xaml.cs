@@ -221,7 +221,7 @@ public partial class App : Application
         _ = resume.ContinueWith(t => { if (t.IsFaulted) Log.Warning(t.Exception, "Startup: session resume failed late"); }, TaskScheduler.Default);
         var resumed = await StartupSplash.CompletedWithin(resume, SessionResumeCapMilliseconds);
         Log.Information("Startup: session resume finished in time={InTime} signedIn={SignedIn}", resumed, viewModel.Account.IsSignedIn);
-        if (!resumed) viewModel.Account.StatusMessage = "Přihlášení se nepodařilo obnovit. Přihlaste se prosím znovu.";
+        if (!resumed) viewModel.Account.StatusMessage = "Přihlášení se nepodařilo obnovit. Je potřeba se přihlásit znovu.";
 
         // Let the intro finish (at most ~4.5 s, and only if init was faster than it) before any dialog or window appears.
         if (splash is not null) await splash.WaitForAnimationAsync();

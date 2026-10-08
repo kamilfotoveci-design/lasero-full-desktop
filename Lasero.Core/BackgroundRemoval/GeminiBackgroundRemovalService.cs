@@ -77,12 +77,12 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
             {
                 // Our own deadline or HttpClient.Timeout, not the caller's cancellation.
                 throw new BackgroundRemovalException(BackgroundRemovalFailure.Timeout,
-                    "Služba neodpověděla včas. Zkuste to znovu.");
+                    "Služba neodpověděla včas. Lze to zkusit znovu.");
             }
             catch (HttpRequestException exception)
             {
                 throw new BackgroundRemovalException(BackgroundRemovalFailure.Network,
-                    "Nelze se připojit ke službě. Zkontrolujte připojení k internetu.", exception);
+                    "Nelze se připojit ke službě. Je potřeba zkontrolovat připojení k internetu.", exception);
             }
         }
 
@@ -108,13 +108,13 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw new BackgroundRemovalException(BackgroundRemovalFailure.Unknown,
-                "Výsledek se nepodařilo uložit na disk. Zkontrolujte volné místo.", exception);
+                "Výsledek se nepodařilo uložit na disk. Je potřeba zkontrolovat volné místo.", exception);
         }
     }
 
     private static (byte[] Bytes, string Extension, int Width, int Height) ReadSource(string sourceFilePath)
     {
-        const string TooLargeMessage = "Soubor je příliš velký pro cloudové odstranění pozadí (limit 4 MB). Zkuste menší obrázek.";
+        const string TooLargeMessage = "Soubor je příliš velký pro cloudové odstranění pozadí (limit 4 MB). Lze zvolit menší obrázek.";
         try
         {
             var sourcePath = Path.GetFullPath(sourceFilePath);
@@ -125,7 +125,7 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
             var (width, height) = ReadDimensions(bytes, extension);
             if ((long)width * height > MaximumPixelCount)
                 throw new BackgroundRemovalException(BackgroundRemovalFailure.TooLarge,
-                    "Obrázek je příliš velký pro cloudové odstranění pozadí. Zkuste menší rozlišení.");
+                    "Obrázek je příliš velký pro cloudové odstranění pozadí. Lze zvolit menší rozlišení.");
             if (bytes.Length > MaximumInputBytes)
                 throw new BackgroundRemovalException(BackgroundRemovalFailure.TooLarge, TooLargeMessage);
             return (bytes, extension, width, height);
@@ -137,7 +137,7 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             throw new BackgroundRemovalException(BackgroundRemovalFailure.InvalidImage,
-                "Soubor obrázku se nepodařilo načíst. Zkontrolujte, zda stále existuje.", exception);
+                "Soubor obrázku se nepodařilo načíst. Je potřeba ověřit, zda stále existuje.", exception);
         }
     }
 
@@ -155,7 +155,7 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         catch (InvalidOperationException exception)
         {
             throw new BackgroundRemovalException(BackgroundRemovalFailure.SignInRequired,
-                "Pro odstranění pozadí se přihlaste k účtu Lasero.", exception);
+                "Odstranění pozadí vyžaduje přihlášení k účtu Lasero.", exception);
         }
         catch (HttpRequestException exception)
         {
@@ -165,12 +165,12 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         catch (Exception exception)
         {
             throw new BackgroundRemovalException(BackgroundRemovalFailure.SignInRequired,
-                "Přihlášení se nepodařilo obnovit. Přihlaste se prosím znovu.", exception);
+                "Přihlášení se nepodařilo obnovit. Je potřeba se přihlásit znovu.", exception);
         }
 
         if (string.IsNullOrWhiteSpace(token))
             throw new BackgroundRemovalException(BackgroundRemovalFailure.SignInRequired,
-                "Pro odstranění pozadí se přihlaste k účtu Lasero.");
+                "Odstranění pozadí vyžaduje přihlášení k účtu Lasero.");
         return token;
     }
 
@@ -214,15 +214,15 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
     /// read or shown: it may contain provider internals.</summary>
     internal static BackgroundRemovalException MapStatus(HttpStatusCode status) => (int)status switch
     {
-        401 => new(BackgroundRemovalFailure.SignInRequired, "Přihlášení vypršelo. Přihlaste se prosím znovu."),
-        403 => new(BackgroundRemovalFailure.AccessDenied, "Váš účet nemá k odstranění pozadí přístup."),
-        408 => new(BackgroundRemovalFailure.Timeout, "Služba neodpověděla včas. Zkuste to znovu."),
-        413 => new(BackgroundRemovalFailure.TooLarge, "Obrázek je pro službu příliš velký. Zkuste menší obrázek."),
-        400 or 415 or 422 => new(BackgroundRemovalFailure.InvalidImage, "Služba obrázek nepřijala. Zkuste jiný soubor."),
+        401 => new(BackgroundRemovalFailure.SignInRequired, "Přihlášení vypršelo. Je potřeba se přihlásit znovu."),
+        403 => new(BackgroundRemovalFailure.AccessDenied, "Účet nemá k odstranění pozadí přístup."),
+        408 => new(BackgroundRemovalFailure.Timeout, "Služba neodpověděla včas. Lze to zkusit znovu."),
+        413 => new(BackgroundRemovalFailure.TooLarge, "Obrázek je pro službu příliš velký. Lze zvolit menší obrázek."),
+        400 or 415 or 422 => new(BackgroundRemovalFailure.InvalidImage, "Služba obrázek nepřijala. Lze zvolit jiný soubor."),
         404 or 501 => new(BackgroundRemovalFailure.NotConfigured, "Odstranění pozadí není na serveru nastavené."),
-        429 => new(BackgroundRemovalFailure.RateLimited, "Služba je nyní vytížená nebo byl dosažen limit požadavků. Zkuste to později."),
-        >= 500 => new(BackgroundRemovalFailure.ServiceUnavailable, "Služba je dočasně nedostupná. Zkuste to za chvíli."),
-        _ => new(BackgroundRemovalFailure.Unknown, "Odstranění pozadí se nezdařilo. Zkuste to znovu."),
+        429 => new(BackgroundRemovalFailure.RateLimited, "Služba je nyní vytížená nebo byl dosažen limit požadavků. Lze to zkusit později."),
+        >= 500 => new(BackgroundRemovalFailure.ServiceUnavailable, "Služba je dočasně nedostupná. Lze to zkusit za chvíli."),
+        _ => new(BackgroundRemovalFailure.Unknown, "Odstranění pozadí se nezdařilo. Lze to zkusit znovu."),
     };
 
     private static BackgroundRemovalException Result(string message, Exception? inner = null) =>
@@ -239,7 +239,7 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         using var output = new MemoryStream();
         bitmap.Save(output, ImageFormat.Png);
         if (output.Length > MaximumInputBytes)
-            throw new BackgroundRemovalException(BackgroundRemovalFailure.TooLarge, "Převedený obrázek je příliš velký pro cloudové odstranění pozadí (limit 4 MB). Zkuste menší obrázek.");
+            throw new BackgroundRemovalException(BackgroundRemovalFailure.TooLarge, "Převedený obrázek je příliš velký pro cloudové odstranění pozadí (limit 4 MB). Lze zvolit menší obrázek.");
         return (output.ToArray(), "image/png");
     }
 
@@ -506,7 +506,7 @@ public sealed class GeminiBackgroundRemovalService : IBackgroundRemovalService
         catch (Exception exception) when (exception is ArgumentException or ExternalException or OutOfMemoryException)
         {
             throw new BackgroundRemovalException(BackgroundRemovalFailure.InvalidImage,
-                "Obrázek se nepodařilo přečíst. Zkuste jiný soubor.", exception);
+                "Obrázek se nepodařilo přečíst. Lze zvolit jiný soubor.", exception);
         }
     }
 

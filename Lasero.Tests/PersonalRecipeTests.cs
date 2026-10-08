@@ -120,7 +120,7 @@ public sealed class PersonalRecipeTests
 
         Assert.False(vm.Presets[0].HasDuplicateName);
         Assert.True(vm.Presets[1].HasDuplicateName);
-        Assert.Contains("už máte", vm.Presets[1].ValidationMessage);
+        Assert.Contains("už existuje", vm.Presets[1].ValidationMessage);
 
         vm.Presets[1].Name = "Jiný";
         Assert.False(vm.Presets[1].HasDuplicateName);

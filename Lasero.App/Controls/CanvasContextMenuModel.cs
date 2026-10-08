@@ -158,7 +158,7 @@ public sealed record NodeEditCanvasContextState
 /// (boolean operations on an open path, Paste with an empty clipboard on an empty canvas).</summary>
 public static class CanvasContextMenuBuilder
 {
-    private const string NothingToPasteReason = "Schránka je prázdná. Nejdřív něco zkopírujte nebo vyjměte.";
+    private const string NothingToPasteReason = "Schránka je prázdná. Nejdřív je potřeba něco zkopírovat nebo vyjmout.";
 
     public static IReadOnlyList<ContextMenuItemModel> ForObject(ObjectContextState s)
     {
