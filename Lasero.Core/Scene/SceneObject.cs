@@ -288,6 +288,10 @@ public sealed partial class SceneObject : ObservableObject
         return CopyWith(Id, pivot, Transform.WithPivotMoved(LocalPivot, pivot));
     }
 
+    /// <summary>An exact copy (same Id, geometry, transform and flags) for a worker thread to read while the
+    /// original keeps being edited. Local geometry is immutable and shared.</summary>
+    public SceneObject SnapshotCopy() => CopyWith(Id, LocalPivot, Transform);
+
     /// <summary>A copy with a new Id, sharing the same (immutable) local geometry — used by duplicate.</summary>
     public SceneObject Clone() => CopyWith(Guid.NewGuid(), LocalPivot, Transform);
 
