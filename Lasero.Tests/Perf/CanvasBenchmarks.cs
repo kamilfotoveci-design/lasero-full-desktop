@@ -98,6 +98,13 @@ public sealed class CanvasBenchmarks(ITestOutputHelper output)
             rig.Layout();
         }, warmup: 1, between: rig.Flush, output: output);
 
+        Perf.Measure(scenario, $"ui: select all {objects.Count} (SelectAllCommand, single notification)", 5, _ =>
+        {
+            vm.SelectedObjects.Clear();
+            vm.SelectAllCommand.Execute(null);
+            rig.Layout();
+        }, warmup: 1, between: rig.Flush, output: output);
+
         // ---- drag-move: the live preview step (RenderTransform) with everything selected ----
         PrepareMoveDrag(rig, vm.SelectedObjects.ToList());
         Perf.Measure(scenario, $"ui: drag-move preview step ({vm.SelectedObjects.Count} selected)", 40, i =>

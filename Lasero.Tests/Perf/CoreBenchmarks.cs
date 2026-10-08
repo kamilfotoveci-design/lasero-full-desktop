@@ -12,6 +12,7 @@ namespace Lasero.Tests.Perf;
 /// materialisation, scene hit-testing and Bezier flattening. No dispatcher, no window, so they cannot
 /// hang on UI plumbing and run in a few seconds.
 /// </summary>
+[Collection("WpfUi")]
 [Trait("Category", "Perf")]
 public sealed class CoreBenchmarks(ITestOutputHelper output)
 {
@@ -54,4 +55,32 @@ public sealed class CoreBenchmarks(ITestOutputHelper output)
         Perf.Measure("Bezier 5000", "core: VectorPathDragSession.BuildPreviewShapes", 20,
             _ => session.BuildPreviewShapes(path, PerfScenes.PathColor), output: output);
     }
+
+    /// <summary>What the stock Path costs in layout for a heavy outline (its Measure walks the stroke bounds).</summary>
+    [PerfFact]
+    public void PathMeasureCost() => InlineTextEditorRenderTests.Ui.Invoke(() =>
+    {
+        var geometry = new System.Windows.Media.StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            var path = PerfScenes.BezierPath(20_000, new Position(0, 0, 0), new Random(1), radiusMm: 60);
+            var flat = path.FlattenAll()[0];
+            context.BeginFigure(new System.Windows.Point(flat[0].X, flat[0].Y), false, true);
+            context.PolyLineTo(flat.Skip(1).Select(p => new System.Windows.Point(p.X, p.Y)).ToList(), true, false);
+        }
+
+        geometry.Freeze();
+        var shape = new System.Windows.Shapes.Path { Data = geometry, Stroke = System.Windows.Media.Brushes.Red, StrokeThickness = 0.35 };
+        var infinite = new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity);
+        Perf.Measure("Path 20k segments", "ui: Path.Measure after StrokeThickness change", 30, i =>
+        {
+            shape.StrokeThickness = 0.35 + (i % 2) * 0.01;
+            shape.Measure(infinite);
+        }, output: output);
+        Perf.Measure("Path 20k segments", "ui: Path.Measure after only a RenderTransform change", 30, i =>
+        {
+            shape.RenderTransform = new System.Windows.Media.TranslateTransform(i, 0);
+            shape.Measure(infinite);
+        }, output: output);
+    });
 }
