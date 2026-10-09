@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Lasero.App;
 using Lasero.App.ViewModels;
 using Lasero.Core.Grbl;
+using Lasero.Core.GCode;
 using Lasero.Core.Jobs;
 using Lasero.Core.Layers;
 using Lasero.Core.Machines;
@@ -105,6 +106,39 @@ public sealed class AsyncJobGenerationTests : IDisposable
         cts.Cancel();
 
         Assert.Throws<OperationCanceledException>(() => SceneJobBuilder.BuildLines(scene, 1000, 0, 0, cts.Token));
+    }
+
+    [Fact]
+    public void PreviewShowsRemainingTimeAndFlagsTheDocumentStaleAfterSceneChanges()
+    {
+        Ui.Invoke(() =>
+        {
+            var scene = new SceneViewModel();
+            var viewModel = ViewModelFor(scene);
+            var document = GCodeParser.Parse(["G1 X60 Y0 F60"], "one-minute-line");
+            var setDocument = typeof(GCodeViewModel).GetMethod("SetDocument", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var applyState = typeof(GCodeViewModel).GetMethod("ApplySimulationState", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var sceneChanged = typeof(GCodeViewModel).GetMethod("OnSceneChanged", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            setDocument.Invoke(viewModel, [document, "one-minute-line"]);
+            viewModel.IsSimulationActive = true;
+            viewModel.IsSimulationPlaying = true;
+            var estimate = JobTimeEstimator.Estimate(document, new MachineMotionProfile
+            {
+                DefaultWorkSpeedMmPerMinute = 60,
+                CommandOverhead = TimeSpan.Zero,
+            });
+            applyState.Invoke(viewModel, [JobSimulator.GetStateAtTime(document, estimate, TimeSpan.FromSeconds(30))]);
+
+            Assert.Equal("00:30", viewModel.RemainingTimeLabel);
+            sceneChanged.Invoke(viewModel, null);
+            Assert.True(viewModel.IsSimulationStale);
+            Assert.False(viewModel.IsSimulationActive);
+            Assert.False(viewModel.IsSimulationPlaying);
+
+            setDocument.Invoke(viewModel, [document, "one-minute-line"]);
+            Assert.False(viewModel.IsSimulationStale);
+        });
     }
 
     private GCodeViewModel ViewModelFor(SceneViewModel scene)

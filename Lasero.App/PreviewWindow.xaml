@@ -55,23 +55,36 @@
                                           WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}"
                                           WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}"
                                           JogEnabled="False" />
+                <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource Brush.Panel}"
+                        BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1"
+                        CornerRadius="{StaticResource Radius.Lg}" Padding="24"
+                        Visibility="{Binding GCode.IsSimulationStale, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel MaxWidth="360">
+                        <TextBlock Text="Návrh se změnil" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" />
+                        <TextBlock Text="Po změně plátna je potřeba náhled znovu vygenerovat."
+                                   Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,12" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding GCode.PreviewSimulationCommand}"
+                                HorizontalAlignment="Left" Content="Aktualizovat náhled" />
+                    </StackPanel>
+                </Border>
             </Grid>
 
             <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
                     BorderThickness="0,1,0,0" Padding="20,16">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Průběh" FontWeight="SemiBold" Margin="0,0,8,0" />
                         <TextBlock Text="{Binding GCode.SimulationTimeLabel}" Style="{StaticResource Text.Numeric}" />
-                        <TextBlock Text=" z " Foreground="{StaticResource Brush.TextSecondary}" />
-                        <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" Style="{StaticResource Text.Numeric}"
+                        <TextBlock Text="  ·  zbývá " Foreground="{StaticResource Brush.TextSecondary}" />
+                        <TextBlock Text="{Binding GCode.RemainingTimeLabel}" Style="{StaticResource Text.Numeric}"
                                    Foreground="{StaticResource Brush.TextSecondary}" />
                     </StackPanel>
 
                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Margin="0,0,20,0"
+                            IsEnabled="{Binding GCode.IsSimulationActive}"
                             Value="{Binding GCode.SimulationProgressPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             ToolTip="Posunout přehrávání na zvolené místo" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
@@ -96,11 +109,18 @@
                         </Button>
                         <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <ComboBox Width="76" Height="36" ItemsSource="{Binding GCode.SimulationSpeedPresets}"
-                                  SelectedItem="{Binding GCode.SimulationSpeedMultiplier}" ToolTip="Násobek rychlosti přehrávání" />
+                                  SelectedItem="{Binding GCode.SimulationSpeedMultiplier}" IsEnabled="{Binding GCode.IsSimulationActive}"
+                                  ToolTip="Násobek rychlosti přehrávání" />
                         <TextBlock Text="×" VerticalAlignment="Center" Margin="4,0,0,0" Foreground="{StaticResource Brush.TextSecondary}" />
                     </StackPanel>
 
-                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,12,0,0" Style="{StaticResource Text.Muted}"
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,12,0,0">
+                        <TextBlock Text="Gravírování: " Foreground="{StaticResource Brush.TextSecondary}" />
+                        <TextBlock Text="{Binding GCode.CutBreakdownLabel}" Style="{StaticResource Text.Numeric}" />
+                        <TextBlock Text="  ·  Přesun: " Foreground="{StaticResource Brush.TextSecondary}" Margin="16,0,0,0" />
+                        <TextBlock Text="{Binding GCode.RapidBreakdownLabel}" Style="{StaticResource Text.Numeric}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Margin="0,8,0,0" Style="{StaticResource Text.Muted}"
                                Text="Modrá trasa je již přehraná. Červená značí práci laseru, přerušovaná šedá rychlý přesun bez gravírování." />
                 </Grid>
             </Border>

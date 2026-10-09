@@ -96,6 +96,7 @@ public partial class GCodeViewModel : ObservableObject
 
     [ObservableProperty] private bool _isSimulationActive;
     [ObservableProperty] private bool _isSimulationPlaying;
+    [ObservableProperty] private bool _isSimulationStale;
     [ObservableProperty] private double _simulationProgressPercent;
     [ObservableProperty] private double _simulationElapsedSeconds;
     [ObservableProperty] private double _simulationSpeedMultiplier = 10;
@@ -411,6 +412,7 @@ public partial class GCodeViewModel : ObservableObject
             ProgressPercent = 0;
             JobState = JobRunState.Idle;
             _timeEstimate = null;
+            IsSimulationStale = false;
             EstimatedDuration = TimeSpan.Zero;
             RemainingDuration = TimeSpan.Zero;
             EstimatedTimeLabel = "Nevypočteno";
@@ -447,6 +449,11 @@ public partial class GCodeViewModel : ObservableObject
         if (ImportKind == ImportKind.GCode) return;
         SupersedePendingRegeneration(); // a job prepared from the previous scene must not be applied
         _sceneDocumentDirty = true;
+        if (IsSimulationActive)
+        {
+            IsSimulationStale = true;
+            StopSimulation(reset: false);
+        }
         IsCurrentDocumentFramed = false;
         if (!IsJobActive && JobState is (JobRunState.Ready or JobRunState.Completed))
             JobState = JobRunState.Idle;
@@ -464,6 +471,7 @@ public partial class GCodeViewModel : ObservableObject
 
     private void SetDocument(GCodeDocument document, string pathOrLabel)
     {
+        IsSimulationStale = false;
         Document = document;
         FileLabel = Path.GetFileName(pathOrLabel);
         TotalLines = document.RawLines.Count;
@@ -493,6 +501,7 @@ public partial class GCodeViewModel : ObservableObject
         JobState = JobRunState.Idle;
         LastMessage = null;
         _timeEstimate = null;
+        IsSimulationStale = false;
         EstimatedDuration = TimeSpan.Zero;
         EstimatedTimeLabel = "Nevypočteno";
         ClearPlacementOrigin();
@@ -842,6 +851,8 @@ public partial class GCodeViewModel : ObservableObject
         SimulationPosition = state.LaserPosition;
         SimulationCompletedSegments = state.CompletedSegments;
         SimulationElapsedSeconds = state.Elapsed.TotalSeconds;
+        RemainingDuration = state.Duration - state.Elapsed;
+        RemainingTimeLabel = FormatDuration(RemainingDuration);
         var percent = state.Progress * 100;
         if (Math.Abs(SimulationProgressPercent - percent) > 0.001)
             SimulationProgressPercent = percent;
