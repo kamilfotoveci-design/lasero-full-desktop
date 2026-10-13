@@ -22,6 +22,18 @@ public sealed partial class LayerSettings : ObservableObject
 
     /// <summary>Fill-mode scan line spacing in mm (25.4 / DPI) — irrelevant for Cut layers.</summary>
     [ObservableProperty] private double _fillLineIntervalMm = 25.4 / 254;
+    /// <summary>Raster resolution in dots per inch, stored through the shared line-spacing value so
+    /// raster DPI and vector fill interval remain one source of truth.</summary>
+    public double Dpi
+    {
+        get => FillLineIntervalMm > 0 ? 25.4 / FillLineIntervalMm : 254;
+        set
+        {
+            if (!double.IsFinite(value) || value <= 0) return;
+            FillLineIntervalMm = 25.4 / Math.Clamp(value, 25, 1200);
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>
     /// Name of the material recipe these numbers came from, or null when the operator typed them in.
@@ -33,7 +45,13 @@ public sealed partial class LayerSettings : ObservableObject
 
     [ObservableProperty] private bool _isEnabled = true;
     [ObservableProperty] private bool _isVisible = true;
+    [ObservableProperty] private bool _isLocked;
     [ObservableProperty] private bool _isRaster;
+
+    /// <summary>True only for an operation layer created implicitly by a tool and owned by its
+    /// geometry. Once its last object is removed, the layer may leave with it. User-created and
+    /// imported layers remain valid even when empty. Persisted so save/reopen keeps the contract.</summary>
+    public bool RemoveWhenEmpty { get; init; }
 
     public string ColorHex => Color.ToHex();
     public string ModeLabel => IsRaster ? "Obrázek" : Mode switch
@@ -107,7 +125,11 @@ public sealed partial class LayerSettings : ObservableObject
         ForgetMaterial();
     }
 
-    partial void OnFillLineIntervalMmChanged(double value) => ForgetMaterial();
+    partial void OnFillLineIntervalMmChanged(double value)
+    {
+        OnPropertyChanged(nameof(Dpi));
+        ForgetMaterial();
+    }
     partial void OnMaterialLabelChanged(string? value) => OnPropertyChanged(nameof(MaterialDisplayLabel));
 
     /// <summary>
@@ -150,7 +172,7 @@ public sealed partial class LayerSettings : ObservableObject
 
     public override string ToString() => Name;
 
-    public static LayerSettings CreateDefault(RgbColor color, LayerMode mode, string name) => mode == LayerMode.Cut
-        ? new LayerSettings { Color = color, Name = name, Mode = LayerMode.Cut, Speed = 350, Power = 95, Passes = 1 }
-        : new LayerSettings { Color = color, Name = name, Mode = mode, Speed = 3000, Power = 30, Passes = 1, FillLineIntervalMm = 25.4 / 254 };
+    public static LayerSettings CreateDefault(RgbColor color, LayerMode mode, string name, bool removeWhenEmpty = false) => mode == LayerMode.Cut
+        ? new LayerSettings { Color = color, Name = name, Mode = LayerMode.Cut, Speed = 350, Power = 95, Passes = 1, RemoveWhenEmpty = removeWhenEmpty }
+        : new LayerSettings { Color = color, Name = name, Mode = mode, Speed = 3000, Power = 30, Passes = 1, FillLineIntervalMm = 25.4 / 254, RemoveWhenEmpty = removeWhenEmpty };
 }

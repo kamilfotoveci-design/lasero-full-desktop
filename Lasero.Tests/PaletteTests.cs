@@ -65,7 +65,6 @@ public sealed class PaletteTests
         "DesignerToolRail.xaml",     // the selected tool pill
         "MainWindow.xaml",           // nav indicator, splitter hover, link-style Připojit, unsaved dot
         "MaterialsWindow.xaml",      // selected tab indicator, selected material card
-        "DeviceSettingsWindow.xaml", // selected settings nav item
         "DeviceWizardOverlay.xaml",  // selected device card, running scan ring
         "ProcessStatusCard.xaml",    // running progress fill
         "KamilComposer.xaml",        // focused composer border

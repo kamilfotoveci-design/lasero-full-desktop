@@ -104,7 +104,7 @@ public sealed class InlineTextEditorRenderTests
         Assert.True(Math.Abs(result.Editor.Right - result.Object.Right) <= tolerance, $"right edge off by {result.Editor.Right - result.Object.Right:0.0} px");
         Assert.True(Math.Abs(result.Editor.Top - result.Object.Top) <= tolerance, $"top edge off by {result.Editor.Top - result.Object.Top:0.0} px");
         Assert.True(Math.Abs(result.Editor.Bottom - result.Object.Bottom) <= tolerance, $"bottom edge off by {result.Editor.Bottom - result.Object.Bottom:0.0} px");
-        Assert.True(result.Coverage >= 0.9, $"only {result.Coverage:P0} of the object's ink is under the editor's letters");
+        Assert.True(result.Coverage >= 0.9, $"only {result.Coverage:P0} of the editor's outline lies on the object's letters");
     }
 
     [Theory]
@@ -316,6 +316,15 @@ public sealed class InlineTextEditorRenderTests
         return max < 150 && max - min < 30;
     }
 
+    /// <summary>A one-pixel outline is rarely pixel-aligned, so its antialiased pixels are lighter than a
+    /// solid letter's. Still near-neutral, still far darker than the pale grid.</summary>
+    private static bool IsOutlineInk(byte b, byte g, byte r)
+    {
+        var max = Math.Max(r, Math.Max(g, b));
+        var min = Math.Min(r, Math.Min(g, b));
+        return max < 200 && max - min < 30;
+    }
+
     /// <summary>The pink select-all wash: light and reddish, unlike the saturated dashed frame.</summary>
     private static bool IsHighlight(byte b, byte g, byte r) => r > 200 && g > 130 && g < 215 && r - g > 25 && r - b > 15;
 
@@ -339,23 +348,25 @@ public sealed class InlineTextEditorRenderTests
     private static Result Compare(Rig rig, BitmapSource objectImage, BitmapSource editorImage, BitmapSource highlightImage, bool objectVisibleUnderEditor)
     {
         var (objectInk, objectMask) = Scan(Pixels(objectImage), rig.Region, IsLetterInk);
-        var (editorInk, editorMask) = Scan(Pixels(editorImage), rig.Region, IsLetterInk);
+        var (editorInk, editorMask) = Scan(Pixels(editorImage), rig.Region, IsOutlineInk);
         var (highlightInk, _) = Scan(Pixels(highlightImage), rig.Region, IsHighlight);
 
-        // How much of the object's ink has editor ink within a pixel of it.
+        // The editor draws the letters as a hairline outline, the object as solid letters. So the
+        // question is how much of the outline lies on the object's ink (within two pixels, which is
+        // the outline's own width plus antialiasing); a misplaced editor would put it beside the letters.
         var covered = 0;
-        for (var y = 1; y < CanvasHeight - 1; y++)
-        for (var x = 1; x < CanvasWidth - 1; x++)
+        for (var y = 2; y < CanvasHeight - 2; y++)
+        for (var x = 2; x < CanvasWidth - 2; x++)
         {
-            if (!objectMask[y * CanvasWidth + x]) continue;
+            if (!editorMask[y * CanvasWidth + x]) continue;
             var near = false;
-            for (var dy = -1; dy <= 1 && !near; dy++)
-            for (var dx = -1; dx <= 1 && !near; dx++)
-                near = editorMask[(y + dy) * CanvasWidth + x + dx];
+            for (var dy = -2; dy <= 2 && !near; dy++)
+            for (var dx = -2; dx <= 2 && !near; dx++)
+                near = objectMask[(y + dy) * CanvasWidth + x + dx];
             if (near) covered++;
         }
 
-        var coverage = objectInk.Count == 0 ? 0 : covered / (double)objectInk.Count;
+        var coverage = editorInk.Count == 0 ? 0 : covered / (double)editorInk.Count;
         return new Result(objectInk, editorInk, highlightInk, coverage, objectVisibleUnderEditor, objectImage, editorImage, highlightImage);
     }
 

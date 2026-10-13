@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
+        xmlns:motion="clr-namespace:Lasero.App.Controls.Motion"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Přihlášení do Lasero" Width="780" Height="572" MinWidth="780" MinHeight="572"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize" WindowStyle="None"
@@ -12,7 +13,7 @@
          title bar rule land on pixel boundaries. The previous 570 high window was 712.5 px at 125 percent,
          a half pixel the compositor smeared across the bottom edge. -->
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="0" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="0" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
@@ -185,17 +186,9 @@
                                FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                    <TextBlock Text="Tvorba s jistotou."
-                               FontFamily="{StaticResource Font.Display}"
-                               FontSize="{StaticResource Size.Text.Title}"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="Návrh, doporučené parametry a bezpečné ovládání gravírky na jednom místě."
-                               Foreground="{StaticResource Brush.TextSecondary}"
-                               TextWrapping="Wrap"
-                               Margin="0,12,0,0" />
-                </StackPanel>
+                <motion:LaseroIntroAnimation Grid.Row="1" Compact="True"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              AutomationProperties.Name="Animace LASERO" />
 
                 <StackPanel Grid.Row="2">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">

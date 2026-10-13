@@ -8,3 +8,14 @@ public enum AppScreen
     Device,
     Chat,
 }
+
+/// <summary>The pages of the Zařízení screen, left to right in its one tab strip. Connection is the live machine page
+/// (connection, position, jog); the other four are the device settings, edited as one draft and saved together.</summary>
+public enum DeviceScreenTab
+{
+    Connection,
+    Dimensions,
+    Basic,
+    GCode,
+    More,
+}

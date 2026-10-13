@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Windows.Media.Imaging;
+using Lasero.Core.Import;
 using Serilog;
 
 namespace Lasero.App;
@@ -22,12 +23,12 @@ public static class RasterPreviewLoader
 
     private const int CacheCapacity = 24;
 
-    private static readonly ConcurrentDictionary<(string Path, long Ticks, long Length), Task<BitmapSource?>> Cache = new();
-    private static readonly ConcurrentQueue<(string Path, long Ticks, long Length)> Order = new();
+    private static readonly ConcurrentDictionary<(string Path, long Ticks, long Length, RasterImportOptions? Options), Task<BitmapSource?>> Cache = new();
+    private static readonly ConcurrentQueue<(string Path, long Ticks, long Length, RasterImportOptions? Options)> Order = new();
 
     /// <summary>The preview for <paramref name="filePath"/>, decoding it on a worker thread the first
     /// time. Null when the file is missing or cannot be decoded. The returned bitmap is frozen.</summary>
-    public static Task<BitmapSource?> GetAsync(string filePath)
+    public static Task<BitmapSource?> GetAsync(string filePath, RasterImportOptions? options = null)
     {
         FileInfo info;
         try { info = new FileInfo(filePath); }
@@ -37,16 +38,28 @@ public static class RasterPreviewLoader
         }
 
         if (!info.Exists) return Task.FromResult<BitmapSource?>(null);
-        var key = (info.FullName, info.LastWriteTimeUtc.Ticks, info.Length);
+        var key = (info.FullName, info.LastWriteTimeUtc.Ticks, info.Length, options);
         if (Cache.TryGetValue(key, out var existing)) return existing;
 
-        var created = Task.Run(() => Decode(info.FullName));
+        var created = Task.Run(() => options is null
+            ? Decode(info.FullName)
+            : DecodeProcessed(info.FullName, options));
         if (!Cache.TryAdd(key, created)) return Cache[key];
 
         Order.Enqueue(key);
         while (Cache.Count > CacheCapacity && Order.TryDequeue(out var oldest))
             Cache.TryRemove(oldest, out _);
         return created;
+    }
+
+    private static BitmapSource? DecodeProcessed(string filePath, RasterImportOptions options)
+    {
+        try { return ProcessedImagePreviewRenderer.RenderFileForCanvas(filePath, options); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not build the processed canvas preview for raster {Path}", filePath);
+            return null;
+        }
     }
 
     /// <summary>Synchronous decode used by the cache; public for tests and for callers that are already off the UI thread.</summary>

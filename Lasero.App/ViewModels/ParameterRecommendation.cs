@@ -58,6 +58,10 @@ public sealed partial class ParameterRecommendation
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
 
+        // The service sends the settings as one machine line, "PARAMS:speed=400,power=85,passes=1,dpi=0".
+        // That is the authoritative form when present; the prose patterns below remain for replies without it.
+        if (TryParseMachineLine(text) is { } fromLine) return fromLine;
+
         var speed = MatchNumber(SpeedPattern(), text);
         var power = MatchNumber(PowerPattern(), text);
         if (speed is null || power is null) return null;
@@ -73,6 +77,53 @@ public sealed partial class ParameterRecommendation
             passes is >= 1 and <= 50 ? (int)passes.Value : 1,
             dpi is >= 50 and <= 2000 ? (int)dpi.Value : null);
     }
+    /// <summary>The reply with its machine-readable PARAMS line (and a lone "Doporučené parametry:" heading
+    /// left above it) removed, so the operator sees the card instead of the raw line.</summary>
+    public static string StripMachineLine(string text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains("PARAMS:", StringComparison.OrdinalIgnoreCase)) return text;
+        var lines = text.Replace("\r\n", "\n").Split('\n').ToList();
+        for (var i = lines.Count - 1; i >= 0; i--)
+        {
+            if (!lines[i].TrimStart().StartsWith("PARAMS:", StringComparison.OrdinalIgnoreCase)) continue;
+            lines.RemoveAt(i);
+            if (i > 0 && lines[i - 1].Trim().TrimEnd(':').Equals("Doporučené parametry", StringComparison.OrdinalIgnoreCase))
+                lines.RemoveAt(i - 1);
+        }
+        return string.Join('\n', lines).Trim();
+    }
+
+    private static ParameterRecommendation? TryParseMachineLine(string text)
+    {
+        var match = MachineLinePattern().Match(text);
+        if (!match.Success) return null;
+        double? speed = null, power = null, passes = null, dpi = null;
+        foreach (Match pair in MachinePairPattern().Matches(match.Groups["body"].Value))
+        {
+            var raw = pair.Groups["value"].Value.Replace(',', '.');
+            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)) continue;
+            switch (pair.Groups["key"].Value.ToLowerInvariant())
+            {
+                case "speed": speed = value; break;
+                case "power": power = value; break;
+                case "passes": passes = value; break;
+                case "dpi": dpi = value; break;
+            }
+        }
+
+        if (speed is null || power is null || speed is <= 0 or > 60000 || power is < 0 or > 100) return null;
+        return new ParameterRecommendation(
+            speed.Value,
+            power.Value,
+            passes is >= 1 and <= 50 ? (int)passes.Value : 1,
+            dpi is >= 50 and <= 2000 ? (int)dpi.Value : null);
+    }
+
+    [GeneratedRegex(@"PARAMS:(?<body>[^\r\n]*)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex MachineLinePattern();
+
+    [GeneratedRegex(@"(?<key>speed|power|passes|dpi)\s*=\s*(?<value>\d+(?:[.,]\d+)?)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex MachinePairPattern();
 
     private static double? MatchNumber(Regex pattern, string text)
     {

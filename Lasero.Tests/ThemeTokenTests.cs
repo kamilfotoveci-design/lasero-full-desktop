@@ -104,18 +104,18 @@ public sealed class ThemeTokenTests
 
         Assert.Contains("Property=\"UseLayoutRounding\" Value=\"True\"", windowStyle, StringComparison.Ordinal);
         Assert.Contains("Property=\"SnapsToDevicePixels\" Value=\"True\"", windowStyle, StringComparison.Ordinal);
-        Assert.Contains("Property=\"TextOptions.TextFormattingMode\" Value=\"Display\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"TextOptions.TextFormattingMode\" Value=\"Ideal\"", windowStyle, StringComparison.Ordinal);
         Assert.Contains("Property=\"TextOptions.TextRenderingMode\" Value=\"ClearType\"", windowStyle, StringComparison.Ordinal);
-        Assert.Contains("Property=\"TextOptions.TextHintingMode\" Value=\"Fixed\"", windowStyle, StringComparison.Ordinal);
+        Assert.Contains("Property=\"TextOptions.TextHintingMode\" Value=\"Auto\"", windowStyle, StringComparison.Ordinal);
 
         // Lasero windows derive from Window, so an implicit Window style is not a reliable root
         // setter. Metadata on Window is inherited by MainWindow and every dialog subclass.
         Assert.Contains("TextOptions.TextFormattingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
-        Assert.Contains("TextFormattingMode.Display", startup, StringComparison.Ordinal);
+        Assert.Contains("TextFormattingMode.Ideal", startup, StringComparison.Ordinal);
         Assert.Contains("TextOptions.TextRenderingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
         Assert.Contains("TextRenderingMode.ClearType", startup, StringComparison.Ordinal);
         Assert.Contains("TextOptions.TextHintingModeProperty.OverrideMetadata", startup, StringComparison.Ordinal);
-        Assert.Contains("TextHintingMode.Fixed", startup, StringComparison.Ordinal);
+        Assert.Contains("TextHintingMode.Auto", startup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -131,7 +131,8 @@ public sealed class ThemeTokenTests
         Assert.Contains("<Resource Include=\"Assets\\LaseroAvatar.png\"", project, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"Image.LaseroAvatarSource\"", theme, StringComparison.Ordinal);
         Assert.Contains("DecodePixelWidth=\"256\"", theme, StringComparison.Ordinal);
-        Assert.True(Regex.Matches(kamilHost, "<components:LaseroAvatar\\b").Count >= 3);
+        Assert.True(Regex.Matches(kamilHost, "<components:LaseroAvatar\\b").Count >= 2);
+        Assert.Contains("<kamil:KamilLiveAvatar", kamilHost, StringComparison.Ordinal);
         // ChatView (the full-screen "Lasero Chat" nav destination) is a legitimate, separate
         // consumer of the shared LaseroAvatar control — reusing it there is the point of having a
         // reusable control, not a violation of it. Only MainWindow (which should reach the avatar
@@ -169,11 +170,11 @@ public sealed class ThemeTokenTests
         Assert.True(start >= 0, "Kamil.MinimizedAvatar style not found");
         var style = host[start..host.IndexOf("</Style>", start, StringComparison.Ordinal)];
 
-        Assert.Contains("x:Name=\"BreatheScale\"", style, StringComparison.Ordinal);
-        Assert.Contains("Binding=\"{Binding Chat.IsBusy}\" Value=\"True\"", style, StringComparison.Ordinal);
-        Assert.Contains("RepeatBehavior=\"Forever\"", style, StringComparison.Ordinal);
-        Assert.Contains("EasingFunction=\"{StaticResource Ease.Breathe}\"", style, StringComparison.Ordinal);
-        Assert.Contains("To=\"1.015\"", style, StringComparison.Ordinal);
+        // The breathing, blinking and expression changes live in KamilLiveAvatar, which owns the
+        // gating (visibility, minimized window, reduced motion); the anchor only settles on hover.
+        Assert.Contains("<kamil:KamilLiveAvatar", style, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AvatarScale\"", style, StringComparison.Ordinal);
+        Assert.Contains("To=\"1.018\"", style, StringComparison.Ordinal);
         Assert.DoesNotContain("To=\"1.09\"", style, StringComparison.Ordinal);
         Assert.DoesNotContain("HoverRing", style, StringComparison.Ordinal);
         Assert.DoesNotContain("Shadow.Sheet", style, StringComparison.Ordinal);

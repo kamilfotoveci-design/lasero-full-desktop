@@ -65,7 +65,7 @@ public sealed class ComboBoxClosedBoxRenderTests
     }
 
     [Fact]
-    public void OffsetPathWindowClosedJoinTypeBoxShowsTheLabel()
+    public void OffsetPathWindowUsesRadioChoicesInsteadOfComboBoxes()
     {
         var texts = Ui.Invoke(() =>
         {
@@ -80,8 +80,9 @@ public sealed class ComboBoxClosedBoxRenderTests
             try
             {
                 window.Show(); Flush(); window.UpdateLayout();
-                var boxes = Descendants<ComboBox>(window).ToList();
-                var list = boxes.Select(ClosedText).ToList();
+                // Direction and corner style are radio groups now: no ComboBox, every label present.
+                Assert.Empty(Descendants<ComboBox>(window));
+                var list = Descendants<RadioButton>(window).Select(radio => radio.Content?.ToString() ?? string.Empty).ToList();
                 var folder = Environment.GetEnvironmentVariable("LASERO_COMBO_SHOTS");
                 byte[]? bytes = null;
                 if (!string.IsNullOrEmpty(folder))
@@ -97,9 +98,7 @@ public sealed class ComboBoxClosedBoxRenderTests
             }
             finally { window.Close(); }
         });
-        Assert.NotEmpty(texts);
-        Assert.Contains(texts, t => t.Contains("Zaoblený"));
-        Assert.All(texts, t => Assert.DoesNotContain("{", t));
+        Assert.Equal(["Ven", "Dovnitř", "Oba", "Oblý", "Kosý", "Roh"], texts);
     }
 
     [Fact]

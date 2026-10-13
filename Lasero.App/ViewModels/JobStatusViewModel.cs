@@ -93,7 +93,7 @@ public partial class JobStatusViewModel : ObservableObject
         JobRunState.Framing => "Gravírka projíždí obrys návrhu. Polohu je potřeba zkontrolovat na materiálu.",
         JobRunState.Running => _job.JobSourceLabel,
         JobRunState.Ready => _job.StartBlockedReason
-            ?? "Návrh je uvnitř pracovní plochy a nastavení operací je platné. Spuštění se ještě potvrdí souhrnem.",
+            ?? "Návrh je uvnitř pracovní plochy a nastavení vrstev je platné. Spuštění se ještě potvrdí souhrnem.",
         JobRunState.Paused => "Laser je zhasnutý a osy stojí. Pokračovat lze, až bude vše v pořádku.",
         JobRunState.Completed => "Gravírování bylo dokončeno.",
         JobRunState.Cancelled or JobRunState.Aborted =>

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lasero.Core.GCode;
@@ -48,9 +49,14 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     private bool _hasImmediatePreview;
     private CancellationTokenSource? _recomputeCancellation;
     private bool _suppressRecompute;
+    private readonly RasterImportOptions? _initialOptions;
 
     public string FilePath { get; }
     public string FileName { get; }
+    public bool IsEditing { get; }
+    public string PrimaryActionText => IsEditing ? "Uložiť zmeny" : "Pridať do návrhu";
+    [ObservableProperty] private BitmapSource? _sourcePreviewImageSource;
+    [ObservableProperty] private double _previewZoom = 1;
 
     [ObservableProperty] private double _targetWidthMm;
     [ObservableProperty] private bool _keepAspectRatio = true;
@@ -94,7 +100,8 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     }
 
     public RasterImportViewModel(ILaserMachine machine, AppSettingsStore settingsStore, string filePath,
-        double targetWidthMm, double feedRatePerMinute, double maxPower, double dpi)
+        double targetWidthMm, double feedRatePerMinute, double maxPower, double dpi,
+        RasterImportOptions? initialOptions = null, bool isEditing = false)
     {
         _machine = machine;
         _settingsStore = settingsStore;
@@ -103,23 +110,93 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         _machine.AlertChanged += OnMachineAlertChanged;
         FilePath = filePath;
         FileName = System.IO.Path.GetFileName(filePath);
+        IsEditing = isEditing;
+        _initialOptions = initialOptions;
         _targetWidthMm = targetWidthMm;
         _feedRatePerMinute = feedRatePerMinute;
         _maxPower = maxPower;
         _dpi = dpi;
-        var initialOptions = new RasterImportOptions { TargetWidthMm = targetWidthMm, Dpi = dpi };
-        _sourceImage = RasterImporter.LoadProcessingSource(filePath, initialOptions);
-        _sourceTargetWidthMm = targetWidthMm;
-        _sourceTargetHeightMm = null;
-        _sourceDpi = dpi;
+        var processingOptions = initialOptions ?? new RasterImportOptions { TargetWidthMm = targetWidthMm, Dpi = dpi };
+        _sourceImage = RasterImporter.LoadProcessingSource(filePath, processingOptions);
+        _sourceTargetWidthMm = processingOptions.TargetWidthMm;
+        _sourceTargetHeightMm = processingOptions.TargetHeightMm;
+        _sourceDpi = processingOptions.Dpi;
         _suppressRecompute = true;
-        ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
+        if (initialOptions is null)
+        {
+            ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
+            _targetHeightMm = _sourceImage.Height * (targetWidthMm / _sourceImage.Width);
+        }
+        else
+        {
+            ApplyOptions(initialOptions);
+            _targetHeightMm = initialOptions.TargetHeightMm ?? _sourceImage.Height * (initialOptions.TargetWidthMm / _sourceImage.Width);
+        }
 
-        _targetHeightMm = _sourceImage.Height * (targetWidthMm / _sourceImage.Width);
+        _suppressRecompute = false;
+        _ = LoadSourcePreviewAsync();
+        ScheduleRecompute();
+    }
 
+    private async Task LoadSourcePreviewAsync() =>
+        SourcePreviewImageSource = await RasterPreviewLoader.GetAsync(FilePath).ConfigureAwait(true);
+
+    private void ApplyOptions(RasterImportOptions options)
+    {
+        TargetWidthMm = options.TargetWidthMm;
+        KeepAspectRatio = options.TargetHeightMm is null;
+        TargetHeightMm = options.TargetHeightMm ?? 0;
+        FeedRatePerMinute = options.FeedRatePerMinute;
+        MinPower = options.MinPower;
+        MaxPower = options.MaxPower;
+        Dpi = options.Dpi;
+        Passes = options.Passes;
+        Invert = options.Invert;
+        Gamma = options.Gamma;
+        Exposure = options.Exposure;
+        Brightness = options.Brightness;
+        Contrast = options.Contrast;
+        Highlights = options.Highlights;
+        Shadows = options.Shadows;
+        BlackPoint = options.BlackPoint;
+        WhitePoint = options.WhitePoint;
+        NoiseReduction = options.NoiseReduction;
+        Sharpen = options.Sharpen;
+        EdgeEnhance = options.EdgeEnhance;
+        SelectedDithering = DitheringChoices.FirstOrDefault(choice => choice.Algorithm == (options.UseThreshold ? null : options.UseDithering ? options.DitheringAlgorithm : null))
+            ?? DitheringChoices[0];
+    }
+
+    [RelayCommand]
+    private void Reset()
+    {
+        _suppressRecompute = true;
+        if (_initialOptions is { } options) ApplyOptions(options);
+        else ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
         _suppressRecompute = false;
         ScheduleRecompute();
     }
+
+    [RelayCommand(CanExecute = nameof(CanSaveProcessedBitmap))]
+    private void SaveProcessedBitmap()
+    {
+        if (_lastProcessedImage is not { } processed) return;
+        var dialog = new SaveFileDialog
+        {
+            Filter = "PNG obrázek (*.png)|*.png",
+            FileName = System.IO.Path.GetFileNameWithoutExtension(FileName) + "-processed.png",
+            AddExtension = true,
+            DefaultExt = ".png",
+        };
+        if (dialog.ShowDialog() != true) return;
+        var bitmap = ProcessedImagePreviewRenderer.Render(processed);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = System.IO.File.Create(dialog.FileName);
+        encoder.Save(stream);
+    }
+
+    private bool CanSaveProcessedBitmap() => !IsComputing && _lastProcessedImage is not null;
 
     public RasterImportOptions BuildOptions()
     {
@@ -245,7 +322,11 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsFramingChanged(bool value) => FrameThisCommand.NotifyCanExecuteChanged();
-    partial void OnIsComputingChanged(bool value) => OnPropertyChanged(nameof(HasJob));
+    partial void OnIsComputingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasJob));
+        SaveProcessedBitmapCommand.NotifyCanExecuteChanged();
+    }
 
     private void ScheduleRecompute()
     {
@@ -297,6 +378,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
 
             PreviewImageSource = preview;
             _lastProcessedImage = processed;
+            SaveProcessedBitmapCommand.NotifyCanExecuteChanged();
             IsPreviewComputing = false;
 
             var job = await Task.Run(() => RasterImporter.BuildLaserJob(processed, options), cancellationToken);
@@ -360,7 +442,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
             {
                 FeedRatePerMinute = 3000,
                 Mode = FramingMode.FullOutline,
-                LaserPower = controllerMaximumS is > 0 ? FramingOptions.VisiblePowerPercent : 0,
+                LaserPower = controllerMaximumS is > 0 ? _settingsStore.Current.Machine.GetFramingPowerPercent() : 0,
             }, controllerMaximumS);
 
             var document = GCodeParser.Parse(frameLines);

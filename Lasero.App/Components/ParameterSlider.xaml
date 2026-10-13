@@ -14,9 +14,9 @@
              4px track and a small instrument-like thumb keep the control precise rather than web-like. -->
         <Style x:Key="ParameterValue.Input" TargetType="TextBox" BasedOn="{StaticResource UnitField.Input}">
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
             <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
-            <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
+            <Setter Property="TextOptions.TextHintingMode" Value="Auto" />
         </Style>
 
         <Style x:Key="Slider.Parameter" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
@@ -28,7 +28,7 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <Grid Margin="0,0,0,8">
+        <Grid x:Name="HeaderRow" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -38,6 +38,7 @@
                        TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
 
             <Border x:Name="ValueShell" Grid.Column="1" Style="{StaticResource UnitField.Shell}"
+                    Cursor="IBeam" MouseLeftButtonDown="OnShellMouseLeftButtonDown"
                     Width="{Binding FieldWidth, ElementName=Root}"
                     Height="{StaticResource Size.Control.Compact}">
                 <DockPanel>
@@ -56,6 +57,7 @@
         <!-- Bound to the effective range, not the configured one: a value typed past the nominal
              maximum stretches the track instead of being clamped on its way back to the layer. -->
         <Slider Style="{StaticResource Slider.Parameter}"
+                Visibility="{Binding ShowSlider, ElementName=Root, Converter={StaticResource BoolToVisibilityShared}}"
                 Minimum="{Binding EffectiveMinimum, ElementName=Root}"
                 Maximum="{Binding EffectiveMaximum, ElementName=Root}"
                 TickFrequency="{Binding TickFrequency, ElementName=Root}"

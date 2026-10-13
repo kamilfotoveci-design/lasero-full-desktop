@@ -195,7 +195,7 @@ public sealed class TintRenderTests
     [Fact]
     public void CardStylesAreAppliedThroughElevatedBorderOnHomeSettingsAndMaterials()
     {
-        foreach (var file in new[] { "Views/HomeView.xaml", "SettingsWindow.xaml", "MaterialsWindow.xaml", "Views/DeviceView.xaml", "DeviceSettingsWindow.xaml" })
+        foreach (var file in new[] { "Views/HomeView.xaml", "SettingsWindow.xaml", "MaterialsWindow.xaml", "Views/DeviceView.xaml", "Views/DeviceSettingsView.xaml" })
         {
             var text = AppFile(file.Split('/'));
             Assert.DoesNotMatch(@"<Border\b[^>]*Style=""\{StaticResource (Card|InspectorSection|ThumbnailCard|MetricCard)\}""", text);
@@ -248,7 +248,7 @@ public sealed class TintRenderTests
         foreach (var file in new[] { "Views/DesignerToolRail.xaml", "Views/SelectionPropertiesBar.xaml", "Views/NodeEditToolbar.xaml", "Views/CanvasViewControls.xaml", "Components/WindowTitleBar.xaml" })
             Assert.DoesNotContain("IconTile", AppFile(file.Split('/')), StringComparison.Ordinal);
 
-        foreach (var file in new[] { "Views/HomeView.xaml", "SettingsWindow.xaml", "DeviceSettingsWindow.xaml", "MaterialsWindow.xaml", "Views/DeviceView.xaml" })
+        foreach (var file in new[] { "Views/HomeView.xaml", "SettingsWindow.xaml", "Views/DeviceSettingsView.xaml", "MaterialsWindow.xaml", "Views/DeviceView.xaml" })
         {
             var tones = Regex.Matches(AppFile(file.Split('/')), @"IconTile[^>]*\bTone=""(?<t>[A-Za-z]+)""").Select(m => m.Groups["t"].Value).Distinct().ToList();
             Assert.True(tones.Count <= 4, $"{file} shows {tones.Count} tile colours: {string.Join(", ", tones)}");

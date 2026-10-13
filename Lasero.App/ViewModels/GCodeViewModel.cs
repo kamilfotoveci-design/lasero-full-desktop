@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lasero.Core.GCode;
+using Lasero.Core.Export;
 using Lasero.Core.Grbl;
 using Lasero.Core.Import;
 using Lasero.Core.Jobs;
@@ -41,6 +42,8 @@ public partial class GCodeViewModel : ObservableObject
     private GCodeJobRunner? _activeRunner;
     private bool _sceneDocumentDirty;
     private JobPlacement? _placement;
+    private double _scenePlacementOffsetX;
+    private double _scenePlacementOffsetY;
     private JobTimeEstimate? _timeEstimate;
     private readonly DispatcherTimer _simulationTimer;
     private readonly DispatcherTimer _runTimer;
@@ -182,6 +185,7 @@ public partial class GCodeViewModel : ObservableObject
         {
             RegenerateFromSceneCommand.NotifyCanExecuteChanged();
             PreviewSimulationCommand.NotifyCanExecuteChanged();
+            OpenPreviewCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HasJobContent));
             OnPropertyChanged(nameof(JobSourceLabel));
             OnPropertyChanged(nameof(StatusStripMessage));
@@ -200,10 +204,10 @@ public partial class GCodeViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Podporované soubory (*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp)|*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp|" +
+            Filter = "Podporované soubory (*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp;*.webp)|*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp;*.webp|" +
                      "G-code (*.gcode;*.nc;*.tap)|*.gcode;*.nc;*.tap|" +
                      "Vektor SVG (*.svg)|*.svg|" +
-                     "Obrázek (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|" +
+                     "Obrázek (*.png;*.jpg;*.jpeg;*.bmp;*.webp)|*.png;*.jpg;*.jpeg;*.bmp;*.webp|" +
                      "Všechny soubory (*.*)|*.*",
         };
         if (dialog.ShowDialog() != true) return;
@@ -220,7 +224,7 @@ public partial class GCodeViewModel : ObservableObject
                     LastMessage = "SVG bylo přidáno do návrhu. Objekt lze přesunout, otočit nebo změnit jeho velikost.";
                     RegenerateFromScene();
                     break;
-                case ".png" or ".jpg" or ".jpeg" or ".bmp":
+                case ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp":
                     // Put the photo on the canvas immediately. Image tone and engraving settings can
                     // be changed later from its context menu, without blocking import on a dialog.
                     var rasterOptions = new RasterImportOptions
@@ -250,6 +254,29 @@ public partial class GCodeViewModel : ObservableObject
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
+        }
+    }
+
+    [RelayCommand]
+    private void ExportSvg()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "SVG (*.svg)|*.svg",
+            DefaultExt = ".svg",
+            AddExtension = true,
+            FileName = "lasero-design.svg",
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            File.WriteAllText(dialog.FileName, SvgExporter.Export(_scene.Objects, _scene.Layers));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to export scene as SVG");
+            LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
+                "Export SVG se nezdařil", ex.Message, "Zavřít", CancelText: null, Tone: LaseroDialogTone.Danger));
         }
     }
 
@@ -305,6 +332,8 @@ public partial class GCodeViewModel : ObservableObject
         _controllerMaximumS = ReadControllerMaximumS();
         if (_controllerMaximumS is not { } maximumS || !double.IsFinite(maximumS) || maximumS <= 0)
         {
+            _scenePlacementOffsetX = 0;
+            _scenePlacementOffsetY = 0;
             Document = null;
             FileLabel = SceneJobLabel;
             CurrentLine = 0;
@@ -328,6 +357,8 @@ public partial class GCodeViewModel : ObservableObject
         var baseLines = BuildSceneGCode(0, 0);
         var baseDocument = GCodeParser.Parse(baseLines, "Scéna");
         var offset = _placement?.CalculateOffset(baseDocument.BoundingBox) ?? (0d, 0d);
+        _scenePlacementOffsetX = offset.Item1;
+        _scenePlacementOffsetY = offset.Item2;
         var lines = offset == (0d, 0d) ? baseLines : BuildSceneGCode(offset.Item1, offset.Item2);
 
         // "Scéna" is what this code calls the document internally; it is not a name the operator has
@@ -338,8 +369,13 @@ public partial class GCodeViewModel : ObservableObject
         UpdatePlacementLabel();
     }
 
-    private List<string> BuildSceneGCode(double offsetX, double offsetY)
+    /// <param name="maximumS">Power range to scale S values to. Null means the controller's $30, which the
+    /// regular job path insists on knowing; the preview passes its own fallback so it works without a machine.</param>
+    /// <param name="spans">When given, receives which layer produced which run of lines, for the preview legend.</param>
+    private List<string> BuildSceneGCode(
+        double offsetX, double offsetY, double? maximumS = null, List<(LayerSettings Layer, int First, int Count)>? spans = null)
     {
+        var maxS = maximumS ?? _controllerMaximumS!.Value;
         var lines = new List<string>();
         var document = _scene.Scene.ToImportedDocument(offsetX, offsetY);
 
@@ -353,8 +389,10 @@ public partial class GCodeViewModel : ObservableObject
                              item.IsVisible && item.IncludeInOutput && item.IsRaster && UsesLayer(item, layer)))
                 {
                     var outputOptions = obj.BuildRasterOutputOptions(layer, offsetX, offsetY);
-                    if (outputOptions is not null)
-                        lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions, _controllerMaximumS!.Value));
+                    if (outputOptions is null) continue;
+                    var firstRasterLine = lines.Count;
+                    lines.AddRange(RasterImporter.BuildGCode(obj.RasterFilePath!, outputOptions, maxS));
+                    spans?.Add((layer, firstRasterLine, lines.Count - firstRasterLine));
                 }
                 continue;
             }
@@ -364,13 +402,15 @@ public partial class GCodeViewModel : ObservableObject
                 : shape.LayerColor.IsApproximately(layer.Color)).ToList();
             if (shapes.Count == 0) continue;
 
+            var firstLine = lines.Count;
             lines.AddRange(ToolpathBuilder.BuildGCode(new ImportedDocument
             {
                 Shapes = shapes,
                 Layers = [layer],
                 BoundingBox = document.BoundingBox,
                 SourceFileName = document.SourceFileName,
-            }, _controllerMaximumS!.Value));
+            }, maxS));
+            spans?.Add((layer, firstLine, lines.Count - firstLine));
         }
 
         return lines;
@@ -439,12 +479,17 @@ public partial class GCodeViewModel : ObservableObject
         RefreshCommands();
     }
 
+    public Func<bool>? IsPositioningLaserBusy { get; set; }
+
+    public void RefreshMachineActionAvailability() => RefreshCommands();
+
     private bool IsMachineReadyForPhysicalAction() =>
         _connection.State == GrblConnectionState.Connected
         && _connection.LastStatusReceivedUtc is { } timestamp
         && DateTime.UtcNow - timestamp <= TimeSpan.FromSeconds(2)
         && _connection.LastStatus?.Mode == GrblMachineMode.Idle
-        && _connection.ActiveAlert is null;
+        && _connection.ActiveAlert is null
+        && IsPositioningLaserBusy?.Invoke() != true;
 
     private bool CanRun() => Document is not null
         && IsMachineReadyForPhysicalAction()
@@ -539,6 +584,8 @@ public partial class GCodeViewModel : ObservableObject
 
     private string DescribeBlockedAction(JobPreflightResult preflight)
     {
+        if (IsPositioningLaserBusy?.Invoke() == true)
+            return "Nejprve vypněte polohovací paprsek a vyčkejte na potvrzení vypnutí.";
         if (preflight.FirstBlockingIssue is { } blocking) return blocking.Message;
         return JobState switch
         {
@@ -550,10 +597,10 @@ public partial class GCodeViewModel : ObservableObject
         };
     }
 
-    public JobPreflightResult EvaluatePreflight(bool includeFramingRequirement = true) => JobPreflight.Evaluate(new JobPreflightContext
+    public JobPreflightResult EvaluatePreflight(bool includeFramingRequirement = true, GCodeDocument? documentOverride = null) => JobPreflight.Evaluate(new JobPreflightContext
     {
         IsConnected = _connection.State == GrblConnectionState.Connected,
-        Document = Document,
+        Document = documentOverride ?? Document,
         MachineStatus = _connection.LastStatus,
         MachineStatusAge = _connection.LastStatusReceivedUtc is { } timestamp ? DateTime.UtcNow - timestamp : null,
         RequireFraming = includeFramingRequirement && _settingsStore.Current.Safety.RequireFramingBeforeStart,
@@ -563,7 +610,7 @@ public partial class GCodeViewModel : ObservableObject
         MachineMaxTravelXmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelXmm,
         MachineMaxTravelYmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelYmm,
         Layers = ImportKind == ImportKind.GCode ? null : Layers.ToList(),
-        RasterOptions = BuildEffectiveRasterOptionsForPreflight(),
+        RasterOptions = ImportKind == ImportKind.GCode ? null : BuildEffectiveRasterOptionsForPreflight(),
         MaxSpindleSpeed = ReadControllerMaximumS(),
         LaserModeEnabled = ReadControllerLaserModeEnabled(),
         IsRawGCode = ImportKind == ImportKind.GCode,
@@ -883,7 +930,11 @@ public partial class GCodeViewModel : ObservableObject
         var label = FileLabel;
         try
         {
-            await RunLinesAsync(Document.RawLines, abortOnError: true);
+            // Device settings add air assist and the return move around the job. They are applied to the
+            // streamed lines only, so the previewed document, its bounds and the preflight stay as they were.
+            var program = JobProgram.Wrap(Document.RawLines, _settingsStore.Current.Machine.GetJobProgramOptions(
+                PlacementMode, PlacementReferenceX, PlacementReferenceY));
+            await RunLinesAsync(program.Lines, abortOnError: true, program.PrologueCount, program.EpilogueCount);
         }
         finally
         {
@@ -921,7 +972,29 @@ public partial class GCodeViewModel : ObservableObject
     {
         EnsureSceneDocumentCurrent(refreshCurrentPosition: true);
         if (Document is null) return;
-        var preflight = EvaluatePreflight(includeFramingRequirement: false);
+        var options = new FramingOptions
+        {
+            FeedRatePerMinute = FramingFeedRate,
+            Mode = FramingMode,
+            LaserPower = ReadControllerMaximumS() is > 0 ? _settingsStore.Current.Machine.GetFramingPowerPercent() : 0,
+        };
+        // Toolpath bounds for a bitmap only include pixels that will burn. Frame the scene object's
+        // full placed rectangle instead, so white margins and transparent pixels retain the canvas size.
+        var frameBounds = ImportKind == ImportKind.GCode
+            ? Document.BoundingBox
+            : GetSceneFramingBounds();
+        var frameLines = FramingService.BuildFrameGCode(frameBounds, options, ReadControllerMaximumS()).ToList();
+        if (PlacementMode == JobPlacementMode.CurrentPosition)
+        {
+            frameLines.Add("M5");
+            frameLines.Add(FormattableString.Invariant(
+                $"G0 X{PlacementReferenceX:0.###} Y{PlacementReferenceY:0.###}"));
+        }
+
+        // Validate the exact frame path (including raster whitespace and the return move) before
+        // any machine motion. Raster burn bounds alone can be smaller than the bitmap on the bed.
+        var frameDocument = GCodeParser.Parse(frameLines, "Rámování");
+        var preflight = EvaluatePreflight(includeFramingRequirement: false, documentOverride: frameDocument);
         if (!preflight.CanStart)
         {
             PreflightMessage = preflight.FirstBlockingIssue?.Message;
@@ -934,19 +1007,6 @@ public partial class GCodeViewModel : ObservableObject
         _isFramingOperation = true;
         JobState = JobRunState.Framing;
         RefreshCommands();
-        var options = new FramingOptions
-        {
-            FeedRatePerMinute = FramingFeedRate,
-            Mode = FramingMode,
-            LaserPower = ReadControllerMaximumS() is > 0 ? FramingOptions.VisiblePowerPercent : 0,
-        };
-        var frameLines = FramingService.BuildFrameGCode(Document.BoundingBox, options, ReadControllerMaximumS()).ToList();
-        if (PlacementMode == JobPlacementMode.CurrentPosition)
-        {
-            frameLines.Add("M5");
-            frameLines.Add(FormattableString.Invariant(
-                $"G0 X{PlacementReferenceX:0.###} Y{PlacementReferenceY:0.###}"));
-        }
         try
         {
             await RunLinesAsync(frameLines, abortOnError: true);
@@ -967,7 +1027,25 @@ public partial class GCodeViewModel : ObservableObject
         }
     }
 
-    private async Task RunLinesAsync(IReadOnlyList<string> lines, bool abortOnError)
+    private BoundingBox2D GetSceneFramingBounds()
+    {
+        var enabledLayers = _scene.Scene.Layers.Where(layer => layer.IsEnabled).ToList();
+        var bounds = BoundingBox2D.Empty;
+        foreach (var shape in _scene.Scene.ToImportedDocument().Shapes)
+        {
+            var layerIsEnabled = enabledLayers.Any(layer => shape.LayerId != Guid.Empty
+                ? shape.LayerId == layer.Id
+                : shape.LayerColor.IsApproximately(layer.Color));
+            if (!layerIsEnabled) continue;
+
+            foreach (var point in shape.Points)
+                bounds = bounds.Include(point.X + _scenePlacementOffsetX, point.Y + _scenePlacementOffsetY);
+        }
+
+        return bounds.IsEmpty ? Document?.BoundingBox ?? BoundingBox2D.Empty : bounds;
+    }
+
+    private async Task RunLinesAsync(IReadOnlyList<string> lines, bool abortOnError, int prologueCount = 0, int epilogueCount = 0)
     {
         var runner = new GCodeJobRunner(_connection);
         _activeRunner = runner;
@@ -986,7 +1064,11 @@ public partial class GCodeViewModel : ObservableObject
             UpdateRunTiming();
         });
         runner.LineFailed += (line, message) => Application.Current.Dispatcher.Invoke(() =>
-            LastMessage = $"Laser odmítl řádek {line + 1} úlohy: {message}");
+            LastMessage = line < prologueCount
+                ? $"Laser odmítl úvodní příkaz úlohy: {message}"
+                : line >= lines.Count - epilogueCount && epilogueCount > 0
+                    ? $"Laser odmítl závěrečný příkaz úlohy: {message}"
+                    : $"Laser odmítl řádek {line - prologueCount + 1} úlohy: {message}");
 
         await runner.RunAsync(lines, abortOnError);
     }
@@ -1011,6 +1093,7 @@ public partial class GCodeViewModel : ObservableObject
         PauseResumeCommand.NotifyCanExecuteChanged();
         AbortCommand.NotifyCanExecuteChanged();
         PreviewSimulationCommand.NotifyCanExecuteChanged();
+        OpenPreviewCommand.NotifyCanExecuteChanged();
         PauseResumeSimulationCommand.NotifyCanExecuteChanged();
         RestartSimulationCommand.NotifyCanExecuteChanged();
         CloseSimulationCommand.NotifyCanExecuteChanged();

@@ -8,11 +8,13 @@ public enum DesignerTool
     Rectangle,
     Ellipse,
     Line,
+    TrimPath,
     Triangle,
     Pentagon,
     Hexagon,
     Octagon,
     Star,
     DoubleStar,
+    Square,
     Text,
 }

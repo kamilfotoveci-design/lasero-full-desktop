@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Lasero.Avalonia.ViewModels"
+        xmlns:objconv="using:Avalonia.Data.Converters"
+        x:Class="Lasero.Avalonia.Views.BitmapTraceWindow"
+        x:DataType="vm:BitmapTraceViewModel"
+        Title="Trasovat bitmapu" Width="1080" Height="720" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Brush.Background}">
+  <!-- Port of Lasero.App/BitmapTraceWindow.xaml — see RasterImportWindow's own remark on why this
+       uses plain native window decorations instead of reproducing WPF's frameless WindowChrome. -->
+  <Window.Styles>
+    <Style Selector="TextBlock.section-title"><Setter Property="FontFamily" Value="{StaticResource Font.Display}" /><Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,0,0,10" /></Style>
+    <Style Selector="Border.section"><Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" /><Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" /><Setter Property="Padding" Value="14" /><Setter Property="Margin" Value="0,0,0,14" /></Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="72,*,64">
+    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Trasovat bitmapu" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
+          <TextBlock Text="Převeďte černobílý motiv na upravitelné vektorové obrysy." Classes="muted" Margin="0,4,0,0" />
+        </StackPanel>
+        <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Brush.InfoMuted}" CornerRadius="{StaticResource Radius.Md}" Padding="10,6">
+          <TextBlock Text="{Binding ResultSummary}" Foreground="{StaticResource Brush.AccentText}" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Meta}" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,340">
+      <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="20">
+        <Grid>
+          <Viewbox Stretch="Uniform">
+            <Grid Width="{Binding PreviewWidthMm}" Height="{Binding PreviewHeightMm}" Background="White">
+              <Image Source="{Binding SourceImage}" Stretch="Fill" Opacity="0.34" />
+              <Path Data="{Binding PreviewGeometry}" Stroke="{StaticResource Brush.Accent}" StrokeThickness="0.45" Fill="Transparent" />
+            </Grid>
+          </Viewbox>
+          <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
+                  BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
+                  IsVisible="{Binding IsComputing}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <ProgressBar Width="72" Height="4" IsIndeterminate="True" />
+              <TextBlock Text="Počítám obrysy…" VerticalAlignment="Center" FontSize="{StaticResource Size.Text.Meta}" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,20">
+          <StackPanel>
+            <TextBlock Text="Zdroj" Classes="section-title" />
+            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Margin="0,4,0,18" Foreground="{StaticResource Brush.TextSecondary}">
+              <Run Text="Výsledný rozměr: " /><Run Text="{Binding PreviewWidthMm, StringFormat={}{0:0.##}}" /><Run Text=" × " />
+              <Run Text="{Binding PreviewHeightMm, StringFormat={}{0:0.##}}" /><Run Text=" mm" />
+            </TextBlock>
+
+            <Border Classes="section">
+              <StackPanel>
+                <TextBlock Text="Rozpoznání obrysu" Classes="section-title" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                  <TextBlock Text="Práh černé" Classes="muted" />
+                  <TextBlock Grid.Column="1" Text="{Binding Threshold, StringFormat={}{0:0}}" FontFamily="{StaticResource Font.Ui}" />
+                </Grid>
+                <Slider Minimum="0" Maximum="255" Value="{Binding Threshold}" />
+                <TextBlock Text="Vyšší hodnota zachytí i světlejší části obrázku." Classes="muted" TextWrapping="Wrap" Margin="0,5,0,14" />
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                  <TextBlock Text="Vyhlazení křivek" Classes="muted" />
+                  <TextBlock Grid.Column="1" Text="{Binding SimplificationPixels, StringFormat={}{0:0.0} px}" FontFamily="{StaticResource Font.Ui}" />
+                </Grid>
+                <Slider Minimum="0" Maximum="5" TickFrequency="0.1" Value="{Binding SimplificationPixels}" />
+                <TextBlock Text="Odstraní zbytečné body bez změny celkového tvaru." Classes="muted" TextWrapping="Wrap" Margin="0,5,0,14" />
+
+                <TextBlock Text="Ignorovat detaily menší než (px)" Classes="muted" />
+                <TextBox Text="{Binding MinimumFeaturePixels}" Margin="0,5,0,12" />
+                <CheckBox Content="Invertovat světlé a tmavé plochy" IsChecked="{Binding Invert}" />
+              </StackPanel>
+            </Border>
+
+            <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
+              <DockPanel>
+                <Path DockPanel.Dock="Left" VerticalAlignment="Top" Data="{StaticResource Glyph.Info}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" Stretch="Uniform" Stroke="{StaticResource Brush.AccentText}" StrokeThickness="1.75" Margin="0,1,9,0" />
+                <TextBlock Text="Bitmapa bude nahrazena jedním seskupeným vektorovým objektem. Původní stav lze obnovit pomocí Ctrl+Z."
+                           TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}" />
+              </DockPanel>
+            </Border>
+
+            <TextBlock Text="{Binding StatusMessage}" Classes="muted" TextWrapping="Wrap" Margin="2,12,2,0" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="20,12">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="Modrá čára je výsledná dráha vektoru." Classes="muted" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+          <Button Classes="secondary" Click="OnCancelClick" Padding="16,0" Content="Zrušit" />
+          <Button Classes="primary" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Padding="18,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Data="{StaticResource Glyph.Rectangle}" Width="16" Height="16" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" />
+              <TextBlock Text="Nahradit vektorem" Foreground="White" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -6,8 +6,9 @@ using Lasero.App.ViewModels;
 namespace Lasero.App.Views.Kamil;
 
 /// <summary>
-/// The assistant's text entry. Shared by Quick Ask and the expanded panel; the only difference
-/// between the two is the placeholder.
+/// The assistant's text entry. Shared by Quick Ask, the expanded panel and the full-page chat; the
+/// only difference between them is the placeholder. Its DataContext is either the assistant or the
+/// main view model, both of which expose the same <c>Chat</c>.
 /// </summary>
 public partial class KamilComposer : UserControl
 {
@@ -43,7 +44,13 @@ public partial class KamilComposer : UserControl
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
 
         e.Handled = true;
-        if (DataContext is KamilAssistantViewModel { Chat: { } chat } && chat.SendCommand.CanExecute(null))
+        var chat = DataContext switch
+        {
+            KamilAssistantViewModel assistant => assistant.Chat,
+            MainViewModel main => main.Chat,
+            _ => null,
+        };
+        if (chat is not null && chat.SendCommand.CanExecute(null))
             chat.SendCommand.Execute(null);
     }
 }

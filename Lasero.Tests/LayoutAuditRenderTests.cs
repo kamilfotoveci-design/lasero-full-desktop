@@ -147,9 +147,9 @@ public sealed class LayoutAuditRenderTests
             ShowRender(new SettingsWindow(vm, _ => true), "win-settings-980x728", 980, 728);
             ShowRender(new MaterialsWindow(vm), "win-materials-1180x720", 1180, 720);
             ShowRender(new MaterialsWindow(vm), "win-materials-1080x600", 1080, 600);
-            ShowRender(new DeviceSettingsWindow(vm), "win-device-settings", 900, 760);
             ShowRender(new KeyboardShortcutsWindow(), "win-shortcuts", 760, 720);
-            ShowRender(new PreviewWindow(vm), "win-job-preview", 1120, 760);
+            vm.GCode.TryBuildPreview(out var jobPreview, out _);
+            ShowRender(new PreviewWindow(jobPreview!), "win-job-preview", 1180, 780);
             ShowRender(new LoginWindow(vm.Account), "win-login", 780, 572);
             ShowRender(new OffsetPathWindow(new OffsetPathViewModel(vm.Scene.SelectedObjects.ToList())), "win-offset", 960, 660);
             var photo = SamplePhoto();

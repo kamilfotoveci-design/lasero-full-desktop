@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Lasero.App.Converters"
              xmlns:components="clr-namespace:Lasero.App.Components"
+             xmlns:views="clr-namespace:Lasero.App.Views"
              Loaded="OnLoaded"
              Unloaded="OnUnloaded">
     <UserControl.Resources>
@@ -14,7 +15,9 @@
         <conv:MachineAlertKindToBrushConverter x:Key="AlertKindToBrush" />
         <conv:BooleanToConnectionBrushConverter x:Key="ConnectedToBrush" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
+        <conv:EnumToIndexConverter x:Key="EnumToIndex" />
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
+        <conv:EnumEqualsVisibilityConverter x:Key="EnumEqualsVisibility" />
 
         <Style x:Key="JogPadButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Width" Value="52" />
@@ -23,28 +26,77 @@
             <Setter Property="Margin" Value="4" />
             <Setter Property="Padding" Value="12" />
         </Style>
-            </UserControl.Resources>
 
-    <components:PageScaffold>
-        <components:PageScaffold.Header>
-            <components:PageHeader Title="Zařízení" NextStep="{Binding ScreenNextStep}" Subtitle="Připojení, poloha a ruční ovládání gravírky na jednom místě.">
-                <components:PageHeader.Actions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Style="{StaticResource Badge.Aligned}" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding Connection.StatusText}" FontWeight="SemiBold" />
-                            </StackPanel>
+        <!--
+            The screen's one tab strip: the live machine page and the four device settings pages as siblings. Only the
+            strip is the TabControl's (flat, a hairline under it, the shared Tab.Item for each tab); the page under it is
+            chosen by MainViewModel.DeviceTab, which each tab selects, so the shell can open any page.
+        -->
+        <Style x:Key="Device.TabStrip" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource Tab.Item}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Border KeyboardNavigation.TabNavigation="Local"
+                                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
+                            <TabPanel IsItemsHost="True" Background="Transparent" />
                         </Border>
-                        <Button Click="OnDeviceSettingsClick" Height="{StaticResource Size.Control.Base}"
-                                ToolTip="Rozměry, pohyb os, připojení a bezpečnost">
-                            <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" />
-                        </Button>
-                    </StackPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="Device.SettingsPage" TargetType="views:DeviceSettingsView">
+            <Setter Property="Margin" Value="0,16,0,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DeviceTab}" Value="Connection">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <components:PageScaffold BodyScrolls="False">
+        <components:PageScaffold.Header>
+            <components:PageHeader Title="Zařízení" NextStep="{Binding ScreenNextStep}" Subtitle="Připojení, ruční ovládání a nastavení gravírky na jednom místě.">
+                <components:PageHeader.Actions>
+                    <Border Style="{StaticResource Badge.Aligned}" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Fill="{Binding Connection.IsConnected, Converter={StaticResource ConnectedToBrush}}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding Connection.StatusText}" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
                 </components:PageHeader.Actions>
             </components:PageHeader>
         </components:PageScaffold.Header>
         <components:PageScaffold.Body>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TabControl x:Name="DeviceTabs" Style="{StaticResource Device.TabStrip}" AutomationProperties.Name="Stránky zařízení"
+                            SelectedIndex="{Binding DeviceTab, Mode=TwoWay, Converter={StaticResource EnumToIndex}}">
+                    <TabItem Header="Připojení a ovládání" />
+                    <TabItem Header="Rozměry / Jednotky" />
+                    <TabItem Header="Základní nastavení" />
+                    <TabItem Header="G-code" />
+                    <TabItem Header="Další nastavení" />
+                </TabControl>
+
+                <!-- The device settings: four pages that share one draft and one Uložit / Zrušit bar. Hidden, not unloaded,
+                     on the connection page, so an edit survives a look at the machine. -->
+                <views:DeviceSettingsView x:Name="SettingsPage" Grid.Row="1" Style="{StaticResource Device.SettingsPage}"
+                                          Tab="{Binding DeviceTab}" />
+
+                <!-- The live machine page. The screen no longer scrolls as a whole (the settings bar must stay put), so this
+                     page scrolls itself. -->
+                <ScrollViewer Grid.Row="1" Margin="0,16,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding DeviceTab, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Connection}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -434,6 +486,8 @@
                         </Expander>
                     </components:ElevatedBorder>
                 </StackPanel>
+            </Grid>
+                </ScrollViewer>
             </Grid>
         </components:PageScaffold.Body>
     </components:PageScaffold>

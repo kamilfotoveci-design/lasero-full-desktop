@@ -114,13 +114,14 @@ public class CanvasContextMenuTests
     // --- objects ----------------------------------------------------------------------------------
 
     [Fact]
-    public void SingleVectorLeadsWithEditNodesThenClipboardVerbsInDocumentedOrder()
+    public void SingleVectorLeadsWithTheClipboardVerbsInDocumentedOrderAndKeepsNodeEditingAfterTheCore()
     {
-        var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanEditNodes = true });
+        var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanEditNodes = true, ShowProperties = true });
 
         AssertWellFormed(rows);
-        Assert.Equal(ContextAction.EditNodes, rows[0].Action);
+        Assert.Equal(ContextAction.Cut, rows[0].Action);
         var order = rows.Where(row => !row.IsSeparator).Select(row => row.Action).ToList();
+        Assert.True(order.IndexOf(ContextAction.ShowProperties) < order.IndexOf(ContextAction.EditNodes));
         Assert.True(order.IndexOf(ContextAction.Cut) < order.IndexOf(ContextAction.Copy));
         Assert.True(order.IndexOf(ContextAction.Copy) < order.IndexOf(ContextAction.Paste));
         Assert.True(order.IndexOf(ContextAction.Paste) < order.IndexOf(ContextAction.Duplicate));
@@ -130,31 +131,36 @@ public class CanvasContextMenuTests
     }
 
     [Fact]
-    public void BasicShapeOffersConvertToCurvesBeforeClipboardActions()
+    public void BasicShapeOffersConvertToPathAsEditableCurves()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanConvertToCurves = true });
 
-        Assert.Equal(ContextAction.ConvertToCurves, rows[0].Action);
-        Assert.Equal("Převést na křivky", rows[0].Header);
+        var convert = Find(rows, ContextAction.ConvertToCurves)!;
+        Assert.Equal("Převést na dráhu", convert.Header);
+        Assert.Equal("Ctrl+Shift+C", convert.Gesture);
+        Assert.True(convert.IsEnabled);
     }
 
     [Fact]
-    public void SingleVectorHasNoMultiSelectionCommands()
+    public void SingleVectorHasNoMultiSelectionCommandsAndShowsGroupingDisabled()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState());
 
         Assert.Null(Submenu(rows, "Zarovnat"));
         Assert.Null(Submenu(rows, "Booleovské operace"));
-        Assert.False(Has(rows, ContextAction.Group));
+        var group = Find(rows, ContextAction.Group)!;
+        Assert.False(group.IsEnabled);
+        Assert.False(string.IsNullOrWhiteSpace(group.Reason));
         Assert.NotNull(Submenu(rows, "Pořadí"));
         Assert.NotNull(Submenu(rows, "Otočit a převrátit"));
     }
 
     [Fact]
-    public void PasteIsHiddenOnAnObjectWhenTheClipboardIsEmpty()
+    public void PasteIsShownDisabledOnAnObjectWhenTheClipboardIsEmpty()
     {
-        var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanPaste = false });
-        Assert.False(Has(rows, ContextAction.Paste));
+        var paste = Find(CanvasContextMenuBuilder.ForObject(VectorState() with { CanPaste = false }), ContextAction.Paste)!;
+        Assert.False(paste.IsEnabled);
+        Assert.False(string.IsNullOrWhiteSpace(paste.Reason));
     }
 
     [Fact]
@@ -204,15 +210,15 @@ public class CanvasContextMenuTests
     }
 
     [Fact]
-    public void TextOffersEditTextButNeverUngroup()
+    public void TextOffersEditTextButNeverAnEnabledUngroup()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState() with
         {
             Kind = SelectionKind.Text, CanEditText = true, CanUngroup = false,
         });
 
-        Assert.Equal(ContextAction.EditText, rows[0].Action);
-        Assert.False(Has(rows, ContextAction.Ungroup));
+        Assert.True(Has(rows, ContextAction.EditText));
+        Assert.False(Find(rows, ContextAction.Ungroup)!.IsEnabled);
         Assert.False(Has(rows, ContextAction.EditNodes));
     }
 
@@ -220,8 +226,10 @@ public class CanvasContextMenuTests
     public void GroupOffersUngroup()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanUngroup = true });
-        Assert.True(Has(rows, ContextAction.Ungroup));
-        Assert.Equal("Ctrl+Shift+G", Find(rows, ContextAction.Ungroup)!.Gesture);
+        var ungroup = Find(rows, ContextAction.Ungroup)!;
+        Assert.True(ungroup.IsEnabled);
+        Assert.Equal("Odebrat ze skupiny", ungroup.Header);
+        Assert.Equal("Ctrl+U", ungroup.Gesture);
     }
 
     [Fact]
@@ -286,11 +294,13 @@ public class CanvasContextMenuTests
     }
 
     [Fact]
-    public void UnlockedSelectionOffersLockLast()
+    public void UnlockedSelectionOffersLockWithTheGroupingRows()
     {
         var rows = CanvasContextMenuBuilder.ForObject(VectorState());
-        Assert.Equal(ContextAction.ToggleLock, rows[^1].Action);
-        Assert.Equal("Zamknout výběr", rows[^1].Header);
+        var order = rows.Where(row => !row.IsSeparator).Select(row => row.Action).ToList();
+        Assert.Equal(1, order.Count(action => action == ContextAction.ToggleLock));
+        Assert.Equal(order.IndexOf(ContextAction.Ungroup) + 1, order.IndexOf(ContextAction.ToggleLock));
+        Assert.Equal("Zamknout vybrané tvary", Find(rows, ContextAction.ToggleLock)!.Header);
     }
 
     [Fact]
@@ -430,6 +440,9 @@ public class CanvasContextMenuTests
         Assert.False(state.CanSendBackward);
         Assert.False(state.CanPaste);
         Assert.NotNull(state.BooleanReason);
+        Assert.True(state.CanConvertToCurves);
+        Assert.False(state.IsAlreadyPath);
+        Assert.Null(state.BitmapReason);
     }
 
     [Fact]

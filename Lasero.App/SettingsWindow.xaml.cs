@@ -8,6 +8,11 @@ public partial class SettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly Func<Window, bool> _prepareSignOut;
+    private readonly EditorPreferencesForm _editorForm;
+
+    // The editor fields that currently hold a value the editor refuses, with the reason each one gives.
+    private readonly Dictionary<object, string> _fieldErrors = new();
+
     public bool SignOutRequested { get; private set; }
 
     /// <summary>Set when "Znovu zobrazit úvod" closed the dialog; MainWindow then opens the welcome.</summary>
@@ -19,6 +24,13 @@ public partial class SettingsWindow : Window
         _viewModel = viewModel;
         _prepareSignOut = prepareSignOut;
         DataContext = viewModel;
+
+        // The editor pages edit a copy; only "Uložit a zavřít" makes it the live preferences.
+        _editorForm = new EditorPreferencesForm(viewModel.Settings.Editor.Clone());
+        EditorPage.DataContext = _editorForm;
+        GridPage.DataContext = _editorForm;
+        DisplayPage.DataContext = _editorForm;
+
         RequireFramingToggle.IsChecked = viewModel.Settings.Safety.RequireFramingBeforeStart;
         ConfirmResetToggle.IsChecked = viewModel.Settings.Safety.ConfirmSoftReset;
         ShowMachineStatusToggle.IsChecked = viewModel.Settings.Safety.ShowMachineStatusAfterConnect;
@@ -39,8 +51,28 @@ public partial class SettingsWindow : Window
         TipsResetText.Text = "Tipy se zobrazí znovu při příští příležitosti.";
     }
 
+    /// <summary>Keeps the reason a field is refused in the footer for as long as the field holds the bad
+    /// value; entering a valid one (or Esc) clears it.</summary>
+    private void OnFieldValidationError(object sender, ValidationErrorEventArgs e)
+    {
+        var source = e.OriginalSource ?? sender;
+        if (e.Action == ValidationErrorEventAction.Added)
+            _fieldErrors[source] = e.Error.Exception?.GetBaseException().Message
+                ?? e.Error.ErrorContent?.ToString() ?? "Hodnota není platná.";
+        else
+            _fieldErrors.Remove(source);
+
+        SettingsErrorText.Text = _fieldErrors.Count > 0 ? _fieldErrors.Values.First() : string.Empty;
+    }
+
     private bool TrySaveAndClose()
     {
+        if (_fieldErrors.Count > 0)
+        {
+            SettingsErrorText.Text = _fieldErrors.Values.First();
+            return false;
+        }
+
         if (Validation.GetHasError(WorkAreaWidthInput) || Validation.GetHasError(WorkAreaHeightInput) ||
             !double.IsFinite(_viewModel.Settings.Machine.WorkAreaWidthMm) || _viewModel.Settings.Machine.WorkAreaWidthMm <= 0 ||
             !double.IsFinite(_viewModel.Settings.Machine.WorkAreaHeightMm) || _viewModel.Settings.Machine.WorkAreaHeightMm <= 0)
@@ -54,6 +86,8 @@ public partial class SettingsWindow : Window
         _viewModel.Settings.Safety.ConfirmSoftReset = ConfirmResetToggle.IsChecked == true;
         _viewModel.Settings.Safety.ShowMachineStatusAfterConnect = ShowMachineStatusToggle.IsChecked == true;
         _viewModel.Settings.Startup.ShowIntroAnimation = StartupAnimationToggle.IsChecked == true;
+        _editorForm.Draft.Normalize();
+        _viewModel.Settings.Editor = _editorForm.Draft;
         _viewModel.SaveSettings();
         Close();
         return true;

@@ -3,17 +3,30 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:components="clr-namespace:Lasero.App.Components"
+        xmlns:input="clr-namespace:Lasero.App.Input"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Offset křivky" Width="960" Height="660" MinWidth="820" MinHeight="560"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
-        <conv:EnumEqualsVisibilityConverter x:Key="EnumEqualsVisibility" />
+        <conv:DecimalTextConverter x:Key="DecimalText" />
+
+        <!-- Row label beside a switch or field; wraps instead of clipping in the narrow panel. -->
+        <Style x:Key="Offset.Label" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style x:Key="Offset.GroupCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
     </Window.Resources>
 
     <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
@@ -28,13 +41,13 @@
         </Grid.RowDefinitions>
 
         <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,16">
-            <components:PageHeader Title="Offset křivky" Subtitle="Zvětšení nebo zmenšení vybraných tvarů o zadanou vzdálenost." />
+            <components:PageHeader Title="Offset křivky" Subtitle="Posunutí obrysu sjednocených vybraných tvarů o zadanou vzdálenost." />
         </Border>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="360" />
             </Grid.ColumnDefinitions>
 
             <Border Margin="20" Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="20">
@@ -48,7 +61,7 @@
                                         <Setter Property="Stroke" Value="{StaticResource Brush.TextSecondary}" />
                                         <Setter Property="Opacity" Value="0.5" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding KeepOriginal}" Value="True">
+                                            <DataTrigger Binding="{Binding DeleteOriginals}" Value="False">
                                                 <Setter Property="Stroke" Value="{StaticResource Brush.TextPrimary}" />
                                                 <Setter Property="Opacity" Value="1" />
                                             </DataTrigger>
@@ -75,28 +88,85 @@
                     <StackPanel>
                         <components:ElevatedBorder Style="{StaticResource InspectorSection}">
                             <StackPanel>
-                                <TextBlock Text="Nastavení offsetu" Style="{StaticResource PanelTitle}" />
+                                <!-- Distance: typed with a comma or a dot, or scrubbed by dragging the field sideways. -->
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Posunout vzdálenost" Style="{StaticResource Offset.Label}" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource SettingNumberInput}" Width="88" Cursor="SizeWE"
+                                             input:NumericScrub.Step="0.1" input:NumericScrub.Minimum="0.01" input:NumericScrub.Maximum="1000"
+                                             AutomationProperties.Name="Posunout vzdálenost"
+                                             ToolTip="Vzdálenost nového obrysu od vybraných tvarů v milimetrech. Hodnotu lze měnit i tažením pole do stran."
+                                             Text="{Binding DistanceMm, Mode=TwoWay, Converter={StaticResource DecimalText}, ConverterParameter=0.00, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" />
+                                    <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                </Grid>
 
-                                <TextBlock Text="Vzdálenost (mm)" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
-                                <TextBlock Text="Kladná hodnota zvětší tvar, záporná ho zmenší." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                <TextBox Text="{Binding DistanceMm, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.###}}" Margin="0,0,0,16" />
+                                <TextBlock Text="Směr" Style="{StaticResource Offset.GroupCaption}" />
+                                <Border Style="{StaticResource SegmentedTrack}" Margin="0,0,0,20">
+                                    <UniformGrid Columns="3">
+                                        <RadioButton Content="Ven" GroupName="OffsetDirection" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Obrys se vytvoří vně vybraných tvarů."
+                                                     IsChecked="{Binding Direction, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Outward}" />
+                                        <RadioButton Content="Dovnitř" GroupName="OffsetDirection" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Obrys se vytvoří uvnitř vybraných tvarů."
+                                                     IsChecked="{Binding Direction, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Inward}" />
+                                        <RadioButton Content="Oba" GroupName="OffsetDirection" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Vzniknou oba obrysy, vnější i vnitřní."
+                                                     IsChecked="{Binding Direction, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Both}" />
+                                    </UniformGrid>
+                                </Border>
 
-                                <TextBlock Text="Typ spoje" Style="{StaticResource Text.Muted}" Margin="0,0,0,4" />
-                                <ComboBox ItemsSource="{Binding JoinTypeOptions}" DisplayMemberPath="Label"
-                                          SelectedValuePath="Value" SelectedValue="{Binding JoinType}" Margin="0,0,0,16" />
+                                <TextBlock Text="Styl rohu" Style="{StaticResource Offset.GroupCaption}" />
+                                <Border Style="{StaticResource SegmentedTrack}" Margin="0,0,0,20">
+                                    <UniformGrid Columns="3">
+                                        <RadioButton Content="Oblý" GroupName="OffsetJoin" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Rohy se zaoblí."
+                                                     IsChecked="{Binding JoinType, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Round}" />
+                                        <RadioButton Content="Kosý" GroupName="OffsetJoin" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Rohy se seříznou šikmo."
+                                                     IsChecked="{Binding JoinType, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Bevel}" />
+                                        <RadioButton Content="Roh" GroupName="OffsetJoin" Style="{StaticResource Segment.Compact}"
+                                                     ToolTip="Rohy zůstanou ostré. Příliš ostré rohy se seříznou, aby nevznikaly dlouhé hroty."
+                                                     IsChecked="{Binding JoinType, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter=Miter}" />
+                                    </UniformGrid>
+                                </Border>
 
-                                <TextBlock Text="Limit ostrého spoje" Style="{StaticResource Text.Muted}" Margin="0,0,0,4"
-                                           Visibility="{Binding JoinType, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Miter}" />
-                                <TextBox Text="{Binding MiterLimit, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.##}}"
-                                         IsEnabled="{Binding JoinType, Converter={StaticResource EnumToBool}, ConverterParameter=Miter}"
-                                         Visibility="{Binding JoinType, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Miter}" />
+                                <TextBlock Text="Možnosti" Style="{StaticResource Offset.GroupCaption}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Prepojený offset" Style="{StaticResource Offset.Label}" />
+                                    <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Prepojený offset"
+                                              ToolTip="Obrys sa po úprave pôvodných tvarov automaticky prepočíta. Pôvodné tvary musia zostať v projekte."
+                                              IsChecked="{Binding LinkedOffset, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pouze vnější tvary" Style="{StaticResource Offset.Label}" />
+                                    <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Pouze vnější tvary"
+                                              ToolTip="Zapnuto: vytvoří se pouze obrys vnějších hranic. Otvory a tvary uvnitř nich se vynechají."
+                                              IsChecked="{Binding OnlyOuterShapes, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Odstranit původní objekty" Style="{StaticResource Offset.Label}" />
+                                    <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Odstranit původní objekty"
+                                              ToolTip="Zapnuto: původní tvary se po potvrzení nahradí výsledkem. Zamčené objekty zůstanou."
+                                              IsChecked="{Binding DeleteOriginals, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Optimalizovat výsledky" Style="{StaticResource Offset.Label}" />
+                                    <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Optimalizovat výsledky"
+                                              ToolTip="Zapnuto: body ležící na přímce se sloučí a výsledek má méně uzlů."
+                                              IsChecked="{Binding OptimizeResults, Mode=TwoWay}" />
+                                </Grid>
                             </StackPanel>
                         </components:ElevatedBorder>
 
-                        <CheckBox Content="Ponechat původní tvar" IsChecked="{Binding KeepOriginal}" Margin="4,16,0,0"
-                                  ToolTip="Zapnuto: původní tvar zůstane na místě a offset se přidá jako nový objekt nad něj. Vypnuto: původní tvar se offsetem nahradí." />
-
-                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,16,0,0">
+                        <Border Background="{StaticResource Brush.InfoMuted}" BorderBrush="{StaticResource Brush.InfoBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12" Margin="0,0,0,0">
                             <!-- DockPanel, not a horizontal StackPanel: a StackPanel measures its children
                                  with infinite width, so TextWrapping never engages. -->
                             <DockPanel>
@@ -104,10 +174,13 @@
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="{StaticResource Size.Text.Meta}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Ke každému vybranému tvaru se přidá vlastní upravitelná křivka. Vše lze vrátit pomocí Ctrl+Z." />
+                                            <Setter Property="Text" Value="Vybrané tvary se nejprve sjednotí a obrys vznikne z celku, ne z každého tvaru zvlášť. Původní tvary zůstanou na místě. Vše lze vrátit pomocí Ctrl+Z." />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding KeepOriginal}" Value="False">
-                                                    <Setter Property="Text" Value="Každý vybraný tvar se nahradí vlastní upravitelnou křivkou. Původní stav lze obnovit pomocí Ctrl+Z." />
+                                                <DataTrigger Binding="{Binding DeleteOriginals}" Value="True">
+                                                    <Setter Property="Text" Value="Vybrané tvary se nejprve sjednotí a nahradí se obrysem celku. Původní stav lze obnovit pomocí Ctrl+Z." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding LinkedOffset}" Value="True">
+                                                    <Setter Property="Text" Value="Prepojený obrys sa po úprave pôvodných tvarov prepočíta. Pôvodné objekty zostanú v projekte; Ctrl+Z vráti aj ich zmeny." />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -123,11 +196,10 @@
         </Grid>
 
         <components:DialogFooter Grid.Row="2">
-            <TextBlock components:DialogFooter.IsLeading="True" Text="Zvýrazněná čára je výsledek offsetu, druhá čára je původní tvar." Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
-            <Button Style="{StaticResource Button.Outline}" Click="OnCancelClick" Height="{StaticResource Size.Control.Primary}" MinWidth="96" Content="Zrušit" />
-            <Button IsDefault="True" Style="{StaticResource Button.Primary}" Click="OnApplyClick" IsEnabled="{Binding HasResult}" Height="{StaticResource Size.Control.Primary}" Padding="24,0">
-                <components:IconLabel IconData="{StaticResource Glyph.Vector}" Text="Použít offset" Foreground="White" />
-            </Button>
+            <TextBlock components:DialogFooter.IsLeading="True" Text="Zvýrazněná čára je výsledek posunutí, druhá čára je původní tvar." Style="{StaticResource Text.Muted}" VerticalAlignment="Center" />
+            <Button IsCancel="True" Style="{StaticResource Button.Outline}" Click="OnCancelClick" Height="{StaticResource Size.Control.Primary}" MinWidth="96" Content="Zrušit" />
+            <Button IsDefault="True" Style="{StaticResource Button.Primary}" Click="OnApplyClick" IsEnabled="{Binding HasResult}"
+                    Height="{StaticResource Size.Control.Primary}" MinWidth="96" Content="OK" AutomationProperties.Name="OK" />
         </components:DialogFooter>
     </Grid>
     </Grid>

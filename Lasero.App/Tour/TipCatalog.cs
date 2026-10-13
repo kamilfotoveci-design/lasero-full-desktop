@@ -26,7 +26,7 @@ public static class TipCatalog
         new(Connect, "Připojení je aktivní. Další krok je Rámovat, tedy kontrola polohy na materiálu."),
         new(Frame, "Slabý bod ukazuje okraj práce. Sedí-li poloha, následuje Spustit."),
         new(Start, "Úlohu lze kdykoli Pozastavit nebo Zastavit. Laser nenechávat bez dozoru."),
-        new(Kamil, "Kamil vidí vybraný materiál i operaci. Stačí napsat, co se má stát."),
+        new(Kamil, "Kamil vidí vybraný materiál i vrstvu. Stačí napsat, co se má stát."),
         new(EmptyCanvas, "Plátno je prázdné. Text a tvary vloží nástroje vlevo, SVG, obrázek nebo G-code vloží Importovat grafiku."),
     ];
 
@@ -44,10 +44,10 @@ public static class TipOfDay
         "Dvojklik na čáru ukáže body, ze kterých se skládá. Jejich tažením se tvar upraví, Enter úpravu ukončí.",
         "Ctrl+D vytvoří kopii vybraného objektu, Ctrl+G spojí vybrané objekty do jedné skupiny.",
         "Klávesa Esc vrací o krok zpět: zavře úpravu, zruší nástroj a nakonec zruší výběr.",
-        "Klávesy V, T, R, E a L přepínají nástroje, přehled všech zkratek otevře klávesa F1.",
+        "Klávesy V, T, P, R a E přepínají nástroje, přehled všech zkratek otevře klávesa F1.",
         "Alt+T převede obrázek na čáry, které laser umí vyříznout nebo vyrýt.",
         "Před ostrou prací je dobré vyzkoušet nastavení na zbytku stejného materiálu.",
-        "Laser pracuje po krocích shora dolů, pořadí kroků se mění šipkami v panelu Operace.",
+        "Laser pracuje po krocích shora dolů, pořadí kroků se mění šipkami v panelu Vrstvy.",
         "Projekt se každých 30 sekund sám zálohuje, Ctrl+S ho uloží natrvalo.",
         "Tlačítko Rámovat obkreslí okraj práce slabým světlem, takže je vidět, kam laser dosáhne.",
     ];

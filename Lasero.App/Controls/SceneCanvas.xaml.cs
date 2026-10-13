@@ -16,6 +16,7 @@ using Lasero.Core.Import;
 using Lasero.Core.Layers;
 using Lasero.Core.Scene;
 using Lasero.Core.Scene.Commands;
+using Lasero.Core.Scene.Snapping;
 
 namespace Lasero.App.Controls;
 
@@ -113,7 +114,7 @@ public partial class SceneCanvas : UserControl
     private readonly Dictionary<FrameworkElement, SceneObject> _worldSpaceSelectionVisuals = new();
     private double _appliedStrokeScale = double.NaN;
     private bool _suppressObjectRepaint;
-    private const double ObjectStrokePx = 1.4;
+    private const double ObjectStrokePx = 1.0;
     private const double HoverStrokePx = 2;
     private readonly Dictionary<SceneObject, Image> _rasterImageVisuals = new();
     private readonly List<FrameworkElement> _selectionVisuals = new();
@@ -125,6 +126,7 @@ public partial class SceneCanvas : UserControl
     private Point _dragStartScreen;
     private Position _dragStartWorld;
     private readonly Dictionary<SceneObject, ObjectTransform> _dragStartTransforms = new();
+    private readonly List<Position> _moveSnapAnchors = [];
     private double _pendingMoveDx;
     private double _pendingMoveDy;
     private Point _pendingExpensiveDragScreen;
@@ -156,10 +158,11 @@ public partial class SceneCanvas : UserControl
     // time the view moves, so panning or zooming never has to re-run the glyph geometry.
     private Position _inlineEditorLayoutOrigin;
 
-    // The dashed frame around the editor. It is the selection box for the text being typed: the
-    // object's own box describes the old wording and cannot grow while the operator types, so it is
-    // replaced for the length of the edit by one that is measured from the live editor.
-    private Polygon? _inlineEditorFrame;
+    // The letters of the text being typed, drawn as a hairline outline over the editor. The TextBox
+    // itself paints its text transparent (only its caret and selection wash show), so what the operator
+    // sees is the same thin contour the laser follows, not a solid face. There is deliberately no frame
+    // around it: the selection box describes the old wording and cannot grow while typing.
+    private Path? _inlineEditorOutline;
 
     public event Action<Position>? TextPlacementRequested;
 
@@ -277,7 +280,16 @@ public partial class SceneCanvas : UserControl
         ResyncNodeEditAfterExternalChange();
     }
 
-    private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RedrawSelectionOverlay();
+    private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // Layer visibility/lock changes prune the ViewModel selection. Drop node-edit state too,
+        // otherwise its detached overlay could keep accepting edits against an ineligible object.
+        if (!_committingNodeEdit && _nodeEditObject is { } editing &&
+            (ViewModel is null || !ViewModel.CanSelectObject(editing)))
+            ExitNodeEditMode();
+        else
+            RedrawSelectionOverlay();
+    }
     private bool _rebuildAfterCommand;
 
     private void OnViewModelContentChanged()
@@ -318,7 +330,7 @@ public partial class SceneCanvas : UserControl
     {
         if (_isSpacePressed || _dragMode == DragMode.Pan)
         {
-            Cursor = Cursors.ScrollAll;
+            Cursor = Cursors.Hand;
             return;
         }
 
@@ -467,10 +479,10 @@ public partial class SceneCanvas : UserControl
         {
             _inlineTextEditor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
             _inlineTextEditor.LostKeyboardFocus -= OnInlineEditorLostFocus;
-            _inlineTextEditor.SizeChanged -= OnInlineEditorSizeChanged;
+            _inlineTextEditor.TextChanged -= OnInlineEditorTextChanged;
             _inlineTextEditor = null;
             _editingTextObject = null;
-            _inlineEditorFrame = null;
+            _inlineEditorOutline = null;
         }
 
         foreach (var obj in _objectVisuals.Keys.ToList())
@@ -589,7 +601,7 @@ public partial class SceneCanvas : UserControl
     {
         if (obj.RasterFilePath is null || obj.RasterOptions is null) return null;
         var image = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
-        var load = RasterPreviewLoader.GetAsync(obj.RasterFilePath);
+        var load = RasterPreviewLoader.GetAsync(obj.RasterFilePath, obj.RasterOptions);
         if (load.IsCompletedSuccessfully)
         {
             image.Source = load.Result;
@@ -856,10 +868,14 @@ public partial class SceneCanvas : UserControl
         var axis = new StreamGeometry();
         var firstX = RulerMath.FirstTick(_offsetXMm, step);
         var firstY = RulerMath.FirstTick(_offsetYMm, step);
+        // The rulers keep the zoom-driven step; the grid lines follow Nastavení (automatic or a typed spacing).
+        var gridStep = _preferences.ResolveGridStepMm(_scale);
+        var gridFirstX = RulerMath.FirstTick(_offsetXMm, gridStep);
+        var gridFirstY = RulerMath.FirstTick(_offsetYMm, gridStep);
         using (var minorContext = minor.Open())
         using (var axisContext = axis.Open())
         {
-            for (var x = firstX; x < _offsetXMm + ActualWidth / _scale; x += step)
+            for (var x = gridFirstX; x < _offsetXMm + ActualWidth / _scale; x += gridStep)
             {
                 var px = ToCanvasX(x);
                 if (hasBed && (px < bedLeft - 0.5 || px > bedRight + 0.5)) continue;
@@ -868,7 +884,7 @@ public partial class SceneCanvas : UserControl
                 context.LineTo(new Point(px, bedBottom), true, false);
             }
 
-            for (var y = firstY; y < _offsetYMm + ActualHeight / _scale; y += step)
+            for (var y = gridFirstY; y < _offsetYMm + ActualHeight / _scale; y += gridStep)
             {
                 var py = ToCanvasY(y);
                 if (hasBed && (py < bedTop - 0.5 || py > bedBottom + 0.5)) continue;
@@ -881,6 +897,7 @@ public partial class SceneCanvas : UserControl
         minor.Freeze();
         axis.Freeze();
         _gridMinorPath!.Data = minor;
+        _gridMinorPath.Visibility = _preferences.ShowGrid ? Visibility.Visible : Visibility.Collapsed;
         _gridAxisPath!.Data = axis;
 
         if (hasBed)
@@ -1046,7 +1063,11 @@ public partial class SceneCanvas : UserControl
 
         StartMarchingAnts();
 
-        if (ViewModel.SelectedObjects.Count == 1)
+        if (ViewModel.HideSelectionFrame)
+        {
+            // Just traced: contours only, no frame (see SceneViewModel.HideSelectionFrame).
+        }
+        else if (ViewModel.SelectedObjects.Count == 1)
         {
             var selected = ViewModel.SelectedObjects[0];
             // Not while its text is being typed: the handles frame the old wording and would sit at
@@ -1055,14 +1076,21 @@ public partial class SceneCanvas : UserControl
                 DrawSingleObjectHandles(selected);
         }
         else
-            DrawMultiSelectionBox();
+            DrawGroupSelection(); // frame + resize/rotate grips; the plain dashed box when nothing is transformable
 
         // Every selected object's own contours crawl, not just the box around them. On a filled
         // object the box alone is ambiguous about which shape it belongs to.
+        // A dense selection (a traced logo) being dragged, resized or rotated redraws this overlay on
+        // every mouse move; its per-contour outlines are skipped for the duration of the gesture and
+        // the frame alone follows the pointer.
+        var skipDenseOutlines = _dragMode is DragMode.Move or DragMode.Resize or DragMode.Rotate &&
+            SelectionTooDenseToAnimate();
         foreach (var obj in ViewModel.SelectedObjects)
         {
+            if (skipDenseOutlines) break;
             // Not the text being typed into: its contours would crawl through the live letters.
-            if (IsObjectVisibleOnCanvas(obj) && !ReferenceEquals(obj, _editingTextObject))
+            // Text gets the selection box only: tracing every glyph in red reads as noise on letters.
+            if (IsObjectVisibleOnCanvas(obj) && !ReferenceEquals(obj, _editingTextObject) && !obj.IsText)
                 DrawObjectAnts(obj);
         }
     }
@@ -1109,7 +1137,7 @@ public partial class SceneCanvas : UserControl
     /// 20 000-segment SVG) that keeps the render pipeline saturated: the dispatcher never reaches idle
     /// and input latency suffers. The dashed outline itself is still drawn, just not animated.
     /// </summary>
-    internal const int MarchingAntsPointBudget = 6000;
+    internal const int MarchingAntsPointBudget = 1200;
 
     private bool SelectionTooDenseToAnimate()
     {
@@ -1140,7 +1168,7 @@ public partial class SceneCanvas : UserControl
 
         // Windows' own "animate controls and elements inside windows" setting. With animation turned
         // off the dashes stay put: the outline still reads as a selection, it just does not move.
-        if (!SystemParameters.ClientAreaAnimation)
+        if (!SystemParameters.ClientAreaAnimation || Motion.LaseroMotion.ForceReducedMotion)
         {
             SetValue(MarchingAntsPhaseProperty, 0.0);
             return;
@@ -1351,18 +1379,29 @@ public partial class SceneCanvas : UserControl
 
     private void SelectObjectAndBeginMove(SceneObject obj, MouseButtonEventArgs e)
     {
-        if (ViewModel is null) return;
+        if (ViewModel is null || !ViewModel.CanSelectObject(obj)) return;
         Focus();
+
+        var members = obj.GroupId is { } groupId
+            ? ViewModel.Objects.Where(item => item.GroupId == groupId && ViewModel.CanSelectObject(item)).ToList()
+            : [obj];
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
-            if (ViewModel.SelectedObjects.Contains(obj)) ViewModel.SelectedObjects.Remove(obj);
-            else ViewModel.SelectedObjects.Add(obj);
+            if (ViewModel.SelectedObjects.Contains(obj))
+            {
+                foreach (var member in members) ViewModel.SelectedObjects.Remove(member);
+            }
+            else
+            {
+                foreach (var member in members)
+                    if (!ViewModel.SelectedObjects.Contains(member)) ViewModel.SelectedObjects.Add(member);
+            }
         }
         else if (!ViewModel.SelectedObjects.Contains(obj))
         {
             ViewModel.SelectedObjects.Clear();
-            ViewModel.SelectedObjects.Add(obj);
+            foreach (var member in members) ViewModel.SelectedObjects.Add(member);
         }
         // else: clicked an already-selected object with no Shift -> keep the current
         // multi-selection intact and drag the whole group.
@@ -1398,15 +1437,83 @@ public partial class SceneCanvas : UserControl
     private void BeginMove(MouseButtonEventArgs e)
     {
         if (ViewModel is null || ViewModel.SelectedObjects.Count == 0) return;
+        BeginGestureSnapping(ViewModel.SelectedObjects);
         _dragMode = DragMode.Move;
         var screen = e.GetPosition(DrawCanvas);
+        _dragStartScreen = screen;
         _dragStartWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
         _pendingMoveDx = 0;
         _pendingMoveDy = 0;
         _dragStartTransforms.Clear();
-        foreach (var obj in ViewModel.SelectedObjects)
+        foreach (var obj in IndependentTransformTargets(ViewModel.SelectedObjects))
             _dragStartTransforms[obj] = obj.Transform;
+        _moveSnapAnchors.Clear();
+        var bounds = BoundingBox2D.Empty;
+        foreach (var obj in _dragStartTransforms.Keys)
+            bounds = Union(bounds, obj.WorldBounds());
+        if (!bounds.IsEmpty)
+        {
+            var centerX = (bounds.MinX + bounds.MaxX) / 2;
+            var centerY = (bounds.MinY + bounds.MaxY) / 2;
+            _moveSnapAnchors.AddRange([
+                new Position(centerX, centerY, 0),
+                new Position(bounds.MinX, bounds.MinY, 0),
+                new Position(bounds.MinX, bounds.MaxY, 0),
+                new Position(bounds.MaxX, bounds.MinY, 0),
+                new Position(bounds.MaxX, bounds.MaxY, 0),
+                new Position(centerX, bounds.MinY, 0),
+                new Position(centerX, bounds.MaxY, 0),
+                new Position(bounds.MinX, centerY, 0),
+                new Position(bounds.MaxX, centerY, 0),
+            ]);
+        }
         DrawCanvas.CaptureMouse();
+    }
+
+    // Snap the moving selection's bounds, not the arbitrary point where the user grabbed it.
+    // Geometry takes priority over grid across every anchor, and the pointer delta remains the
+    // immutable drag origin so the object never accumulates rounding drift between mouse samples.
+    private (double X, double Y) ResolveMoveDelta(double rawDx, double rawDy)
+    {
+        _activeSnapTarget = null;
+        if (_moveSnapAnchors.Count == 0 || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            return (rawDx, rawDy);
+
+        var toleranceWorld = SnapToleranceScreenPx / _scale;
+        IReadOnlyList<SnapCandidate> geometry = _preferences.SnapToObjects ? _gestureSnapCandidates : [];
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
+
+        for (var pass = 0; pass < 2; pass++)
+        {
+            if (pass == 0 && geometry.Count == 0) continue;
+            if (pass == 1 && gridStep is null) break;
+
+            SnapCandidate? bestTarget = null;
+            var bestDistanceSquared = double.PositiveInfinity;
+            var bestDx = rawDx;
+            var bestDy = rawDy;
+            foreach (var anchor in _moveSnapAnchors)
+            {
+                var proposed = new Position(anchor.X + rawDx, anchor.Y + rawDy, 0);
+                var result = SnapEngine.Resolve(proposed, pass == 0 ? geometry : [],
+                    toleranceWorld, pass == 1 ? gridStep : null);
+                if (result.Target is not { } target) continue;
+                var adjustmentX = result.Point.X - proposed.X;
+                var adjustmentY = result.Point.Y - proposed.Y;
+                var distanceSquared = adjustmentX * adjustmentX + adjustmentY * adjustmentY;
+                if (distanceSquared >= bestDistanceSquared) continue;
+                bestTarget = target;
+                bestDistanceSquared = distanceSquared;
+                bestDx = rawDx + adjustmentX;
+                bestDy = rawDy + adjustmentY;
+            }
+
+            if (bestTarget is null) continue;
+            _activeSnapTarget = bestTarget;
+            return (bestDx, bestDy);
+        }
+
+        return (rawDx, rawDy);
     }
 
     /// <summary>
@@ -1417,7 +1524,9 @@ public partial class SceneCanvas : UserControl
     private static bool IsSelectionHandle(object? source) => source switch
     {
         Rectangle { Tag: ValueTuple<SceneObject, ResizeHandle> } => true,
+        Rectangle { Tag: GroupHandleTag } => true,
         Ellipse { Tag: SceneObject } => true,
+        Ellipse { Tag: GroupRotateTag } => true,
         Ellipse { Tag: NodeHitTag } => true,
         _ => false,
     };
@@ -1428,6 +1537,7 @@ public partial class SceneCanvas : UserControl
         var (obj, handle) = ((SceneObject, ResizeHandle))((Rectangle)sender).Tag;
         e.Handled = true;
         Focus();
+        BeginGestureSnapping([obj]);
         _dragMode = DragMode.Resize;
         _activeSingleObject = obj;
         _activeResizeHandle = handle;
@@ -1480,6 +1590,7 @@ public partial class SceneCanvas : UserControl
     private void OnDrawCanvasPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (ViewModel is null) return;
+        ViewModel.HideSelectionFrame = false;
 
         // Selection handles win over everything else on the canvas.
         //
@@ -1522,6 +1633,14 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        if (ViewModel.ActiveTool == DesignerTool.TrimPath)
+        {
+            Focus();
+            TrimPathAt(screen);
+            e.Handled = true;
+            return;
+        }
+
         if (DesignerPrimitiveFactory.IsPrimitive(ViewModel.ActiveTool))
         {
             Focus();
@@ -1546,6 +1665,22 @@ public partial class SceneCanvas : UserControl
             {
                 Focus();
                 EnterNodeEditMode(doubleClickedPath);
+                e.Handled = true;
+                return;
+            }
+
+            // A plain shape (rectangle, ellipse, polygon, imported outline) has no nodes to show yet.
+            // Double-click converts it exactly like the context menu's "Převést na křivky" (one undo
+            // step) and opens node editing on the result, so the points appear.
+            var doubleClickedShape = HitTestScene(screen)
+                .Select(candidate => candidate.Object)
+                .FirstOrDefault(candidate => !candidate.IsVectorPath && !candidate.IsText && !candidate.IsRaster && !candidate.IsLocked);
+            if (doubleClickedShape is not null)
+            {
+                Focus();
+                ViewModel.SelectedObjects.Clear();
+                ViewModel.SelectedObjects.Add(doubleClickedShape);
+                if (ViewModel.ConvertSelectedObjectToCurves() is { } converted) EnterNodeEditMode(converted);
                 e.Handled = true;
                 return;
             }
@@ -1579,16 +1714,31 @@ public partial class SceneCanvas : UserControl
 
             // Never create a new TEXT object underneath an existing one — select what is already
             // there instead, the same way clicking existing artwork does with the Select tool.
+            // Pressing on existing artwork selects it and, like the Select tool, lets the same press
+            // drag it. Selecting without a drag made text feel frozen while this tool was active. The
+            // whole selection frame counts as the target, so the gaps between glyphs do not.
+            var textPointer = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+            if (Keyboard.Modifiers == ModifierKeys.None &&
+                ViewModel.SelectedObjects.Any(obj => !obj.IsLocked) &&
+                SceneHitTester.IsInsideSelectionBounds(ViewModel.SelectedObjects, textPointer))
+            {
+                BeginMove(e);
+                e.Handled = true;
+                return;
+            }
+
             var hit = HitTestScene(screen).FirstOrDefault();
             if (hit is not null)
             {
-                ViewModel.SelectedObjects.Clear();
-                ViewModel.SelectedObjects.Add(hit.Object);
+                SelectObjectAndBeginMove(hit.Object, e);
                 e.Handled = true;
                 return;
             }
 
             TextPlacementRequested?.Invoke(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
+            // The new text opens for typing at once, its placeholder selected, so the operator just types.
+            if (ViewModel.Selected is { IsText: true, IsLocked: false } created && !ReferenceEquals(created, _editingTextObject))
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => BeginInlineTextEdit(created)));
             e.Handled = true;
             return;
         }
@@ -1636,7 +1786,8 @@ public partial class SceneCanvas : UserControl
             _scale,
             (obj, shape) => obj.IsRaster ||
                 ViewModel.LayerModeFor(shape.LayerId, shape.LayerColor) is LayerMode.Fill or LayerMode.FillAndCut,
-            (obj, shape) => obj.IsVisible && ViewModel.IsLayerVisible(shape.LayerId, shape.LayerColor));
+            (obj, _) => ViewModel.CanSelectObject(obj),
+            _preferences.ClickTolerancePx);
     }
 
     // ------------------------------------------------------------------
@@ -1703,7 +1854,9 @@ public partial class SceneCanvas : UserControl
             MinHeight = 0,
             Background = Brushes.Transparent,
             SelectionBrush = (Brush)FindResource("Brush.TextSelection"),
-            Foreground = TextForegroundBrush(obj),
+            // The letters are drawn as an outline by _inlineEditorOutline; the box keeps measuring,
+            // laying out, placing the caret and painting the selection.
+            Foreground = Brushes.Transparent,
             CaretBrush = TextForegroundBrush(obj),
             FontStyle = obj.Text.Italic ? FontStyles.Italic : FontStyles.Normal,
             FontWeight = obj.Text.Bold ? FontWeights.Bold : FontWeights.Normal,
@@ -1737,21 +1890,21 @@ public partial class SceneCanvas : UserControl
 
         editor.PreviewKeyDown += OnInlineEditorPreviewKeyDown;
         editor.LostKeyboardFocus += OnInlineEditorLostFocus;
-        editor.SizeChanged += OnInlineEditorSizeChanged;
+        editor.TextChanged += OnInlineEditorTextChanged;
 
         _editingTextObject = obj;
         _inlineTextEditor = editor;
 
-        _inlineEditorFrame = new Polygon
+        _inlineEditorOutline = new Path
         {
-            Stroke = SelectionBrush,
-            StrokeThickness = 1.2,
-            Fill = Brushes.Transparent,
+            Stroke = TextForegroundBrush(obj),
+            StrokeThickness = InlineOutlineStrokePx,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = null,
             IsHitTestVisible = false,
         };
-        ApplyMarchingAnts(_inlineEditorFrame);
-        DrawCanvas.Children.Add(_inlineEditorFrame);
         DrawCanvas.Children.Add(editor);
+        DrawCanvas.Children.Add(_inlineEditorOutline);
         PositionInlineTextEditor(obj, editor);
         RedrawSelectionOverlay(); // drops the box, handles and crawling contours the editor replaces
 
@@ -1798,37 +1951,49 @@ public partial class SceneCanvas : UserControl
 
         _inlineEditorMatrix = matrix;
         _inlineEditorOrigin = layout.Origin;
-        UpdateInlineEditorFrame();
+        UpdateInlineEditorOutline();
     }
 
     private Matrix _inlineEditorMatrix = Matrix.Identity;
     private Point _inlineEditorOrigin;
 
-    private void OnInlineEditorSizeChanged(object sender, SizeChangedEventArgs e) => UpdateInlineEditorFrame();
+    /// <summary>One screen pixel, whatever the zoom or the object's scale: the outline is a hairline.</summary>
+    private const double InlineOutlineStrokePx = 1.0;
 
-    /// <summary>Follows the editor's live size: it is measured from the TextBox rather than from the
-    /// object, so the frame grows and shrinks with every keystroke.</summary>
-    private void UpdateInlineEditorFrame()
+    private void OnInlineEditorTextChanged(object sender, TextChangedEventArgs e) => UpdateInlineEditorOutline();
+
+    /// <summary>
+    /// Redraws the typed letters as outlines, from the same face, size and wording the TextBox is
+    /// laying out, so the outline lands on the glyphs it replaces. The geometry is moved into screen
+    /// space by transforming the geometry itself rather than the path: a geometry transform does not
+    /// scale the pen, so the line stays one pixel wide at every zoom and under any stretch.
+    /// </summary>
+    private void UpdateInlineEditorOutline()
     {
-        if (_inlineEditorFrame is null || _inlineTextEditor is null) return;
+        if (_inlineEditorOutline is null || _inlineTextEditor is not { } editor) return;
 
-        var width = _inlineTextEditor.ActualWidth;
-        var height = _inlineTextEditor.ActualHeight;
-        if (width <= 0 || height <= 0) return;
-
-        // About three screen pixels of air around the letters, whatever the object's scale is.
-        var determinant = Math.Abs(_inlineEditorMatrix.Determinant);
-        var pad = 3 / Math.Max(Math.Sqrt(determinant), 1e-6);
-
-        _inlineEditorFrame.Points = new PointCollection(new[]
+        var text = editor.Text;
+        if (string.IsNullOrEmpty(text))
         {
-            new Point(-pad, -pad), new Point(width + pad, -pad),
-            new Point(width + pad, height + pad), new Point(-pad, height + pad),
-        }.Select(p =>
-        {
-            var mapped = _inlineEditorMatrix.Transform(p);
-            return new Point(mapped.X + _inlineEditorOrigin.X, mapped.Y + _inlineEditorOrigin.Y);
-        }));
+            _inlineEditorOutline.Data = Geometry.Empty;
+            return;
+        }
+
+        var typeface = new Typeface(editor.FontFamily, editor.FontStyle, editor.FontWeight, FontStretches.Normal);
+        var formatted = new FormattedText(
+            text,
+            System.Globalization.CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            editor.FontSize,
+            Brushes.Black,
+            1);
+
+        var geometry = PathGeometry.CreateFromGeometry(formatted.BuildGeometry(new Point(0, 0)));
+        geometry.Transform = new MatrixTransform(_inlineEditorMatrix);
+        Canvas.SetLeft(_inlineEditorOutline, _inlineEditorOrigin.X);
+        Canvas.SetTop(_inlineEditorOutline, _inlineEditorOrigin.Y);
+        _inlineEditorOutline.Data = geometry;
     }
 
     private const double MinEditorFontPx = 4;
@@ -1887,10 +2052,10 @@ public partial class SceneCanvas : UserControl
 
         editor.PreviewKeyDown -= OnInlineEditorPreviewKeyDown;
         editor.LostKeyboardFocus -= OnInlineEditorLostFocus;
-        editor.SizeChanged -= OnInlineEditorSizeChanged;
+        editor.TextChanged -= OnInlineEditorTextChanged;
         DrawCanvas.Children.Remove(editor);
-        if (_inlineEditorFrame is not null) DrawCanvas.Children.Remove(_inlineEditorFrame);
-        _inlineEditorFrame = null;
+        if (_inlineEditorOutline is not null) DrawCanvas.Children.Remove(_inlineEditorOutline);
+        _inlineEditorOutline = null;
 
         // Through the normal path rather than forcing Visible, so a hidden layer stays hidden.
         UpdateObjectGeometry(obj);
@@ -1940,16 +2105,17 @@ public partial class SceneCanvas : UserControl
         _dragStartScreen = start;
         _panStartOffsetX = _offsetXMm;
         _panStartOffsetY = _offsetYMm;
-        Cursor = Cursors.ScrollAll;
+        Cursor = Cursors.Hand;
         DrawCanvas.CaptureMouse();
     }
 
     private void BeginDraw(DesignerTool tool, Point start)
     {
+        BeginGestureSnapping([]);
         _dragMode = DragMode.Draw;
         _drawingTool = tool;
         _dragStartScreen = start;
-        _drawStartWorld = new Position(ToWorldX(start.X), ToWorldY(start.Y), 0);
+        _drawStartWorld = ApplyGestureSnap(new Position(ToWorldX(start.X), ToWorldY(start.Y), 0));
         EnsureToolPreviewVisual();
         UpdateToolPreview(start);
         DrawCanvas.CaptureMouse();
@@ -2026,9 +2192,12 @@ public partial class SceneCanvas : UserControl
         {
             case DragMode.Move:
             {
-                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
-                _pendingMoveDx = world.X - _dragStartWorld.X;
-                _pendingMoveDy = world.Y - _dragStartWorld.Y;
+                var traveled = screen - _dragStartScreen;
+                var rawDx = ToWorldX(screen.X) - _dragStartWorld.X;
+                var rawDy = ToWorldY(screen.Y) - _dragStartWorld.Y;
+                (_pendingMoveDx, _pendingMoveDy) = traveled.LengthSquared < 9
+                    ? (0, 0)
+                    : ResolveMoveDelta(rawDx, rawDy);
                 ApplyMovePreview(_pendingMoveDx, _pendingMoveDy);
                 break;
             }
@@ -2089,12 +2258,13 @@ public partial class SceneCanvas : UserControl
 
         var endWorld = GetDrawEnd(endScreen);
         ViewModel.DrawPrimitive(_drawingTool, _drawStartWorld, endWorld);
+        if (_preferences.SwitchToSelectAfterDrawing) ViewModel.ActiveTool = DesignerTool.Select;
     }
 
     private Position GetDrawEnd(Point screen)
     {
-        var end = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
-        return Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+        var end = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
+        return _drawingTool == DesignerTool.Square || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
             ? DesignerPrimitiveFactory.ConstrainEnd(_drawingTool, _drawStartWorld, end)
             : end;
     }
@@ -2111,6 +2281,8 @@ public partial class SceneCanvas : UserControl
             commands.Add(new TransformObjectCommand(obj, before, after));
         }
         _dragStartTransforms.Clear();
+        _moveSnapAnchors.Clear();
+        _activeSnapTarget = null;
         _pendingMoveDx = 0;
         _pendingMoveDy = 0;
 
@@ -2190,7 +2362,7 @@ public partial class SceneCanvas : UserControl
         {
             case DragMode.Resize when _activeSingleObject is not null:
             {
-                var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+                var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
                 _activeSingleObject.Transform = _resizeStartTransform.ComputeResize(
                     _activeSingleObject.LocalPivot,
                     _activeSingleObject.LocalBounds,
@@ -2214,6 +2386,12 @@ public partial class SceneCanvas : UserControl
                 _activeSingleObject.Transform = _rotateStartTransform with { RotationDeg = newRotation };
                 break;
             }
+            case DragMode.Resize when _groupGesture is not null:
+                UpdateGroupResize(screen);
+                break;
+            case DragMode.Rotate when _groupGesture is not null:
+                UpdateGroupRotate(screen);
+                break;
             case DragMode.NodeEdit:
                 UpdateNodeEditDrag(screen);
                 break;
@@ -2234,6 +2412,7 @@ public partial class SceneCanvas : UserControl
 
     private void FinishResize()
     {
+        if (_groupGesture is not null) { FinishGroupTransform(); return; }
         var obj = _activeSingleObject;
         _activeSingleObject = null;
         if (ViewModel is null || obj is null) return;
@@ -2243,6 +2422,7 @@ public partial class SceneCanvas : UserControl
 
     private void FinishRotate()
     {
+        if (_groupGesture is not null) { FinishGroupTransform(); return; }
         var obj = _activeSingleObject;
         _activeSingleObject = null;
         if (ViewModel is null || obj is null) return;
@@ -2306,7 +2486,7 @@ public partial class SceneCanvas : UserControl
             var inSelection = new HashSet<SceneObject>(selection);
             foreach (var obj in ViewModel.Objects)
             {
-                if (obj.IsLocked || !IsObjectVisibleOnCanvas(obj)) continue;
+                if (!ViewModel.CanSelectObject(obj)) continue;
                 var b = obj.WorldBounds();
                 var intersects = b.MinX <= worldMaxX && b.MaxX >= worldMinX && b.MinY <= worldMaxY && b.MaxY >= worldMinY;
                 if (!intersects) continue;
@@ -2345,7 +2525,7 @@ public partial class SceneCanvas : UserControl
         var screen = e.GetPosition(DrawCanvas);
         var worldBefore = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
 
-        var factor = e.Delta > 0 ? 1.15 : 1 / 1.15;
+        var factor = _preferences.ZoomsIn(e.Delta) ? 1.15 : 1 / 1.15;
         _scale = Math.Clamp(_scale * factor, MinScale, MaxScale);
 
         _offsetXMm = worldBefore.X - (screen.X - MarginPx) / _scale;
@@ -2373,7 +2553,7 @@ public partial class SceneCanvas : UserControl
         if (e.Key == Key.Space)
         {
             _isSpacePressed = true;
-            if (_dragMode == DragMode.None) Cursor = Cursors.ScrollAll;
+            if (_dragMode == DragMode.None) Cursor = Cursors.Hand;
             e.Handled = true;
             return;
         }
@@ -2397,7 +2577,7 @@ public partial class SceneCanvas : UserControl
         // VECTOR PATH TOOL HOOK: segment-scoped shortcuts (Priority 1 exposure of already-implemented
         // VectorPathEditor operations — see docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md).
         // Shift+<letter>, not a bare letter: bare L/C/... would either collide with MainWindow's own
-        // unmodified-letter tool-switch shortcuts (V/H/R/E/L/T — see MainWindow.xaml.cs
+        // unmodified-letter tool-switch shortcuts (V/H/R/E/P/T — see MainWindow.xaml.cs
         // TryActivateDesignerTool, which runs at the PreviewKeyDown/tunnelling stage and would win the
         // key before it ever reaches here) or invite a future collision as more tools claim letters.
         // All three are no-ops (falling through, e.Handled stays false) unless node-edit is active
@@ -2449,9 +2629,8 @@ public partial class SceneCanvas : UserControl
 
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
-            var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 5.0
-                : Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? 0.05
-                : 0.5;
+            var step = _preferences.ArrowStepFor(
+                Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
             // VECTOR PATH TOOL HOOK: while Node Edit has a node selection, arrows must nudge those
             // nodes (LIGHTBURN_VECTOR_PARITY.md §9) -- falling through to the whole-object Nudge()
             // below would move the entire path (every node, not just the selected ones) instead.
@@ -2563,16 +2742,16 @@ public partial class SceneCanvas : UserControl
 
     private void OnOwnerWindowDeactivated(object? sender, EventArgs e)
     {
-        if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)
+        if (_dragMode != DragMode.None)
             CancelActiveInteraction();
     }
 
     private void OnDrawCanvasLostMouseCapture(object sender, MouseEventArgs e)
     {
         // A lost capture has no matching MouseUp guaranteed. Roll back live geometry and clear the
-        // drag state exactly as Escape does; the handler is scoped to node drags so other canvas
-        // interactions keep their existing cancellation behavior.
-        if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)
+        // drag state exactly as Escape does for every pointer gesture. Otherwise a move, resize or
+        // rotate preview can remain visible without an undo entry after focus/capture is stolen.
+        if (_dragMode != DragMode.None)
             CancelActiveInteraction();
     }
 
@@ -2583,6 +2762,8 @@ public partial class SceneCanvas : UserControl
             case DragMode.Move:
                 ClearMovePreview();
                 _dragStartTransforms.Clear();
+                _moveSnapAnchors.Clear();
+                _activeSnapTarget = null;
                 _pendingMoveDx = 0;
                 _pendingMoveDy = 0;
                 break;
@@ -2593,6 +2774,9 @@ public partial class SceneCanvas : UserControl
             case DragMode.Rotate when _activeSingleObject is not null:
                 _activeSingleObject.Transform = _rotateStartTransform;
                 _activeSingleObject = null;
+                break;
+            case DragMode.Resize or DragMode.Rotate when _groupGesture is not null:
+                CancelGroupTransform();
                 break;
             case DragMode.Select when _rubberBandVisual is not null:
                 _rubberBandVisual.Visibility = Visibility.Collapsed;

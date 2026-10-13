@@ -14,7 +14,7 @@
         </DataTemplate>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="{StaticResource Radius.Lg}" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="{StaticResource Radius.Lg}" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
     <Border x:Name="DialogSurface" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"

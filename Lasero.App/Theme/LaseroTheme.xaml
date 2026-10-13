@@ -7,6 +7,7 @@
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Icons.xaml" />
+        <ResourceDictionary Source="FluentIcons.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!--
@@ -307,14 +308,18 @@
 
     <!--
         KAMIL reading sizes. The assistant is read, not scanned, and its reader may be a first-time
-        owner or a grandparent, so it does not use the dense editor scale above. Body is 16 with a
-        1.45 line height (16 x 1.45 = 23.2), meta 14, and the smallest interactive target is 36.
+        owner or a grandparent, so it keeps to the top of the editor scale above. Body is 15 (the
+        DESIGN.md body size) with a 1.47 line height (15 x 1.47 = 22), meta 14, and the smallest
+        interactive target is a 32 chip.
         Nothing on the panel goes below Assistant.Meta.
     -->
-    <system:Double x:Key="Size.Text.Assistant.Body">16</system:Double>
-    <system:Double x:Key="Size.Text.Assistant.LineHeight">23</system:Double>
+    <system:Double x:Key="Size.Text.Assistant.Body">15</system:Double>
+    <system:Double x:Key="Size.Text.Assistant.LineHeight">22</system:Double>
     <system:Double x:Key="Size.Text.Assistant.Meta">14</system:Double>
-    <system:Double x:Key="Size.Control.Assistant.Chip">36</system:Double>
+    <system:Double x:Key="Size.Control.Assistant.Chip">32</system:Double>
+    <!-- Reading measure of the full-page chat: about 70 characters of 15 px text per line. The floating
+         panel has no measure of its own, it fills its width. -->
+    <system:Double x:Key="Size.Chat.Measure">640</system:Double>
     <system:Double x:Key="Size.Control.Assistant.Send">40</system:Double>
 
     <!--
@@ -414,6 +419,14 @@
     <BitmapImage x:Key="Image.LaseroAvatarSource"
                  UriSource="/Lasero.App;component/Assets/LaseroAvatar.png"
                  DecodePixelWidth="256" CacheOption="OnLoad" />
+    <BitmapImage x:Key="Image.Kamil.Blink" UriSource="/Lasero.App;component/Assets/KamilLive/kamil-blink.png"
+                 DecodePixelWidth="256" CacheOption="OnLoad" />
+    <BitmapImage x:Key="Image.Kamil.Thinking" UriSource="/Lasero.App;component/Assets/KamilLive/kamil-thinking.png"
+                 DecodePixelWidth="256" CacheOption="OnLoad" />
+    <BitmapImage x:Key="Image.Kamil.Happy" UriSource="/Lasero.App;component/Assets/KamilLive/kamil-happy.png"
+                 DecodePixelWidth="256" CacheOption="OnLoad" />
+    <BitmapImage x:Key="Image.Kamil.Error" UriSource="/Lasero.App;component/Assets/KamilLive/kamil-error.png"
+                 DecodePixelWidth="256" CacheOption="OnLoad" />
 
     <!-- ===================== Base ===================== -->
 
@@ -432,9 +445,9 @@
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
-        <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
+        <Setter Property="TextOptions.TextHintingMode" Value="Auto" />
     </Style>
 
     <!--

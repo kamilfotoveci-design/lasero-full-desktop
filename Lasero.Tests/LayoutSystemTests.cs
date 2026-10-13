@@ -143,7 +143,10 @@ public sealed class LayoutSystemRenderTests
         shell.Settle();
         var device = View<DeviceView>(shell);
         var header = LayoutAssertions.Descendants<PageHeader>(device).First();
-        var button = LayoutAssertions.Descendants<Button>(header).First();
+        // The one header action on Zařízení is the connection badge (the settings are tabs below, not a button up here).
+        var button = LayoutAssertions.Descendants<Border>(header).First(border =>
+            LayoutAssertions.Descendants<TextBlock>(border).Any(text => text.Text == shell.ViewModel.Connection.StatusText));
+        Assert.Empty(LayoutAssertions.Descendants<Button>(header));
         var buttonBounds = LayoutAssertions.BoundsIn(button, device);
         Assert.True(Math.Abs((device.ActualWidth - 32) - buttonBounds.Right) <= 1.5 || header.ActualWidth >= 1119,
             $"the header action ends {device.ActualWidth - buttonBounds.Right:0.#} px from the right edge, expected 32");
@@ -306,7 +309,6 @@ public sealed class LayoutSystemSourceTests
 
     [Theory]
     [InlineData("SettingsWindow.xaml")]
-    [InlineData("DeviceSettingsWindow.xaml")]
     [InlineData("MaterialsWindow.xaml")]
     [InlineData("RasterImportWindow.xaml")]
     [InlineData("BitmapTraceWindow.xaml")]

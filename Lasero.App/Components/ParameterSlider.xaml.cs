@@ -79,6 +79,10 @@ public partial class ParameterSlider : UserControl
     public static readonly DependencyProperty LargeChangeProperty = DependencyProperty.Register(
         nameof(LargeChange), typeof(double), typeof(ParameterSlider), new PropertyMetadata(10d));
 
+    /// <summary>False for a plain typed value with no slider, the way a laser operation is set by number.</summary>
+    public static readonly DependencyProperty ShowSliderProperty = DependencyProperty.Register(
+        nameof(ShowSlider), typeof(bool), typeof(ParameterSlider), new PropertyMetadata(true));
+
     public static readonly DependencyProperty FieldWidthProperty = DependencyProperty.Register(
         nameof(FieldWidth), typeof(double), typeof(ParameterSlider), new PropertyMetadata(96d));
 
@@ -130,6 +134,12 @@ public partial class ParameterSlider : UserControl
         set => SetValue(LargeChangeProperty, value);
     }
 
+    public bool ShowSlider
+    {
+        get => (bool)GetValue(ShowSliderProperty);
+        set => SetValue(ShowSliderProperty, value);
+    }
+
     public double FieldWidth
     {
         get => (double)GetValue(FieldWidthProperty);
@@ -139,6 +149,23 @@ public partial class ParameterSlider : UserControl
     public ParameterSlider()
     {
         InitializeComponent();
+    }
+
+    /// <summary>A click anywhere in the box (padding, unit suffix, empty space) puts the caret in the field,
+    /// so the whole rectangle is the target, not just the digits.</summary>
+    private void OnShellMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && IsInside(source, ValueField)) return;
+        ValueField.Focus();
+        ValueField.SelectAll();
+        e.Handled = true;
+    }
+
+    private static bool IsInside(DependencyObject node, DependencyObject ancestor)
+    {
+        for (var current = node; current is not null; current = System.Windows.Media.VisualTreeHelper.GetParent(current))
+            if (ReferenceEquals(current, ancestor)) return true;
+        return false;
     }
 
     // The value field commits on Enter and reverts on Esc through the app-wide field behaviour

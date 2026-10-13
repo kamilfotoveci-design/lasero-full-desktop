@@ -6,8 +6,8 @@ namespace Lasero.App.Controls.Motion;
 
 /// <summary>
 /// The 8 second brand intro as a vector control: a laser traces the LASERO wordmark stroke by stroke,
-/// the red dot ignites, a faint workbench grid and ruler fade in, the tagline settles and the frame
-/// holds. Everything is drawn from <see cref="IntroRenderer"/> (the same source the MP4 and the installer
+/// the red dot ignites, a faint workbench grid and ruler fade in, then the frame holds. Everything is drawn
+/// from <see cref="IntroRenderer"/> (the same source the MP4 and the installer
 /// frames come from), so it is crisp at any size and DPI and needs no media codec.
 ///
 /// Behaviour contract (see docs/motion-integration.md):

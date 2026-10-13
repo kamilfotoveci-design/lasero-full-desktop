@@ -80,6 +80,7 @@ public partial class SceneCanvas
     private void ShowContextMenuAt(Point screen, SceneObject? directHit)
     {
         if (ViewModel is not { } scene) return;
+        if (directHit is not null && !scene.CanSelectObject(directHit)) directHit = null;
 
         if (_nodeEditObject is not null && _nodeEditWorkingPath is not null)
         {
@@ -185,9 +186,26 @@ public partial class SceneCanvas
     private void OpenObjectMenu(Point at)
     {
         if (ViewModel is not { } scene) return;
-        var rows = CanvasContextMenuBuilder.ForObject(CanvasContextMenuStates.ForSelection(scene));
+        var rows = CanvasContextMenuBuilder.ForObject(CanvasContextMenuStates.ForSelection(scene, CurrentReach()));
         OpenMenu(rows, at, item => RunObjectAction(item));
     }
+
+    /// <summary>Raised by "Zobrazit vlastnosti". The selection bar (which owns the property fields)
+    /// listens through its TargetCanvas and moves keyboard focus to the first field that applies.</summary>
+    public event Action? PropertiesRequested;
+
+    /// <summary>The job preview ("Náhled") is a window of its own that draws the toolpath and never talks to the
+    /// machine; the canvas reaches it through the shell view model it inherits as its data context.</summary>
+    private ICommand? PreviewCommand => (DataContext as MainViewModel)?.GCode.OpenPreviewCommand;
+
+    private CanvasContextMenuStates.Reach CurrentReach() => new()
+    {
+        HasPreview = PreviewCommand is not null,
+        PreviewReason = PreviewCommand?.CanExecute(null) == false
+            ? "Náhled je k dispozici, jakmile je na plátně něco, co se vyrobí."
+            : null,
+        HasProperties = PropertiesRequested is not null,
+    };
 
     private void OpenEmptyCanvasMenu(Point at)
     {
@@ -346,6 +364,25 @@ public partial class SceneCanvas
     // Rows back to existing behaviour
     // ------------------------------------------------------------------
 
+    /// <summary>"Převést na dráhu" (Ctrl+Shift+C), the same action as the menu row: text becomes ordinary
+    /// contours, a primitive or an imported outline becomes editable curves and opens node editing.
+    /// False when the selection has nothing to convert, so the key can fall through.</summary>
+    public bool ConvertSelectionToPath()
+    {
+        if (ViewModel is not { } scene) return false;
+        if (scene.CanConvertSelectedTextToPath)
+        {
+            Run(scene.ConvertSelectedTextToPathCommand);
+            return true;
+        }
+        if (scene.CanConvertSelectionToCurves && scene.ConvertSelectedObjectToCurves() is { } converted)
+        {
+            EnterNodeEditMode(converted);
+            return true;
+        }
+        return false;
+    }
+
     private static void Run(ICommand command, object? parameter = null)
     {
         if (command.CanExecute(parameter)) command.Execute(parameter);
@@ -373,6 +410,10 @@ public partial class SceneCanvas
             case ContextAction.EditText:
                 if (scene.Selected is { IsText: true, IsLocked: false } text) BeginInlineTextEdit(text);
                 break;
+            case ContextAction.ConvertTextToPath: Run(scene.ConvertSelectedTextToPathCommand); break;
+            case ContextAction.ConvertToBitmap: Run(scene.ConvertSelectionToBitmapCommand); break;
+            case ContextAction.Preview: if (PreviewCommand is { } preview) Run(preview); break;
+            case ContextAction.ShowProperties: PropertiesRequested?.Invoke(); break;
             case ContextAction.Group: Run(scene.GroupSelectionCommand); break;
             case ContextAction.Ungroup: Run(scene.UngroupSelectionCommand); break;
             case ContextAction.ToggleLock: Run(scene.ToggleLockCommand); break;
@@ -383,6 +424,7 @@ public partial class SceneCanvas
             case ContextAction.Exclude: Run(scene.ExcludeSelectionCommand); break;
             case ContextAction.Offset: Run(scene.OffsetSelectionCommand); break;
 
+            case ContextAction.EditBitmap: Run(scene.EditSelectedRasterCommand); break;
             case ContextAction.TraceBitmap: Run(scene.TraceSelectedRasterCommand); break;
             case ContextAction.RemoveBackground: Run(scene.RemoveSelectedBackgroundCommand); break;
             case ContextAction.RestoreBackground: Run(scene.RestoreSelectedBackgroundCommand); break;
@@ -393,6 +435,8 @@ public partial class SceneCanvas
             case ContextAction.SendToBack: Run(scene.SendToBackCommand); break;
             case ContextAction.AlignLeft: Run(scene.AlignLeftCommand); break;
             case ContextAction.AlignCenterHorizontal: Run(scene.AlignCenterHorizontalCommand); break;
+            case ContextAction.AlignCenterBoth: Run(scene.AlignCenterBothCommand); break;
+            case ContextAction.AlignCenterWorkArea: Run(scene.CenterOnWorkAreaCommand); break;
             case ContextAction.AlignRight: Run(scene.AlignRightCommand); break;
             case ContextAction.AlignTop: Run(scene.AlignTopCommand); break;
             case ContextAction.AlignMiddle: Run(scene.AlignMiddleCommand); break;

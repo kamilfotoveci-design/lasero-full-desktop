@@ -30,8 +30,8 @@ public partial class IconLabel : UserControl
     public static readonly DependencyProperty StackedProperty = DependencyProperty.Register(
         nameof(Stacked), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
 
-    /// <summary>Forwarded to the inner IconGlyph — see IconGlyph.IsFilled. Default false leaves every
-    /// existing IconLabel call site unchanged.</summary>
+    /// <summary>Forwarded to the inner IconGlyph for explicit filled artwork. Fluent resources carry
+    /// their own fill hint, so existing call sites do not need this flag.</summary>
     public static readonly DependencyProperty IsFilledProperty = DependencyProperty.Register(
         nameof(IsFilled), typeof(bool), typeof(IconLabel), new PropertyMetadata(false));
 

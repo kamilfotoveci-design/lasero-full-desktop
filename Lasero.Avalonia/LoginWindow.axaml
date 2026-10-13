@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Lasero.Avalonia.ViewModels"
+        xmlns:objconv="using:Avalonia.Data.Converters"
+        x:Class="Lasero.Avalonia.LoginWindow"
+        x:DataType="vm:AccountViewModel"
+        Title="Přihlášení do Lasero"
+        Width="780" Height="570" MinWidth="780" MinHeight="570"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Background}">
+  <!--
+      Port of Lasero.App/LoginWindow.xaml — same two-column layout (brand sidebar left, form right),
+      same copy, same field order and validation. Shown as a real blocking window before MainWindow
+      exists, matching WPF's App.xaml.cs gate (see App.axaml.cs) rather than an embedded shell screen —
+      Login genuinely happens before there is a shell to embed it in.
+  -->
+  <Grid ColumnDefinitions="286,*">
+    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="32,36">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Image Source="avares://Lasero.Avalonia/Assets/LaseroWordmark.png" Width="138" Stretch="Uniform" HorizontalAlignment="Left" />
+            <TextBlock Text="DESKTOP" Foreground="{StaticResource Brush.TextSecondary}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="Tvořte s jistotou." FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,34,0,12" />
+          <TextBlock Text="Návrh, doporučené parametry a bezpečné ovládání gravírky na jednom místě."
+                     Foreground="{StaticResource Brush.TextSecondary}" TextWrapping="Wrap" LineHeight="20" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="16">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Path Data="{StaticResource Glyph.Brush}" Width="18" Height="18" Stretch="Uniform" Stroke="{StaticResource Brush.Accent}" StrokeThickness="1.75" />
+            <TextBlock Text="Přehledný návrh a náhled práce" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Path Data="{StaticResource Glyph.Fill.Materials}" Width="18" Height="18" Stretch="Uniform" Fill="{StaticResource Brush.Accent}" RenderTransformOrigin="0.5,0.5">
+              <Path.RenderTransform><ScaleTransform ScaleX="-1" /></Path.RenderTransform>
+            </Path>
+            <TextBlock Text="Doporučené hodnoty pro materiály" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Path Data="{StaticResource Glyph.Terminal}" Width="18" Height="18" Stretch="Uniform" Stroke="{StaticResource Brush.Accent}" StrokeThickness="1.75" />
+            <TextBlock Text="Pomoc od Kamila v Lasero Chatu" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Text="Po prvním přihlášení si vás Lasero zapamatuje." Classes="muted" TextWrapping="Wrap" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Column="1" Background="{StaticResource Brush.Background}" Padding="48,38">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel>
+          <TextBlock Text="Vítejte zpět" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+          <TextBlock Text="Přihlaste se stejným účtem jako na lasero.net." Foreground="{StaticResource Brush.TextSecondary}" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" VerticalAlignment="Center">
+          <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,18" IsVisible="{Binding IsBusy}" />
+
+          <TextBlock Text="E-mailová adresa" FontWeight="SemiBold" FontSize="12" />
+          <TextBox x:Name="EmailInput" Text="{Binding Email, Mode=TwoWay}" MaxLength="254" Height="36" Margin="0,7,0,4" />
+          <TextBlock Text="{Binding EmailError}" Foreground="{StaticResource Brush.Danger}" FontSize="12" TextWrapping="Wrap" Margin="2,0,0,12" MinHeight="14" />
+
+          <TextBlock Text="Heslo" FontWeight="SemiBold" FontSize="12" />
+          <TextBox x:Name="PasswordInput" Text="{Binding Password, Mode=TwoWay}" PasswordChar="•" MaxLength="256" Height="36" Margin="0,7,0,4" />
+          <TextBlock Text="{Binding PasswordError}" Foreground="{StaticResource Brush.Danger}" FontSize="12" TextWrapping="Wrap" Margin="2,0,0,2" MinHeight="14" />
+
+          <Button Content="Zapomenuté heslo" Command="{Binding RequestPasswordReset}" HorizontalAlignment="Left" Padding="0,8" Margin="0,0,0,12"
+                  Background="Transparent" BorderThickness="0" Foreground="{StaticResource Brush.Accent}" />
+
+          <!-- WPF swaps the label to "Pracuji…" while busy; here IsEnabled plus the progress bar
+               above carry the same information without a dedicated bool->string converter. -->
+          <Button x:Name="SignInButton" Classes="primary" Height="44" HorizontalAlignment="Stretch" Click="OnSignInClick"
+                  Content="Přihlásit se" IsEnabled="{Binding !IsBusy}" />
+
+          <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="8" Padding="11" Margin="0,14,0,0"
+                  IsVisible="{Binding StatusMessage, Converter={x:Static objconv:StringConverters.IsNotNullOrEmpty}}">
+            <Grid ColumnDefinitions="Auto,*">
+              <Path Data="{StaticResource Glyph.Info}" Width="18" Height="18" Stretch="Uniform" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.75" Margin="0,1,9,0" />
+              <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Text="První přihlášení vyžaduje internet. Potom můžete editor používat i offline." Classes="muted" TextWrapping="Wrap" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

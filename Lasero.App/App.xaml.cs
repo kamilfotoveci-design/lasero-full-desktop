@@ -28,11 +28,11 @@ public partial class App : Application
         UIElement.SnapsToDevicePixelsProperty.OverrideMetadata(
             typeof(Window), new FrameworkPropertyMetadata(true));
         TextOptions.TextFormattingModeProperty.OverrideMetadata(
-            typeof(Window), new FrameworkPropertyMetadata(TextFormattingMode.Display, FrameworkPropertyMetadataOptions.Inherits));
+            typeof(Window), new FrameworkPropertyMetadata(TextFormattingMode.Ideal, FrameworkPropertyMetadataOptions.Inherits));
         TextOptions.TextRenderingModeProperty.OverrideMetadata(
             typeof(Window), new FrameworkPropertyMetadata(TextRenderingMode.ClearType, FrameworkPropertyMetadataOptions.Inherits));
         TextOptions.TextHintingModeProperty.OverrideMetadata(
-            typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Fixed, FrameworkPropertyMetadataOptions.Inherits));
+            typeof(Window), new FrameworkPropertyMetadata(TextHintingMode.Auto, FrameworkPropertyMetadataOptions.Inherits));
 
         // The Window style in LaseroTheme sets Inter 15 px, but an implicit style is keyed by exact type and never reaches
         // MainWindow or the other Window subclasses, so every TextBlock without its own style fell back to Segoe UI at
@@ -74,9 +74,9 @@ public partial class App : Application
             window.FontFamily = family;
         if (Unset(window, FrameworkElement.UseLayoutRoundingProperty)) window.UseLayoutRounding = true;
         if (Unset(window, UIElement.SnapsToDevicePixelsProperty)) window.SnapsToDevicePixels = true;
-        if (Unset(window, TextOptions.TextFormattingModeProperty)) TextOptions.SetTextFormattingMode(window, TextFormattingMode.Display);
+        if (Unset(window, TextOptions.TextFormattingModeProperty)) TextOptions.SetTextFormattingMode(window, TextFormattingMode.Ideal);
         if (Unset(window, TextOptions.TextRenderingModeProperty)) TextOptions.SetTextRenderingMode(window, TextRenderingMode.ClearType);
-        if (Unset(window, TextOptions.TextHintingModeProperty)) TextOptions.SetTextHintingMode(window, TextHintingMode.Fixed);
+        if (Unset(window, TextOptions.TextHintingModeProperty)) TextOptions.SetTextHintingMode(window, TextHintingMode.Auto);
     }
 
     private static Style CreateFocusVisualFallback()
@@ -148,6 +148,7 @@ public partial class App : Application
 
         var settingsStore = AppSettingsStore.CreateDefault();
         var settings = settingsStore.Load();
+        Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion = settings.Editor.ReduceMotion; // before the splash starts
 
         // First thing on screen: the brand splash runs on its own UI thread so the work below cannot stall it.
         var splash = StartupSplash.ShouldShow(settings.Startup.ShowIntroAnimation, e.Args) ? StartupSplash.Start() : null;
@@ -210,7 +211,7 @@ public partial class App : Application
             })
             .Build();
 
-        UiAccessibility.ApplyMotionPreferences();
+        UiAccessibility.ApplyMotionPreferences(settings.Editor.ReduceMotion);
         _host.Start();
         var viewModel = _host.Services.GetRequiredService<MainViewModel>();
         // Session resume is a network call; the splash must never wait on it. Cap it (the call itself also has a 6 s

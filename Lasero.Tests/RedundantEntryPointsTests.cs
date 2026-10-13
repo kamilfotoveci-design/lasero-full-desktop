@@ -108,6 +108,7 @@ public sealed class RedundantEntryPointsTests
         ["MainWindow.xaml|GCode.PauseResumeCommand"] = "Pozastavit and Pokračovat swap through job-state styles, never both visible",
         ["Views/Kamil/KamilAssistantHost.xaml|MinimizeCommand"] = "two headers: expanded chat and quick ask, one at a time",
         ["Views/Kamil/KamilAssistantHost.xaml|DataContext.UseQuickPromptCommand"] = "suggestion chips in two layouts, one at a time",
+        ["Views/Kamil/KamilAssistantHost.xaml|Command"] = "contextual action chips in the two layouts, one at a time",
         ["Views/DeviceSetup/DeviceWizardOverlay.xaml|ScanCommand"] = "wizard steps are mutually exclusive layers",
         ["Views/DeviceSetup/DeviceWizardOverlay.xaml|AutoConnectCommand"] = "wizard steps are mutually exclusive layers",
         ["Views/MachinePanelView.xaml|Connection.ConnectCommand"] = "header chip vs Připojení tab; panel is only reachable in machine-control mode, which nothing enters today",

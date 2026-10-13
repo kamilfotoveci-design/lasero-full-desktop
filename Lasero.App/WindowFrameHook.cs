@@ -25,6 +25,9 @@ namespace Lasero.App;
 internal static class WindowFrameHook
 {
     private const int WmSysKeyDown = 0x0104;
+    private const int WmNcHitTest = 0x0084;
+    private const int WmNcLButtonUp = 0x00A2;
+    private const int HtMaxButton = 9;
     private const int VkSpace = 0x20;
     private const long AltContextMask = 0x20000000;
     private static readonly ConditionalWeakTable<Window, object> AttachedWindows = new();
@@ -42,14 +45,14 @@ internal static class WindowFrameHook
     internal static int? ChooseCornerPreference(int osBuild) =>
         osBuild >= RoundedCornersMinimumBuild ? DwmwcpRound : null;
 
-    public static void Attach(Window window, Brush? borderBrush = null)
+    public static void Attach(Window window, Brush? borderBrush = null, FrameworkElement? maximizeButton = null)
     {
         ArgumentNullException.ThrowIfNull(window);
         if (!TryMarkAttached(window)) return;
 
         if (PresentationSource.FromVisual(window) is HwndSource source)
         {
-            AttachNativeCommands(window, source);
+            AttachNativeCommands(window, source, maximizeButton);
             Apply(source.Handle, borderBrush);
             return;
         }
@@ -61,7 +64,7 @@ internal static class WindowFrameHook
             window.SourceInitialized -= OnSourceInitialized;
             if (PresentationSource.FromVisual(window) is HwndSource initialised)
             {
-                AttachNativeCommands(window, initialised);
+                AttachNativeCommands(window, initialised, maximizeButton);
                 Apply(initialised.Handle, borderBrush);
             }
         }
@@ -77,10 +80,38 @@ internal static class WindowFrameHook
         }
     }
 
-    private static void AttachNativeCommands(Window window, HwndSource source)
+    private static void AttachNativeCommands(Window window, HwndSource source, FrameworkElement? maximizeButton)
     {
         HwndSourceHook hook = (IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled) =>
         {
+            // HTMAXBUTTON hands pointer input to Windows, bypassing the WPF Button.Click handler.
+            // Keep native hover/Snap Layout support, but perform maximize/restore on release.
+            if (message == WmNcLButtonUp && wParam.ToInt32() == HtMaxButton)
+            {
+                window.WindowState = window.WindowState == WindowState.Maximized
+                    ? WindowState.Normal
+                    : WindowState.Maximized;
+                handled = true;
+                return IntPtr.Zero;
+            }
+
+            // Windows 11 only shows Snap Layouts when the pointer is over a native maximize
+            // caption button. WindowChrome keeps our custom button visual, so expose that button
+            // as HTMAXBUTTON and let DWM own hover, snap flyout, and native caption interaction.
+            if (message == WmNcHitTest && maximizeButton is { IsVisible: true, IsEnabled: true }
+                && maximizeButton.ActualWidth > 0 && maximizeButton.ActualHeight > 0)
+            {
+                var screenX = unchecked((short)(lParam.ToInt64() & 0xFFFF));
+                var screenY = unchecked((short)((lParam.ToInt64() >> 16) & 0xFFFF));
+                var origin = maximizeButton.PointToScreen(new Point());
+                var end = maximizeButton.PointToScreen(new Point(maximizeButton.ActualWidth, maximizeButton.ActualHeight));
+                if (screenX >= origin.X && screenX < end.X && screenY >= origin.Y && screenY < end.Y)
+                {
+                    handled = true;
+                    return new IntPtr(HtMaxButton);
+                }
+            }
+
             if (message != WmSysKeyDown || wParam.ToInt32() != VkSpace || (lParam.ToInt64() & AltContextMask) == 0)
                 return IntPtr.Zero;
 

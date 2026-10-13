@@ -68,7 +68,7 @@ public static class GuidanceText
             case DesignerTool.Text:
                 return new CanvasHint("tool-text", "Kliknutím na plátno se vloží text, jeho znění lze upravit přímo na plátně");
             case DesignerTool.Line:
-                return new CanvasHint("tool-line", "Klikáním se přidávají body čáry, dvojklikem nebo klávesou Enter se čára dokončí");
+                return new CanvasHint("tool-line", "Pero: klikáním přidejte uzly, tažením tvořte Bézierovy křivky; dvojklikem nebo Enterem dokončete cestu");
             case DesignerTool.Select:
                 break;
             case DesignerTool.Pan:

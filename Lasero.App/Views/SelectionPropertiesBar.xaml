@@ -118,7 +118,7 @@
                     <Border Style="{StaticResource BarField}" ToolTip="Poloha středu výběru na ose X">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Right" Text="mm" Style="{StaticResource UnitField.Suffix}" />
-                            <TextBox Style="{StaticResource UnitField.Input}"
+                            <TextBox x:Name="PositionXBox" Style="{StaticResource UnitField.Input}"
                                      automation:AutomationProperties.Name="Poloha na ose X v milimetrech"
                                      Text="{Binding Scene.SelectedX, StringFormat=0.##, UpdateSourceTrigger=LostFocus}" />
                         </DockPanel>
@@ -226,20 +226,27 @@
                 <StackPanel Orientation="Horizontal"
                             IsEnabled="{Binding Scene.CanEditSelectedText}"
                             Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource BoolToVisibility}}">
-                    <TextBox Width="118" Height="{StaticResource Size.Control.Compact}" MaxLength="200"
-                             VerticalContentAlignment="Center" Padding="12,0" Margin="0,0,8,0"
-                             automation:AutomationProperties.Name="Znění textu" ToolTip="Znění textu"
-                             Text="{Binding Scene.SelectedTextValue, UpdateSourceTrigger=LostFocus}" />
                     <!-- Each family renders in itself, so the list is browsable by eye. -->
-                    <ComboBox Width="112" Height="{StaticResource Size.Control.Compact}" Margin="0,0,8,0"
+                    <ComboBox x:Name="FontPicker" Width="152" Height="{StaticResource Size.Control.Compact}" Margin="0,0,8,0"
+                              DropDownOpened="OnFontDropDownOpened"
+                              DropDownClosed="OnFontDropDownClosed"
+                              SelectionChanged="OnFontSelectionChanged"
+                              PreviewKeyDown="OnFontPreviewKeyDown"
                               ItemsSource="{Binding Scene.FontFamilies}"
-                              SelectedItem="{Binding Scene.SelectedTextFontFamily}"
+                              SelectedItem="{Binding Scene.SelectedTextFontFamily, Mode=OneWay}"
                               MaxDropDownHeight="320"
                               automation:AutomationProperties.Name="Písmo"
                               ToolTip="Písmo, kterým je text vysázený">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <EventSetter Event="MouseEnter" Handler="OnFontItemMouseEnter" />
+                                <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnFontItemMouseLeftButtonUp" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}" />
+                                <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="{StaticResource Size.Text.Section}"
+                                           TextTrimming="CharacterEllipsis" />
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
@@ -304,10 +311,13 @@
                         <MenuItem Header="Dolů" Command="{Binding Scene.AlignBottomCommand}">
                             <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignBottom}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
                         </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Na střed vodorovně i svisle" Command="{Binding Scene.AlignCenterBothCommand}">
+                            <MenuItem.Icon><components:IconGlyph IconData="{StaticResource Glyph.AlignCenterHorizontal}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" /></MenuItem.Icon>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
-
-                <Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="4,0,0,0"
+<Menu Background="Transparent" VerticalAlignment="Center" Padding="0" Margin="4,0,0,0"
                       Visibility="{Binding Scene.IsTextSelected, Converter={StaticResource InverseBoolToVisibility}}">
                     <MenuItem Style="{StaticResource BarMenuItem}"
                               ToolTip="Zrcadlit nebo otočit vybrané objekty"
@@ -356,22 +366,47 @@
                              see SceneViewModel.UniteSelectionDisabledReason / HANDOFF.md 2026-09-14. -->
                         <MenuItem Header="Sjednotit tvary" InputGestureText="Ctrl+Shift+U"
                                   Command="{Binding Scene.UniteSelectionCommand}"
-                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason}" />
+                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Spojit přesně dva uzavřené tvary'}" />
                         <MenuItem Header="Odečíst tvary"
                                   Command="{Binding Scene.SubtractSelectionCommand}"
-                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Tvary vpředu odečtou plochu od tvaru vzadu'}" />
+                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: přední odečteš od zadního'}" />
                         <MenuItem Header="Průnik tvarů"
                                   Command="{Binding Scene.IntersectSelectionCommand}"
-                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zůstane jen plocha, kde se všechny tvary překrývají'}" />
+                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: zůstane jen společná plocha'}" />
                         <MenuItem Header="Vyloučit tvary"
                                   Command="{Binding Scene.ExcludeSelectionCommand}"
-                                  ToolTip="{Binding Scene.UniteSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zůstane plocha pokrytá právě jedním tvarem'}" />
+                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: ponechat nepřekryté části'}" />
+                        <MenuItem Header="Rozdělit překryv"
+                                  Command="{Binding Scene.DivideSelectionCommand}"
+                                  ToolTip="Rozdělit dva tvary na nepřekrývající a společné části" />
+                        <MenuItem Header="Svařit tvary"
+                                  Command="{Binding Scene.WeldSelectionCommand}"
+                                  ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
                         <MenuItem Header="Offset křivky…" InputGestureText="Ctrl+Shift+O"
                                   Command="{Binding Scene.OffsetSelectionCommand}"
                                   ToolTip="{Binding Scene.OffsetSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Zvětší nebo zmenší vybrané tvary o zadanou vzdálenost'}" />
+                        <MenuItem Header="Zvětšit (offset ven)…"
+                                  Command="{Binding Scene.ExpandSelectionCommand}"
+                                  ToolTip="Otevřít náhled offsetu směrem ven" />
+                        <MenuItem Header="Zmenšit (offset dovnitř)…"
+                                  Command="{Binding Scene.ShrinkSelectionCommand}"
+                                  ToolTip="Otevřít náhled offsetu směrem dovnitř" />
+                        <MenuItem Header="Převést křivky na úsečky"
+                                  Command="{Binding Scene.FlattenSelectedVectorPathsCommand}"
+                                  IsEnabled="{Binding Scene.CanEditSelectedVectorPaths}"
+                                  ToolTip="Zploštit Bézierovy křivky s odchylkou do 0,05 mm" />
+                        <MenuItem Header="Zjednodušit cestu"
+                                  Command="{Binding Scene.SimplifySelectedVectorPathsCommand}"
+                                  IsEnabled="{Binding Scene.CanEditSelectedVectorPaths}"
+                                  ToolTip="Zploštit a zredukovat body s tolerancí 0,05 mm" />
                         <MenuItem Header="Rozdělit skupinu" InputGestureText="Ctrl+Shift+G"
                                   Command="{Binding Scene.UngroupSelectionCommand}"
-                                  Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Rozdělí skupinu na původní editovatelné objekty." />
+                        <MenuItem Header="Oddělit obrysy"
+                                  Command="{Binding Scene.BreakApartSelectionCommand}"
+                                  Visibility="{Binding Scene.CanBreakApartSelection, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Rozdělí obrysy jednoho objektu na samostatné objekty." />
                         <MenuItem Header="Trasovat bitmapu" InputGestureText="Alt+T"
                                   Command="{Binding Scene.TraceSelectedRasterCommand}"
                                   Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}" />

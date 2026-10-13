@@ -31,7 +31,8 @@ public static class SvgImporter
         var shapes = new List<ImportedShape>();
         var vectorSubpaths = new List<VectorSubpath>();
         var vectorPathValid = new VectorPathValidity();
-        Walk(svg, SvgTransform.Identity, fill: "black", stroke: "none", evenOdd: false, shapes, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
+        Walk(svg, SvgTransform.Identity, fill: "black", stroke: "none", evenOdd: false, hidden: false,
+            shapes, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
 
         var bbox = BoundingBox2D.Empty;
         foreach (var shape in shapes)
@@ -106,12 +107,31 @@ public static class SvgImporter
     private static readonly HashSet<string> ShapeElements = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon"];
 
     private static void Walk(
-        XElement el, SvgTransform parentTransform, string fill, string stroke, bool evenOdd,
+        XElement el, SvgTransform parentTransform, string fill, string stroke, bool evenOdd, bool hidden,
         List<ImportedShape> output, double viewBoxX, double viewBoxY, double scale, double heightMm,
         List<VectorSubpath> vectorSubpaths, VectorPathValidity vectorPathValid)
     {
         var name = el.Name.LocalName.ToLowerInvariant();
         if (NonRenderedContainers.Contains(name)) return;
+        if (string.Equals(Presentation(el, "display"), "none", StringComparison.OrdinalIgnoreCase)) return;
+
+        var visibility = Presentation(el, "visibility");
+        var hiddenHere = visibility?.ToLowerInvariant() switch
+        {
+            "hidden" or "collapse" => true,
+            "visible" => false,
+            _ => hidden,
+        };
+        if (!hiddenHere)
+        {
+            if (name is "text" or "image" or "use" or "foreignobject")
+                throw new InvalidDataException($"SVG obsahuje nepodporovaný viditelný prvek <{name}>. Import byl zastaven, aby v návrhu nechyběla grafika.");
+            var clip = Presentation(el, "clip-path");
+            var mask = Presentation(el, "mask");
+            if ((!string.IsNullOrWhiteSpace(clip) && !string.Equals(clip, "none", StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(mask) && !string.Equals(mask, "none", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("SVG používá ořezovou cestu nebo masku, kterou LASERO neumí bezpečně importovat.");
+        }
 
         var localTransform = SvgTransform.Parse((string?)el.Attribute("transform"));
         var worldTransform = parentTransform.Multiply(localTransform);
@@ -127,7 +147,7 @@ public static class SvgImporter
             return new Position(mmX, mmY, 0);
         }
 
-        if (ShapeElements.Contains(name))
+        if (!hiddenHere && ShapeElements.Contains(name))
         {
             var d = name == "path" ? (string?)el.Attribute("d") ?? string.Empty : null;
             var subpaths = name == "path"
@@ -224,7 +244,22 @@ public static class SvgImporter
         }
 
         foreach (var child in el.Elements())
-            Walk(child, worldTransform, elFill, elStroke, elEvenOdd, output, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
+            Walk(child, worldTransform, elFill, elStroke, elEvenOdd, hiddenHere,
+                output, viewBoxX, viewBoxY, scale, heightMm, vectorSubpaths, vectorPathValid);
+    }
+
+    private static string? Presentation(XElement element, string property)
+    {
+        string? value = (string?)element.Attribute(property);
+        var style = (string?)element.Attribute("style");
+        if (string.IsNullOrWhiteSpace(style)) return value?.Trim();
+        foreach (var declaration in style.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = declaration.Split(':', 2, StringSplitOptions.TrimEntries);
+            if (pair.Length == 2 && string.Equals(pair[0], property, StringComparison.OrdinalIgnoreCase))
+                value = pair[1];
+        }
+        return value?.Trim();
     }
 
     /// <summary>fill-rule is an inherited SVG property; only "evenodd" changes anything (nonzero is the

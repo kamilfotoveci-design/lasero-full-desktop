@@ -1,0 +1,276 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Lasero.Avalonia.ViewModels"
+             xmlns:machines="using:Lasero.Core.Machines"
+             xmlns:objconv="using:Avalonia.Data.Converters"
+             x:Class="Lasero.Avalonia.Views.DeviceSetup.DeviceWizardOverlay"
+             x:DataType="vm:DeviceWizardViewModel"
+             Focusable="True">
+  <!--
+      Port of Lasero.App's DeviceWizardOverlay — same 5 steps in the same order (Intro/Scanning/
+      Results/Setup/Done), same wording, same footer button set per step, same real
+      DeviceScanner/ConnectionViewModel underneath (no second connection model, no fake detection).
+      Entrance/crossfade animations and the per-card in-place connecting/failed state are simplified
+      to a shared status banner below the list — everything the operator can learn or do is the same,
+      only the motion and exact in-place layout are not reproduced pixel-for-pixel. See DeviceWizardOverlay.xaml.cs.
+  -->
+  <Grid>
+    <Border Background="#8A171918" />
+
+    <Border Width="560" MaxWidth="560" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center"
+            Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1"
+            CornerRadius="12">
+      <Grid RowDefinitions="*,Auto">
+        <Button Grid.Row="0" Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
+                Background="Transparent" BorderBrush="Transparent" ZIndex="10" Click="OnCloseClick"
+                ToolTip.Tip="Zavřít — Esc">
+          <Path Data="{StaticResource Glyph.Close}" Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.75" />
+        </Button>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="36,32,36,10">
+          <Grid>
+
+            <!-- ==================== 1. INTRO ==================== -->
+            <StackPanel IsVisible="{Binding IsIntro}">
+              <Border Width="72" Height="72" CornerRadius="12" Background="{StaticResource Brush.SelectedSurface}" HorizontalAlignment="Center">
+                <Path Data="{StaticResource Glyph.Fill.Device}" Width="32" Height="32" Stretch="Uniform" Fill="{StaticResource Brush.AccentText}"
+                      RenderTransformOrigin="0.5,0.5">
+                  <Path.RenderTransform><ScaleTransform ScaleX="-1" /></Path.RenderTransform>
+                </Path>
+              </Border>
+              <TextBlock Text="Přidat zařízení" FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" Margin="0,20,0,0" />
+              <TextBlock Text="Zapněte gravírku a připojte ji k počítači." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Margin="0,6,0,0" />
+
+              <ToggleButton x:Name="ManualToggle" HorizontalAlignment="Center" Margin="0,22,0,0" Background="Transparent" BorderBrush="Transparent">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Path Data="{StaticResource Glyph.ChevronDown}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.75" />
+                  <TextBlock Text="Jiný způsob připojení" />
+                </StackPanel>
+              </ToggleButton>
+              <Border Classes="card" Padding="16" Margin="0,14,0,0" IsVisible="{Binding #ManualToggle.IsChecked}">
+                <StackPanel>
+                  <TextBlock Text="Ruční připojení" FontWeight="SemiBold" />
+                  <TextBlock Text="Vyberte port a rychlost sami — užitečné, pokud automatické hledání zařízení nenajde."
+                             Classes="muted" TextWrapping="Wrap" Margin="0,3,0,12" />
+                  <Grid ColumnDefinitions="*,130">
+                    <ComboBox ItemsSource="{Binding Connection.AvailablePorts}" SelectedItem="{Binding Connection.SelectedPort, Mode=TwoWay}" Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Connection.CommonBaudRates}" SelectedItem="{Binding Connection.BaudRate, Mode=TwoWay}" />
+                  </Grid>
+                  <Button Classes="secondary" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding Connection.Connect}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Glyph.Connect}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                      <TextBlock Text="Připojit ručně" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- ==================== 2. SCANNING ==================== -->
+            <StackPanel IsVisible="{Binding IsScanning}" HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="320">
+              <Path Data="{StaticResource Glyph.Search}" Width="36" Height="36" Stretch="Uniform" Stroke="{StaticResource Brush.AccentText}" StrokeThickness="1.5" HorizontalAlignment="Center" />
+              <TextBlock Text="Hledám zařízení…" FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" Margin="0,20,0,0" />
+              <TextBlock Text="{Binding ScanStatus}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Margin="0,6,0,0" />
+            </StackPanel>
+
+            <!-- ==================== 3. RESULTS ==================== -->
+            <StackPanel IsVisible="{Binding IsResults}">
+              <StackPanel IsVisible="{Binding FoundSomething}">
+                <TextBlock Text="Nalezená zařízení" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="Vyberte zařízení, které chcete používat." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,18" />
+
+                <ListBox ItemsSource="{Binding FoundMachines}" SelectedItem="{Binding SelectedMachine, Mode=TwoWay}"
+                         Background="Transparent" BorderThickness="0" Padding="0">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="machines:DiscoveredMachine">
+                      <Border Classes="card" Padding="16,14" Margin="0,0,0,10">
+                        <Grid ColumnDefinitions="Auto,*">
+                          <Path Data="{StaticResource Glyph.Fill.Device}" Width="20" Height="20" Stretch="Uniform" Fill="{StaticResource Brush.TextSecondary}" Margin="0,2,12,0" VerticalAlignment="Top"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Path.RenderTransform><ScaleTransform ScaleX="-1" /></Path.RenderTransform>
+                          </Path>
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="Připraveno k připojení" Classes="muted" Margin="0,3,0,0" IsVisible="{Binding !IsSimulator}" />
+                            <Border Background="{StaticResource Brush.PanelRaised}" CornerRadius="999" Padding="8,3" HorizontalAlignment="Left" Margin="0,7,0,0" IsVisible="{Binding IsSimulator}">
+                              <TextBlock Text="Bez hardwaru — simulátor" FontWeight="SemiBold" FontSize="11" />
+                            </Border>
+                            <TextBlock Classes="muted" Margin="0,6,0,0">
+                              <Run Text="{Binding PortName, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{Binding BaudRate, Mode=OneWay}" /><Run Text=" Bd" />
+                            </TextBlock>
+                            <TextBlock Classes="muted" Margin="0,2,0,0" IsVisible="{Binding ReportsWorkArea}">
+                              <Run Text="Pracovní plocha " /><Run Text="{Binding Profile.MaxTravelXmm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                              <Run Text=" × " /><Run Text="{Binding Profile.MaxTravelYmm, Mode=OneWay, StringFormat={}{0:0.#}}" /><Run Text=" mm" />
+                            </TextBlock>
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Shared status banner: WPF replaces the selected card in place with a connecting
+                     spinner or a failed-retry card; here the same two real states are surfaced as one
+                     banner below the list instead, to avoid a fragile ancestor-binding data template. -->
+                <Border Classes="card" Padding="14" Margin="0,4,0,0" IsVisible="{Binding IsConnecting}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="Připojuji…" FontWeight="Medium" VerticalAlignment="Center" />
+                    <ProgressBar IsIndeterminate="True" Height="3" Width="180" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Border>
+                <Border Classes="card" BorderBrush="{StaticResource Brush.Warning}" Padding="14" Margin="0,4,0,0" IsVisible="{Binding ConnectFailed}">
+                  <StackPanel>
+                    <TextBlock Text="Nepodařilo se připojit" FontWeight="SemiBold" />
+                    <TextBlock Text="Zkontrolujte, že je zařízení zapnuté a kabel pevně zapojený." Classes="muted" TextWrapping="Wrap" Margin="0,3,0,10" />
+                    <Button Classes="secondary" HorizontalAlignment="Left" Command="{Binding UseSelectedMachine}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Path Data="{StaticResource Glyph.Refresh}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                        <TextBlock Text="Zkusit znovu" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <!-- 3b. Nothing found -->
+              <StackPanel IsVisible="{Binding FoundNothing}" HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="280">
+                <Path Data="{StaticResource Glyph.Warning}" Width="32" Height="32" Stretch="Uniform" Stroke="{StaticResource Brush.TextMuted}" StrokeThickness="1.5" HorizontalAlignment="Center" />
+                <TextBlock Text="Zařízení se nepodařilo najít" FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" Margin="0,14,0,0" />
+                <TextBlock Text="Zkontrolujte USB kabel a že gravírka je zapnutá, pak zkuste hledání znovu." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Margin="0,6,0,0" />
+
+                <ToggleButton x:Name="TipsToggle" HorizontalAlignment="Center" Margin="0,14,0,0" Background="Transparent" BorderBrush="Transparent">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="{StaticResource Glyph.ChevronDown}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.75" />
+                    <TextBlock Text="Nejčastější příčiny" />
+                  </StackPanel>
+                </ToggleButton>
+                <StackPanel IsVisible="{Binding #TipsToggle.IsChecked}" Margin="0,10,0,0">
+                  <Border Classes="card" Padding="14" Margin="0,0,0,8">
+                    <StackPanel>
+                      <TextBlock Text="Chybí ovladač USB převodníku" FontWeight="SemiBold" />
+                      <TextBlock Text="Bez ovladače čipu CH340/CP2102 se port ve Windows vůbec neobjeví." Classes="muted" TextWrapping="Wrap" Margin="0,3,0,0" />
+                    </StackPanel>
+                  </Border>
+                  <Border Classes="card" Padding="14">
+                    <StackPanel>
+                      <TextBlock Text="Port drží jiný program" FontWeight="SemiBold" />
+                      <TextBlock Text="Zavřete LightBurn, LaserGRBL nebo sériový monitor — port smí být otevřený jen v jednom programu." Classes="muted" TextWrapping="Wrap" Margin="0,3,0,0" />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+
+            <!-- ==================== 4. SETUP (post-connect) ==================== -->
+            <StackPanel IsVisible="{Binding IsSetup}">
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4" Spacing="8">
+                <Border Width="26" Height="26" CornerRadius="999" Background="{StaticResource Brush.Success}">
+                  <Path Data="{StaticResource Glyph.Check}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2" />
+                </Border>
+                <TextBlock Text="Připojeno" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <TextBlock Text="Nastavení zařízení" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,10,0,4" />
+              <TextBlock Text="{Binding SetupMessage}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="420" Margin="0,0,0,18"
+                         IsVisible="{Binding SetupMessage, Converter={x:Static objconv:StringConverters.IsNotNullOrEmpty}}" />
+
+              <Border Classes="card" Padding="14">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="120,*">
+                    <TextBlock Text="Zařízení" Classes="muted" />
+                    <TextBlock Grid.Column="1" Text="{Binding Connection.ActiveMachineName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                  <Grid ColumnDefinitions="120,*">
+                    <TextBlock Text="Pracovní plocha" Classes="muted" />
+                    <TextBlock Grid.Column="1" FontWeight="SemiBold">
+                      <Run Text="{Binding Connection.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                      <Run Text=" × " /><Run Text="{Binding Connection.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" /><Run Text=" mm" />
+                    </TextBlock>
+                  </Grid>
+                  <Grid ColumnDefinitions="120,*" IsVisible="{Binding Connection.DetectedDevice, Converter={x:Static objconv:ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="Firmware" Classes="muted" />
+                    <TextBlock Grid.Column="1" Text="{Binding Connection.FirmwareBanner}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="Název zařízení" Classes="muted" Margin="0,14,0,6" />
+              <TextBox Text="{Binding MachineName, Mode=TwoWay}" Margin="0,0,0,14" />
+
+              <TextBlock Text="Pracovní plocha se nesedí?" Classes="muted" />
+              <TextBlock Text="Načteno ze zařízení ($130 a $131). Přepište, pokud rozměry neodpovídají skutečnému stroji."
+                         Classes="muted" TextWrapping="Wrap" Margin="0,0,0,8" />
+              <Grid ColumnDefinitions="126,10,126">
+                <TextBox Text="{Binding Connection.WorkAreaWidthMm, Mode=TwoWay, StringFormat=0.##}" LostFocus="OnWorkAreaEdited" />
+                <TextBlock Grid.Column="1" Text="×" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                <TextBox Grid.Column="2" Text="{Binding Connection.WorkAreaHeightMm, Mode=TwoWay, StringFormat=0.##}" LostFocus="OnWorkAreaEdited" />
+              </Grid>
+
+              <Border Classes="card" BorderBrush="{StaticResource Brush.Warning}" Padding="14" Margin="0,16,0,0" IsVisible="{Binding LaserModeNeedsAttention}">
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+                    <Path Data="{StaticResource Glyph.Warning}" Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Brush.Warning}" StrokeThickness="1.75" />
+                    <TextBlock Text="Laserový režim není zapnutý" FontWeight="SemiBold" />
+                  </StackPanel>
+                  <TextBlock Text="GRBL parametr $32 řídí, zda laser zhasne při zastavení. Bez něj paprsek v rozích dál hoří. Zápis změní nastavení přímo ve stroji."
+                             Classes="muted" TextWrapping="Wrap" Margin="0,0,0,10" />
+                  <Button Classes="secondary" HorizontalAlignment="Left" Command="{Binding EnableLaserMode}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Glyph.Zap}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                      <TextBlock Text="Zapnout laserový režim ($32=1)" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- ==================== 5. DONE ==================== -->
+            <StackPanel IsVisible="{Binding IsDone}" HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="320">
+              <Border Width="56" Height="56" CornerRadius="999" Background="{StaticResource Brush.Success}" HorizontalAlignment="Center">
+                <Path Data="{StaticResource Glyph.Check}" Width="24" Height="24" Stretch="Uniform" Stroke="White" StrokeThickness="2" />
+              </Border>
+              <TextBlock Text="Zařízení je připravené" FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" Margin="0,18,0,0" />
+              <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="380">
+                <Run Text="{Binding MachineName, Mode=OneWay}" /><Run Text=" je připojeno a připraveno k použití." />
+              </TextBlock>
+              <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Margin="0,4,0,0">
+                <Run Text="Pracovní plocha " /><Run Text="{Binding Connection.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                <Run Text=" × " /><Run Text="{Binding Connection.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" /><Run Text=" mm" />
+              </TextBlock>
+              <TextBlock Text="Před ostrou úlohou vždy ověřte umístění rámováním." Classes="muted" HorizontalAlignment="Center" Margin="0,12,0,0" />
+            </StackPanel>
+          </Grid>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="1" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="36,18" Background="{StaticResource Brush.Panel}">
+          <Grid ColumnDefinitions="Auto,*">
+            <Button Content="Zpět" Background="Transparent" BorderBrush="Transparent" VerticalAlignment="Center" Command="{Binding Back}" IsVisible="{Binding IsResults}" />
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+              <Button Classes="primary" Command="{Binding Scan}" IsVisible="{Binding IsIntro}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Search}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" /><TextBlock Text="Hledat zařízení" Foreground="White" /></StackPanel>
+              </Button>
+              <Button Content="Zastavit hledání" Classes="secondary" Command="{Binding CancelScan}" IsVisible="{Binding IsScanning}" />
+              <Button Classes="primary" Command="{Binding UseSelectedMachine}" IsVisible="{Binding FoundSomething}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Connect}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" /><TextBlock Text="Připojit" Foreground="White" /></StackPanel>
+              </Button>
+              <Button Classes="primary" Command="{Binding Scan}" IsVisible="{Binding FoundNothing}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Refresh}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" /><TextBlock Text="Hledat znovu" Foreground="White" /></StackPanel>
+              </Button>
+              <Button Classes="primary" Command="{Binding Finish}" IsVisible="{Binding IsSetup}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Check}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" /><TextBlock Text="Uložit a dokončit" Foreground="White" /></StackPanel>
+              </Button>
+              <Button Classes="secondary" Click="OnOpenSettingsClick" IsVisible="{Binding IsDone}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Settings}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" /><TextBlock Text="Nastavení zařízení" /></StackPanel>
+              </Button>
+              <Button Classes="primary" Click="OnCloseClick" IsVisible="{Binding IsDone}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><Path Data="{StaticResource Glyph.Check}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" /><TextBlock Text="Pokračovat" Foreground="White" /></StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

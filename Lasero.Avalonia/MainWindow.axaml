@@ -1,0 +1,335 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Lasero.Avalonia.ViewModels"
+        xmlns:views="using:Lasero.Avalonia.Views"
+        xmlns:devicesetup="using:Lasero.Avalonia.Views.DeviceSetup"
+        xmlns:history="using:Lasero.Core.History"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:lconv="using:Lasero.Avalonia.Converters"
+        xmlns:automation="using:Avalonia.Automation"
+        x:Class="Lasero.Avalonia.MainWindow"
+        x:DataType="vm:ShellViewModel"
+        Title="Lasero Desktop"
+        Icon="avares://Lasero.Avalonia/Assets/Lasero.ico"
+        Width="1480"
+        Height="900"
+        MinWidth="1080"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{StaticResource Brush.Background}">
+  <Window.Resources>
+    <lconv:BoolToConnectionBrushConverter x:Key="BoolToConnectionBrush" />
+  </Window.Resources>
+  <Panel>
+  <Grid RowDefinitions="60,*,48">
+    <!-- 60 px working title bar: same zones and density as the WPF window. -->
+    <Border Grid.Row="0" Background="{StaticResource Brush.Panel}"
+            BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1"
+            PointerPressed="OnTitleBarPointerPressed">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,138">
+        <Border Grid.Column="0" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="16,0">
+          <Image Source="avares://Lasero.Avalonia/Assets/LaseroWordmark.png"
+                 Width="104" Stretch="Uniform" HorizontalAlignment="Left" />
+        </Border>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="16,0,12,0">
+          <TextBlock Text="{Binding ProjectName}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Menu Background="Transparent" VerticalAlignment="Center">
+            <MenuItem automation:AutomationProperties.Name="Projekt" Padding="5">
+              <MenuItem.Header><Path Data="{StaticResource Glyph.ChevronDown}" Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Brush.TextSecondary}" StrokeThickness="1.75" /></MenuItem.Header>
+              <MenuItem Header="Nový projekt" Command="{Binding GoDesign}" />
+              <MenuItem Header="Otevřít projekt…" Command="{Binding Projects.OpenProject}" />
+              <Separator />
+              <MenuItem Header="Uložit" IsEnabled="False" />
+              <MenuItem Header="Uložit jako…" IsEnabled="False" />
+            </MenuItem>
+          </Menu>
+        </StackPanel>
+        <Button Grid.Column="3" Classes="secondary" Content="Nastavení zařízení" Command="{Binding GoDevices}"
+                Margin="16,0,12,0" VerticalAlignment="Center" automation:AutomationProperties.Name="Nastavení zařízení" />
+        <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <Button Classes="chrome" Click="OnMinimizeClick" automation:AutomationProperties.Name="Minimalizovat"><Path Data="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.5" /></Button>
+          <Button Classes="chrome" Click="OnMaximizeClick" automation:AutomationProperties.Name="Maximalizovat"><Path x:Name="MaximizeGlyph" Data="{StaticResource Glyph.Maximize}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.5" /></Button>
+          <Button Classes="chrome chrome-close" Click="OnCloseClick" automation:AutomationProperties.Name="Zavřít"><Path Data="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.5" /></Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="164,*">
+      <!-- Fixed WPF navigation rail. -->
+      <Border Grid.Column="0" IsVisible="{Binding IsStandardShellVisible}" Background="{StaticResource Brush.Panel}"
+              BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="14,16">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <StackPanel>
+            <ToggleButton Classes="nav" IsChecked="{Binding IsHomeVisible, Mode=OneWay}" Command="{Binding GoHome}"
+                          automation:AutomationProperties.AutomationId="NavHome" automation:AutomationProperties.Name="Domů">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Path Data="{StaticResource Glyph.Home}" Width="18" Height="18" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.75" />
+                <TextBlock Text="Domů" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton Classes="nav" IsChecked="{Binding IsDesignVisible, Mode=OneWay}" Command="{Binding GoDesign}"
+                          automation:AutomationProperties.AutomationId="NavDesign" automation:AutomationProperties.Name="Návrh">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Path Data="{StaticResource Glyph.Brush}" Width="18" Height="18" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.75" />
+                <TextBlock Text="Návrh" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton Classes="nav" IsChecked="{Binding IsMaterialsVisible, Mode=OneWay}" Command="{Binding GoMaterials}"
+                          automation:AutomationProperties.AutomationId="NavMaterials" automation:AutomationProperties.Name="Materiály">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Path Data="{StaticResource Glyph.Materials}" Width="18" Height="18" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.75" />
+                <TextBlock Text="Materiály" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton Classes="nav" IsChecked="{Binding IsDevicesVisible, Mode=OneWay}" Command="{Binding GoDevices}"
+                          automation:AutomationProperties.AutomationId="NavDevices" automation:AutomationProperties.Name="Zařízení">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Path Data="{StaticResource Glyph.Device}" Width="18" Height="18" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.75" />
+                <TextBlock Text="Zařízení" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+          </StackPanel>
+          <StackPanel Grid.Row="2">
+            <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="8,8,8,12" />
+            <ToggleButton Classes="nav" IsChecked="{Binding IsSettingsVisible, Mode=OneWay}" Command="{Binding GoSettings}"
+                          automation:AutomationProperties.AutomationId="NavSettings" automation:AutomationProperties.Name="Nastavení">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Path Data="{StaticResource Glyph.Settings}" Width="18" Height="18" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.75" />
+                <TextBlock Text="Nastavení" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="1" IsVisible="{Binding IsStandardShellVisible}">
+        <!-- HOME: current WPF HomeView structure, including the fixed 300 px device rail. -->
+        <Grid IsVisible="{Binding IsHomeVisible}" ColumnDefinitions="*,300">
+          <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Disabled">
+            <Grid ColumnDefinitions="*" MaxWidth="1180" HorizontalAlignment="Left">
+              <StackPanel Margin="24">
+                <TextBlock Text="Co chcete vytvořit?" FontFamily="{StaticResource Font.Display}"
+                           FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" LineHeight="28" Margin="0,0,0,24"
+                           automation:AutomationProperties.AutomationId="HomeHeading" />
+                <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,32">
+                  <Button Classes="primary" MinHeight="{StaticResource Size.Control.Large}" Padding="20,0" Command="{Binding GoDesign}" automation:AutomationProperties.Name="Nový projekt"
+                          ToolTip.Tip="Založit prázdný projekt · Ctrl+N">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <Path Data="{StaticResource Glyph.New}" Width="20" Height="20" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" />
+                      <TextBlock Text="Nový projekt" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="secondary" MinHeight="{StaticResource Size.Control.Large}" Padding="20,0" Command="{Binding GoDesign}" automation:AutomationProperties.Name="Importovat"
+                          ToolTip.Tip="Načíst SVG, obrázek nebo G-code do návrhu">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <Path Data="{StaticResource Glyph.Import}" Width="20" Height="20" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                      <TextBlock Text="Importovat" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="secondary" MinHeight="{StaticResource Size.Control.Large}" Padding="20,0" Command="{Binding Projects.OpenProject}"
+                          automation:AutomationProperties.AutomationId="OpenProjectButton" automation:AutomationProperties.Name="Otevřít projekt"
+                          ToolTip.Tip="Otevřít uložený projekt · Ctrl+O">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <Path Data="{StaticResource Glyph.Open}" Width="20" Height="20" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                      <TextBlock Text="Otevřít projekt" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+
+                <TextBlock Text="Pokračovat v práci" FontFamily="{StaticResource Font.Display}"
+                           FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,16" />
+                <Border Classes="card" Padding="24,20" Margin="0,0,0,32" IsVisible="{Binding !Home.HasRecentProjects}">
+                  <StackPanel HorizontalAlignment="Center" Spacing="8" Margin="0,8">
+                    <Path Data="{StaticResource Glyph.Project}" Width="24" Height="24" Stretch="Uniform" Stroke="{StaticResource Brush.TextMuted}" StrokeThickness="1.75" />
+                    <TextBlock Text="Zatím tu nic není" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Projekty, které uložíte nebo otevřete, se objeví tady." Classes="muted" HorizontalAlignment="Center" />
+                    <Button Content="Založit nový projekt" Classes="secondary" Command="{Binding GoDesign}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                  </StackPanel>
+                </Border>
+
+                <!-- Real recent-project entries: a simple named row (no thumbnail renderer ported
+                     yet — WPF's ProjectThumbCard/SceneThumbnailRenderer are Designer-side and out of
+                     scope here) so the list is honest data rather than a static mock. -->
+                <ItemsControl ItemsSource="{Binding Home.RecentProjectRows}" Margin="0,0,0,32"
+                              IsVisible="{Binding Home.HasRecentProjects}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentProjectRow">
+                      <Border Classes="card" Padding="0" Margin="0,0,0,8">
+                        <Border.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="Otevřít projekt"
+                                      Command="{Binding ((vm:ShellViewModel)DataContext).Home.OpenRecentProject, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding Entry}" />
+                            <MenuItem Header="Odebrat ze seznamu"
+                                      Command="{Binding ((vm:ShellViewModel)DataContext).Home.RemoveRecentProject, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding Entry}" />
+                          </ContextMenu>
+                        </Border.ContextMenu>
+                        <Grid ColumnDefinitions="*,Auto">
+                          <Button Grid.Column="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
+                                  HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" Padding="16,12" CornerRadius="0"
+                                  Command="{Binding ((vm:ShellViewModel)DataContext).Home.OpenRecentProject, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  CommandParameter="{Binding Entry}">
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                              <TextBlock Text="{Binding ModifiedText}" Classes="muted" />
+                            </StackPanel>
+                          </Button>
+                          <Button Grid.Column="1" Content="Odebrat" Background="Transparent" BorderBrush="Transparent"
+                                  Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                  Command="{Binding ((vm:ShellViewModel)DataContext).Home.RemoveRecentProject, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  CommandParameter="{Binding Entry}" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid ColumnDefinitions="*,32,*">
+                  <StackPanel Grid.Column="0">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                      <TextBlock Text="Naposledy použité materiály" FontFamily="{StaticResource Font.Display}"
+                                 FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <Button Grid.Column="1" Content="Vše →" Command="{Binding GoMaterials}" Background="Transparent" BorderBrush="Transparent" Foreground="{StaticResource Brush.Accent}" MinHeight="28" />
+                    </Grid>
+                    <Border Classes="card" Padding="24,20" MinHeight="152" IsVisible="{Binding !Home.HasRecentMaterials}">
+                      <StackPanel HorizontalAlignment="Center" Spacing="8" VerticalAlignment="Center">
+                        <Path Data="{StaticResource Glyph.Materials}" Width="24" Height="24" Stretch="Uniform" Stroke="{StaticResource Brush.TextMuted}" StrokeThickness="1.75" />
+                        <TextBlock Text="Zatím žádné použité materiály" FontWeight="SemiBold" TextAlignment="Center" />
+                        <TextBlock Text="Jakmile dokončíte úlohu s vyplněným materiálem, objeví se tady." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                    <Border Classes="card" Padding="0" IsVisible="{Binding Home.HasRecentMaterials}">
+                      <ItemsControl ItemsSource="{Binding Home.RecentMaterialRows}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MaterialUsageRow">
+                            <Grid ColumnDefinitions="*,Auto" Margin="16,10">
+                              <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                              <TextBlock Grid.Column="1" Text="{Binding UsageLabel}" Classes="muted" />
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Border>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Poslední úloha" FontFamily="{StaticResource Font.Display}"
+                               FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <Border Classes="card" Padding="24,20" MinHeight="152" IsVisible="{Binding !Home.HasLastJob}">
+                      <StackPanel HorizontalAlignment="Center" Spacing="8" VerticalAlignment="Center">
+                        <Path Data="{StaticResource Glyph.History}" Width="24" Height="24" Stretch="Uniform" Stroke="{StaticResource Brush.TextMuted}" StrokeThickness="1.75" />
+                        <TextBlock Text="Zatím žádná dokončená úloha" FontWeight="SemiBold" TextAlignment="Center" />
+                        <TextBlock Text="Po dokončení gravírování se tady zobrazí její výsledek a doba běhu." Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                    <Border Classes="card" Padding="16" MinHeight="152" IsVisible="{Binding Home.HasLastJob}">
+                      <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding Home.LastJobName}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Home.LastJobResultLabel}" Classes="muted" />
+                        <TextBlock Text="{Binding Home.LastJobMaterialLabel}" Classes="muted" IsVisible="{Binding Home.LastJobMaterialLabel, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Text="{Binding Home.LastJobCompletedLabel}" Classes="muted" />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+
+          <Border Grid.Column="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
+            <Grid RowDefinitions="49,*">
+              <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="16,0">
+                <TextBlock Text="Zařízení" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </Border>
+              <ScrollViewer Grid.Row="1">
+                <StackPanel Margin="16">
+                  <Border Background="{StaticResource Brush.PanelRaised}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="12" Padding="16,20" Margin="0,0,0,24">
+                    <StackPanel HorizontalAlignment="Center" Spacing="10">
+                      <Path Data="{StaticResource Glyph.Device}" Width="44" Height="44" Stretch="Uniform" Stroke="{StaticResource Brush.Accent}" StrokeThickness="1.75" />
+                      <TextBlock Text="{Binding Home.DeviceName}" FontWeight="SemiBold" />
+                      <Border Background="{StaticResource Brush.Panel}" CornerRadius="999" Padding="10,5">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <Ellipse Width="7" Height="7" Fill="{Binding Home.Connection.IsConnected, Converter={StaticResource BoolToConnectionBrush}}" />
+                          <TextBlock Text="{Binding Home.ConnectionBadgeLabel}" Classes="muted" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                  <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto" Margin="0,0,0,24">
+                    <Border Classes="card" CornerRadius="6" Padding="10">
+                      <StackPanel Spacing="5"><TextBlock Text="Pracovní plocha" Classes="muted" TextWrapping="Wrap"/>
+                        <TextBlock FontWeight="Medium">
+                          <Run Text="{Binding Home.Connection.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                          <Run Text=" × " />
+                          <Run Text="{Binding Home.Connection.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
+                          <Run Text=" mm" />
+                        </TextBlock>
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Classes="card" CornerRadius="6" Padding="10" ToolTip.Tip="{Binding Home.DeviceConnectionLabel}">
+                      <StackPanel Spacing="5"><TextBlock Text="Připojení" Classes="muted"/><TextBlock Text="{Binding Home.ConnectionSummaryLabel}" FontWeight="Medium" TextTrimming="CharacterEllipsis" /></StackPanel>
+                    </Border>
+                    <Border Grid.Row="2" Grid.ColumnSpan="3" Classes="card" CornerRadius="6" Padding="10">
+                      <StackPanel Spacing="5"><TextBlock Text="Firmware" Classes="muted"/><TextBlock Text="{Binding Home.FirmwareLabel}" FontWeight="Medium" /></StackPanel>
+                    </Border>
+                  </Grid>
+                  <Button Classes="primary" Content="Připojit zařízení" MinHeight="40" Margin="0,0,0,10"
+                          Command="{Binding OpenDeviceWizard}" IsVisible="{Binding !Home.Connection.IsConnected}"
+                          ToolTip.Tip="Najít a připojit gravírku" />
+                  <Button Classes="secondary" Content="Ovládání stroje" MinHeight="40" Command="{Binding GoDevices}" Margin="0,0,0,10"
+                          ToolTip.Tip="Připojení, poloha a ruční ovládání gravírky" />
+                  <Grid ColumnDefinitions="*,10,*">
+                    <Button Content="Domů" MinHeight="56" Command="{Binding Home.Jog.Home}"
+                            ToolTip.Tip="Najet do výchozí polohy stroje ($H). Vyžaduje připojenou gravírku v klidu." />
+                    <Button Grid.Column="2" Content="Rámovat" IsEnabled="False" MinHeight="56"
+                            ToolTip.Tip="Vyžaduje G-code úlohu — export/generování úloh zatím není portováno." />
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <Grid IsVisible="{Binding IsMaterialsVisible}">
+          <views:MaterialsView DataContext="{Binding Materials}" />
+        </Grid>
+        <Grid IsVisible="{Binding IsProjectsVisible}">
+          <views:ProjectsView DataContext="{Binding Projects}" />
+        </Grid>
+        <Grid IsVisible="{Binding IsDevicesVisible}">
+          <views:DeviceView />
+        </Grid>
+        <Grid IsVisible="{Binding IsSettingsVisible}">
+          <views:SettingsView />
+        </Grid>
+      </Grid>
+      <views:EditorView Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding IsDesignVisible}" />
+    </Grid>
+
+    <!-- 48 px machine/job strip, matching the current WPF single authoritative status area. -->
+    <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="16,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Background="{StaticResource Brush.PanelRaised}" CornerRadius="999" Padding="10,5"><StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="7" Height="7" Fill="{Binding Connection.IsConnected, Converter={StaticResource BoolToConnectionBrush}}"/><TextBlock Text="{Binding Connection.StatusText}" Classes="muted"/></StackPanel></Border>
+          <Button Content="Připojit" MinHeight="28" Padding="8,0" Background="Transparent" BorderBrush="Transparent" Foreground="{StaticResource Brush.Accent}"
+                  Command="{Binding Connection.Connect}" IsVisible="{Binding !Connection.IsConnected}" />
+          <TextBlock Text="Připraveno" Classes="muted" VerticalAlignment="Center" />
+          <TextBlock Text="Žádný soubor" Classes="muted" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="Rámování" IsEnabled="False" />
+          <Button Content="Pozastavit" IsEnabled="False" />
+          <Button Content="Zastavit" IsEnabled="False" />
+          <Button Classes="primary" Content="Spustit" IsEnabled="False" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+
+  <devicesetup:DeviceWizardOverlay
+      IsVisible="{Binding ((vm:ShellViewModel)DataContext).IsDeviceWizardOpen, RelativeSource={RelativeSource AncestorType=Window}}"
+      DataContext="{Binding DeviceWizard}" />
+  </Panel>
+</Window>

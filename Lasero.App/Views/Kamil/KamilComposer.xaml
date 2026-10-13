@@ -53,6 +53,7 @@
                          MaxHeight="128"
                          VerticalScrollBarVisibility="Auto"
                          PreviewKeyDown="OnInputPreviewKeyDown"
+                         ToolTip="Enter odešle, Shift+Enter vloží nový řádek"
                          automation:AutomationProperties.Name="Dotaz pro Kamila"
                          Text="{Binding Chat.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <!-- A watermark rather than a real value: a placeholder written into Text would be

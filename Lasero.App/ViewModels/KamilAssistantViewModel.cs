@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lasero.Core.LaseroApi;
 using Lasero.Core.Layers;
 
 namespace Lasero.App.ViewModels;
@@ -19,6 +20,9 @@ public partial class KamilAssistantViewModel : ObservableObject
     private readonly SceneViewModel _scene;
     private readonly ConnectionViewModel _connection;
 
+    /// <summary>Optional shell facts supplied by MainViewModel at question time.</summary>
+    public Func<KamilShellContext>? ShellContextProvider { get; set; }
+
     public ChatViewModel Chat { get; }
 
     /// <summary>Three chips, no more: enough to start, few enough to stay out of the way.</summary>
@@ -28,6 +32,15 @@ public partial class KamilAssistantViewModel : ObservableObject
         "Pomoc s bitmapou",
         "Diagnostika výsledku",
     ];
+
+    /// <summary>
+    /// Next steps the editor itself offers for the current selection. They are derived from live
+    /// scene state and bound to the scene's own commands, never parsed from a model reply. Each
+    /// command opens its existing dialog, which carries its own preview, confirmation and undo.
+    /// </summary>
+    public IReadOnlyList<KamilActionChip> ActionChips { get; private set; } = [];
+
+    public bool HasActionChips => ActionChips.Count > 0;
 
     [ObservableProperty] private KamilAssistantState _state = KamilAssistantState.Minimized;
 
@@ -49,15 +62,15 @@ public partial class KamilAssistantViewModel : ObservableObject
         _scene = scene;
         _connection = connection;
 
-        // The card's Apply button needs to know which operation a recommendation was originally
-        // about, and that can only be captured at the moment the message arrives — by the time the
-        // operator clicks Apply, SelectedLayer may already point at something else entirely. See
-        // IsRecommendationStale below.
-        Chat.SelectedLayerIdProvider = () => _scene.SelectedLayer?.Id;
+        // ChatViewModel captures this together with the workspace snapshot when Send starts. A
+        // reply arriving after a selection change must never inherit the *new* layer's identity.
+        Chat.SelectedLayerIdProvider = () => KamilWorkspaceContextProvider.ResolveActiveLayer(_scene)?.Id;
 
         _scene.PropertyChanged += OnSceneChanged;
+        _scene.SelectedObjects.CollectionChanged += (_, _) => RaiseContextChanged();
         _connection.PropertyChanged += OnConnectionChanged;
         Chat.PropertyChanged += OnChatChanged;
+        RefreshActionChips();
     }
 
     // ------------------------------------------------------------------
@@ -72,9 +85,9 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     /// <summary>The chips under the header: only facts the application actually holds. A machine that
     /// is not connected contributes nothing rather than a placeholder.</summary>
-    public string? MaterialContext => _scene.SelectedLayer?.MaterialLabel;
+    public string? MaterialContext => KamilWorkspaceContextProvider.ResolveActiveLayer(_scene)?.MaterialLabel;
 
-    public string? OperationContext => _scene.SelectedLayer is { } layer ? layer.ModeLabel : null;
+    public string? OperationContext => KamilWorkspaceContextProvider.ResolveActiveLayer(_scene)?.ModeLabel;
 
     public string? MachineContext => _connection.IsConnected ? _connection.ActiveMachineName : null;
 
@@ -82,27 +95,9 @@ public partial class KamilAssistantViewModel : ObservableObject
     public bool HasOperationContext => !string.IsNullOrWhiteSpace(OperationContext);
     public bool HasMachineContext => !string.IsNullOrWhiteSpace(MachineContext);
 
-    /// <summary>What the endpoint is told about the workspace. Previously every field here was a
-    /// hardcoded null or a guess, so Kamil answered without knowing what the operator was looking at.</summary>
-    public Lasero.Core.LaseroApi.LaseroChatContext BuildContext()
-    {
-        var layer = _scene.SelectedLayer;
-        return new Lasero.Core.LaseroApi.LaseroChatContext(
-            MachineName: _connection.IsConnected ? _connection.ActiveMachineName : null,
-            MachineId: null,
-            PowerWatts: 20,
-            LaserType: "diode",
-            LaserDescription: "diodový laser 450 nm",
-            Experience: "beginner",
-            MaterialName: layer?.MaterialLabel,
-            Operation: layer is null ? "engrave" : layer.Mode switch
-            {
-                LayerMode.Cut => "cut",
-                LayerMode.Fill => "engrave",
-                LayerMode.FillAndCut => "engrave+cut",
-                _ => "engrave",
-            });
-    }
+    /// <summary>Only facts held by the editor and identified controller; no guessed laser module.</summary>
+    public LaseroChatContext BuildContext() => KamilWorkspaceContextProvider.Capture(
+        _scene, _connection, ScreenLabel, ShellContextProvider?.Invoke());
 
     // ------------------------------------------------------------------
     // State transitions
@@ -119,6 +114,11 @@ public partial class KamilAssistantViewModel : ObservableObject
     [RelayCommand]
     private void OpenQuickAsk()
     {
+        // A quick question starts a fresh conversation, so sending never lands on an old one. The old
+        // one stays in the history list. Skipped while a reply is pending, and when stepping back
+        // from Expanded, where the operator is still in that conversation.
+        if (State == KamilAssistantState.Minimized && !Chat.IsBusy && Chat.HasMessages)
+            Chat.NewChatCommand.Execute(null);
         State = KamilAssistantState.QuickAsk;
         ComposerFocusRequested?.Invoke();
     }
@@ -206,9 +206,29 @@ public partial class KamilAssistantViewModel : ObservableObject
     private void UseQuickPrompt(string? prompt)
     {
         if (string.IsNullOrWhiteSpace(prompt)) return;
+        // A suggestion starts a fresh conversation, never lands on the old one. The old conversation
+        // stays in the history list. Skipped while a reply is pending so it cannot be detached.
+        if (!Chat.IsBusy) Chat.NewChatCommand.Execute(null);
         Chat.Input = prompt;
         State = KamilAssistantState.Expanded;
         ComposerFocusRequested?.Invoke();
+    }
+
+    // Only commands that open their own preview/confirm dialog qualify. Deliberately absent: Group and
+    // Ungroup (mutate the scene at once, no confirm step), Assign to layer (needs a target the operator
+    // picks), Preview toolpath (regenerates G-code and starts a simulation timer), Frame (moves the
+    // machine). None of those may be one click from an assistant surface.
+    private void RefreshActionChips()
+    {
+        var chips = new List<KamilActionChip>(2);
+        if (_scene.CanTraceSelectedRaster)
+            chips.Add(new KamilActionChip("Trasovat bitmapu…", "Otevře náhled trasování, nic se nezmění před potvrzením", _scene.TraceSelectedRasterCommand));
+        if (_scene.CanOffsetSelection)
+            chips.Add(new KamilActionChip("Offset křivky…", "Otevře náhled offsetu, nic se nezmění před potvrzením", _scene.OffsetSelectionCommand));
+        if (chips.Select(c => c.Label).SequenceEqual(ActionChips.Select(c => c.Label))) return;
+        ActionChips = chips;
+        OnPropertyChanged(nameof(ActionChips));
+        OnPropertyChanged(nameof(HasActionChips));
     }
 
     // ------------------------------------------------------------------
@@ -217,11 +237,12 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     /// <summary>A recommendation can only be applied onto an operation that exists and is unlocked
     /// from the job's point of view. With nothing selected the button is disabled and says why.</summary>
-    public bool CanApplyRecommendation => _scene.SelectedLayer is not null;
+    public bool CanApplyRecommendation => KamilWorkspaceContextProvider.ResolveActiveLayer(_scene) is not null;
 
-    public string ApplyRecommendationTooltip => _scene.SelectedLayer is { } layer
-        ? $"Nastaví rychlost, výkon a průchody na operaci „{layer.Name}“"
-        : "Nejdřív je potřeba zvolit operaci v panelu vpravo";
+    public string ApplyRecommendationTooltip => KamilWorkspaceContextProvider.ResolveActiveLayer(_scene) is { } layer
+        ? $"Nastaví rychlost, výkon a průchody na vrstvu „{layer.Name}“" +
+            (string.IsNullOrWhiteSpace(layer.MaterialLabel) ? ". Materiál vrstvy není zadán, hodnoty je potřeba ověřit na odřezku." : string.Empty)
+        : "Nejdřív je potřeba zvolit vrstvu v panelu vpravo";
 
     /// <summary>
     /// Whether a card still describes the operation it was originally about. Every recommendation
@@ -235,10 +256,11 @@ public partial class KamilAssistantViewModel : ObservableObject
     /// a *known* mismatch, not to punish messages that predate it.
     /// </summary>
     public bool IsRecommendationStale(ParameterRecommendation? recommendation) =>
-        recommendation?.OriginLayerId is { } originLayerId && _scene.SelectedLayer?.Id != originLayerId;
+        recommendation?.OriginLayerId is { } originLayerId &&
+        KamilWorkspaceContextProvider.ResolveActiveLayer(_scene)?.Id != originLayerId;
 
     private bool CanApplyThisRecommendation(ParameterRecommendation? recommendation) =>
-        _scene.SelectedLayer is not null && !IsRecommendationStale(recommendation);
+        KamilWorkspaceContextProvider.ResolveActiveLayer(_scene) is not null && !IsRecommendationStale(recommendation);
 
     /// <summary>
     /// Writes the recommendation onto the selected operation through LayerSettings.ApplyRecipe — the
@@ -248,7 +270,7 @@ public partial class KamilAssistantViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanApplyThisRecommendation))]
     private void ApplyRecommendation(ParameterRecommendation? recommendation)
     {
-        if (recommendation is null || _scene.SelectedLayer is not { } layer) return;
+        if (recommendation is null || KamilWorkspaceContextProvider.ResolveActiveLayer(_scene) is not { } layer) return;
         if (IsRecommendationStale(recommendation)) return;
 
         layer.ApplyRecipe(
@@ -259,7 +281,7 @@ public partial class KamilAssistantViewModel : ObservableObject
             recommendation.FillLineIntervalMm,
             "Doporučení Kamila");
 
-        LastAppliedMessage = $"Parametry nastaveny na operaci „{layer.Name}“.";
+        LastAppliedMessage = $"Parametry nastaveny na vrstvu „{layer.Name}“.";
     }
 
     /// <summary>Confirmation of the last apply, shown inline on the card. The operator needs to know
@@ -270,7 +292,10 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     private void OnSceneChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(SceneViewModel.SelectedLayer) or nameof(SceneViewModel.Selected))) return;
+        // CanTrace/CanOffset also change without a selection change (locking the object), and a chip
+        // must not keep offering a command the scene has just disabled.
+        if (e.PropertyName is not (nameof(SceneViewModel.SelectedLayer) or nameof(SceneViewModel.Selected)
+            or nameof(SceneViewModel.CanTraceSelectedRaster) or nameof(SceneViewModel.CanOffsetSelection))) return;
         RaiseContextChanged();
     }
 
@@ -290,6 +315,7 @@ public partial class KamilAssistantViewModel : ObservableObject
 
     private void RaiseContextChanged()
     {
+        RefreshActionChips();
         OnPropertyChanged(nameof(MaterialContext));
         OnPropertyChanged(nameof(OperationContext));
         OnPropertyChanged(nameof(MachineContext));
@@ -311,3 +337,7 @@ public partial class KamilAssistantViewModel : ObservableObject
         ShowCommand.NotifyCanExecuteChanged();
     }
 }
+
+/// <summary>A contextual shortcut to an application-owned command. <see cref="Command"/> is always one
+/// of the scene's own commands, so its CanExecute, dialog and undo behaviour stay authoritative.</summary>
+public sealed record KamilActionChip(string Label, string Hint, System.Windows.Input.ICommand Command);

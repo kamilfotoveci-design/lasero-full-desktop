@@ -126,7 +126,7 @@ public static class JobPreflight
             var residue = RawGCodeTokenPattern.Replace(line, string.Empty);
             if (!string.IsNullOrWhiteSpace(residue))
             {
-                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje nepodporovaný zápis. Lze spustit jen příkazy G0–G3, G20–G21, G90–G91, M3–M5 a souřadnice X/Y/Z/I/J/R/S/F."));
+                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje nepodporovaný zápis. Lze spustit jen příkazy G0–G3, G20–G21, G90–G91, G94, M3–M5 a souřadnice X/Y/Z/I/J/R/S/F."));
                 continue;
             }
             var spindleEnable = false;
@@ -147,7 +147,7 @@ public static class JobPreflight
                 switch (letter)
                 {
                     case 'G':
-                        if (value != Math.Truncate(value) || value is not (0 or 1 or 2 or 3 or 20 or 21 or 90 or 91))
+                        if (value != Math.Truncate(value) || value is not (0 or 1 or 2 or 3 or 20 or 21 or 90 or 91 or 94))
                             unsupportedCommand = true;
                         else if (value is 0 or 1 or 2 or 3)
                         {

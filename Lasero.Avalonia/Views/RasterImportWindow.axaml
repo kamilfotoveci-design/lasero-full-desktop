@@ -1,0 +1,143 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Lasero.Avalonia.ViewModels"
+        xmlns:objconv="using:Avalonia.Data.Converters"
+        x:Class="Lasero.Avalonia.Views.RasterImportWindow"
+        x:DataType="vm:RasterImportViewModel"
+        Title="Připravit obrázek" Width="1080" Height="720" MinWidth="920" MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Brush.Background}">
+  <!--
+      Port of Lasero.App/RasterImportWindow.xaml. WPF uses a frameless custom-chrome Window; this app's
+      other secondary windows (LoginWindow, OnboardingWindow) already settled on plain native Avalonia
+      window decorations instead of reproducing WindowChrome, so this follows that same established
+      convention rather than inventing a third window-chrome style.
+
+      No engraving-parameter or tone-mode controls here, matching WPF's own removal of them: speed,
+      power, passes and line spacing belong to the layer (SceneObject.BuildRasterOutputOptions
+      overrides whatever the import chose), and Stucki dithering was already the right default for a
+      diode laser at every size.
+  -->
+  <Window.Styles>
+    <Style Selector="TextBlock.section-title"><Setter Property="FontFamily" Value="{StaticResource Font.Display}" /><Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,0,0,10" /></Style>
+    <Style Selector="Border.section"><Setter Property="Background" Value="{StaticResource Brush.PanelRaised}" /><Setter Property="CornerRadius" Value="{StaticResource Radius.Md}" /><Setter Property="Padding" Value="14" /><Setter Property="Margin" Value="0,0,0,14" /></Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="72,*,64">
+    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Připravit obrázek" FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" />
+          <TextBlock Text="Nastavte rozměr a vzhled gravírování. Obrázek se automaticky zpracuje v odstínech šedi."
+                     Classes="muted" Margin="0,4,0,0" />
+        </StackPanel>
+        <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource Brush.PanelRaised}"
+                CornerRadius="{StaticResource Radius.Pill}" Padding="12,6" MaxWidth="280">
+          <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,390">
+      <!-- Live preview -->
+      <Border Grid.Column="0" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0" Padding="22">
+        <Grid RowDefinitions="*,Auto">
+          <Border Background="{StaticResource Brush.Field}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Lg}">
+            <Grid>
+              <Image Source="{Binding PreviewImageSource}" Stretch="Uniform" Margin="16" />
+              <TextBlock Text="Připravuji náhled…" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         IsVisible="{Binding IsPreviewComputing}" />
+            </Grid>
+          </Border>
+          <Grid Grid.Row="1" Margin="0,12,0,0">
+            <StackPanel>
+              <TextBlock FontSize="{StaticResource Size.Text.Meta}" Foreground="{StaticResource Brush.TextSecondary}">
+                <Run Text="Rozměr úlohy: " /><Run Text="{Binding PlannedJob.Bounds.Width, StringFormat={}{0:0.0}, Mode=OneWay}" /><Run Text=" × " /><Run Text="{Binding PlannedJob.Bounds.Height, StringFormat={}{0:0.0}, Mode=OneWay}" /><Run Text=" mm" />
+              </TextBlock>
+              <TextBlock Text="{Binding StatusMessage}" Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0"
+                         IsVisible="{Binding StatusMessage, Converter={x:Static objconv:StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <!-- Settings -->
+      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20,20,20,12">
+        <StackPanel>
+          <Border Classes="section">
+            <StackPanel>
+              <TextBlock Text="Rozměr na pracovní ploše" Classes="section-title" />
+              <Grid ColumnDefinitions="*,10,*">
+                <StackPanel>
+                  <TextBlock Text="Šířka (mm)" Classes="muted" />
+                  <TextBox Text="{Binding TargetWidthMm, StringFormat={}{0:0.##}}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Text="Výška (mm)" Classes="muted" />
+                  <TextBox Text="{Binding TargetHeightMm, StringFormat={}{0:0.##}}"
+                           IsEnabled="{Binding !KeepAspectRatio}" Margin="0,4,0,0" />
+                </StackPanel>
+              </Grid>
+              <CheckBox Content="Zachovat poměr stran" IsChecked="{Binding KeepAspectRatio}" Margin="0,10,0,0" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="section">
+            <StackPanel>
+              <TextBlock Text="Vzhled obrázku" Classes="section-title" />
+              <CheckBox Content="Obrátit světlé a tmavé plochy" IsChecked="{Binding Invert}" Margin="0,2,0,0" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="section">
+            <StackPanel>
+              <TextBlock Text="Doladění obrazu" Classes="section-title" />
+              <Border Background="{StaticResource Brush.SelectedSurface}" BorderBrush="{StaticResource Brush.SelectedBorder}"
+                      BorderThickness="1" CornerRadius="{StaticResource Radius.Md}" Padding="12">
+                <StackPanel>
+                  <TextBlock Text="Automaticky vyladěno" Foreground="{StaticResource Brush.AccentText}" FontWeight="SemiBold" />
+                  <TextBlock Text="Fotografie byla lokálně analyzována a připravena pro čisté gravírování. Jas, kontrast, detaily i dithering nastavuje Lasero automaticky."
+                             Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+              </Border>
+
+              <TextBlock Text="Dithering" Classes="muted" Margin="0,12,0,4" />
+              <ComboBox ItemsSource="{x:Static vm:RasterImportViewModel.DitheringChoices}"
+                        SelectedItem="{Binding SelectedDithering}"
+                        HorizontalAlignment="Stretch"
+                        ToolTip.Tip="{Binding SelectedDithering.Hint}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RasterDitherChoice">
+                    <TextBlock Text="{Binding Label}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{Binding SelectedDithering.Hint}" Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Actions -->
+    <Border Grid.Row="2" Background="{StaticResource Brush.TitleBar}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="22,12">
+      <Grid ColumnDefinitions="*,Auto">
+        <Button Command="{Binding FrameThisCommand}" HorizontalAlignment="Left" Padding="14,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Data="{StaticResource Glyph.Frame}" Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+            <TextBlock Text="Zkontrolovat oblast" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+          <Button Classes="secondary" Click="OnCancelClick" Padding="16,0" Content="Zrušit" />
+          <Button Classes="primary" Click="OnImportClick" IsEnabled="{Binding HasJob}" Padding="18,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Data="{StaticResource Glyph.Import}" Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Brush.OnAccent}" StrokeThickness="1.75" />
+              <TextBlock Text="Přidat do návrhu" Foreground="{StaticResource Brush.OnAccent}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

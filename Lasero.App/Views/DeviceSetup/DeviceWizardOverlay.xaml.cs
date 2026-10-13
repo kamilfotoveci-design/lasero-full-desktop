@@ -29,11 +29,6 @@ public partial class DeviceWizardOverlay : UserControl
     private DeviceWizardViewModel? _viewModel;
     private IInputElement? _focusBeforeOpening;
 
-    /// <summary>Raised when the operator asks for device settings from the Ready state.
-    /// MainWindow owns the actual settings window, the same way it owns every other dialog this
-    /// overlay has no business knowing about.</summary>
-    public event EventHandler? SettingsRequested;
-
     public DeviceWizardOverlay()
     {
         InitializeComponent();
@@ -92,8 +87,6 @@ public partial class DeviceWizardOverlay : UserControl
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => RequestClose();
-
-    private void OnOpenSettingsClick(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnWorkAreaEdited(object sender, RoutedEventArgs e) => _viewModel?.NotifyWorkAreaEdited();
 

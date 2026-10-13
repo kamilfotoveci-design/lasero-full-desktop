@@ -1,0 +1,20 @@
+{
+  "name": "local-plugins",
+  "interface": {
+    "displayName": "Local Plugins"
+  },
+  "plugins": [
+    {
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "source": {
+        "source": "local",
+        "path": "./.codex-plugins/caveman"
+      },
+      "category": "Productivity",
+      "name": "caveman"
+    }
+  ]
+}

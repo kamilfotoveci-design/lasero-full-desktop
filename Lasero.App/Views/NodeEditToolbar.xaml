@@ -159,7 +159,7 @@
                         </StackPanel>
                     </ToolTip>
                 </Button.ToolTip>
-                <components:IconGlyph IconData="{StaticResource Glyph.Delete}"
+                <components:IconGlyph IconData="{StaticResource Glyph.NodeRemove}"
                                       Style="{StaticResource ToolbarGlyph}" />
             </Button>
 
@@ -279,7 +279,7 @@
                         </ToolTip>
                     </Button.ToolTip>
                     <StackPanel Orientation="Horizontal">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Link}"
+                        <components:IconGlyph IconData="{StaticResource Glyph.PathJoin}"
                                               Style="{StaticResource ToolbarGlyph}" Margin="0,0,4,0" />
                         <TextBlock Text="Spojit" VerticalAlignment="Center" />
                     </StackPanel>
@@ -379,7 +379,7 @@
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
-                    <components:IconGlyph IconData="{StaticResource Glyph.Delete}"
+                    <components:IconGlyph IconData="{StaticResource Glyph.NodeRemove}"
                                           Style="{StaticResource ToolbarGlyph}" />
                 </Button>
             </StackPanel>

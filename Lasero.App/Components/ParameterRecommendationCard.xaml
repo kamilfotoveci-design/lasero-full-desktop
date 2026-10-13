@@ -11,7 +11,9 @@
         assistant, because whether there is an operation to apply to is not a property of the advice.
 
         Values are set in Font.Numeric with tabular figures — the four tiles line up as a table, which
-        is how an operator compares them against what the operation currently has.
+        is how an operator compares them against what the operation currently has. The card sits in a
+        conversation, so it is one quiet raised surface with white value tiles and no borders or icons;
+        the value and its unit wrap rather than clip when the assistant is at its narrowest.
     -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -19,52 +21,32 @@
 
         <Style x:Key="Tile" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.PanelBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Padding" Value="8" />
         </Style>
         <Style x:Key="TileCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
         <Style x:Key="TileValue" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="{StaticResource Size.Text.Section}" />
             <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
-            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
         </Style>
         <Style x:Key="TileUnit" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
             <Setter Property="VerticalAlignment" Value="Bottom" />
-            <Setter Property="Margin" Value="4,0,0,4" />
-        </Style>
-        <Style x:Key="TileGlyph" TargetType="components:IconGlyph">
-            <Setter Property="Width" Value="{StaticResource Size.Icon.Chrome}" />
-            <Setter Property="Height" Value="{StaticResource Size.Icon.Chrome}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,2" />
         </Style>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource Brush.SelectedSurface}"
-            BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Md}" Margin="0,12,0,0">
+    <Border Background="{DynamicResource Brush.PanelRaised}"
+            CornerRadius="{StaticResource Radius.Md}" Margin="0,8,0,0" Padding="12">
         <StackPanel>
-            <Border Padding="12,8" BorderBrush="{DynamicResource Brush.SelectedBorder}" BorderThickness="0,0,0,1">
-                <StackPanel Orientation="Horizontal">
-                    <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
-                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
-                                          Foreground="{DynamicResource Brush.TextPrimary}"
-                                          VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <TextBlock Text="DOPORUČENÉ PARAMETRY"
-                               FontSize="{StaticResource Size.Text.Meta}" FontWeight="SemiBold"
-                               Foreground="{DynamicResource Brush.TextPrimary}"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-            </Border>
+            <TextBlock Text="Doporučené parametry" Style="{StaticResource Kamil.MetaText}"
+                       FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,8" />
 
-            <Grid Margin="12,12,12,0">
+            <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -78,43 +60,31 @@
 
                 <Border Style="{StaticResource Tile}">
                     <StackPanel>
-                        <DockPanel>
-                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Speed}" />
-                            <TextBlock Text="Rychlost" Style="{StaticResource TileCaption}" />
-                        </DockPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Rychlost" Style="{StaticResource TileCaption}" />
+                        <WrapPanel>
                             <TextBlock Text="{Binding SpeedLabel}" Style="{StaticResource TileValue}" />
                             <TextBlock Text="mm/min" Style="{StaticResource TileUnit}" />
-                        </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="2" Style="{StaticResource Tile}">
                     <StackPanel>
-                        <DockPanel>
-                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Zap}" />
-                            <TextBlock Text="Výkon" Style="{StaticResource TileCaption}" />
-                        </DockPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Výkon" Style="{StaticResource TileCaption}" />
+                        <WrapPanel>
                             <TextBlock Text="{Binding PowerLabel}" Style="{StaticResource TileValue}" />
                             <TextBlock Text="%" Style="{StaticResource TileUnit}" />
-                        </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Row="2" Style="{StaticResource Tile}">
                     <StackPanel>
-                        <DockPanel>
-                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Layers}" />
-                            <TextBlock Text="Průchody" Style="{StaticResource TileCaption}" />
-                        </DockPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Průchody" Style="{StaticResource TileCaption}" />
+                        <WrapPanel>
                             <TextBlock Text="{Binding PassesLabel}" Style="{StaticResource TileValue}" />
                             <TextBlock Text="×" Style="{StaticResource TileUnit}" />
-                        </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -123,39 +93,39 @@
                 <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource Tile}"
                         Visibility="{Binding HasDpi, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
-                        <DockPanel>
-                            <components:IconGlyph Style="{StaticResource TileGlyph}" DockPanel.Dock="Left"
-                                                  IconData="{StaticResource Glyph.Image}" />
-                            <TextBlock Text="DPI" Style="{StaticResource TileCaption}" />
-                        </DockPanel>
+                        <TextBlock Text="DPI" Style="{StaticResource TileCaption}" />
                         <TextBlock Text="{Binding DpiLabel}" Style="{StaticResource TileValue}" />
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <Button Style="{StaticResource PrimaryBlue}" Margin="12,12,12,12"
+            <Button Style="{StaticResource PrimaryBlue}" Margin="0,12,0,0"
                     HorizontalAlignment="Stretch"
                     Command="{Binding ApplyCommand, ElementName=Root}"
                     CommandParameter="{Binding}"
                     ToolTipService.ShowOnDisabled="True"
                     ToolTip="{Binding ApplyTooltip, ElementName=Root}"
-                    automation:AutomationProperties.Name="Použít doporučené parametry na vybranou operaci">
-                <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít na operaci"
+                    automation:AutomationProperties.Name="Použít doporučené parametry na vybranou vrstvu">
+                <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít na vrstvu"
                                       Foreground="White" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
             </Button>
 
             <!-- Confirmation that the click reached the operation. The operation panel is usually
                  behind the assistant, so the change is not otherwise visible from here. -->
-            <StackPanel Orientation="Horizontal" Margin="12,0,12,12"
-                        Visibility="{Binding AppliedMessage, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
+            <Grid Margin="0,8,0,0"
+                  Visibility="{Binding AppliedMessage, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
                 <components:IconGlyph IconData="{StaticResource Glyph.Check}"
                                       Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}"
                                       Foreground="{DynamicResource Brush.Success}"
-                                      VerticalAlignment="Top" Margin="0,0,8,0" />
-                <TextBlock Text="{Binding AppliedMessage, ElementName=Root}" TextWrapping="Wrap"
+                                      VerticalAlignment="Top" Margin="0,4,8,0" />
+                <TextBlock Grid.Column="1" Text="{Binding AppliedMessage, ElementName=Root}" TextWrapping="Wrap"
                            Foreground="{DynamicResource Brush.Success}"
-                           FontSize="{StaticResource Size.Text.Meta}" MaxWidth="270" />
-            </StackPanel>
+                           FontSize="{StaticResource Size.Text.Meta}" />
+            </Grid>
         </StackPanel>
     </Border>
 </UserControl>

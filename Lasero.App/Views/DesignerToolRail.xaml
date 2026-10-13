@@ -366,7 +366,8 @@
             <Border Grid.Row="1" Style="{StaticResource RailDivider}" />
 
             <!-- ============ Nástroje ============ -->
-            <StackPanel Grid.Row="2">
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
                 <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
                              IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Select, Mode=TwoWay}"
                              ToolTip="Vybrat a upravit objekty (V)" AutomationProperties.Name="Vybrat">
@@ -423,7 +424,13 @@
                                     <TranslateTransform x:Name="ShapePickerTranslate" X="-3" Y="0" />
                                 </TransformGroup>
                             </Border.RenderTransform>
-                            <UniformGrid Columns="4" Rows="2">
+                            <UniformGrid Columns="5" Rows="2">
+                                <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Čtverec"
+                                              Tag="{x:Static vm:DesignerTool.Square}"
+                                              IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Square, Mode=OneWay}"
+                                              Click="OnShapePickerItemClick" AutomationProperties.Name="Čtverec">
+                                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Square}" />
+                                </ToggleButton>
                                 <ToggleButton Style="{StaticResource ShapePickerItem}" ToolTip="Obdélník (R)"
                                               Tag="{x:Static vm:DesignerTool.Rectangle}"
                                               IsChecked="{Binding Scene.CurrentShapeTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Rectangle, Mode=OneWay}"
@@ -479,9 +486,24 @@
 
                 <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
                              IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
-                             ToolTip="Nakreslit čáru (L) — se Shiftem po 45°" AutomationProperties.Name="Čára">
-                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Line}" />
+                             ToolTip="Pero (P) — klikáním přidávejte uzly, tažením tvořte Bézierovy křivky" AutomationProperties.Name="Pero">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Vector}" />
                 </RadioButton>
+                <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
+                             IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=TrimPath, Mode=TwoWay}"
+                             ToolTip="Oříznout cestu — klikněte na úsek, který chcete odstranit" AutomationProperties.Name="Oříznout cestu">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Cut}" />
+                </RadioButton>
+                <Button Style="{StaticResource RailButton}" Command="{Binding Scene.FillBetweenPathsCommand}"
+                        ToolTip="Výplň mezi cestami — vyberte dvě otevřené vektorové cesty"
+                        AutomationProperties.Name="Výplň mezi cestami">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.FillBetween}" />
+                </Button>
+                <Button Style="{StaticResource RailButton}" Command="{Binding Scene.FractureSelectionCommand}"
+                        ToolTip="Fracture — rozdělí překryvy dvou nebo více uzavřených vektorů či skupin na oblasti"
+                        AutomationProperties.Name="Fracture">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Fracture}" />
+                </Button>
 
                 <!-- Import is a tool, not a destination: it adds content to the design in front of
                      you, which is why it belongs in this group and not with the screens. -->
@@ -490,7 +512,61 @@
                         AutomationProperties.Name="Importovat grafiku">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Import}" />
                 </Button>
+                <Button Style="{StaticResource RailButton}" Command="{Binding GCode.ExportSvgCommand}"
+                        ToolTip="Exportovat viditelný návrh do SVG"
+                        AutomationProperties.Name="Exportovat SVG">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.ExportFile}" />
+                </Button>
+
+                <!-- Offset opens the live geometry preview. Boolean
+                     operations share one menu so the rail remains compact. -->
+                <Button Command="{Binding Scene.OffsetSelectionCommand}"
+                        Style="{StaticResource RailButton}"
+                        ToolTip="Dynamický offset — upravte vzdálenost v živém náhledu"
+                        AutomationProperties.Name="Dynamický offset">
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Offset}" />
+                </Button>
+                <Menu Width="40" Height="40" Background="Transparent" HorizontalAlignment="Center"
+                      ToolTip="Booleovské operace">
+                    <MenuItem Width="40" Height="40" Padding="8" HorizontalContentAlignment="Center"
+                              ToolTip="Booleovské operace" AutomationProperties.Name="Booleovské operace">
+                        <MenuItem.Header>
+                            <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Union}" />
+                        </MenuItem.Header>
+                        <MenuItem Header="Sjednotit tvary" Command="{Binding Scene.UniteSelectionCommand}"
+                                  ToolTip="Boolean Union: spojit přesně dva uzavřené tvary do jednoho" />
+                        <MenuItem Header="Svařit tvary" Command="{Binding Scene.WeldSelectionCommand}"
+                                  ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
+                        <MenuItem Header="Odečíst tvary" Command="{Binding Scene.SubtractSelectionCommand}"
+                                  ToolTip="Přesně dva tvary: přední odečteš od zadního; pořadí určuje vrstvení na ploše" />
+                        <MenuItem Header="Průnik tvarů" Command="{Binding Scene.IntersectSelectionCommand}"
+                                  ToolTip="Zachovat jen společnou plochu vybraných tvarů" />
+                        <MenuItem Header="Vyloučit tvary" Command="{Binding Scene.ExcludeSelectionCommand}"
+                                  ToolTip="Zachovat plochu pokrytou právě jedním tvarem" />
+                        <MenuItem Header="Rozdělit překryv" Command="{Binding Scene.DivideSelectionCommand}"
+                                  ToolTip="Rozdělit dva tvary na nepřekrývající a společné části" />
+                        <Separator />
+                        <MenuItem Header="Zvětšit (offset ven)" Command="{Binding Scene.ExpandSelectionCommand}"
+                                  ToolTip="Otevřít náhled offsetu směrem ven" />
+                        <MenuItem Header="Zmenšit (offset dovnitř)" Command="{Binding Scene.ShrinkSelectionCommand}"
+                                  ToolTip="Otevřít náhled offsetu směrem dovnitř" />
+                        <MenuItem Header="Rozdělit skupinu" Command="{Binding Scene.UngroupSelectionCommand}"
+                                  IsEnabled="{Binding Scene.CanUngroupSelection}"
+                                  ToolTip="Zachová původní samostatné objekty, vrstvy i editovatelné křivky" />
+                        <MenuItem Header="Oddělit obrysy" Command="{Binding Scene.BreakApartSelectionCommand}"
+                                  IsEnabled="{Binding Scene.CanBreakApartSelection}"
+                                  ToolTip="Rozdělí obrysy jednoho objektu na samostatné objekty" />
+                        <Separator />
+                        <MenuItem Header="Převést křivky na úsečky" Command="{Binding Scene.FlattenSelectedVectorPathsCommand}"
+                                  IsEnabled="{Binding Scene.CanEditSelectedVectorPaths}"
+                                  ToolTip="Zploštit Bézierovy křivky s odchylkou do 0,05 mm" />
+                        <MenuItem Header="Zjednodušit cestu" Command="{Binding Scene.SimplifySelectedVectorPathsCommand}"
+                                  IsEnabled="{Binding Scene.CanEditSelectedVectorPaths}"
+                                  ToolTip="Zploštit a zredukovat body s tolerancí 0,05 mm" />
+                    </MenuItem>
+                </Menu>
             </StackPanel>
+            </ScrollViewer>
 
             <Border Grid.Row="4" Style="{StaticResource RailDivider}" />
 
@@ -502,9 +578,10 @@
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Materials}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Command="{Binding ShowDeviceCommand}"
-                        ToolTip="Zařízení — připojení, poloha a ruční ovládání gravírky"
+                        ToolTip="Zařízení — připojení, nastavení a ruční ovládání gravírky"
                         AutomationProperties.Name="Zařízení">
-                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Device}" />
+                    <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Tools}"
+                                          Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Click="OnChatClick"
                         ToolTip="Kamil — asistent v návrhu"

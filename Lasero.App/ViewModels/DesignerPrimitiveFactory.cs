@@ -38,6 +38,9 @@ internal static class DesignerPrimitiveFactory
     public static SceneObject Create(DesignerTool tool, Position start, Position end, RgbColor color) => tool switch
     {
         DesignerTool.Rectangle => ScenePrimitiveFactory.CreateRectangle(start, end, color, "Obdélník"),
+        // The square tool always yields equal sides, whatever the pointer did, so the preview and the
+        // committed shape cannot disagree.
+        DesignerTool.Square => ScenePrimitiveFactory.CreateRectangle(start, ConstrainEnd(DesignerTool.Square, start, end), color, "Čtverec"),
         DesignerTool.Ellipse => ScenePrimitiveFactory.CreateEllipse(start, end, color, "Elipsa"),
         DesignerTool.Line => ScenePrimitiveFactory.CreateLine(start, end, color, "Čára"),
         DesignerTool.Triangle => ScenePrimitiveFactory.CreatePolygon(start, end, 3, color, "Trojúhelník"),
@@ -50,7 +53,7 @@ internal static class DesignerPrimitiveFactory
     };
 
     public static bool IsPrimitive(DesignerTool tool) => tool is
-        DesignerTool.Rectangle or DesignerTool.Ellipse or DesignerTool.Line or
+        DesignerTool.Square or DesignerTool.Rectangle or DesignerTool.Ellipse or DesignerTool.Line or
         DesignerTool.Triangle or DesignerTool.Pentagon or DesignerTool.Hexagon or
         DesignerTool.Octagon or DesignerTool.Star or DesignerTool.DoubleStar;
 }

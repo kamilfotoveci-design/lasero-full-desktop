@@ -244,8 +244,8 @@ public sealed class MainWindowNavigationTests
         Assert.DoesNotContain("PropertiesTabRadio", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("LayersTabRadio", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("MachineTabRadio", inspector, StringComparison.Ordinal);
-        Assert.Contains("Text=\"Operace\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Text=\"Nastavení operace\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Vrstvy\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Název vrstvy\"", inspector, StringComparison.Ordinal);
 
         // The default view is a read-only summary; "Ovládání stroje" switches the SAME inspector to the
         // full manual panel (MachinePanelView — the one implementation, also used by the Device screen)

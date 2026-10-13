@@ -21,7 +21,8 @@ public partial class DesignerInspectorView : UserControl
     /// never re-measures or resets anything under it (selection, scroll position, expanded state all
     /// survive because nothing was ever torn down).</summary>
     public static readonly DependencyProperty IsMachineControlModeProperty = DependencyProperty.Register(
-        nameof(IsMachineControlMode), typeof(bool), typeof(DesignerInspectorView), new PropertyMetadata(false));
+        nameof(IsMachineControlMode), typeof(bool), typeof(DesignerInspectorView),
+        new PropertyMetadata(false, (d, _) => ((DesignerInspectorView)d).SyncModeTabs()));
 
     public bool IsMachineControlMode
     {
@@ -55,6 +56,18 @@ public partial class DesignerInspectorView : UserControl
     /// inspector's own content instead, so operating the machine never covers the canvas or loses the
     /// operation editor underneath it.
     /// </summary>
+    private void OnOperationsTabClick(object sender, RoutedEventArgs e) => IsMachineControlMode = false;
+
+    private void OnMachineTabClick(object sender, RoutedEventArgs e) => IsMachineControlMode = true;
+
+    /// <summary>Keeps the top switch in step when the mode is changed from anywhere else.</summary>
+    private void SyncModeTabs()
+    {
+        if (OperationsTab is null || MachineTab is null) return;
+        OperationsTab.IsChecked = !IsMachineControlMode;
+        MachineTab.IsChecked = IsMachineControlMode;
+    }
+
     private void OnMachineControlClick(object sender, RoutedEventArgs e) => IsMachineControlMode = true;
 
     private void OnMachineControlBackClick(object sender, RoutedEventArgs e) => IsMachineControlMode = false;
@@ -71,45 +84,91 @@ public partial class DesignerInspectorView : UserControl
         layer.Passes = Math.Clamp(layer.Passes + delta, 1, MaxPasses);
     }
 
-    private void OnApplyMaterialClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// "Vybrat" on the Materiál row: opens the Vzorník materiálů as a modal picker for this one
+    /// operation. Nothing is written here; the picker applies through LayerSettings.ApplyRecipe only
+    /// when Aplikovat is pressed, and Zrušit or closing the window leaves the operation untouched.
+    /// Saved personal recipes are offered in the same window (Moje recepty).
+    /// </summary>
+    private void OnPickMaterialClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel viewModel ||
-            sender is not FrameworkElement { Tag: LayerSettings layer } source)
+            sender is not FrameworkElement { Tag: LayerSettings layer })
         {
             return;
         }
 
-        var menu = new ContextMenu();
-        var recommended = new MenuItem
+        try
         {
-            Header = $"Doporučené · {viewModel.Materials.ActiveProfileLabel}"
-        };
-        foreach (var recipe in viewModel.Materials.RecipesFor(layer.Mode))
-        {
-            var item = new MenuItem
-            {
-                Header = $"{recipe.MaterialName} · {recipe.SpeedMmPerMinute:0} mm/min · {recipe.PowerPercent:0} %"
-            };
-            item.Click += (_, _) => layer.ApplyRecipe(recipe.Mode, recipe.SpeedMmPerMinute,
-                recipe.PowerPercent, recipe.Passes, recipe.FillLineIntervalMm, recipe.MaterialName);
-            recommended.Items.Add(item);
+            new MaterialsWindow(viewModel, layer) { Owner = Window.GetWindow(this) }.ShowDialog();
         }
-        menu.Items.Add(recommended);
-
-        var personal = new MenuItem { Header = "Moje recepty", IsEnabled = viewModel.Materials.Presets.Count > 0 };
-        foreach (var preset in viewModel.Materials.Presets.Where(preset => preset.Mode == layer.Mode))
+        catch (Exception ex)
         {
-            var item = new MenuItem
-            {
-                Header = $"{preset.Name} · {preset.Speed:0} mm/min · {preset.Power:0} %"
-            };
-            item.Click += (_, _) => layer.ApplyRecipe(preset.Mode, preset.Speed, preset.Power,
-                preset.Passes, preset.FillLineIntervalMm, preset.Name);
-            personal.Items.Add(item);
+            Serilog.Log.Error(ex, "Failed to open the material picker");
+            LaseroDialogWindow.Show(Window.GetWindow(this), new LaseroDialogOptions(
+                "Vzorník nelze otevřít",
+                "Vzorník materiálů se nepodařilo načíst. Podrobnosti byly uloženy do diagnostického protokolu.",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Danger));
         }
-        menu.Items.Add(personal);
+    }
 
-        menu.PlacementTarget = source;
-        menu.IsOpen = true;
+    // ------------------------------------------------------------------
+    // Drag and drop of layers. The order of the list is the order the machine runs the layers, top first,
+    // so dragging a layer up runs it earlier. The row's own buttons (visibility, enable) keep working:
+    // a drag only starts from the row body, after the pointer has moved a few pixels.
+    // ------------------------------------------------------------------
+
+    private Point _layerDragStart;
+    private LayerSettings? _layerDragCandidate;
+
+    private void OnLayerDragStart(object sender, MouseButtonEventArgs e)
+    {
+        _layerDragCandidate = null;
+        if (IsInsideButton(e.OriginalSource as DependencyObject)) return;
+        if (ItemsControl.ContainerFromElement(LayersList, e.OriginalSource as DependencyObject) is not ListBoxItem item) return;
+        _layerDragCandidate = item.DataContext as LayerSettings;
+        _layerDragStart = e.GetPosition(LayersList);
+    }
+
+    private void OnLayerDragMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _layerDragCandidate is null) return;
+        var delta = e.GetPosition(LayersList) - _layerDragStart;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var layer = _layerDragCandidate;
+        _layerDragCandidate = null;
+        DragDrop.DoDragDrop(LayersList, new DataObject(typeof(LayerSettings), layer), DragDropEffects.Move);
+    }
+
+    private void OnLayerDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(LayerSettings)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnLayerDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(LayerSettings)) is not LayerSettings layer) return;
+        if (DataContext is not MainViewModel main) return;
+
+        var target = ItemsControl.ContainerFromElement(LayersList, e.OriginalSource as DependencyObject) as ListBoxItem;
+        var layers = main.Scene.Layers;
+        // Dropped on a row: takes that row's place. Dropped below the last row: goes to the end.
+        var newIndex = target?.DataContext is LayerSettings over ? layers.IndexOf(over) : layers.Count - 1;
+        main.Scene.MoveLayerTo(layer, newIndex);
+        e.Handled = true;
+    }
+
+    private static bool IsInsideButton(DependencyObject? node)
+    {
+        for (; node is not null; node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                 ? VisualTreeHelper.GetParent(node)
+                 : LogicalTreeHelper.GetParent(node))
+            if (node is System.Windows.Controls.Primitives.ButtonBase) return true;
+        return false;
     }
 }

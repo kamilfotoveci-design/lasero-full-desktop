@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Shell;
 using Lasero.App.Input;
@@ -11,8 +12,11 @@ using Lasero.App.ViewModels;
 using Lasero.App.Views.Kamil;
 using Lasero.App.Views.DeviceSetup;
 using Lasero.Core.BackgroundRemoval;
+using Lasero.Core.Geometry;
 using Lasero.Core.Grbl;
 using Lasero.Core.Jobs;
+using Lasero.Core.Import;
+using Lasero.Core.Machines;
 using Lasero.Core.Scene;
 using Serilog;
 
@@ -24,30 +28,50 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private readonly BackgroundRemovalCoordinator _backgroundRemoval;
     private readonly BackgroundRemovalConsentStore _backgroundRemovalConsent;
+    private readonly ILaserMachine _laserMachine;
     private MaterialsWindow? _materialsWindow;
     private PreviewWindow? _previewWindow;
+
+    public static readonly DependencyProperty IsMaterialsWindowActiveProperty = DependencyProperty.Register(
+        nameof(IsMaterialsWindowActive), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+
+    public bool IsMaterialsWindowActive
+    {
+        get => (bool)GetValue(IsMaterialsWindowActiveProperty);
+        private set => SetValue(IsMaterialsWindowActiveProperty, value);
+    }
 
     public MainWindow(
         MainViewModel viewModel,
         BackgroundRemovalCoordinator backgroundRemoval,
-        BackgroundRemovalConsentStore backgroundRemovalConsent)
+        BackgroundRemovalConsentStore backgroundRemovalConsent,
+        ILaserMachine laserMachine)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _backgroundRemoval = backgroundRemoval;
         _backgroundRemovalConsent = backgroundRemovalConsent;
+        _laserMachine = laserMachine;
         DataContext = viewModel;
-        _viewModel.GCode.SimulationStarted += OnSimulationStarted;
+        _viewModel.GCode.PreviewRequested += OnPreviewRequested;
+        _viewModel.GCode.PreviewBlocked += OnStartBlocked;
         _viewModel.GCode.StartBlocked += OnStartBlocked;
         _viewModel.Scene.TraceRasterRequested += OnTraceRasterRequested;
+        _viewModel.Scene.EditRasterRequested += OnEditRasterRequested;
+        _viewModel.Scene.RasterOperationRejected += OnRasterOperationRejected;
         _viewModel.Scene.BackgroundRemovalRequested += OnBackgroundRemovalRequested;
         _viewModel.Scene.OffsetRequested += OnOffsetRequested;
+        _viewModel.Scene.CenterOnWorkAreaRequested += () =>
+        {
+            var connection = _viewModel.Connection;
+            _viewModel.Scene.CenterSelectionAt(connection.WorkAreaWidthMm / 2, connection.WorkAreaHeightMm / 2);
+        };
         _viewModel.Scene.VectorOperationRejected += OnVectorOperationRejected;
+        _viewModel.Scene.BooleanPreviewRequested += OnBooleanPreviewRequested;
         _viewModel.DeviceWizardRequested += OpenDeviceWizard;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DesignerCanvas.TextPlacementRequested += OnTextPlacementRequested;
         KamilHost.AssistantResized += OnAssistantResized;
-        DeviceWizardOverlayHost.SettingsRequested += (_, _) => OpenSettings();
         InitializeGuidance();
         Loaded += OnLoaded;
         Closing += OnClosing;
@@ -56,16 +80,29 @@ public partial class MainWindow : Window
         MaximizeWorkAreaHook.Attach(this);
         // Windows 11 rounds every framed window and draws a hairline around it. A borderless window
         // opts out of both, so the app had square corners and no visible edge; DWM gives them back.
-        WindowFrameHook.Attach(this, TryFindResource("Brush.PanelBorderStrong") as System.Windows.Media.Brush);
+        WindowFrameHook.Attach(this, TryFindResource("Brush.PanelBorderStrong") as System.Windows.Media.Brush, MaximizeButton);
         StateChanged += (_, _) => UpdateMaximizeGlyph();
         UpdateMaximizeGlyph();
         SizeChanged += (_, _) => _viewModel.IsCompactChrome = ActualWidth < ScreenChrome.CompactWidth;
         PreviewKeyDown += OnPreviewKeyDown;
         KeyDown += OnKeyDown;
 
-        _autosaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _autosaveTimer = new DispatcherTimer { Interval = _viewModel.Settings.Editor.AutosaveInterval };
         _autosaveTimer.Tick += (_, _) => _viewModel.SaveRecoverySnapshot();
         _autosaveTimer.Start();
+        ApplyEditorPreferences();
+    }
+
+    /// <summary>Hands the operator's editor preferences (Nastavení) to the parts that read them: the
+    /// canvas and the backup timer. Runs at start-up and again whenever Nastavení closes. Reduced motion is
+    /// applied by App at start-up (before the splash) and here only after the dialog, never in the
+    /// constructor, so a test harness that forces motion off is not undone.</summary>
+    private void ApplyEditorPreferences(bool includeMotion = false)
+    {
+        var editor = _viewModel.Settings.Editor;
+        DesignerCanvas.Preferences = editor;
+        if (_autosaveTimer.Interval != editor.AutosaveInterval) _autosaveTimer.Interval = editor.AutosaveInterval;
+        if (includeMotion) UiAccessibility.ApplyMotionPreferences(editor.ReduceMotion);
     }
 
     // "F" fits the view, matching LightBurn/Illustrator/Photoshop convention — deliberately a
@@ -101,6 +138,18 @@ public partial class MainWindow : Window
         if (isTextInput) return;
 
         var modifiers = Keyboard.Modifiers;
+        if (onDesigner && modifiers == ModifierKeys.Control && shortcutKey == Key.V && TryPasteExternalRaster())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (onDesigner && modifiers == ModifierKeys.Alt && shortcutKey == Key.I &&
+            _viewModel.Scene.EditSelectedRasterCommand.CanExecute(null))
+        {
+            _viewModel.Scene.EditSelectedRasterCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
         if (_viewModel.CurrentScreen == AppScreen.Designer && e.Key == Key.G && modifiers == ModifierKeys.Control &&
             _viewModel.Scene.GroupSelectionCommand.CanExecute(null))
         {
@@ -112,6 +161,32 @@ public partial class MainWindow : Window
                  _viewModel.Scene.UngroupSelectionCommand.CanExecute(null))
         {
             _viewModel.Scene.UngroupSelectionCommand.Execute(null);
+            e.Handled = true;
+        }
+        // Ctrl+U releases members of a real group. It does not split text into contours.
+        else if (onDesigner && e.Key == Key.U && modifiers == ModifierKeys.Control &&
+                 _viewModel.Scene.UngroupSelectionCommand.CanExecute(null))
+        {
+            _viewModel.Scene.UngroupSelectionCommand.Execute(null);
+            e.Handled = true;
+        }
+        // Ctrl+Shift+C is "Převést na dráhu" for text and for every other vector object alike.
+        else if (onDesigner && e.Key == Key.C && modifiers == (ModifierKeys.Control | ModifierKeys.Shift) &&
+                 DesignerCanvas.ConvertSelectionToPath())
+        {
+            e.Handled = true;
+        }
+        else if (onDesigner && e.Key == Key.B && modifiers == (ModifierKeys.Control | ModifierKeys.Shift) &&
+                 _viewModel.Scene.ConvertSelectionToBitmapCommand.CanExecute(null))
+        {
+            _viewModel.Scene.ConvertSelectionToBitmapCommand.Execute(null);
+            e.Handled = true;
+        }
+        // Alt+P opens the job preview: the toolpath in its own window, which never touches the machine.
+        else if (onDesigner && shortcutKey == Key.P && modifiers == ModifierKeys.Alt &&
+                 _viewModel.GCode.OpenPreviewCommand.CanExecute(null))
+        {
+            _viewModel.GCode.OpenPreviewCommand.Execute(null);
             e.Handled = true;
         }
         else if (_viewModel.CurrentScreen == AppScreen.Designer && modifiers == ModifierKeys.None &&
@@ -246,6 +321,11 @@ public partial class MainWindow : Window
                 _viewModel.DiscardRecoverySnapshot();
         }
 
+        // A pending M3 can outlive the view's Unloaded event. Realtime reset flushes the queue and
+        // extinguishes the beam before the application begins disposing its serial connection.
+        if (_viewModel.Jog.IsPositioningLaserActiveOrStarting)
+            _laserMachine.SoftReset();
+
         _backgroundRemoval.Cancel();
         _autosaveTimer.Stop();
         if (!_viewModel.IsDirty) _viewModel.DiscardRecoverySnapshot();
@@ -259,6 +339,7 @@ public partial class MainWindow : Window
     {
         var dialog = new SettingsWindow(_viewModel, PrepareForSignOut) { Owner = this };
         dialog.ShowDialog();
+        ApplyEditorPreferences(includeMotion: true);
         if (dialog.ReplayIntroRequested)
         {
             _viewModel.Guidance.ResetIntro();
@@ -342,7 +423,7 @@ public partial class MainWindow : Window
             Key.H => DesignerTool.Pan,
             Key.R => DesignerTool.Rectangle,
             Key.E => DesignerTool.Ellipse,
-            Key.L => DesignerTool.Line,
+            Key.P => DesignerTool.Line,
             Key.T => DesignerTool.Text,
             _ => (DesignerTool?)null,
         };
@@ -390,19 +471,21 @@ public partial class MainWindow : Window
             Tone: LaseroDialogTone.Warning)));
     }
 
-    private void OnSimulationStarted()
+    /// <summary>Opens "Náhled" for the job the scene would make now; a preview requested while one is open replaces it.</summary>
+    private void OnPreviewRequested(JobPreviewModel model)
     {
         Dispatcher.Invoke(() =>
         {
             if (_previewWindow is not null)
             {
+                _previewWindow.Load(model);
                 if (_previewWindow.WindowState == WindowState.Minimized)
                     SystemCommands.RestoreWindow(_previewWindow);
                 _previewWindow.Activate();
                 return;
             }
 
-            _previewWindow = new PreviewWindow(_viewModel) { Owner = this };
+            _previewWindow = new PreviewWindow(model) { Owner = this };
             _previewWindow.Closed += (_, _) => _previewWindow = null;
             _previewWindow.Show();
         });
@@ -418,7 +501,7 @@ public partial class MainWindow : Window
             var window = new BitmapTraceWindow(traceViewModel) { Owner = this };
             if (window.ShowDialog() != true || traceViewModel.Result is not { } result) return;
 
-            _viewModel.Scene.ReplaceRasterWithTrace(source, result);
+            _viewModel.Scene.ReplaceRasterWithTrace(source, result, traceViewModel.DeleteImageAfterTracing);
             if (_viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
                 _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
             _viewModel.GCode.LastMessage = $"Bitmapa byla převedena na {result.ContourCount} vektorových obrysů. Změnu lze vrátit pomocí Ctrl+Z.";
@@ -432,6 +515,144 @@ public partial class MainWindow : Window
                 "Rozumím",
                 CancelText: null,
                 Tone: LaseroDialogTone.Danger));
+        }
+    }
+
+    private void OnEditRasterRequested(SceneObject source)
+    {
+        if (source.RasterFilePath is not { } path) return;
+        var layer = _viewModel.Scene.Layers.FirstOrDefault(candidate =>
+            source.LocalShapes.Any(shape => shape.LayerId == candidate.Id));
+        var options = source.RasterOptions ?? new RasterImportOptions
+        {
+            TargetWidthMm = source.LocalBounds.Width,
+            Dpi = layer?.FillLineIntervalMm > 0 ? 25.4 / layer.FillLineIntervalMm : 254,
+            FeedRatePerMinute = layer?.Speed ?? 3000,
+            MaxPower = layer?.Power ?? 30,
+            Passes = layer?.Passes ?? 1,
+        };
+        if (layer is not null)
+            options = options with
+            {
+                Dpi = layer.FillLineIntervalMm > 0 ? 25.4 / layer.FillLineIntervalMm : options.Dpi,
+                FeedRatePerMinute = layer.Speed,
+                MaxPower = layer.Power,
+                Passes = layer.Passes,
+            };
+
+        try
+        {
+            var editor = new RasterImportViewModel(
+                _laserMachine, _viewModel.SettingsStore, path,
+                source.LocalBounds.Width, options.FeedRatePerMinute, options.MaxPower, options.Dpi,
+                options, isEditing: true);
+            var window = new RasterImportWindow(editor) { Owner = this };
+            if (window.ShowDialog() != true) return;
+            _viewModel.Scene.ApplyRasterEdit(source, editor.BuildOptions());
+            _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
+            _viewModel.GCode.LastMessage = "Obrázek upraven. Změnu lze vrátit pomocí Ctrl+Z.";
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to edit raster image {RasterPath}", path);
+            OnRasterOperationRejected("Obrázek nelze upravit. Ověřte, že soubor není poškozený a je dostupný.");
+        }
+    }
+
+    private void OnRasterOperationRejected(string message) =>
+        LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+            "Obrázek nelze vložit",
+            message,
+            "Rozumím",
+            CancelText: null,
+            Tone: LaseroDialogTone.Warning));
+
+    private bool TryPasteExternalRaster()
+    {
+        try
+        {
+            var data = Clipboard.GetDataObject();
+            if (data is null) return false;
+            var rasterOptions = CreateClipboardRasterOptions();
+
+            if (data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (data.GetData(DataFormats.FileDrop) is not string[] files) return false;
+                var images = files.Where(IsRasterPath).ToArray();
+                if (images.Length == 0) return false;
+                _viewModel.Scene.ImportRasterFiles(images, rasterOptions);
+                return true;
+            }
+
+            if (TryGetClipboardBytes(data, "PNG", out var pngBytes) || TryGetClipboardBytes(data, "image/png", out pngBytes))
+            {
+                _viewModel.Scene.ImportRasterFile(WriteClipboardBytes(pngBytes, ".png"), rasterOptions);
+                return true;
+            }
+
+            if (TryGetClipboardBytes(data, "image/webp", out var webpBytes) || TryGetClipboardBytes(data, "WebP", out webpBytes))
+            {
+                _viewModel.Scene.ImportRasterFile(WriteClipboardBytes(webpBytes, ".webp"), rasterOptions);
+                return true;
+            }
+
+            if (Clipboard.GetImage() is { } image)
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(image));
+                using var stream = new MemoryStream();
+                encoder.Save(stream);
+                _viewModel.Scene.ImportRasterFile(WriteClipboardBytes(stream.ToArray(), ".png"), rasterOptions);
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Log.Warning(ex, "Clipboard image import failed");
+            OnRasterOperationRejected("Schránka je dočasně nedostupná nebo neobsahuje podporovaný obrázek. Zkuste to znovu.");
+            return true;
+        }
+
+        return false;
+    }
+
+    private RasterImportOptions CreateClipboardRasterOptions()
+    {
+        var layer = _viewModel.Scene.Layers.FirstOrDefault(candidate => candidate.IsRaster);
+        return new RasterImportOptions
+        {
+            TargetWidthMm = 100,
+            Dpi = layer?.FillLineIntervalMm > 0 ? 25.4 / layer.FillLineIntervalMm : 254,
+            FeedRatePerMinute = layer?.Speed ?? 3000,
+            MaxPower = layer?.Power ?? 30,
+            Passes = layer?.Passes ?? 1,
+        };
+    }
+
+    private static bool IsRasterPath(string path) => Path.GetExtension(path).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp";
+
+    private static string WriteClipboardBytes(byte[] bytes, string extension)
+    {
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "RasterImports");
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, $"clipboard-{Guid.NewGuid():N}{extension}");
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
+    private static bool TryGetClipboardBytes(System.Windows.IDataObject data, string format, out byte[] bytes)
+    {
+        bytes = [];
+        if (!data.GetDataPresent(format)) return false;
+        var value = data.GetData(format);
+        switch (value)
+        {
+            case byte[] buffer: bytes = buffer; return buffer.Length > 0;
+            case MemoryStream memory: bytes = memory.ToArray(); return bytes.Length > 0;
+            case Stream stream:
+                using (var copy = new MemoryStream()) { stream.CopyTo(copy); bytes = copy.ToArray(); }
+                return bytes.Length > 0;
+            default: return false;
         }
     }
 
@@ -462,8 +683,15 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected failure while removing background");
+            _viewModel.Scene.BackgroundRemovalStatus = "Odstranění pozadí se nezdařilo.";
             _viewModel.Scene.BackgroundRemovalError = BackgroundRemovalCoordinator.GenericFailureMessage;
         }
+    }
+
+    private void OnBooleanPreviewRequested(VectorOperationPreview preview)
+    {
+        var window = new BooleanPreviewWindow(preview) { Owner = this };
+        if (window.ShowDialog() == true) preview.Commit();
     }
 
     private void OnVectorOperationRejected(string message) =>
@@ -477,19 +705,37 @@ public partial class MainWindow : Window
     /// <summary>Opens OffsetPathWindow for the selection SceneViewModel.OffsetSelectionCommand
     /// captured, and — on OK — hands the dialog's computed result back to Scene.ApplyOffset. Mirrors
     /// OnTraceRasterRequested's open/result-handling shape.</summary>
-    private void OnOffsetRequested(IReadOnlyList<SceneObject> sources)
+    private void OnOffsetRequested(IReadOnlyList<SceneObject> sources, VectorOffsetDirection? initialDirection)
     {
         if (sources.Count == 0) return;
 
+        var selectedLink = sources.Count == 1 ? sources[0].OffsetLink : null;
+        if (selectedLink is not null)
+        {
+            var linkedSources = selectedLink.SourceIds
+                .Select(id => _viewModel.Scene.Objects.FirstOrDefault(item => item.Id == id))
+                .ToList();
+            if (linkedSources.Any(item => item is null)) return;
+            sources = linkedSources.Select(item => item!).ToList();
+        }
+
         var offsetViewModel = new OffsetPathViewModel(
-            sources, keepOriginal: _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal);
+            sources,
+            keepOriginal: _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal,
+            initialDirection: initialDirection,
+            initialOptions: selectedLink?.Options,
+            initiallyLinked: selectedLink is not null);
         var window = new OffsetPathWindow(offsetViewModel) { Owner = this };
         if (window.ShowDialog() != true) return;
 
-        _viewModel.Scene.ApplyOffset(sources, offsetViewModel.ResultsBySource, offsetViewModel.KeepOriginal);
+        _viewModel.Scene.ApplyOffsetResults(
+            sources, offsetViewModel.Results, offsetViewModel.DeleteOriginals, offsetViewModel.SelectResults,
+            offsetViewModel.CurrentOptions, offsetViewModel.LinkedOffset, selectedLink?.LinkId,
+            offsetViewModel.ResultKinds);
         try
         {
-            _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal = offsetViewModel.KeepOriginal;
+            // The stored preference is the inverse of "Odstranit původní objekty".
+            _viewModel.SettingsStore.Current.Workspace.OffsetKeepOriginal = !offsetViewModel.DeleteOriginals;
             _viewModel.SettingsStore.Save();
         }
         catch (Exception ex)
@@ -553,11 +799,18 @@ public partial class MainWindow : Window
         try
         {
             _materialsWindow = new MaterialsWindow(_viewModel) { Owner = this };
-            _materialsWindow.Closed += (_, _) => _materialsWindow = null;
+            _materialsWindow.Activated += (_, _) => IsMaterialsWindowActive = true;
+            _materialsWindow.Deactivated += (_, _) => IsMaterialsWindowActive = false;
+            _materialsWindow.Closed += (_, _) =>
+            {
+                IsMaterialsWindowActive = false;
+                _materialsWindow = null;
+            };
             _materialsWindow.Show();
         }
         catch (Exception ex)
         {
+            IsMaterialsWindowActive = false;
             _materialsWindow = null;
             Log.Error(ex, "Failed to open the materials catalog");
             LaseroDialogWindow.Show(this, new LaseroDialogOptions(
@@ -612,17 +865,6 @@ public partial class MainWindow : Window
     {
         _projectMenuClosedAt = DateTime.UtcNow;
         ProjectNameButton.IsChecked = false;
-    }
-
-    /// <summary>
-    /// Opens device settings. This used to switch to the Designer screen and flip the inspector to
-    /// its machine tab — which, if the operator was already there, changed nothing visible and read
-    /// as a dead button. The header now does what its label says.
-    /// </summary>
-    private void OnDeviceSettingsClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new DeviceSettingsWindow(_viewModel) { Owner = this };
-        dialog.ShowDialog();
     }
 
     /// <summary>The canvas is collapsed while another screen is showing, so it has no size to fit

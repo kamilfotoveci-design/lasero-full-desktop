@@ -9,10 +9,9 @@
              mc:Ignorable="d" d:DesignWidth="1316" d:DesignHeight="860">
 
     <!--
-        Home is the shared screen frame (PageScaffold: header band, one scrolling column) beside the shared 360 px
-        right panel. Every value comes from live state: recent projects from RecentProjectsStore, materials and the last
-        job from JobHistoryStore, the panel from ConnectionViewModel and MachineStatusViewModel. Where the mockup showed a
-        fact Lasero does not record, the control is omitted rather than filled with a plausible-looking value.
+        Home is the shared screen frame (PageScaffold: header band, one scrolling column). Every value comes from live
+        state: recent projects from RecentProjectsStore, materials and the last job from JobHistoryStore. Where the mockup
+        showed a fact Lasero does not record, the control is omitted rather than filled with a plausible-looking value.
 
         Order of the eye: greeting and subtitle, the one dominant action (Nový projekt), the tip, then the work.
         Sections are 32 apart (Layout.SectionGap), cards and shelf items 16.
@@ -22,14 +21,11 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
-        <conv:MachineDisplayStateToLabelConverter x:Key="MachineStateLabel" />
-        <conv:MachineDisplayStateToStatePillKindConverter x:Key="MachineStatePillKind" />
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource Brush.Surface}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="520" />
-            <ColumnDefinition Width="{StaticResource Layout.PanelColumn}" />
         </Grid.ColumnDefinitions>
 
         <!-- ================= CONTENT COLUMN ================= -->
@@ -183,80 +179,5 @@
             </components:PageScaffold.Body>
         </components:PageScaffold>
 
-        <!-- ================= DEVICE PANEL (the shared 360 px right panel) ================= -->
-        <Border Grid.Column="1" Background="{DynamicResource Brush.Panel}"
-                BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="1,0,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Border Grid.Row="0" Padding="24,16,24,4"
-                        BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                    <components:SectionHeader Title="Zařízení" Level="Card" />
-                </Border>
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="24">
-
-                        <!-- Identity and state. The pill reads MachineStatus.DisplayState, so it can
-                             only say "Připraveno" when the controller has actually answered Idle. -->
-                        <Grid Margin="0,0,0,24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <components:IconTile IconData="{StaticResource Glyph.Device}" Tone="Graphite" Size="32"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Home.DeviceName}" FontSize="{StaticResource Size.Text.Body}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding Home.DeviceName}" />
-                                <components:StatusBadge Margin="0,4,0,0" HorizontalAlignment="Left"
-                                                        StatusText="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStateLabel}}"
-                                                        Kind="{Binding Home.MachineStatus.DisplayState, Converter={StaticResource MachineStatePillKind}}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Facts: label muted on the left, value on the right, hairline between rows. -->
-                        <StackPanel Margin="0,0,0,24"
-                                    Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource BoolToVisibility}}">
-                            <components:FormRow Label="Pracovní plocha" ShowRule="True">
-                                <components:FormRow.Value>
-                                    <TextBlock FontFamily="{StaticResource Font.Numeric}" Typography.NumeralAlignment="Tabular">
-                                        <Run Text="{Binding Settings.Machine.WorkAreaWidthMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
-                                        <Run Text="×" />
-                                        <Run Text="{Binding Settings.Machine.WorkAreaHeightMm, Mode=OneWay, StringFormat={}{0:0.#}}" />
-                                        <Run Text="mm" />
-                                    </TextBlock>
-                                </components:FormRow.Value>
-                            </components:FormRow>
-                            <components:FormRow Label="Připojení" ShowRule="True">
-                                <components:FormRow.Value>
-                                    <TextBlock Text="{Binding Home.ConnectionSummaryLabel}" ToolTip="{Binding Home.DeviceConnectionLabel}" />
-                                </components:FormRow.Value>
-                            </components:FormRow>
-                            <components:FormRow Label="Firmware">
-                                <components:FormRow.Value>
-                                    <TextBlock Text="{Binding Home.FirmwareLabel}" FontFamily="{StaticResource Font.Numeric}" />
-                                </components:FormRow.Value>
-                            </components:FormRow>
-                        </StackPanel>
-
-                        <!-- The one action Home's machine card needs: connect. Homing, framing, jogging and
-                             the positioning beam are machine and job controls; they live on Zařízení and
-                             Návrh (docs/screen-controls-matrix.md). -->
-                        <Button Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch"
-                                Command="{Binding OpenDeviceWizardCommand}"
-                                Visibility="{Binding Home.Connection.IsConnected, Converter={StaticResource InverseBoolToVisibility}}"
-                                ToolTip="Najít a připojit gravírku">
-                            <components:IconLabel IconData="{StaticResource Glyph.Connect}" Text="Připojit zařízení"
-                                                  IconSize="{StaticResource Size.Icon.Lg}" TextMargin="8,0,0,0" />
-                        </Button>
-
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
-        </Border>
     </Grid>
 </UserControl>

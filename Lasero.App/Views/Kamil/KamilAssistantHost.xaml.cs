@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -29,17 +30,17 @@ public partial class KamilAssistantHost : UserControl
 {
     // Geometry. Fixed per state so a transition is a single interpolation with a known destination,
     // rather than a measure pass the animation has to chase.
-    private const double PillWidth = 48;
-    private const double PillHeight = 48;
-    private const double QuickWidth = 400;
-    private const double QuickHeight = 200;
-    private const double ExpandedWidth = 420;
-    private const double ExpandedMaxHeight = 640;
+    private const double PillWidth = 80;
+    private const double PillHeight = 80;
+    private const double QuickWidth = 440;
+    private const double QuickHeight = 300;
+    private const double ExpandedWidth = 480;
+    private const double ExpandedMaxHeight = 860;
     private const double ExpandedMinHeight = 500;
     private const double ResizeMinWidth = 320;
-    private const double ResizeMinHeight = 360;
-    private const double ResizeMaxWidth = 720;
-    private const double ResizeMaxHeight = 760;
+    private const double ResizeMinHeight = 480;
+    private const double ResizeMaxWidth = 960;
+    private const double ResizeMaxHeight = 1000;
 
     // Shape duration depends on which pair of states is involved — QuickAsk to/from Expanded is the
     // biggest change of shape and reads better slightly slower than the other two, which both move a
@@ -50,6 +51,7 @@ public partial class KamilAssistantHost : UserControl
 
     private KamilAssistantViewModel? _viewModel;
     private INotifyCollectionChanged? _messages;
+    private readonly DispatcherTimer _replyPoseTimer;
     private IInputElement? _focusBeforeOpening;
     private Point _dragStart;
     private Point _dragOrigin;
@@ -68,6 +70,15 @@ public partial class KamilAssistantHost : UserControl
     public KamilAssistantHost()
     {
         InitializeComponent();
+        _replyPoseTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(800),
+        };
+        _replyPoseTimer.Tick += (_, _) =>
+        {
+            _replyPoseTimer.Stop();
+            UpdateAvatarState();
+        };
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -87,6 +98,7 @@ public partial class KamilAssistantHost : UserControl
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.ComposerFocusRequested += OnComposerFocusRequested;
         _viewModel.FocusReturnRequested += OnFocusReturnRequested;
+        _viewModel.Chat.PropertyChanged += OnChatPropertyChanged;
 
         _messages = _viewModel.Chat.Messages;
         _messages.CollectionChanged += OnMessagesChanged;
@@ -101,12 +113,16 @@ public partial class KamilAssistantHost : UserControl
                 controls.SizeChanged += OnBoundarySizeChanged;
         }
 
+        StartNudgeTimer();
         ApplyState(_viewModel.State, animate: false);
+        UpdateAvatarState();
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(RepositionForLayout));
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _replyPoseTimer.Stop();
+        StopNudgeTimer();
         SizeChanged -= OnHostSizeChanged;
         if (Window.GetWindow(this) is Window window)
         {
@@ -193,6 +209,8 @@ public partial class KamilAssistantHost : UserControl
 
     private void OnSessionRowClick(object sender, RoutedEventArgs e) => SessionsPopup.IsOpen = false;
 
+    private void OnNewChatClick(object sender, RoutedEventArgs e) => SessionsPopup.IsOpen = false;
+
     private void DetachViewModel()
     {
         if (_viewModel is not null)
@@ -200,6 +218,7 @@ public partial class KamilAssistantHost : UserControl
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.ComposerFocusRequested -= OnComposerFocusRequested;
             _viewModel.FocusReturnRequested -= OnFocusReturnRequested;
+            _viewModel.Chat.PropertyChanged -= OnChatPropertyChanged;
             _viewModel = null;
         }
 
@@ -218,10 +237,50 @@ public partial class KamilAssistantHost : UserControl
         // surface outside the host. Open the full conversation atomically; the small QuickAsk state
         // may still use its gentle transition.
         ApplyState(_viewModel.State, animate: _viewModel.State != KamilAssistantState.Expanded);
+        UpdateAvatarState();
+    }
+
+    private void OnChatPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ChatViewModel.IsBusy) or nameof(ChatViewModel.Input) or
+            nameof(ChatViewModel.StatusMessage))
+        {
+            if (_viewModel?.Chat.IsBusy == true) _replyPoseTimer.Stop();
+            if (!_replyPoseTimer.IsEnabled) UpdateAvatarState();
+        }
+    }
+
+    private void UpdateAvatarState()
+    {
+        if (_viewModel is null) return;
+        var chat = _viewModel.Chat;
+        var state = _viewModel.State == KamilAssistantState.Hidden
+            ? KamilAvatarState.Hidden
+            : chat.IsBusy
+                ? KamilAvatarState.Thinking
+                : !string.IsNullOrWhiteSpace(chat.StatusMessage)
+                    ? KamilAvatarState.Error
+                    : !string.IsNullOrWhiteSpace(chat.Input)
+                        ? KamilAvatarState.Attentive
+                        : KamilAvatarState.Idle;
+
+        SetPortraitState(PillLayer, state);
+        SetPortraitState(PersistentAvatarLayer, state);
+    }
+
+    private static void SetPortraitState(Button button, KamilAvatarState state)
+    {
+        button.ApplyTemplate();
+        if (button.Template.FindName("Avatar", button) is KamilLiveAvatar portrait)
+        {
+            portrait.SetAvatarVisible(state != KamilAvatarState.Hidden);
+            portrait.SetAvatarState(state);
+        }
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        var wasNearBottom = MessageScroll.ScrollableHeight - MessageScroll.VerticalOffset <= 56;
         // Sending from Quick Ask opens the panel: the answer has nowhere to appear otherwise, and the
         // operator asked a question precisely because they want to read one.
         if (e.Action == NotifyCollectionChangedAction.Add &&
@@ -230,8 +289,33 @@ public partial class KamilAssistantHost : UserControl
             _viewModel.ExpandCommand.Execute(null);
         }
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => MessageScroll.ScrollToEnd()));
+        if (e.NewItems is not null)
+        {
+            foreach (var item in e.NewItems)
+            {
+                if (item is ChatMessageItem { IsUser: false })
+                {
+                    _replyPoseTimer.Stop();
+                    SetPortraitState(PillLayer, KamilAvatarState.Responding);
+                    SetPortraitState(PersistentAvatarLayer, KamilAvatarState.Responding);
+                    _replyPoseTimer.Start();
+                    break;
+                }
+            }
+        }
+
+        if (wasNearBottom || _viewModel?.State == KamilAssistantState.QuickAsk)
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => MessageScroll.ScrollToEnd()));
     }
+
+    private void OnMessageScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        LatestMessageButton.Visibility = MessageScroll.Visibility == Visibility.Visible &&
+            MessageScroll.ScrollableHeight - MessageScroll.VerticalOffset > 56
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnLatestMessageClick(object sender, RoutedEventArgs e) => MessageScroll.ScrollToEnd();
 
     // ------------------------------------------------------------------
     // State → geometry and motion
@@ -239,6 +323,19 @@ public partial class KamilAssistantHost : UserControl
 
     private void ApplyState(KamilAssistantState state, bool animate)
     {
+        if (state != KamilAssistantState.Minimized) HideNudge(immediate: true);
+
+        // Closing into the avatar: capture the panel, snap the real UI shut, and let the picture
+        // carry the motion (see KamilAssistantHost.CloseGhost.cs).
+        if (animate && AnimationsEnabled && state == KamilAssistantState.Minimized &&
+            _lastRenderedState is KamilAssistantState.QuickAsk or KamilAssistantState.Expanded &&
+            CaptureCloseGhost() is { } ghost)
+        {
+            ApplyState(state, animate: false);
+            PlayCloseGhost(ghost, HomeAnchor());
+            return;
+        }
+
         var (width, height) = MeasureState(state);
         var targetSize = MeasureSurface(width, height);
         var duration = ShapeDurationFor(_lastRenderedState, state);
@@ -256,7 +353,11 @@ public partial class KamilAssistantHost : UserControl
             ? anchor
             : PositionPopover(targetSize, anchor);
 
-        SetLayerVisibility(state);
+        // The layer that is leaving stays visible while it fades out and the panel shrinks into the avatar;
+        // collapsing it at once left an empty white panel shrinking on its own, which read as a flicker.
+        var animated = animate && AnimationsEnabled;
+        SetLayerVisibility(state, keepOutgoing: animated);
+        if (animated) ScheduleOutgoingLayerCollapse(state, duration);
 
         if (!animate || !AnimationsEnabled)
         {
@@ -732,11 +833,38 @@ public partial class KamilAssistantHost : UserControl
     /// still swallows clicks, and during a crossfade the incoming layer must be the one that
     /// responds even while the outgoing one is still visible.
     /// </summary>
-    private void SetLayerVisibility(KamilAssistantState state)
+    private int _layerCollapseVersion;
+
+    private void SetLayerVisibility(KamilAssistantState state, bool keepOutgoing = false)
     {
-        PillLayer.Visibility = state == KamilAssistantState.Minimized ? Visibility.Visible : Visibility.Collapsed;
-        QuickLayer.Visibility = state == KamilAssistantState.QuickAsk ? Visibility.Visible : Visibility.Collapsed;
-        ExpandedLayer.Visibility = state == KamilAssistantState.Expanded ? Visibility.Visible : Visibility.Collapsed;
+        _layerCollapseVersion++;
+        ShowLayer(PillLayer, state == KamilAssistantState.Minimized, keepOutgoing);
+        ShowLayer(QuickLayer, state == KamilAssistantState.QuickAsk, keepOutgoing);
+        ShowLayer(ExpandedLayer, state == KamilAssistantState.Expanded, keepOutgoing);
+    }
+
+    private static void ShowLayer(UIElement layer, bool visible, bool keepOutgoing)
+    {
+        if (visible) layer.Visibility = Visibility.Visible;
+        else if (!keepOutgoing) layer.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Collapses the layers that are not current once the shape animation is over, unless a newer
+    /// state change has started in the meantime.</summary>
+    private void ScheduleOutgoingLayerCollapse(KamilAssistantState state, Duration duration)
+    {
+        var version = _layerCollapseVersion;
+        var delay = duration.HasTimeSpan ? duration.TimeSpan + TimeSpan.FromMilliseconds(40) : TimeSpan.FromMilliseconds(360);
+        var timer = new DispatcherTimer(DispatcherPriority.Normal, Dispatcher) { Interval = delay };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (version != _layerCollapseVersion) return;
+            PillLayer.Visibility = state == KamilAssistantState.Minimized ? Visibility.Visible : Visibility.Collapsed;
+            QuickLayer.Visibility = state == KamilAssistantState.QuickAsk ? Visibility.Visible : Visibility.Collapsed;
+            ExpandedLayer.Visibility = state == KamilAssistantState.Expanded ? Visibility.Visible : Visibility.Collapsed;
+        };
+        timer.Start();
     }
 
     /// <summary>

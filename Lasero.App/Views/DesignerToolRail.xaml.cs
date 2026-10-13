@@ -120,7 +120,7 @@ public partial class DesignerToolRail : UserControl
         if (!_isPressed) return; // cancelled by drag or mouse leave
         _isPressed = false;
 
-        ActivateShape(Vm?.Scene.CurrentShapeTool ?? DesignerTool.Rectangle);
+        ActivateShape(Vm?.Scene.CurrentShapeTool ?? DesignerTool.Square);
     }
 
     private void OnShapeButtonMouseRightButtonUp(object sender, MouseButtonEventArgs e)
@@ -134,7 +134,7 @@ public partial class DesignerToolRail : UserControl
     {
         if (e.Key != Key.Enter && e.Key != Key.Space) return;
         e.Handled = true;
-        ActivateShape(Vm?.Scene.CurrentShapeTool ?? DesignerTool.Rectangle);
+        ActivateShape(Vm?.Scene.CurrentShapeTool ?? DesignerTool.Square);
     }
 
     private void ActivateShape(DesignerTool tool)

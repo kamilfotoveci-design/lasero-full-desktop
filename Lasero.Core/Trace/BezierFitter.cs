@@ -71,11 +71,20 @@ public static class BezierFitter
             var start = breakIndices[i];
             var end = breakIndices[(i + 1) % breakIndices.Count];
             var chain = SliceRing(points, start, end);
-            var chainNodes = FitChain(chain, options, cornerSet.Contains(start), cornerSet.Contains(end), depth: 0);
-            nodes.AddRange(i == 0 ? chainNodes : chainNodes.Skip(1));
+            // A break that is not a real corner (the seed split of a smooth ring) is shared by two chains,
+            // so both use the ring's own tangent there and the node stays smooth.
+            Position? startTangent = cornerSet.Contains(start) ? null : CentralTangent(points, start);
+            Position? endTangent = cornerSet.Contains(end) ? null : Negate(CentralTangent(points, end));
+            var chainNodes = FitChain(chain, options, cornerSet.Contains(start), cornerSet.Contains(end), depth: 0, startTangent, endTangent);
+            AppendChain(nodes, chainNodes);
         }
         // The last chain's end anchor is breakIndices[0] again — drop the duplicate.
-        if (nodes.Count > 1) nodes.RemoveAt(nodes.Count - 1);
+        if (nodes.Count > 1)
+        {
+            // The last chain ends on the first node: it carries the closing segment's incoming handle.
+            nodes[0] = Junction(nodes[^1], nodes[0]);
+            nodes.RemoveAt(nodes.Count - 1);
+        }
 
         return new VectorSubpath { Nodes = nodes, IsClosed = true };
     }
@@ -107,7 +116,7 @@ public static class BezierFitter
             // Every break point on an open path is either a real terminal (path start/end) or a
             // detected sharp corner — unlike the closed-ring case there is no artificial smooth seed.
             var chainNodes = FitChain(chain, options, forceStartCorner: true, forceEndCorner: true, depth: 0);
-            nodes.AddRange(i == 0 ? chainNodes : chainNodes.Skip(1));
+            AppendChain(nodes, chainNodes);
         }
 
         return new VectorSubpath { Nodes = nodes, IsClosed = false };
@@ -118,7 +127,8 @@ public static class BezierFitter
     // -------------------------------------------------------------------------------------------
 
     private static List<VectorNode> FitChain(
-        IReadOnlyList<Position> chain, BezierFitOptions options, bool forceStartCorner, bool forceEndCorner, int depth)
+        IReadOnlyList<Position> chain, BezierFitOptions options, bool forceStartCorner, bool forceEndCorner, int depth,
+        Position? startTangent = null, Position? endTangent = null)
     {
         if (chain.Count == 2)
         {
@@ -129,44 +139,228 @@ public static class BezierFitter
             ];
         }
 
-        var t1 = ForwardTangent(chain, 0);
-        var t2 = Negate(ForwardTangent(chain, chain.Count - 1));
-        var u = ChordLengthParameterize(chain);
+        var startType = forceStartCorner ? VectorNodeType.Corner : VectorNodeType.Smooth;
+        var endType = forceEndCorner ? VectorNodeType.Corner : VectorNodeType.Smooth;
 
-        if (!TryFitControlPoints(chain, u, t1, t2, out var c1, out var c2))
-        {
-            var chordLength = Distance(chain[0], chain[^1]) / 3;
-            c1 = Add(chain[0], Scale(t1, chordLength));
-            c2 = Add(chain[^1], Scale(t2, chordLength));
-        }
-
-        var maxError = 0d;
-        var worstIndex = -1;
-        for (var i = 1; i < chain.Count - 1; i++)
-        {
-            var sample = CubicBezier.Evaluate(chain[0], c1, c2, chain[^1], u[i]);
-            var error = Distance(sample, chain[i]);
-            if (error <= maxError) continue;
-            maxError = error;
-            worstIndex = i;
-        }
-
-        if (worstIndex < 0 || maxError <= options.ToleranceMm || depth >= MaxRecursionDepth)
+        // A chain that already lies on its chord is a straight segment: no handles, no curve to overshoot.
+        if (IsStraight(chain, options.ToleranceMm * 0.5))
         {
             return
             [
-                new VectorNode(chain[0], null, c1, forceStartCorner ? VectorNodeType.Corner : VectorNodeType.Smooth),
-                new VectorNode(chain[^1], c2, null, forceEndCorner ? VectorNodeType.Corner : VectorNodeType.Smooth),
+                new VectorNode(chain[0], null, null, startType),
+                new VectorNode(chain[^1], null, null, endType),
+            ];
+        }
+
+        // Tangents handed down by a split (or by the seed break of a ring) are shared with the neighbouring
+        // chain, so both cubics leave the common anchor along the same line and no kink appears there.
+        var t1 = startTangent ?? ForwardTangent(chain, 0);
+        var t2 = endTangent ?? Negate(ForwardTangent(chain, chain.Count - 1));
+        IReadOnlyList<double> u = ChordLengthParameterize(chain);
+        var chord = Distance(chain[0], chain[^1]);
+
+        var (c1, c2) = FitControlPoints(chain, u, t1, t2, chord);
+        var (maxError, worstIndex) = MeasureDeviation(chain, u, c1, c2);
+
+        // Newton reparameterisation: moving each point's parameter to the nearest point of the curve and
+        // refitting lets one long cubic follow a long arc that the chord-length parameters could not.
+        for (var iteration = 0; iteration < 4 && worstIndex >= 0 && maxError > options.ToleranceMm; iteration++)
+        {
+            var refined = Reparameterize(chain, u, c1, c2);
+            var (n1, n2) = FitControlPoints(chain, refined, t1, t2, chord);
+            var (error, index) = MeasureDeviation(chain, refined, n1, n2);
+            if (error >= maxError) break;
+            u = refined;
+            c1 = n1;
+            c2 = n2;
+            maxError = error;
+            worstIndex = index;
+        }
+
+        if (worstIndex < 0 || maxError <= options.ToleranceMm)
+        {
+            return
+            [
+                new VectorNode(chain[0], null, c1, startType),
+                new VectorNode(chain[^1], c2, null, endType),
+            ];
+        }
+
+        if (depth >= MaxRecursionDepth)
+        {
+            // Out of splits: a straight segment cannot bulge outside the shape, a bad cubic can.
+            return
+            [
+                new VectorNode(chain[0], null, null, startType),
+                new VectorNode(chain[^1], null, null, endType),
             ];
         }
 
         var left = chain.Take(worstIndex + 1).ToList();
         var right = chain.Skip(worstIndex).ToList();
         // The new split point is an adaptive continuation, not a real corner, on either side of it.
-        var leftNodes = FitChain(left, options, forceStartCorner, false, depth + 1);
-        var rightNodes = FitChain(right, options, false, forceEndCorner, depth + 1);
-        leftNodes.AddRange(rightNodes.Skip(1));
+        // Both halves leave the split along the same unit tangent (central difference of the contour there),
+        // so the node between them has collinear handles.
+        var split = Normalize(Sub(chain[worstIndex + 1], chain[worstIndex - 1]));
+        var splitTangent = Length(split) < 1e-9 ? ForwardTangent(chain, worstIndex) : split;
+        var leftNodes = FitChain(left, options, forceStartCorner, false, depth + 1, startTangent, Negate(splitTangent));
+        var rightNodes = FitChain(right, options, false, forceEndCorner, depth + 1, splitTangent, endTangent);
+        AppendChain(leftNodes, rightNodes);
         return leftNodes;
+    }
+
+    /// <summary>Least-squares control points along the given tangents, falling back to chord/3 handles when the
+    /// solve is degenerate, with both handles capped (see <see cref="MaxHandleChordRatio"/>).</summary>
+    private static (Position C1, Position C2) FitControlPoints(
+        IReadOnlyList<Position> chain, IReadOnlyList<double> u, Position t1, Position t2, double chord)
+    {
+        if (!TryFitControlPoints(chain, u, t1, t2, out var c1, out var c2))
+        {
+            var chordLength = chord / 3;
+            c1 = Add(chain[0], Scale(t1, chordLength));
+            c2 = Add(chain[^1], Scale(t2, chordLength));
+        }
+
+        // A handle longer than a fraction of the chord is what lets a cubic swing past a tip when only a
+        // few points constrain it, so the length is capped; the deviation check does the rest.
+        if (chord > 1e-9)
+        {
+            c1 = ClampHandle(chain[0], c1, chord * MaxHandleChordRatio);
+            c2 = ClampHandle(chain[^1], c2, chord * MaxHandleChordRatio);
+        }
+        return (c1, c2);
+    }
+
+    /// <summary>One Newton-Raphson step per point towards the curve parameter whose point is nearest to it.
+    /// The end parameters stay 0 and 1.</summary>
+    private static double[] Reparameterize(IReadOnlyList<Position> chain, IReadOnlyList<double> u, Position c1, Position c2)
+    {
+        var p0 = chain[0];
+        var p3 = chain[^1];
+        var result = new double[u.Count];
+        result[0] = 0;
+        result[^1] = 1;
+        for (var i = 1; i < u.Count - 1; i++)
+        {
+            var t = u[i];
+            var q = CubicBezier.Evaluate(p0, c1, c2, p3, t);
+            var omt = 1 - t;
+            var d1 = Add(Add(Scale(Sub(c1, p0), 3 * omt * omt), Scale(Sub(c2, c1), 6 * omt * t)), Scale(Sub(p3, c2), 3 * t * t));
+            var d2 = Add(Scale(Add(Sub(c2, Scale(c1, 2)), p0), 6 * omt), Scale(Add(Sub(p3, Scale(c2, 2)), c1), 6 * t));
+            var diff = Sub(q, chain[i]);
+            var numerator = Dot(diff, d1);
+            var denominator = Dot(d1, d1) + Dot(diff, d2);
+            var next = Math.Abs(denominator) < 1e-12 ? t : t - numerator / denominator;
+            result[i] = double.IsFinite(next) ? Math.Clamp(next, 0, 1) : t;
+        }
+        // Parameters must not cross, or the least-squares fit sees the chain folded back on itself.
+        for (var i = 1; i < result.Length; i++) result[i] = Math.Max(result[i], result[i - 1]);
+        return result;
+    }
+
+    /// <summary>Unit tangent of the ring at a vertex: central difference of its neighbours.</summary>
+    private static Position CentralTangent(IReadOnlyList<Position> ring, int index)
+    {
+        var count = ring.Count;
+        var tangent = Normalize(Sub(ring[(index + 1) % count], ring[(index - 1 + count) % count]));
+        return tangent;
+    }
+
+    /// <summary>Appends a fitted chain to the nodes so far. The chain's first node and the last node so far
+    /// are the same anchor: one carries the incoming handle of the previous cubic, the other the outgoing
+    /// handle of the next, and both must survive in the merged node. Dropping either leaves a segment with
+    /// a missing handle, and at the closing seam of a ring a straight chord across the whole last chain.</summary>
+    private static void AppendChain(List<VectorNode> nodes, IReadOnlyList<VectorNode> chain)
+    {
+        if (chain.Count == 0) return;
+        if (nodes.Count == 0)
+        {
+            nodes.AddRange(chain);
+            return;
+        }
+
+        nodes[^1] = Junction(nodes[^1], chain[0]);
+        for (var i = 1; i < chain.Count; i++) nodes.Add(chain[i]);
+    }
+
+    private static VectorNode Junction(VectorNode previousEnd, VectorNode nextStart) =>
+        new(previousEnd.Anchor, previousEnd.HandleIn, nextStart.HandleOut,
+            previousEnd.Type == VectorNodeType.Corner || nextStart.Type == VectorNodeType.Corner
+                ? VectorNodeType.Corner
+                : previousEnd.Type);
+
+    /// <summary>Longest handle, as a fraction of the segment chord. A circular arc needs 0.39 of the chord
+    /// per quarter turn, so this keeps every legitimate curve and rejects the long handles of a cubic
+    /// forced across a sharp tip.</summary>
+    private const double MaxHandleChordRatio = 0.4;
+
+    private static Position ClampHandle(Position anchor, Position control, double maxLength)
+    {
+        var offset = Sub(control, anchor);
+        var length = Length(offset);
+        return length <= maxLength || length < 1e-12 ? control : Add(anchor, Scale(offset, maxLength / length));
+    }
+
+    private static bool IsStraight(IReadOnlyList<Position> chain, double tolerance)
+    {
+        var a = chain[0];
+        var b = chain[^1];
+        for (var i = 1; i < chain.Count - 1; i++)
+            if (DistanceToSegment(chain[i], a, b) > tolerance) return false;
+        return true;
+    }
+
+    private static double DistanceToSegment(Position p, Position a, Position b)
+    {
+        var ab = Sub(b, a);
+        var lengthSquared = Dot(ab, ab);
+        if (lengthSquared < 1e-18) return Distance(p, a);
+        var t = Math.Clamp(Dot(Sub(p, a), ab) / lengthSquared, 0, 1);
+        return Distance(p, Add(a, Scale(ab, t)));
+    }
+
+    /// <summary>Worst deviation between the cubic and its source polyline, measured both ways: from every
+    /// source point to the curve at its parameter, and from points sampled along the curve to the nearest
+    /// polyline segment. The second direction is what catches a bulge between two source points. Returns
+    /// the error and the source index to split at (-1 when there is nothing to split).</summary>
+    private static (double Error, int Index) MeasureDeviation(
+        IReadOnlyList<Position> chain, IReadOnlyList<double> u, Position c1, Position c2)
+    {
+        var maxError = 0d;
+        var worstIndex = -1;
+        var last = chain.Count - 1;
+        for (var i = 1; i < last; i++)
+        {
+            var sample = CubicBezier.Evaluate(chain[0], c1, c2, chain[last], u[i]);
+            var error = Distance(sample, chain[i]);
+            if (error <= maxError) continue;
+            maxError = error;
+            worstIndex = i;
+        }
+
+        var samples = Math.Clamp(chain.Count * 3, 12, 400);
+        var look = Math.Max(6, 2 * chain.Count / samples + 4);
+        var segment = 0;
+        for (var s = 1; s < samples; s++)
+        {
+            var point = CubicBezier.Evaluate(chain[0], c1, c2, chain[last], s / (double)samples);
+            var best = DistanceToSegment(point, chain[segment], chain[segment + 1]);
+            var from = Math.Max(0, segment - 2);
+            var to = Math.Min(last - 1, segment + look);
+            for (var k = from; k <= to; k++)
+            {
+                var d = DistanceToSegment(point, chain[k], chain[k + 1]);
+                if (d >= best) continue;
+                best = d;
+                segment = k;
+            }
+
+            if (best <= maxError) continue;
+            maxError = best;
+            var nearer = DistanceSquared(point, chain[segment]) <= DistanceSquared(point, chain[segment + 1]) ? segment : segment + 1;
+            worstIndex = Math.Clamp(nearer, 1, last - 1);
+        }
+        return (maxError, worstIndex);
     }
 
     /// <summary>Standard Schneider least-squares solve for the two control-point distances (alpha1,
@@ -298,6 +492,7 @@ public static class BezierFitter
         var count = points.Count;
         var thresholdRad = thresholdDegrees * Math.PI / 180.0;
         var corners = new List<int>();
+        var turns = new Dictionary<int, double>();
         var first = wrap ? 0 : 1;
         var last = wrap ? count - 1 : count - 2;
         for (var i = first; i <= last; i++)
@@ -313,30 +508,42 @@ public static class BezierFitter
             if (len1 < 1e-9 || len2 < 1e-9) continue;
             var cos = Math.Clamp(Dot(v1, v2) / (len1 * len2), -1, 1);
             var turnAngle = Math.Acos(cos);
-            if (turnAngle >= thresholdRad) corners.Add(i);
+            if (turnAngle < thresholdRad) continue;
+            corners.Add(i);
+            turns[i] = turnAngle;
         }
-        return MergeNearbyCorners(points, corners, windowDistance, wrap);
+        return MergeNearbyCorners(points, corners, turns, windowDistance, wrap);
     }
 
-    /// <summary>A rasterized apex is rarely a single pixel — the flat run FindContours produces right
-    /// at a real vertex often turns sharply on both of its own ends, so the loop above can flag two
-    /// (or more) vertices a couple of pixels apart for what is visually one corner. Collapses any run
-    /// of detected corners closer together than `windowDistance` into the first one.</summary>
-    private static List<int> MergeNearbyCorners(IReadOnlyList<Position> points, List<int> corners, double windowDistance, bool wrap)
+    /// <summary>A real apex is rarely a single vertex: every vertex within a window of it turns sharply
+    /// when the window reaches across the apex, so the loop above flags a small cluster for what is
+    /// visually one corner. Each cluster (corners closer than `windowDistance` to the cluster's first
+    /// member) collapses to its sharpest vertex, so the node lands on the apex itself and not on the
+    /// first vertex that happened to see it.</summary>
+    private static List<int> MergeNearbyCorners(
+        IReadOnlyList<Position> points, List<int> corners, IReadOnlyDictionary<int, double> turns,
+        double windowDistance, bool wrap)
     {
         if (corners.Count <= 1) return corners;
 
-        var merged = new List<int> { corners[0] };
+        var clusters = new List<List<int>> { new() { corners[0] } };
         for (var i = 1; i < corners.Count; i++)
         {
-            if (Distance(points[merged[^1]], points[corners[i]]) < windowDistance) continue;
-            merged.Add(corners[i]);
+            var cluster = clusters[^1];
+            if (Distance(points[cluster[0]], points[corners[i]]) < windowDistance) cluster.Add(corners[i]);
+            else clusters.Add(new List<int> { corners[i] });
         }
 
-        if (wrap && merged.Count > 1 && Distance(points[merged[0]], points[merged[^1]]) < windowDistance)
-            merged.RemoveAt(merged.Count - 1);
+        if (wrap && clusters.Count > 1 && Distance(points[clusters[0][0]], points[clusters[^1][0]]) < windowDistance)
+        {
+            clusters[0].AddRange(clusters[^1]);
+            clusters.RemoveAt(clusters.Count - 1);
+        }
 
-        return merged;
+        return clusters
+            .Select(cluster => cluster.OrderByDescending(index => turns[index]).ThenBy(index => index).First())
+            .OrderBy(index => index)
+            .ToList();
     }
 
     /// <summary>Walks from `index` in `direction` (-1 or +1), accumulating arc length until at least

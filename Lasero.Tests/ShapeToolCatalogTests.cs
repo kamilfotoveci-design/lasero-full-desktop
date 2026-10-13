@@ -11,14 +11,14 @@ namespace Lasero.Tests;
 public sealed class ShapeToolCatalogTests
 {
     [Fact]
-    public void CatalogCoversExactlyTheEightClosedShapesInPickerOrder()
+    public void CatalogCoversExactlyTheNineClosedShapesInPickerOrder()
     {
         var tools = ShapeToolCatalog.All.Select(entry => entry.Tool).ToArray();
 
         Assert.Equal(
             new[]
             {
-                DesignerTool.Rectangle, DesignerTool.Ellipse, DesignerTool.Triangle, DesignerTool.Pentagon,
+                DesignerTool.Square, DesignerTool.Rectangle, DesignerTool.Ellipse, DesignerTool.Triangle, DesignerTool.Pentagon,
                 DesignerTool.Hexagon, DesignerTool.Octagon, DesignerTool.Star, DesignerTool.DoubleStar,
             },
             tools);
@@ -46,10 +46,10 @@ public sealed class ShapeToolCatalogTests
 public sealed class SceneViewModelShapeToolMemoryTests
 {
     [Fact]
-    public void CurrentShapeToolDefaultsToRectangle()
+    public void CurrentShapeToolDefaultsToSquare()
     {
         var scene = new SceneViewModel();
-        Assert.Equal(DesignerTool.Rectangle, scene.CurrentShapeTool);
+        Assert.Equal(DesignerTool.Square, scene.CurrentShapeTool);
     }
 
     [Fact]

@@ -8,7 +8,7 @@
          "not currently selected" should not read as if it were disabled. -->
     <Style x:Key="NavButton" TargetType="Button">
         <Setter Property="Height" Value="44" />
-        <Setter Property="Margin" Value="0,0,0,0" />
+        <Setter Property="Margin" Value="0,0,0,8" />
         <Setter Property="Padding" Value="12,0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="Transparent" />
@@ -595,28 +595,19 @@
 
     <!-- Header actions: new chat, minimize, close. Ghost until hovered, so the header stays quiet. -->
     <Style x:Key="Kamil.HeaderButton" TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
-        <Setter Property="Width" Value="{StaticResource Size.Control.Compact}" />
-        <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
-        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
+        <Setter Property="Width" Value="{StaticResource Size.Control.Assistant.Chip}" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Assistant.Chip}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Assistant.Chip}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="4,0,0,0" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
     </Style>
 
-    <!-- A read-only context fact: screen, material, machine. Not a button — nothing happens when you
-         press it, so it must not look pressable. -->
-    <Style x:Key="Kamil.ContextChip" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
-        <Setter Property="CornerRadius" Value="{StaticResource Radius.Sm}" />
-        <Setter Property="Padding" Value="12,4" />
-        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Compact}" />
-        <Setter Property="Margin" Value="0,0,8,4" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
 
-    <!-- KAMIL message text: the reading size, with breathing room between lines. -->
+    <!-- KAMIL message text: the reading size (15 on a 22 line, about 1.47), with breathing room between
+         lines. Paragraph gaps come from KamilMessageBody, not from this style. -->
     <Style x:Key="Kamil.MessageText" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Body}" />
         <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
         <Setter Property="LineHeight" Value="{StaticResource Size.Text.Assistant.LineHeight}" />
@@ -626,8 +617,15 @@
     <!-- Secondary KAMIL text (subtitle, hints). Secondary ink, not the fainter muted ink, so it keeps
          WCAG AA contrast at 14px. -->
     <Style x:Key="Kamil.MetaText" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Text.Assistant.Meta}" />
+    </Style>
+
+    <!-- What Kamil can see (screen, material, machine) as one quiet line of text. Not a chip and not a
+         band: nothing happens when it is pressed, so it carries no surface at all. -->
+    <Style x:Key="Kamil.ContextLine" TargetType="TextBlock" BasedOn="{StaticResource Kamil.MetaText}">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
     </Style>
 
     <!-- A follow-up or starter prompt. This one *is* pressable, so it carries a border — hover/press
@@ -642,6 +640,185 @@
         <Setter Property="Height" Value="{StaticResource Size.Control.Assistant.Chip}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Assistant.Chip}" />
         <Setter Property="Padding" Value="12,0" />
-        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
+
+    <!-- ===================== Settings window: tabs, grouped rows, switch, typed number ===================== -->
+
+    <!--
+        A settings page: tabs in a strip with a hairline under it, a 2px tint indicator under the selected one (DESIGN.md
+        "selected navigation and tab indicator"). Selection, keyboard navigation and content hosting stay the stock
+        TabControl's; only the chrome is replaced. The tab text keeps one weight so selecting a tab never changes its width.
+    -->
+    <Style x:Key="Tab.Strip" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid KeyboardNavigation.TabNavigation="Local">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1" Padding="32,0,32,0">
+                            <TabPanel IsItemsHost="True" Background="Transparent" />
+                        </Border>
+                        <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1" ContentSource="SelectedContent" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Tab.Item" TargetType="TabItem">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Ui}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid Background="Transparent">
+                        <Border x:Name="FocusRing" Margin="4" CornerRadius="{StaticResource Radius.Sm}"
+                                BorderBrush="{DynamicResource Brush.FocusRing}" BorderThickness="0" />
+                        <ContentPresenter x:Name="HeaderHost" ContentSource="Header" Margin="{TemplateBinding Padding}"
+                                          TextElement.Foreground="{DynamicResource Brush.TextSecondary}"
+                                          TextElement.FontWeight="Medium"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        <Border x:Name="Indicator" Height="2" VerticalAlignment="Bottom" Margin="16,0"
+                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="HeaderHost" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                            <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The small heading above a group of settings rows. Sentence case, one step quieter than the rows it names. -->
+    <Style x:Key="SettingGroupTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="Margin" Value="4,0,0,8" />
+        <Setter Property="AutomationProperties.HeadingLevel" Value="Level2" />
+    </Style>
+
+    <!--
+        On / off for a setting that changes a behaviour of the whole editor. This is the one place a switch is right:
+        the checkbox style documents why object and import properties are squares. Checked is the solid tint (the
+        one "on" colour), the thumb is white, and the track keeps a hairline when off so it reads on a white card.
+        The label is the SettingRow beside it, so the switch itself carries no content and needs an accessible name.
+    -->
+    <Style x:Key="Toggle.Switch" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Width="36" Height="20" Background="Transparent">
+                        <Border x:Name="FocusRing" Margin="-4" CornerRadius="{StaticResource Radius.Xs}"
+                                BorderBrush="{DynamicResource Brush.FocusRing}" BorderThickness="0" />
+                        <Border x:Name="Track" CornerRadius="{StaticResource Radius.Xs}"
+                                Background="{DynamicResource Brush.ToggleTrackOff}"
+                                BorderBrush="{DynamicResource Brush.ToggleTrackOffBorder}" BorderThickness="1" />
+                        <Border x:Name="Thumb" Width="12" Height="12" Margin="3,0" HorizontalAlignment="Left"
+                                CornerRadius="2" Background="{DynamicResource Brush.OnAccent}">
+                            <Border.RenderTransform><TranslateTransform x:Name="ThumbShift" /></Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- Plain Setters carry the state (a switch already on when it loads must render on);
+                             the storyboards only add the slide, as the checkbox style above does. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource Brush.TextPrimary}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}" />
+                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="-18" To="0"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="18" To="0"
+                                                         Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" FillBehavior="Stop" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource Brush.TextPrimary}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}" />
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Brush.TextSecondary}" />
+                        </MultiTrigger>
+                        <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                            <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        A typed number in a settings row: compact, right aligned, tabular figures, field surface from the stock TextBox.
+        Commits on Enter or blur and reverts on Esc through the app-wide field behaviour (docs/interaction-rules.md 1.12).
+        An invalid value turns the outline to the error colour; the reason is in the dialog footer. The stock red adorner
+        is switched off so the outline is the only signal and nothing is drawn outside the field.
+    -->
+    <Style x:Key="SettingNumberInput" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Width" Value="96" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Numeric}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+        <Setter Property="FontSize" Value="{StaticResource Size.Text.Body}" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
+        <Style.Triggers>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>

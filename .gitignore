@@ -19,6 +19,13 @@ Thumbs.db
 
 # Publish/packaging outputs (regenerable)
 artifacts/
+.artifacts/
+publish/
+
+# Local agent coordination and UI-QA run outputs
+.agent-done-*
+.uiqa/*.log
+.uiqa/engraver-proposals.html
 
 # Generated UI-QA screenshots (ad-hoc debug/verification captures, not app
 # assets, not referenced by code or docs). Nested dated audit folders too.

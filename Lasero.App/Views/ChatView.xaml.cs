@@ -13,7 +13,11 @@ public partial class ChatView : UserControl
     private INotifyCollectionChanged? _messages;
     private bool _stickToBottom = true;
 
-    public ChatView() => InitializeComponent();
+    public ChatView()
+    {
+        InitializeComponent();
+        IsVisibleChanged += OnVisibleChanged;
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -65,11 +69,11 @@ public partial class ChatView : UserControl
             Clipboard.SetText(text);
     }
 
-    private void OnInputKeyDown(object sender, KeyEventArgs e)
+    /// <summary>Arriving on the Chat screen puts the caret in the composer, so the first thing a
+    /// keyboard does there is type. Enter sends and Shift+Enter breaks the line inside the composer.</summary>
+    private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
-        if (DataContext is MainViewModel viewModel && viewModel.Chat.SendCommand.CanExecute(null))
-            viewModel.Chat.SendCommand.Execute(null);
-        e.Handled = true;
+        if (e.NewValue is true)
+            Dispatcher.BeginInvoke(new Action(ChatComposer.FocusInput), DispatcherPriority.Input);
     }
 }

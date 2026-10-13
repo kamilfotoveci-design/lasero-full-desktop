@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterOwner" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <Style x:Key="ShortcutKey" TargetType="Border">
@@ -79,7 +79,7 @@
                     <TextBlock Text="Nástroje návrhu" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,16" />
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Výběr / posun plátna" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="V / H" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Obdélník / elipsa" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="R / E" HorizontalAlignment="Center"/></Border></Grid>
-                    <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Čára / text" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="L / T" HorizontalAlignment="Center"/></Border></Grid>
+                    <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Pero / text" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="P / T" HorizontalAlignment="Center"/></Border></Grid>
                     <Grid Style="{StaticResource ShortcutRow}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Trasovat vybranou bitmapu" VerticalAlignment="Center"/><Border Grid.Column="1" Style="{StaticResource ShortcutKey}"><TextBlock Text="Alt + T" HorizontalAlignment="Center"/></Border></Grid>
 
                     <TextBlock Text="Projekt" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,20,0,16" />

@@ -2,14 +2,17 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Lasero.App.ViewModels;
-using Lasero.Core.Trace;
 
 namespace Lasero.App;
 
 public partial class BitmapTraceWindow : Window
 {
     private const double MinPreviewZoom = 0.25;
-    private const double MaxPreviewZoom = 12;
+    private const double MaxPreviewZoom = 40;
+    // Screen-space sizes: a hairline for the traced curve and a small dot for every node.
+    private const double TraceLineScreenPx = 1.25;
+    private const double PointDotScreenPx = 6;
+
     private double _previewZoom = 1;
     private double _previewOffsetX;
     private double _previewOffsetY;
@@ -24,67 +27,57 @@ public partial class BitmapTraceWindow : Window
         InitializeComponent();
         ViewModel = viewModel;
         DataContext = viewModel;
-        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-        Loaded += (_, _) =>
-        {
-            UpdatePreviewStrokeThickness();
-            UpdatePreviewDisplayMode();
-        };
-        Closed += (_, _) =>
-        {
-            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
-            ViewModel.Dispose();
-        };
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(BitmapTraceViewModel.Mode)) UpdatePreviewDisplayMode();
+        Loaded += (_, _) => UpdatePreviewStrokeThickness();
+        Closed += (_, _) => ViewModel.Dispose();
     }
 
     private void OnPreviewViewboxSizeChanged(object sender, SizeChangedEventArgs e) => UpdatePreviewStrokeThickness();
-
-    private void OnPreviewDisplayModeChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
-        UpdatePreviewDisplayMode();
-
-    private void UpdatePreviewDisplayMode()
-    {
-        if (PreviewDisplayMode is null || SourcePreviewImage is null || TracePreviewPath is null || ColoredTracePaths is null || ViewModel is null) return;
-        var mode = PreviewDisplayMode.SelectedIndex;
-        var isColor = ViewModel.Mode == TraceMode.Color;
-        SourcePreviewImage.Visibility = mode == 2 ? Visibility.Collapsed : Visibility.Visible;
-        SourcePreviewImage.Opacity = mode == 0 ? 1 : 0.45;
-        TracePreviewPath.Visibility = mode == 0 || isColor ? Visibility.Collapsed : Visibility.Visible;
-        ColoredTracePaths.Visibility = mode == 0 || !isColor ? Visibility.Collapsed : Visibility.Visible;
-        ColoredTracePaths.Opacity = mode == 1 ? 0.7 : 1;
-    }
 
     private void UpdatePreviewStrokeThickness()
     {
         if (ViewModel is null || PreviewViewbox is null || TracePreviewPath is null) return;
 
         // The Viewbox scales the drawing in millimetres to fit the preview panel. Compensate the
-        // geometry-unit stroke so the outline stays a crisp screen-space line like a CAD trace.
+        // geometry-unit stroke so the outline stays a crisp screen-space line.
         var scaleX = PreviewViewbox.ActualWidth / ViewModel.PreviewWidthMm;
         var scaleY = PreviewViewbox.ActualHeight / ViewModel.PreviewHeightMm;
         var scale = Math.Min(scaleX, scaleY);
-        if (double.IsFinite(scale) && scale > 0)
-        {
-            _basePreviewScale = scale;
-            TracePreviewPath.StrokeThickness = 1.25 / (scale * _previewZoom);
-            ViewModel.PreviewStrokeThicknessMm = TracePreviewPath.StrokeThickness;
-        }
+        if (!double.IsFinite(scale) || scale <= 0) return;
+
+        _basePreviewScale = scale;
+        ApplyStrokeThickness();
+    }
+
+    private void ApplyStrokeThickness()
+    {
+        if (_basePreviewScale <= 0) return;
+        var screenScale = _basePreviewScale * _previewZoom;
+        TracePreviewPath.StrokeThickness = TraceLineScreenPx / screenScale;
+        PointsPreviewPath.StrokeThickness = PointDotScreenPx / screenScale;
+        ViewModel.PreviewStrokeThicknessMm = TracePreviewPath.StrokeThickness;
+
+        // Zoomed in far enough to see single source pixels, draw them as hard squares so a pixel edge is
+        // exactly where the traced line is compared against; smaller than that, resample as usual.
+        var screenPxPerSourcePx = screenScale * ViewModel.PreviewWidthMm / Math.Max(1, ViewModel.SourceImage.PixelWidth);
+        RenderOptions.SetBitmapScalingMode(SourcePreviewImage,
+            screenPxPerSourcePx >= 3 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
     }
 
     private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        var cursor = e.GetPosition(PreviewViewport);
-        ZoomAt(cursor, e.Delta > 0 ? 1.2 : 1 / 1.2);
+        ZoomAt(e.GetPosition(PreviewViewport), e.Delta > 0 ? 1.2 : 1 / 1.2);
         e.Handled = true;
     }
 
     private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
+        {
+            FitPreview();
+            e.Handled = true;
+            return;
+        }
+
         if (e.ChangedButton != MouseButton.Middle) return;
         _isPanning = true;
         _lastPanPoint = e.GetPosition(PreviewViewport);
@@ -113,11 +106,7 @@ public partial class BitmapTraceWindow : Window
         e.Handled = true;
     }
 
-    private void OnZoomInClick(object sender, RoutedEventArgs e) => ZoomAt(ViewportCenter(), 1.2);
-
-    private void OnZoomOutClick(object sender, RoutedEventArgs e) => ZoomAt(ViewportCenter(), 1 / 1.2);
-
-    private void OnFitPreviewClick(object sender, RoutedEventArgs e)
+    private void FitPreview()
     {
         _previewZoom = 1;
         _previewOffsetX = 0;
@@ -143,20 +132,12 @@ public partial class BitmapTraceWindow : Window
         ApplyPreviewTransform();
     }
 
-    private Point ViewportCenter() => new(PreviewViewport.ActualWidth / 2, PreviewViewport.ActualHeight / 2);
-
     private void ApplyPreviewTransform()
     {
         if (PreviewViewbox is null) return;
         PreviewViewbox.RenderTransform = new MatrixTransform(new Matrix(
             _previewZoom, 0, 0, _previewZoom, _previewOffsetX, _previewOffsetY));
-        if (ZoomLevelText is not null)
-            ZoomLevelText.Text = $"{_previewZoom:P0}";
-        if (TracePreviewPath is not null && _basePreviewScale > 0)
-        {
-            TracePreviewPath.StrokeThickness = 1.25 / (_basePreviewScale * _previewZoom);
-            ViewModel.PreviewStrokeThicknessMm = TracePreviewPath.StrokeThickness;
-        }
+        ApplyStrokeThickness();
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e)

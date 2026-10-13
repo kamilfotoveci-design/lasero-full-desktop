@@ -1,4 +1,3 @@
-using System.Reflection;
 using Lasero.App;
 using Lasero.Core.LaseroApi;
 
@@ -8,41 +7,27 @@ namespace Lasero.Tests;
 /// answer that ignores the prompt without cutting it mid-sentence.</summary>
 public sealed class ChatBrevityTests
 {
-    private static string Instruction() => Assert.IsType<string>(
-        typeof(LaseroChatClient).GetField("AssistantInstruction", BindingFlags.NonPublic | BindingFlags.Static)!.GetRawConstantValue());
-
     [Fact]
-    public void PromptAsksForBeginnerBrevityAndKeepsSafetyAndBrandRules()
+    public void PolicyRequestsConversationalBrevityWithoutSuppressingSafety()
     {
-        var instruction = Instruction();
+        var instruction = KamilResponsePolicy.BuildInstruction("sk");
 
-        Assert.Contains("60 slov", instruction, StringComparison.Ordinal);
-        Assert.Contains("3 krátké kroky", instruction, StringComparison.Ordinal);
-        Assert.Contains("Žádný úvod", instruction, StringComparison.Ordinal);
-        Assert.Contains("mm/min", instruction, StringComparison.Ordinal);
-        Assert.Contains("odřezku", instruction, StringComparison.Ordinal);
-        Assert.Contains("neopakuj", instruction, StringComparison.Ordinal);
-        Assert.Contains("česky", instruction, StringComparison.Ordinal);
-        Assert.DoesNotContain('?', instruction);
-        Assert.DoesNotContain('!', instruction);
+        Assert.Contains("25-60 words", instruction, StringComparison.Ordinal);
+        Assert.Contains("1-3 short", instruction, StringComparison.Ordinal);
+        Assert.Contains("one useful follow-up question", instruction, StringComparison.Ordinal);
+        Assert.Contains("safety warning", instruction, StringComparison.Ordinal);
+        Assert.Contains("unknown", instruction, StringComparison.Ordinal);
+        Assert.EndsWith("Reply in Slovak.", instruction, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void PromptForbidsInformalAndFormalAddressWithAGoodAndBadExample()
+    public void LanguageFollowsExplicitChoiceOrTheLatestClearUserMessage()
     {
-        var instruction = Instruction();
-
-        Assert.Contains("Neutrální forma", instruction, StringComparison.Ordinal);
-        Assert.Contains("netykej ani nevykej", instruction, StringComparison.Ordinal);
-        foreach (var word in new[] { "ty, vy, ti, tě, tvůj, váš" })
-            Assert.Contains(word, instruction, StringComparison.Ordinal);
-        Assert.Contains("Špatně: Rád ti pomohu", instruction, StringComparison.Ordinal);
-        Assert.Contains("Správně: Doporučené nastavení", instruction, StringComparison.Ordinal);
-
-        // The prompt's own examples outside the single "Špatně" pair are themselves in neutral form.
-        var withoutBadExample = instruction[..instruction.IndexOf("Špatně:", StringComparison.Ordinal)];
-        Assert.DoesNotContain("napiš", withoutBadExample.Replace("jako nastav, zkus, napiš", string.Empty), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("vyzkoušej", instruction, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("sk", KamilResponsePolicy.ResolveLanguage("Ako môžem vytrasovať toto logo?"));
+        Assert.Equal("cs", KamilResponsePolicy.ResolveLanguage("Jak můžu vytrasovat tohle logo?"));
+        Assert.Equal("en", KamilResponsePolicy.ResolveLanguage("How can I trace this image?"));
+        Assert.Equal("sk", KamilResponsePolicy.ResolveLanguage("Jak můžu vytrasovat tohle logo?", "sk"));
+        Assert.Equal("cs", KamilResponsePolicy.ResolveLanguage("Logo"));
     }
 
     [Fact]

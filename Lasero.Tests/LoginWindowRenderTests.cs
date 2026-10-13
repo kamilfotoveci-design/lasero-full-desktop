@@ -194,7 +194,7 @@ public sealed class LoginWindowRenderTests
         var style = Regex.Match(theme, "<Style TargetType=\"Window\">.*?</Style>", RegexOptions.Singleline).Value;
         Assert.Matches("UseLayoutRounding\"\\s+Value=\"True\"", style);
         Assert.Matches("SnapsToDevicePixels\"\\s+Value=\"True\"", style);
-        Assert.Matches("TextFormattingMode\"\\s+Value=\"Display\"", style);
+        Assert.Matches("TextFormattingMode\"\\s+Value=\"Ideal\"", style);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class LoginWindowRenderTests
         var app = Read("App.xaml.cs");
         Assert.Contains("UseLayoutRoundingProperty.OverrideMetadata", app);
         Assert.Contains("SnapsToDevicePixelsProperty.OverrideMetadata", app);
-        Assert.Contains("TextFormattingMode.Display", app);
+        Assert.Contains("TextFormattingMode.Ideal", app);
     }
 
     [Fact]

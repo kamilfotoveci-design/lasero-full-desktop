@@ -44,7 +44,7 @@ public static class VectorPathSceneFactory
     /// over — only the geometry changes, the same contract VectorTextFactory.Rebuild uses for text.
     /// Editing moves the bounds, so the pivot follows their centre; Transform is adjusted for the pivot
     /// move (ObjectTransform.WithPivotMoved) so a rotated or scaled object does not jump on the canvas.</summary>
-    public static SceneObject Rebuild(SceneObject existing, VectorPath path)
+    public static SceneObject Rebuild(SceneObject existing, VectorPath path, bool preserveOffsetLink = false)
     {
         ArgumentNullException.ThrowIfNull(existing);
         ArgumentNullException.ThrowIfNull(path);
@@ -55,24 +55,42 @@ public static class VectorPathSceneFactory
         var color = previous?.LayerColor ?? RgbColor.Black;
         var geometrySetId = previous?.GeometrySetId ?? Guid.NewGuid();
         var (shapes, bounds) = BuildShapes(path, color, geometrySetId);
-        var localShapes = previous is null
-            ? shapes
-            : shapes.Select(shape => shape with
+        // Contours of one editable path may belong to different layers or geometry sets.
+        // Rebuilding from the first contour's metadata would silently move every other
+        // contour to that layer, including its machine output settings.
+        var distinctMetadata = existing.LocalShapes
+            .Select(shape => (shape.GeometrySetId, shape.LayerId, shape.LayerColor, shape.PreferredMode))
+            .Distinct().Count();
+        if (shapes.Count != existing.LocalShapes.Count && distinctMetadata > 1)
+            throw new InvalidOperationException(
+                "Změna počtu obrysů u vícevrstvého objektu vyžaduje přiřazení vrstvy pro nové obrysy.");
+        var localShapes = shapes.Select((shape, index) =>
+        {
+            var source = index < existing.LocalShapes.Count && shapes.Count == existing.LocalShapes.Count
+                ? existing.LocalShapes[index]
+                : previous;
+            return source is null ? shape : shape with
             {
-                LayerId = previous.LayerId,
-                PreferredMode = previous.PreferredMode,
-            }).ToList();
+                GeometrySetId = source.GeometrySetId,
+                LayerId = source.LayerId,
+                LayerColor = source.LayerColor,
+                PreferredMode = source.PreferredMode,
+            };
+        }).ToList();
 
         var pivot = CenterOf(bounds);
 
         return new SceneObject
         {
             Id = existing.Id,
+            GroupId = existing.GroupId,
+            NestedGroupIds = existing.NestedGroupIds.ToArray(),
             Name = existing.Name,
             LocalShapes = localShapes,
             LocalBounds = bounds,
             LocalPivot = pivot,
             VectorPath = path,
+            OffsetLink = preserveOffsetLink ? existing.OffsetLink : null,
             Transform = existing.Transform.WithPivotMoved(existing.LocalPivot, pivot),
             IsVisible = existing.IsVisible,
             IsLocked = existing.IsLocked,

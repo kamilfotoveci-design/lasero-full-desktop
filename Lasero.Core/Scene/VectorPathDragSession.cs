@@ -18,26 +18,32 @@ public sealed class VectorPathDragSession(IReadOnlyList<ImportedShape> originalS
     public IReadOnlyList<ImportedShape> OriginalShapes { get; } = originalShapes;
 
     /// <summary>Flattens <paramref name="path"/> into live-preview shapes, carrying the pre-drag
-    /// shapes' layer id/color/geometry-set uniformly onto every resulting shape — the same
-    /// "whole object, one layer" contract VectorPathSceneFactory.Create/Rebuild already use for a
-    /// vector-path object, so a drag in progress never shows (or risks persisting) unassigned
-    /// metadata just because the node count or open/closed state changed mid-drag.</summary>
+    /// shapes' layer, colour and geometry-set metadata by contour index, so a drag in progress
+    /// cannot temporarily move contours onto another layer.</summary>
     public IReadOnlyList<ImportedShape> BuildPreviewShapes(VectorPath path, RgbColor fallbackColor)
     {
         ArgumentNullException.ThrowIfNull(path);
         var reference = OriginalShapes.FirstOrDefault();
-        var color = reference?.LayerColor ?? fallbackColor;
-        var layerId = reference?.LayerId ?? Guid.Empty;
-        var geometrySetId = reference?.GeometrySetId ?? Guid.NewGuid();
+        var fallbackGeometrySetId = Guid.NewGuid();
+        var distinctMetadata = OriginalShapes
+            .Select(shape => (shape.GeometrySetId, shape.LayerId, shape.LayerColor, shape.PreferredMode))
+            .Distinct().Count();
+        if (path.Subpaths.Count != OriginalShapes.Count && distinctMetadata > 1)
+            throw new InvalidOperationException(
+                "Změna počtu obrysů u vícevrstvého objektu vyžaduje přiřazení vrstvy pro nové obrysy.");
 
-        return path.Subpaths.Select(subpath => new ImportedShape
+        return path.Subpaths.Select((subpath, index) =>
         {
-            GeometrySetId = geometrySetId,
-            LayerId = layerId,
-            Points = subpath.Flatten(),
-            IsClosed = subpath.IsClosed,
-            LayerColor = color,
-            PreferredMode = subpath.IsClosed ? LayerMode.Fill : LayerMode.Cut,
+            var source = path.Subpaths.Count == OriginalShapes.Count ? OriginalShapes[index] : reference;
+            return new ImportedShape
+            {
+                GeometrySetId = source?.GeometrySetId ?? fallbackGeometrySetId,
+                LayerId = source?.LayerId ?? Guid.Empty,
+                Points = subpath.Flatten(),
+                IsClosed = subpath.IsClosed,
+                LayerColor = source?.LayerColor ?? fallbackColor,
+                PreferredMode = source?.PreferredMode ?? (subpath.IsClosed ? LayerMode.Fill : LayerMode.Cut),
+            };
         }).ToList();
     }
 }

@@ -23,7 +23,7 @@ while a job is active.
 |---|---|---|---|---|---|
 | Wordmark, project name, unsaved dot | K | K | K | K | Identity of what is open; Ctrl+S works everywhere |
 | Project menu (Nový, Otevřít, Uložit, Uložit jako) | K | K | K | K | Only home of Uložit and Uložit jako; a file menu is expected chrome on every screen |
-| Nastavení zařízení (title bar) | H | K | H | H | Work area, Z axis and safety matter while placing artwork. Zařízení has its own identical button in its page header, Home shows the work area read-only |
+| Nastavení zařízení (title bar) | - | - | - | - | Removed. The device settings are four tabs on the Zařízení screen (Rozměry / Jednotky, Základní nastavení, G-code, Další nastavení) beside Připojení a ovládání, with a sticky Zrušit / Uložit bar; there is no settings window |
 | Minimalizovat, Maximalizovat, Zavřít | K | K | K | K | Window |
 | Nav rail: Domů, Návrh, Materiály, Zařízení, Lasero Chat, Nastavení, Účet | K | rail | K | K | Navigation. Návrh swaps in its 56 px tool rail, which repeats Domů, Import, Materiály, Zařízení, Chat, Nastavení |
 | Tool rail (Vybrat, Text, Tvary, Čára), Importovat grafiku | n/a | K | n/a | n/a | Drawing and import act on the canvas. Import is the persistent tool and the only import entry on an empty canvas. No static empty-state card (owner, 2026-10-06); a once-only tip explains the empty canvas |
@@ -73,12 +73,12 @@ switching screens or starting a job moves nothing vertically.
 | Control | Decision | Reason |
 |---|---|---|
 | Connection card, ports, baud, Připojit, Odpojit, Obnovit porty | K | The screen's subject |
-| Nastavení zařízení (page header) | K | Machine settings |
+| Device settings tabs (Zařízení page) | K | Machine settings, edited as one draft |
 | Jog pad, Z, step and feed, Zrušit posun, Najet domů, Odemknout, Nastavit počátek, Jít na nulu, Měkký reset | K | Manual machine control is why the screen exists |
 | Příprava gravírování: framing mode, framing speed, Zkontrolovat oblast | K | Framing settings exist only here; the action sits with its settings and behind the same preflight |
 | Vybrat návrh (import) | R | Import belongs to Návrh and Home; Zařízení does not show a design |
 | Console | K | Machine diagnostics |
-| Title bar Nastavení zařízení | H | Duplicate of the page header button |
+| Title bar Nastavení zařízení | - | Removed, the settings are Zařízení tabs |
 
 ## Chat
 
@@ -121,7 +121,7 @@ bound to two buttons (allow-list with reasons).
 | 3 | Připojit: strip button plus status card "Připojit" (formerly "Připojit laser automaticky"), both `SmartConnectCommand` (Zařízení, disconnected) | Removed the strip button on Zařízení | Identical command and label meaning. Návrh and Chat keep the strip button, they have no connect of their own |
 | 4 | Připojit zařízení (port card) next to the status card primary (Zařízení, disconnected) | Removed (owner, 2026-10-08). The port card only chooses the port and speed; the status card primary is the one **Připojit**, which connects with the selected port (Automaticky scans every port, a chosen COM port connects to it). "Připojit k vybranému portu" and "Připojit automaticky" no longer exist | Two connect buttons on one screen competed, and two labels for one intent made the state harder to read |
 | 5 | Odpojit: status card secondary plus port card Odpojit (Zařízení, connected) | Removed the port card button | Same `DisconnectCommand` twice. The status card slot always offers it while connected (Progress and Success) |
-| 6 | Nastavení zařízení: title bar plus Zařízení page header | Already resolved (title bar hidden on Zařízení and Home) | Kept as is |
+| 6 | Nastavení zařízení: title bar plus Zařízení page header | Both buttons removed, the settings are tabs on Zařízení | Done |
 | 7 | Rámovat / Spustit: strip plus machine panel | No duplicate | Strip is Návrh-only; Zařízení has "Zkontrolovat oblast" while the strip button is hidden there. Machine panel in the inspector is unreachable today (`IsMachineControlMode` is never set) |
 | 8 | Nový projekt, Otevřít projekt: Home buttons plus Projekt menu | Keep both | The menu is persistent chrome and the only home of Ctrl+N and Ctrl+O discovery; Home buttons are that screen's start CTAs. A closed menu is not a second button |
 | 9 | Importovat: Home button, rail tool, card (different screens) | Keep | Never visible together. Home import continues to Návrh |

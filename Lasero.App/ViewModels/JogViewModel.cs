@@ -16,6 +16,8 @@ public partial class JogViewModel : ObservableObject
     private double? _positioningLaserMaximumSValue;
     private bool _positioningLaserModeEnabled;
     private Timer? _positioningLaserWatchdog;
+    private DateTime _positioningLaserStartedUtc;
+    private const double FixedPositioningLaserPowerPercent = 1;
 
     /// <summary>Asks the operator to confirm a risky machine action. Defaults to the shared Lasero
     /// dialog; tests replace it so no window is shown.</summary>
@@ -24,6 +26,7 @@ public partial class JogViewModel : ObservableObject
 
     /// <summary>How often a lit positioning laser re-checks that the machine is still connected, idle and reporting fresh status.</summary>
     public TimeSpan PositioningLaserWatchdogInterval { get; set; } = TimeSpan.FromMilliseconds(500);
+    public TimeSpan PositioningLaserMaximumDuration { get; set; } = TimeSpan.FromSeconds(30);
 
     public double[] StepSizePresets { get; } = [0.1, 1, 5, 10, 50, 100];
 
@@ -36,12 +39,21 @@ public partial class JogViewModel : ObservableObject
     [ObservableProperty] private string? _lastActionMessage;
     [ObservableProperty] private double _positioningLaserPowerPercent = 1;
     [ObservableProperty] private bool _isPositioningLaserOn;
+    [ObservableProperty] private bool _isPositioningLaserStarting;
+    [ObservableProperty] private bool _isPositioningLaserStopping;
+
+    public bool IsPositioningLaserActiveOrStarting => IsPositioningLaserOn || IsPositioningLaserStarting;
+    public bool IsPositioningLaserBusy => IsPositioningLaserActiveOrStarting || IsPositioningLaserStopping;
+    public string PositioningLaserButtonLabel => IsPositioningLaserStopping ? "Vypínám paprsek…"
+        : IsPositioningLaserActiveOrStarting ? "Vypnout paprsek" : "Zapnout paprsek (1 %)";
+    public bool CanTogglePositioningLaser => !IsPositioningLaserStopping &&
+        (IsPositioningLaserActiveOrStarting || CanUsePositioningLaser);
 
     public bool CanUsePositioningLaser =>
         _positioningLaserModeEnabled &&
         _positioningLaserMaximumSValue is > 0 && double.IsFinite(_positioningLaserMaximumSValue.Value) &&
-        CanManualMotion() &&
-        IsValidPositioningPower(PositioningLaserPowerPercent);
+        !JobActive() && CanManualMotion() &&
+        PositioningLaserPowerPercent == FixedPositioningLaserPowerPercent;
 
     /// <summary>Whether a click-to-jog request would currently be accepted — bindable so the
     /// workspace preview canvas can show a crosshair cursor only when it would actually do something.</summary>
@@ -62,14 +74,14 @@ public partial class JogViewModel : ObservableObject
     private bool CanManualMotion() => IsConnected() && HasFreshStatus() && _connection.LastStatus?.Mode == GrblMachineMode.Idle;
     // The positioning laser reports Idle to GRBL — CanManualMotion alone would happily let Jog/Home/
     // GoToWorkZero run while the beam is physically lit. Every motion command must also check this.
-    private bool CanManualMotionWithLaserOff() => CanManualMotion() && !IsPositioningLaserOn;
+    private bool CanManualMotionWithLaserOff() => !JobActive() && CanManualMotion() && !IsPositioningLaserBusy;
     /// <summary>Supplied by the shell: true while a job is Preparing, Framing, Running or Paused. Homing sends the head to the
     /// machine origin, so it must never start under a job, whatever the controller happens to report between two moves.</summary>
     public Func<bool>? IsJobActive { get; set; }
 
     private bool JobActive() => IsJobActive?.Invoke() == true;
 
-    private bool CanHome() => !JobActive() && IsConnected() && HasFreshStatus() && !IsPositioningLaserOn
+    private bool CanHome() => !JobActive() && IsConnected() && HasFreshStatus() && !IsPositioningLaserActiveOrStarting && !IsPositioningLaserStopping
         && _connection.LastStatus?.Mode is GrblMachineMode.Idle or GrblMachineMode.Alarm;
 
     /// <summary>Why Najet domů is unavailable, or null when it is available. A disabled machine action says why.</summary>
@@ -77,7 +89,7 @@ public partial class JogViewModel : ObservableObject
         JobActive() ? "Při probíhající úloze nelze najíždět do výchozí polohy."
         : !IsConnected() ? "Do výchozí polohy lze najet po připojení zařízení."
         : !HasFreshStatus() ? "Čeká se na aktuální stav zařízení."
-        : IsPositioningLaserOn ? "Do výchozí polohy lze najet po vypnutí polohovacího laseru."
+        : IsPositioningLaserActiveOrStarting || IsPositioningLaserStopping ? "Do výchozí polohy lze najet po vypnutí polohovacího laseru."
         : (_connection.LastStatus?.Mode is GrblMachineMode.Idle or GrblMachineMode.Alarm) ? null
         : "Zařízení se právě pohybuje nebo není v klidu.";
 
@@ -94,70 +106,144 @@ public partial class JogViewModel : ObservableObject
 
     public void ConfigurePositioningLaser(double? maximumSValue, bool? laserModeEnabled)
     {
+        var previousMaximum = _positioningLaserMaximumSValue;
+        var previousLaserMode = _positioningLaserModeEnabled;
         _positioningLaserMaximumSValue = maximumSValue is > 0 && double.IsFinite(maximumSValue.Value)
             ? maximumSValue.Value
             : null;
         _positioningLaserModeEnabled = laserModeEnabled == true;
+        if (IsPositioningLaserActiveOrStarting &&
+            (previousMaximum != _positioningLaserMaximumSValue ||
+             previousLaserMode != _positioningLaserModeEnabled))
+            _ = StopPositioningLaserAsync();
         OnPropertyChanged(nameof(CanUsePositioningLaser));
+        OnPropertyChanged(nameof(CanTogglePositioningLaser));
     }
 
-    /// <summary>
-    /// Energizes the laser at a deliberately low percentage of the controller's $30 maximum.
-    /// The view invokes this on pointer/key down and always pairs it with StopPositioningLaserAsync
-    /// on release; this is not a toggle that can be accidentally left enabled.
-    /// </summary>
+    public Task TogglePositioningLaserAsync() =>
+        IsPositioningLaserActiveOrStarting ? StopPositioningLaserAsync() : StartPositioningLaserAsync();
+
+    /// <summary>Starts a bounded 1% pointer session against the controller's confirmed $30 maximum.</summary>
     public async Task StartPositioningLaserAsync()
     {
-        if (!CanUsePositioningLaser || IsPositioningLaserOn) return;
+        if (!CanUsePositioningLaser || IsPositioningLaserActiveOrStarting || IsPositioningLaserStopping) return;
 
         var request = Interlocked.Increment(ref _positioningLaserRequest);
-        var sValue = _positioningLaserMaximumSValue!.Value * PositioningLaserPowerPercent / 100.0;
-        var result = await _connection.SendCommandAsync(
-            $"M3 S{sValue.ToString("0.###", CultureInfo.InvariantCulture)}");
+        _positioningLaserStartedUtc = DateTime.UtcNow;
+        IsPositioningLaserStarting = true;
+        try
+        {
+            var sValue = _positioningLaserMaximumSValue!.Value * FixedPositioningLaserPowerPercent / 100.0;
+            var result = await _connection.SendCommandAsync(
+                $"M3 S{sValue.ToString("0.###", CultureInfo.InvariantCulture)}");
 
-        // A release can queue M5 while M3 is awaiting its controller acknowledgement. Never let the
-        // older completion turn the UI back on after that release.
-        if (request != Volatile.Read(ref _positioningLaserRequest)) return;
-        IsPositioningLaserOn = result.IsOk;
-        LastActionMessage = result.IsOk
-            ? $"Polohovací paprsek: {PositioningLaserPowerPercent:0.#} %."
-            : result.Message ?? "Polohovací paprsek se nepodařilo zapnout.";
+            // A second click can queue M5 while M3 awaits acknowledgement. Its completion must not
+            // turn the UI back on after that stop request.
+            if (request != Volatile.Read(ref _positioningLaserRequest)) return;
+            if (!result.IsOk)
+            {
+                // The command may have reached the controller even if its acknowledgement was lost.
+                if (IsConnected()) _connection.SoftReset();
+                LastActionMessage = result.Message ?? "Zapnutí paprsku nebylo potvrzeno; zařízení bylo resetováno.";
+                return;
+            }
+
+            IsPositioningLaserOn = true;
+            LastActionMessage = "Polohovací paprsek: 1 %. Kliknutím vypnete.";
+            if (DateTime.UtcNow - _positioningLaserStartedUtc >= PositioningLaserMaximumDuration ||
+                !CanManualMotion() || JobActive())
+                await StopPositioningLaserAsync();
+        }
+        catch (Exception ex)
+        {
+            if (request == Volatile.Read(ref _positioningLaserRequest))
+            {
+                IsPositioningLaserOn = false;
+                if (IsConnected()) _connection.SoftReset();
+                LastActionMessage = $"Zapnutí paprsku selhalo; zařízení bylo resetováno: {ex.Message}";
+            }
+        }
+        finally
+        {
+            IsPositioningLaserStarting = false;
+        }
     }
 
     public async Task StopPositioningLaserAsync()
     {
+        if (IsPositioningLaserStopping) return;
         Interlocked.Increment(ref _positioningLaserRequest);
+        IsPositioningLaserStopping = true;
+        IsPositioningLaserStarting = false;
         IsPositioningLaserOn = false;
-        if (!IsConnected()) return;
-
-        var result = await _connection.SendCommandAsync("M5");
-        if (!result.IsOk)
+        try
         {
-            // M5 is queued behind other line commands and can be rejected or lost; the realtime soft
-            // reset bypasses the queue and always stops the spindle/laser, so never leave it at that.
-            _connection.SoftReset();
-            LastActionMessage = "Vypnutí paprsku se nepodařilo potvrdit, zařízení bylo resetováno.";
-            return;
+            if (!IsConnected()) return;
+
+            var offCommand = _connection.SendCommandAsync("M5");
+            if (await Task.WhenAny(offCommand, Task.Delay(TimeSpan.FromSeconds(1))) != offCommand)
+            {
+                // M5 is serialized behind other lines. Realtime reset can still reach the controller.
+                _connection.SoftReset();
+                LastActionMessage = "Vypnutí paprsku nebylo potvrzeno včas; zařízení bylo resetováno.";
+                return;
+            }
+            var result = await offCommand;
+            if (!result.IsOk)
+            {
+                // M5 can be rejected or lost; realtime reset bypasses the command queue.
+                _connection.SoftReset();
+                LastActionMessage = "Vypnutí paprsku se nepodařilo potvrdit, zařízení bylo resetováno.";
+                return;
+            }
+            LastActionMessage = "Polohovací paprsek je vypnutý.";
         }
-        LastActionMessage = "Polohovací paprsek je vypnutý.";
+        catch (Exception ex)
+        {
+            if (IsConnected()) _connection.SoftReset();
+            LastActionMessage = $"Vypnutí paprsku selhalo; zařízení bylo resetováno: {ex.Message}";
+        }
+        finally
+        {
+            IsPositioningLaserStopping = false;
+        }
     }
 
-    // Dead-man's switch for a lit positioning laser. The view releases the beam on every input event
-    // it can observe, but a stalled status stream or a non-idle controller is only visible here.
-    private void UpdatePositioningLaserWatchdog(bool lit)
+    // A click starts a bounded session. A stale status, non-idle state, job or deadline stops it.
+    private void UpdatePositioningLaserWatchdog()
     {
         var previous = Interlocked.Exchange(ref _positioningLaserWatchdog, null);
         previous?.Dispose();
-        if (!lit) return;
+        if (!IsPositioningLaserActiveOrStarting || IsPositioningLaserStopping) return;
         var interval = PositioningLaserWatchdogInterval > TimeSpan.Zero
             ? PositioningLaserWatchdogInterval
             : TimeSpan.FromMilliseconds(500);
-        _positioningLaserWatchdog = new Timer(_ => RunOnUiThread(CheckLitPositioningLaser), null, interval, interval);
+        var request = Volatile.Read(ref _positioningLaserRequest);
+        _positioningLaserWatchdog = new Timer(_ =>
+        {
+            // Deadline must not wait for a busy WPF dispatcher. Claim this session before sending
+            // the realtime reset so a disposed timer cannot reset a later session.
+            if (DateTime.UtcNow - _positioningLaserStartedUtc >= PositioningLaserMaximumDuration &&
+                Interlocked.CompareExchange(ref _positioningLaserRequest, request + 1, request) == request)
+            {
+                _connection.SoftReset();
+                RunOnUiThread(() =>
+                {
+                    IsPositioningLaserStarting = false;
+                    IsPositioningLaserOn = false;
+                    LastActionMessage = "Časový limit 30 s: polohovací paprsek byl vypnut resetem zařízení.";
+                });
+                return;
+            }
+            RunOnUiThread(CheckLitPositioningLaser);
+        }, null, interval, interval);
     }
 
     private void CheckLitPositioningLaser()
     {
-        if (!IsPositioningLaserOn || CanManualMotion()) return;
+        if (!IsPositioningLaserActiveOrStarting || IsPositioningLaserStopping) return;
+        if (CanManualMotion() && !JobActive() &&
+            DateTime.UtcNow - _positioningLaserStartedUtc < PositioningLaserMaximumDuration) return;
         _ = StopPositioningLaserAsync();
     }
 
@@ -281,7 +367,17 @@ public partial class JogViewModel : ObservableObject
 
     private void NotifyMachineStateChanged()
     {
-        if (!IsConnected()) IsPositioningLaserOn = false;
+        if (!IsConnected() && IsPositioningLaserActiveOrStarting)
+        {
+            Interlocked.Increment(ref _positioningLaserRequest);
+            IsPositioningLaserStarting = false;
+            IsPositioningLaserOn = false;
+        }
+        else if (IsPositioningLaserActiveOrStarting && !IsPositioningLaserStopping &&
+                 (!CanManualMotion() || JobActive()))
+        {
+            _ = StopPositioningLaserAsync();
+        }
         NotifyXyJogCommands();
         NotifyZJogCommands();
         CancelJogCommand.NotifyCanExecuteChanged();
@@ -290,8 +386,9 @@ public partial class JogViewModel : ObservableObject
         SoftResetCommand.NotifyCanExecuteChanged();
         SetOriginHereCommand.NotifyCanExecuteChanged();
         GoToWorkZeroCommand.NotifyCanExecuteChanged();
-        CanJogToPoint = CanManualMotion();
+        CanJogToPoint = CanManualMotionWithLaserOff();
         OnPropertyChanged(nameof(CanUsePositioningLaser));
+        OnPropertyChanged(nameof(CanTogglePositioningLaser));
         OnPropertyChanged(nameof(HomeBlockedReason));
         OnPropertyChanged(nameof(HomeTooltip));
     }
@@ -303,14 +400,30 @@ public partial class JogViewModel : ObservableObject
     partial void OnEnableZAxisChanged(bool value) => NotifyZJogCommands();
     partial void OnInvertZAxisChanged(bool value) => NotifyZJogCommands();
     partial void OnPositioningLaserPowerPercentChanged(double value) =>
-        OnPropertyChanged(nameof(CanUsePositioningLaser));
+        NotifyMachineStateChanged();
 
-    // The laser being lit must immediately re-gate every motion command (Jog/Home/SetOriginHere/
-    // GoToWorkZero) — see CanManualMotionWithLaserOff. NotifyMachineStateChanged already resets
-    // IsPositioningLaserOn to false on disconnect, which safely re-enters this once and settles.
+    partial void OnIsPositioningLaserStartingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsPositioningLaserActiveOrStarting));
+        OnPropertyChanged(nameof(IsPositioningLaserBusy));
+        OnPropertyChanged(nameof(PositioningLaserButtonLabel));
+        UpdatePositioningLaserWatchdog();
+        NotifyMachineStateChanged();
+    }
+
+    partial void OnIsPositioningLaserStoppingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsPositioningLaserBusy));
+        OnPropertyChanged(nameof(PositioningLaserButtonLabel));
+        NotifyMachineStateChanged();
+    }
+
     partial void OnIsPositioningLaserOnChanged(bool value)
     {
-        UpdatePositioningLaserWatchdog(value);
+        OnPropertyChanged(nameof(IsPositioningLaserActiveOrStarting));
+        OnPropertyChanged(nameof(IsPositioningLaserBusy));
+        OnPropertyChanged(nameof(PositioningLaserButtonLabel));
+        UpdatePositioningLaserWatchdog();
         NotifyMachineStateChanged();
     }
 
@@ -333,9 +446,6 @@ public partial class JogViewModel : ObservableObject
     }
 
     private static bool IsPositiveFinite(double value) => double.IsFinite(value) && value > 0;
-    private static bool IsValidPositioningPower(double value) =>
-        double.IsFinite(value) && value is >= 0.1 and <= 5;
-
     private static void RunOnUiThread(Action action)
     {
         var dispatcher = Application.Current?.Dispatcher;

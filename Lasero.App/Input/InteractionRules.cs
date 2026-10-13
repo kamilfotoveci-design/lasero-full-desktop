@@ -114,8 +114,9 @@ public static class InteractionRules
         (Key.Delete, ModifierKeys.None) => true,
         (Key.D or Key.Z or Key.Y or Key.C or Key.X or Key.V or Key.A or Key.G, ModifierKeys.Control) => true,
         (Key.Z or Key.G, ModifierKeys.Control | ModifierKeys.Shift) => true,
-        (Key.U or Key.O, ModifierKeys.Control | ModifierKeys.Shift) => true,
-        (Key.T, ModifierKeys.Alt) => true,
+        (Key.U or Key.O or Key.C or Key.B, ModifierKeys.Control | ModifierKeys.Shift) => true,
+        (Key.U, ModifierKeys.Control) => true,
+        (Key.T or Key.P or Key.I, ModifierKeys.Alt) => true,
         _ => false,
     };
 

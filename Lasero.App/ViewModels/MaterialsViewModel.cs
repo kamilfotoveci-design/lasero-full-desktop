@@ -112,12 +112,37 @@ public partial class MaterialsViewModel : ObservableObject
     partial void OnSelectedRecipeChanged(MaterialRecipe? value)
     {
         OnPropertyChanged(nameof(HasSelectedRecipe));
+        OnPropertyChanged(nameof(HasSelectedLineInterval));
+        OnPropertyChanged(nameof(SelectedLineIntervalText));
         OnPropertyChanged(nameof(HasSelectedNote));
         OnPropertyChanged(nameof(HasSelectedWarning));
     }
     partial void OnSearchTextChanged(string value) => RefreshRecommendedRecipes();
 
     public bool HasSelectedRecipe => SelectedRecipe is not null;
+    /// <summary>A pure outline cut never scans lines, so its recipe has no line interval to show.</summary>
+    public bool HasSelectedLineInterval => SelectedRecipe is { Mode: not LayerMode.Cut };
+    public string SelectedLineIntervalText => SelectedRecipe is { Mode: not LayerMode.Cut } recipe
+        ? $"{recipe.FillLineIntervalMm.ToString("0.0##", System.Globalization.CultureInfo.CurrentCulture)} mm"
+        : string.Empty;
+
+    /// <summary>
+    /// Opens the catalogue for one operation: laser type and power come from the saved machine settings
+    /// (re-read, because the Device screen may have changed them since this view model was created),
+    /// the operation filter follows the layer's mode, the search is cleared and nothing is selected.
+    /// A layer that fills and cuts has no single catalogue operation, so the filter stays as it is.
+    /// </summary>
+    public void PreselectFor(LayerSettings layer)
+    {
+        var machine = _settingsStore.Current.Machine;
+        SelectedTechnology = machine.LaserTechnology;
+        SelectedPowerWatts = machine.LaserPowerWatts;
+        if (layer.Mode is LayerMode.Cut or LayerMode.Fill) SelectedOperation = layer.Mode;
+        SelectedMaterial = null;
+        SearchText = string.Empty;
+        RefreshRecommendedRecipes();
+    }
+
     public bool HasSelectedNote => !string.IsNullOrWhiteSpace(SelectedRecipe?.Note);
     public bool HasSelectedWarning => !string.IsNullOrWhiteSpace(SelectedRecipe?.Warning);
 

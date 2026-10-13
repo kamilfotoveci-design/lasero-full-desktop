@@ -9,18 +9,14 @@ namespace Lasero.App.Views;
 public partial class MachinePanelView : UserControl
 {
     private INotifyCollectionChanged? _consoleLines;
-    private bool _positioningLaserPressed;
-
     private Window? _hostWindow;
 
     public MachinePanelView()
     {
         InitializeComponent();
 
-        // Hold-to-fire must end on every way the release can be missed, not only on mouse-up:
-        // keyboard focus moving away (Space/Enter key-up is then delivered elsewhere), the button
-        // becoming disabled, the panel being hidden, or the window being deactivated (Alt+Tab).
-        PositioningLaserButton.LostKeyboardFocus += OnPositioningLaserInterrupted;
+        // Click mode remains bounded by the view-model watchdog. Leaving the machine panel or
+        // deactivating the window still requests an immediate M5.
         PositioningLaserButton.IsEnabledChanged += OnPositioningLaserPropertyInterrupted;
         IsVisibleChanged += OnPositioningLaserPropertyInterrupted;
     }
@@ -46,8 +42,7 @@ public partial class MachinePanelView : UserControl
         if (_consoleLines is not null)
             _consoleLines.CollectionChanged -= OnConsoleLinesChanged;
         _consoleLines = null;
-        if (_positioningLaserPressed ||
-            DataContext is MainViewModel { Jog.IsPositioningLaserOn: true })
+        if (DataContext is MainViewModel { Jog.IsPositioningLaserActiveOrStarting: true })
         {
             await StopPositioningLaserAsync();
         }
@@ -64,53 +59,13 @@ public partial class MachinePanelView : UserControl
         e.Handled = true;
     }
 
-    private async void OnPositioningLaserPressed(object sender, MouseButtonEventArgs e)
+    private async void OnPositioningLaserClick(object sender, RoutedEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left || DataContext is not MainViewModel viewModel ||
-            !viewModel.Jog.CanUsePositioningLaser) return;
-
-        _positioningLaserPressed = true;
-        ((Button)sender).CaptureMouse();
-        e.Handled = true;
-        await viewModel.Jog.StartPositioningLaserAsync();
+        if (DataContext is MainViewModel viewModel)
+            await viewModel.Jog.TogglePositioningLaserAsync();
     }
 
-    private async void OnPositioningLaserReleased(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Left || !_positioningLaserPressed) return;
-        _positioningLaserPressed = false;
-        ((Button)sender).ReleaseMouseCapture();
-        e.Handled = true;
-        await StopPositioningLaserAsync();
-    }
-
-    private async void OnPositioningLaserLostCapture(object sender, MouseEventArgs e)
-    {
-        if (!_positioningLaserPressed) return;
-        _positioningLaserPressed = false;
-        await StopPositioningLaserAsync();
-    }
-
-    private async void OnPositioningLaserKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.IsRepeat || e.Key is not (Key.Space or Key.Enter) ||
-            DataContext is not MainViewModel viewModel || !viewModel.Jog.CanUsePositioningLaser) return;
-
-        _positioningLaserPressed = true;
-        e.Handled = true;
-        await viewModel.Jog.StartPositioningLaserAsync();
-    }
-
-    private async void OnPositioningLaserKeyUp(object sender, KeyEventArgs e)
-    {
-        if (e.Key is not (Key.Space or Key.Enter) || !_positioningLaserPressed) return;
-        _positioningLaserPressed = false;
-        e.Handled = true;
-        await StopPositioningLaserAsync();
-    }
-
-    // IsEnabledChanged and IsVisibleChanged also fire when the state becomes true; only the
-    // transitions away from "usable" interrupt a hold.
+    // Disabling or hiding the control requests M5 while the pointer is active.
     private void OnPositioningLaserPropertyInterrupted(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is true) return;
@@ -119,15 +74,12 @@ public partial class MachinePanelView : UserControl
 
     private async void OnPositioningLaserInterrupted(object? sender, EventArgs e)
     {
-        if (!_positioningLaserPressed && DataContext is not MainViewModel { Jog.IsPositioningLaserOn: true }) return;
-
-        if (PositioningLaserButton.IsMouseCaptured) PositioningLaserButton.ReleaseMouseCapture();
+        if (DataContext is not MainViewModel { Jog.IsPositioningLaserActiveOrStarting: true }) return;
         await StopPositioningLaserAsync();
     }
 
     private async Task StopPositioningLaserAsync()
     {
-        _positioningLaserPressed = false;
         if (DataContext is MainViewModel viewModel)
             await viewModel.Jog.StopPositioningLaserAsync();
     }

@@ -5,6 +5,7 @@
              xmlns:components="clr-namespace:Lasero.App.Components"
              xmlns:kamil="clr-namespace:Lasero.App.Views.Kamil"
              xmlns:vm="clr-namespace:Lasero.App.ViewModels"
+             xmlns:input="clr-namespace:Lasero.App.Input"
              x:Name="Host"
              IsHitTestVisible="True"
              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
@@ -25,16 +26,15 @@
     -->
     <UserControl.Resources>
         <Style x:Key="MessageText" TargetType="TextBlock" BasedOn="{StaticResource Kamil.MessageText}">
-            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
-            <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Setter Property="TextOptions.TextHintingMode" Value="Auto" />
         </Style>
 
-        <!-- Minimized Kamil is the artwork itself: no circular plate, ring, shadow or status badge.
-             Breathing is an activity signal, not decoration, so it runs only while Chat.IsBusy.
-             Pointer feedback has its own transform so the two animations never fight. -->
+        <!-- The 48-DIP anchor remains the only animated Kamil instance on the Designer canvas.
+             Message rows retain static portraits so the conversation stays easy to read. -->
         <Style x:Key="Kamil.MinimizedAvatar" TargetType="Button">
-            <Setter Property="Width" Value="{StaticResource Size.Icon.Xxl}" />
-            <Setter Property="Height" Value="{StaticResource Size.Icon.Xxl}" />
+            <Setter Property="Width" Value="80" />
+            <Setter Property="Height" Value="80" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Background" Value="{x:Null}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -42,34 +42,20 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid RenderTransformOrigin="0.5,0.5">
+                        <Grid Background="Transparent" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform>
                                 <TransformGroup>
-                                    <ScaleTransform x:Name="BreatheScale" ScaleX="1" ScaleY="1" />
                                     <ScaleTransform x:Name="AvatarScale" ScaleX="1" ScaleY="1" />
                                 </TransformGroup>
                             </Grid.RenderTransform>
 
-                            <components:LaseroAvatar x:Name="Avatar" Size="48" />
+                            <kamil:KamilLiveAvatar x:Name="Avatar" Width="80" Height="80"
+                                                   BlinkSource="{StaticResource Image.Kamil.Blink}"
+                                                   ThinkingSource="{StaticResource Image.Kamil.Thinking}"
+                                                   HappySource="{StaticResource Image.Kamil.Happy}"
+                                                   ErrorSource="{StaticResource Image.Kamil.Error}" />
                         </Grid>
                         <ControlTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Chat.IsBusy}" Value="True">
-                                <DataTrigger.EnterActions>
-                                <BeginStoryboard x:Name="BusyBreathe">
-                                    <Storyboard AutoReverse="True" RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetName="BreatheScale" Storyboard.TargetProperty="ScaleX"
-                                                         From="1" To="1.015" Duration="{StaticResource Motion.Breathe}"
-                                                         EasingFunction="{StaticResource Ease.Breathe}" />
-                                        <DoubleAnimation Storyboard.TargetName="BreatheScale" Storyboard.TargetProperty="ScaleY"
-                                                         From="1" To="1.015" Duration="{StaticResource Motion.Breathe}"
-                                                         EasingFunction="{StaticResource Ease.Breathe}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                                </DataTrigger.EnterActions>
-                                <DataTrigger.ExitActions>
-                                    <StopStoryboard BeginStoryboardName="BusyBreathe" />
-                                </DataTrigger.ExitActions>
-                            </DataTrigger>
                             <!-- Hover is a quiet high-damping settle, not a mascot bounce. -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Trigger.EnterActions>
@@ -139,7 +125,7 @@
         <Border x:Name="Surface" Canvas.Left="0" Canvas.Top="0"
                 CornerRadius="{StaticResource Radius.Lg}"
                 RenderTransformOrigin="1,1"
-                Width="48" Height="48">
+                Width="80" Height="80">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Background" Value="{DynamicResource Brush.Panel}" />
@@ -181,7 +167,6 @@
                 <Button x:Name="PillLayer" Style="{StaticResource Kamil.MinimizedAvatar}"
                         Command="{Binding OpenQuickAskCommand}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                        ToolTip="Kamil — dotazy lze klást bez opuštění pracovní plochy"
                         automation:AutomationProperties.Name="Otevřít asistenta Kamil">
                     <Button.RenderTransform>
                         <TranslateTransform x:Name="PillOffset" />
@@ -216,9 +201,22 @@
                     </Grid>
 
                     <kamil:KamilComposer x:Name="QuickComposer" Grid.Row="1"
-                                         Placeholder="Napsat dotaz nebo přiložit fotku…" />
+                                         Placeholder="Dotaz pro Kamila…" />
 
-                    <ItemsControl Grid.Row="2" Margin="0,4,0,0" ItemsSource="{Binding QuickPrompts}">
+                    <StackPanel Grid.Row="2" Margin="0,4,0,0">
+                        <ItemsControl ItemsSource="{Binding ActionChips}"
+                                      Visibility="{Binding HasActionChips, Converter={StaticResource BoolToVisibilityShared}}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource Kamil.PromptChip}" Content="{Binding Label}"
+                                            Command="{Binding Command}" ToolTip="{Binding Hint}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding QuickPrompts}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
@@ -230,6 +228,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </StackPanel>
                 </Grid>
 
                 <!-- ==================== EXPANDED ==================== -->
@@ -239,7 +238,6 @@
                     </Grid.RenderTransform>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -248,7 +246,7 @@
                          buttons, which handle their own clicks first) minimizes the assistant — the
                          same action as the header's own Minimize button, just reachable from the whole
                          row instead of only its 28px icon. -->
-                    <Border Grid.Row="0" Padding="12,12" BorderBrush="{DynamicResource Brush.PanelBorder}"
+                    <Border Grid.Row="0" Padding="12,8" BorderBrush="{DynamicResource Brush.PanelBorder}"
                             BorderThickness="0,0,0,1" Background="Transparent" Cursor="Hand"
                             MouseLeftButtonUp="OnHeaderClick">
                         <Grid>
@@ -257,6 +255,10 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
                             <Grid VerticalAlignment="Center" Margin="0,0,12,0">
                                 <components:LaseroAvatar Size="32" />
@@ -275,13 +277,16 @@
                                 </Ellipse>
                             </Grid>
 
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="KAMIL" FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Assistant.Body}" />
-                                <TextBlock Text="AI laserový asistent" Style="{StaticResource Kamil.MetaText}" Margin="0,0,0,0" />
-                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="Kamil" VerticalAlignment="Center"
+                                       FontWeight="SemiBold" FontSize="{StaticResource Size.Text.Assistant.Body}"
+                                       Foreground="{DynamicResource Brush.TextPrimary}" />
+
+                            <!-- What Kamil can see, one quiet line under the name. It collapses itself while
+                                 the screen is the only fact, so the header is then a single row. -->
+                            <kamil:KamilContextBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" />
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                <!-- Conversation switcher. The list itself is a popup so the header stays one line. -->
+                                <!-- Conversation history stays separate from the panel's window controls. -->
                                 <Button x:Name="SessionsButton" Style="{StaticResource Kamil.HeaderButton}"
                                         Click="OnSessionsButtonClick"
                                         ToolTip="Dřívější konverzace"
@@ -289,14 +294,14 @@
                                     <components:IconGlyph IconData="{StaticResource Glyph.History}"
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                 </Button>
-                                <!-- Minimize is the only way out of the panel: there is deliberately no Close,
-                                     the avatar is the permanent anchor. It keeps the conversation. -->
+                                <!-- Match the familiar Windows order: minimize, expand, close. These only
+                                     change the assistant surface; the shared conversation is preserved. -->
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
-                                        Command="{Binding Chat.NewChatCommand}"
-                                        ToolTip="Nová konverzace"
-                                        automation:AutomationProperties.Name="Nová konverzace">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.New}"
-                                                          Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                                        Command="{Binding MinimizeCommand}"
+                                        ToolTip="Zmenšit na odznak · Esc"
+                                        automation:AutomationProperties.Name="Zmenšit asistenta">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Minimize}"
+                                                          Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                                 </Button>
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
                                         Command="{Binding OpenFullChatCommand}"
@@ -306,40 +311,38 @@
                                                           Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
                                 </Button>
                                 <Button Style="{StaticResource Kamil.HeaderButton}"
-                                        Command="{Binding MinimizeCommand}"
-                                        ToolTip="Zmenšit na odznak · Esc"
-                                        automation:AutomationProperties.Name="Zmenšit asistenta">
-                                    <components:IconGlyph IconData="{StaticResource Glyph.Minimize}"
+                                        Command="{Binding CloseCommand}"
+                                        ToolTip="Zavřít panel asistenta"
+                                        automation:AutomationProperties.Name="Zavřít panel asistenta">
+                                    <components:IconGlyph IconData="{StaticResource Glyph.Close}"
                                                           Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                                 </Button>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <!-- Context -->
-                    <Border Grid.Row="1" Padding="12,8" Background="{DynamicResource Brush.Background}"
-                            BorderBrush="{DynamicResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                        <kamil:KamilContextBar />
-                    </Border>
-
-                    <!-- Conversation. The only thing on this panel that scrolls. -->
-                    <Grid Grid.Row="2">
+                    <!-- Conversation. The only thing on this panel that scrolls, and it takes all the
+                         height the header and the composer leave. -->
+                    <Grid Grid.Row="1">
                         <ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled" Padding="12,12,12,12"
+                                      HorizontalScrollBarVisibility="Disabled" Padding="16,16,16,0"
+                                       ScrollChanged="OnMessageScrollChanged"
                                       Visibility="{Binding Chat.HasMessages, Converter={StaticResource BoolToVisibilityShared}}">
                             <ItemsControl ItemsSource="{Binding Chat.Messages}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,0,0,16">
+                                        <Grid Margin="0,0,0,16" input:MessageEntrance.IsEnabled="True">
                                             <!--
-                                                The operator's question is a compact tinted block; Kamil's
-                                                answer is flat text with a small avatar gutter. Two bubbles
-                                                facing each other would halve the usable width of a 420px
-                                                panel and make every answer twice as tall.
+                                                The operator's question is a compact raised bubble on the right;
+                                                Kamil's answer is flat text on the left with a small static
+                                                portrait. Two bubbles facing each other would halve the usable
+                                                width of the panel and make every answer twice as tall. The
+                                                time is the bubble's tooltip, not a line of text on every row.
                                             -->
                                             <Border HorizontalAlignment="Right" MaxWidth="340"
-                                                    Background="{DynamicResource Brush.SelectedSurface}"
-                                                    CornerRadius="{StaticResource Radius.Md}" Padding="12,8"
+                                                    Background="{DynamicResource Brush.PanelRaised}"
+                                                    CornerRadius="{StaticResource Radius.Lg}" Padding="12,8"
+                                                    ToolTip="{Binding TimeLabel}"
                                                     Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibilityShared}}">
                                                 <TextBlock Text="{Binding DisplayText}" Style="{StaticResource MessageText}" />
                                             </Border>
@@ -350,10 +353,11 @@
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <components:LaseroAvatar Size="28" VerticalAlignment="Top" Margin="0,0,8,0" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="{Binding DisplayText}" Style="{StaticResource MessageText}" />
+                                                <StackPanel Grid.Column="1" ToolTip="{Binding TimeLabel}">
+                                                    <kamil:KamilMessageBody Text="{Binding DisplayText}"
+                                                                            TextStyle="{StaticResource MessageText}" />
                                                     <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Left"
-                                                            Margin="0,4,0,0" Padding="0,0,8,0" MinHeight="{StaticResource Size.Control.Compact}"
+                                                            Margin="0,4,0,0" Padding="0,0,8,0" MinHeight="{StaticResource Size.Control.Assistant.Chip}"
                                                             FontSize="{StaticResource Size.Text.Assistant.Meta}"
                                                             Content="{Binding ToggleLabel}"
                                                             Command="{Binding ToggleExpandedCommand}"
@@ -372,10 +376,17 @@
                             </ItemsControl>
                         </ScrollViewer>
 
+                        <Button x:Name="LatestMessageButton" Content="Nejnovější"
+                                Style="{StaticResource Button.Secondary}" Visibility="Collapsed"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Margin="0,0,20,8" Padding="8,4" MinHeight="32"
+                                Click="OnLatestMessageClick"
+                                automation:AutomationProperties.Name="Přejít na nejnovější zprávu" />
+
                         <!-- Empty state: compact and immediately useful, not a welcome screen. -->
                         <StackPanel VerticalAlignment="Center" Margin="20,0"
                                     Visibility="{Binding Chat.HasMessages, Converter={StaticResource InverseBoolToVisibilityShared}}">
-                            <TextBlock Text="Kamil pomůže s návrhem a nastavením" FontWeight="SemiBold"
+                            <TextBlock Text="Kamil je AI asistent pro návrh a nastavení" FontWeight="SemiBold"
                                        FontSize="{StaticResource Size.Text.Assistant.Body}"
                                        HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                             <TextBlock Text="Doporučení je vždy potřeba ověřit na odřezku před ostrou úlohou."
@@ -398,7 +409,7 @@
                     </Grid>
 
                     <!-- Composer, pinned to the bottom of the panel. -->
-                    <Border Grid.Row="3" Padding="12,12" BorderBrush="{DynamicResource Brush.PanelBorder}"
+                    <Border Grid.Row="2" Padding="12" BorderBrush="{DynamicResource Brush.PanelBorder}"
                             BorderThickness="0,1,0,0">
                         <StackPanel>
                             <!-- Failures are shown inline with the retry the operator needs, rather
@@ -425,12 +436,25 @@
                                 </Grid>
                             </Border>
 
-                            <kamil:KamilComposer x:Name="ExpandedComposer" Placeholder="Zeptej se Kamila…" />
+                            <ItemsControl ItemsSource="{Binding ActionChips}" Margin="0,0,0,4"
+                                      Visibility="{Binding HasActionChips, Converter={StaticResource BoolToVisibilityShared}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource Kamil.PromptChip}" Content="{Binding Label}"
+                                                Command="{Binding Command}" ToolTip="{Binding Hint}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <kamil:KamilComposer x:Name="ExpandedComposer" Placeholder="Dotaz pro Kamila…" />
                         </StackPanel>
                     </Border>
 
                     <!-- Native WPF Thumb: resize in DIPs, without scaling the content. -->
-                    <Thumb x:Name="ResizeHandle" Grid.RowSpan="4" Width="18" Height="18"
+                    <Thumb x:Name="ResizeHandle" Grid.RowSpan="3" Width="18" Height="18"
                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4"
                            Cursor="SizeNWSE" DragDelta="OnResizeDragDelta"
                            DragCompleted="OnResizeDragCompleted"
@@ -455,8 +479,7 @@
              Expanded is open, so the panel always reads as a speech bubble attached to Kamil. -->
         <Button x:Name="PersistentAvatarLayer" Style="{StaticResource Kamil.MinimizedAvatar}"
                 Command="{Binding ExpandCommand}"
-                Width="48" Height="48"
-                ToolTip="Kamil — otevřít chat"
+                Width="80" Height="80"
                 automation:AutomationProperties.Name="Kamil — otevřít chat" />
 
         <!-- Conversation switcher: earlier conversations, newest first. Deleting asks in place. -->
@@ -474,8 +497,17 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Konverzace" FontWeight="SemiBold" Margin="16,12,16,8"
-                               FontSize="{StaticResource Size.Text.Assistant.Body}" />
+                    <Grid Margin="16,8,8,8">
+                        <TextBlock Text="Konverzace" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   FontSize="{StaticResource Size.Text.Assistant.Body}" />
+                        <Button HorizontalAlignment="Right" Style="{StaticResource Kamil.HeaderButton}"
+                                Command="{Binding DataContext.Chat.NewChatCommand, ElementName=Host}"
+                                Click="OnNewChatClick" ToolTip="Nová konverzace"
+                                automation:AutomationProperties.Name="Nová konverzace">
+                            <components:IconGlyph IconData="{StaticResource Glyph.New}"
+                                                  Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                        </Button>
+                    </Grid>
                     <TextBlock Grid.Row="1" Text="Zatím tu nic není" Margin="16,4,16,16"
                                Style="{StaticResource Kamil.MetaText}"
                                Visibility="{Binding DataContext.Chat.HasSessions, ElementName=Host, Converter={StaticResource InverseBoolToVisibilityShared}}" />
@@ -570,5 +602,14 @@
                 </Grid>
             </Border>
         </Popup>
+        <!-- Occasional speech bubble from the head, see KamilAssistantHost.Nudge.cs. -->
+        <Border x:Name="NudgeBubble" Visibility="Collapsed" Opacity="0" MaxWidth="260" Padding="16,12" Cursor="Hand"
+                Background="{DynamicResource Brush.Panel}" BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
+                CornerRadius="{StaticResource Radius.Lg}" RenderTransformOrigin="1,0.5"
+                MouseLeftButtonUp="OnNudgeClick">
+            <Border.RenderTransform><ScaleTransform x:Name="NudgeScale" /></Border.RenderTransform>
+            <TextBlock Text="Nevíš si rady? Zeptej se mě." TextWrapping="Wrap" FontSize="{StaticResource Size.Text.Assistant.Body}"
+                       Foreground="{DynamicResource Brush.TextPrimary}" />
+        </Border>
         </Canvas>
 </UserControl>

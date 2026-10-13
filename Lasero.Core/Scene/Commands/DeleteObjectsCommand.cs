@@ -26,7 +26,8 @@ public sealed class DeleteObjectsCommand : ISceneCommand
         _removedLayers.Clear();
         foreach (var layer in _scene.Layers.ToList())
         {
-            if (!_targets.Any(target => UsesLayer(target.Object, layer)) ||
+            if (!layer.RemoveWhenEmpty ||
+                !_targets.Any(target => UsesLayer(target.Object, layer)) ||
                 _scene.Objects.Any(item => UsesLayer(item, layer))) continue;
 
             _removedLayers.Add((layer, _scene.Layers.IndexOf(layer)));

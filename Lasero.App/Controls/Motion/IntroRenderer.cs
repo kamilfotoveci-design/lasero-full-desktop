@@ -138,7 +138,7 @@ internal sealed class IntroRenderer
     public double PixelsPerDip { get; set; } = 1.0;
     public bool DrawBackground { get; set; }
     public bool DrawGrid { get; set; } = true;
-    public bool DrawTagline { get; set; } = true;
+    public bool DrawTagline { get; set; }
     /// <summary>Fit only the wordmark into the area (banners); the rule and tagline are not drawn.</summary>
     public bool MarkOnly { get; set; }
 

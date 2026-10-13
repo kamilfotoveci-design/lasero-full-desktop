@@ -33,7 +33,6 @@ public partial class SceneCanvas
         public List<IGrouping<(Guid Set, Guid Layer, RgbColor Color), ImportedShape>> Groups { get; } = groups;
         public bool LocalSpace { get; } = localSpace;
         public Geometry?[] GroupGeometry { get; } = new Geometry?[groups.Count];
-        public Geometry? VectorGeometry { get; set; }
         public string? AntsSignature { get; set; }
         public Geometry? AntsGeometry { get; set; }
 
@@ -139,7 +138,9 @@ public partial class SceneCanvas
     private Geometry GetGroupGeometry(SceneObject obj, ObjectGeometryEntry entry, int groupIndex)
     {
         if (entry.VectorSource is { } vectorSource)
-            return entry.VectorGeometry ??= BuildVectorGeometry(obj, entry, vectorSource);
+            return entry.GroupGeometry[groupIndex] ??= vectorSource.Subpaths.Count == obj.LocalShapes.Count
+                ? BuildVectorGeometry(obj, entry, vectorSource, groupIndex)
+                : BuildCompoundGeometry(obj, entry, entry.Groups[groupIndex]);
         return entry.GroupGeometry[groupIndex] ??= BuildCompoundGeometry(obj, entry, entry.Groups[groupIndex]);
     }
 
@@ -178,13 +179,19 @@ public partial class SceneCanvas
     }
 
     /// <summary>The curve-preserving cubic geometry of a vector-path object.</summary>
-    private static Geometry BuildVectorGeometry(SceneObject obj, ObjectGeometryEntry entry, VectorPath vectorPath)
+    private static Geometry BuildVectorGeometry(SceneObject obj, ObjectGeometryEntry entry,
+        VectorPath vectorPath, int groupIndex)
     {
         var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
+        var groupKey = entry.Groups[groupIndex].Key;
         using (var context = geometry.Open())
         {
-            foreach (var subpath in vectorPath.Subpaths)
+            for (var subpathIndex = 0; subpathIndex < vectorPath.Subpaths.Count; subpathIndex++)
             {
+                var shape = obj.LocalShapes[subpathIndex];
+                if (shape.GeometrySetId != groupKey.Set || shape.LayerId != groupKey.Layer ||
+                    !shape.LayerColor.Equals(groupKey.Color)) continue;
+                var subpath = vectorPath.Subpaths[subpathIndex];
                 if (subpath.Nodes.Count == 0) continue;
                 context.BeginFigure(GeometryPoint(obj, entry, subpath.Nodes[0].Anchor), isFilled: subpath.IsClosed, isClosed: subpath.IsClosed);
                 for (var segmentIndex = 0; segmentIndex < subpath.SegmentCount; segmentIndex++)

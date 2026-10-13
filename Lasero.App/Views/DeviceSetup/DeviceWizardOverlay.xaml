@@ -605,10 +605,6 @@
                                 <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Uložit a dokončit" Foreground="White" />
                             </Button>
 
-                            <Button Style="{StaticResource Button.Regular}" Margin="0,0,8,0" Click="OnOpenSettingsClick"
-                                    Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}">
-                                <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" />
-                            </Button>
                             <Button Style="{StaticResource PrimaryBlue}" Click="OnCloseClick"
                                     Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}"
                                     IsDefault="True">

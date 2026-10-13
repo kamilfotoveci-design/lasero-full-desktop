@@ -110,7 +110,7 @@ public partial class ProcessStatusCard : UserControl
     /// <summary>Same reduced-motion check already established by KamilAssistantHost and
     /// DeviceWizardOverlay - applied here too rather than inventing a second mechanism.</summary>
     private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
-        && RenderCapability.Tier > 0;
+        && RenderCapability.Tier > 0 && !Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

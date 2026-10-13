@@ -23,9 +23,7 @@ public sealed class ScreenControlsMatrixTests
         {
             Assert.False(ScreenChrome.ShowLaunchControls(screen), screen.ToString());
             Assert.False(ScreenChrome.ShowLayerPalette(screen), screen.ToString());
-            Assert.False(ScreenChrome.ShowDeviceSettingsShortcut(screen), screen.ToString());
         }
-        Assert.True(ScreenChrome.ShowDeviceSettingsShortcut(AppScreen.Designer));
     }
 
     [Fact]
@@ -96,7 +94,8 @@ public sealed class ScreenControlsMatrixTests
 
         Assert.Contains("Binding ShowStripJobDetails", main, StringComparison.Ordinal);
         Assert.Contains("Binding ShowStripJobActionZone", main, StringComparison.Ordinal);
-        Assert.Contains("Binding ShowDeviceSettingsShortcut", main, StringComparison.Ordinal);
+        // The device settings are tabs on Zařízení, not a title-bar shortcut.
+        Assert.DoesNotContain("ShowDeviceSettingsShortcut", main, StringComparison.Ordinal);
         // The palette stays Designer-only, as does KAMIL.
         Assert.Contains("ItemsSource=\"{Binding Scene.LayerPalette}\"", main, StringComparison.Ordinal);
         Assert.Matches(@"Grid\.Column=""1""[^>]*Margin=""20,0,20,0""\s+Visibility=""\{Binding CurrentScreen, Converter=\{StaticResource EnumEqualsVisibility\}, ConverterParameter=Designer\}""", main);

@@ -54,7 +54,7 @@ public partial class SceneCanvas
     // Screen-space so the snap "feel" stays constant across zoom levels, matching every other hit
     // tolerance in this file (NodeHitSizePx etc.) — converted to world mm once per drag via
     // SnapToleranceScreenPx / _scale, never compared in screen space itself.
-    private const double SnapToleranceScreenPx = 10;
+    private double SnapToleranceScreenPx => _preferences.SnapDistancePx;
     private const double SnapIndicatorVisibleSizePx = 14;
 
     private static readonly RgbColor VectorPathDefaultColor = new(18, 18, 18);
@@ -93,6 +93,7 @@ public partial class SceneCanvas
     // for every pointer-move sample of that same drag — see SnapCandidateBuilder's own doc comment
     // on why that is both correct (no drift from the dragged node's own live motion) and cheap.
     private List<SnapCandidate> _nodeDragSnapCandidates = [];
+    private List<SnapCandidate> _gestureSnapCandidates = [];
     private SnapCandidate? _activeSnapTarget;
 
     // ------------------------------------------------------------------
@@ -102,7 +103,8 @@ public partial class SceneCanvas
 
     private void BeginVectorPathClick(Point screen)
     {
-        var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        if (!_pathToolDrawing) BeginGestureSnapping([]);
+        var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
         _pathClosingClick = _pathToolDrawing && _pathNodes.Count >= 2 && IsNearFirstNode(screen);
         _pathNodeDownScreen = screen;
         _pathNodeDownWorld = world;
@@ -113,7 +115,7 @@ public partial class SceneCanvas
 
     private void EndVectorPathClick(Point screen)
     {
-        var world = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
         var dxPx = screen.X - _pathNodeDownScreen.X;
         var dyPx = screen.Y - _pathNodeDownScreen.Y;
         // Same "was this a real drag" pixel threshold FinishDraw already uses for the old shape tools —
@@ -160,9 +162,11 @@ public partial class SceneCanvas
 
     private void CommitVectorPath(VectorSubpath subpath)
     {
-        if (ViewModel is not null && subpath.Nodes.Count >= 2)
-            ViewModel.AddVectorPath(new VectorPath { Subpaths = [subpath] });
+        var drawn = ViewModel is not null && subpath.Nodes.Count >= 2;
+        if (drawn)
+            ViewModel!.AddVectorPath(new VectorPath { Subpaths = [subpath] });
         ResetVectorPathToolState();
+        if (drawn && _preferences.SwitchToSelectAfterDrawing) ViewModel!.ActiveTool = DesignerTool.Select;
     }
 
     /// <summary>Esc's first layer while drawing: undo the most recently placed node (the "uncommitted
@@ -215,7 +219,7 @@ public partial class SceneCanvas
         }
 
         ClearVectorPathPreviewVisuals();
-        var cursorWorld = new Position(ToWorldX(cursorScreen.X), ToWorldY(cursorScreen.Y), 0);
+        var cursorWorld = ApplyGestureSnap(new Position(ToWorldX(cursorScreen.X), ToWorldY(cursorScreen.Y), 0));
         var isPressed = _dragMode == DragMode.PathTool;
         IReadOnlyList<VectorNode> previewNodes = _pathNodes;
 
@@ -287,7 +291,7 @@ public partial class SceneCanvas
     /// one selected object is node-editable — is the one this app should lead with.</summary>
     public void EnterNodeEditMode(SceneObject obj)
     {
-        if (obj.VectorPath is null || ViewModel is null) return;
+        if (obj.VectorPath is null || ViewModel is null || !ViewModel.CanSelectObject(obj)) return;
         _nodeEditObject = obj;
         _nodeEditWorkingPath = obj.VectorPath;
         _selectedNodeKeys.Clear();
@@ -763,9 +767,18 @@ public partial class SceneCanvas
         // applied directly in UpdateNodeEditDrag). Only built for a single selected node: a
         // multi-node drag has no one point to snap "onto" a candidate without the rest of the
         // selection landing off-grid relative to each other.
-        _nodeDragSnapCandidates = !tag.IsHandle && _selectedNodeKeys.Count == 1
-            ? SnapCandidateBuilder.FromVectorPath(_nodeDragOriginalPath, WorldOf, _selectedNodeKeys)
-            : [];
+        _nodeDragSnapCandidates = [];
+        if (!tag.IsHandle && _selectedNodeKeys.Count == 1 && _preferences.SnapToObjects)
+        {
+            _nodeDragSnapCandidates = SnapCandidateBuilder.FromVectorPath(
+                _nodeDragOriginalPath, WorldOf, _selectedNodeKeys);
+            if (ViewModel is not null)
+            {
+                var layers = ViewModel.Layers.ToDictionary(layer => layer.Id);
+                _nodeDragSnapCandidates.AddRange(SnapCandidateBuilder.FromSceneObjects(
+                    ViewModel.Objects.Where(obj => obj.Id != _nodeEditObject.Id), layers));
+            }
+        }
         DrawCanvas.CaptureMouse();
         RedrawSelectionOverlay();
     }
@@ -878,7 +891,22 @@ public partial class SceneCanvas
             // (not decomposed per selected node), so it only engages for a single selected node —
             // see _nodeDragSnapCandidates' own build-time restriction.
             if (!shiftHeld && _selectedNodeKeys.Count == 1)
-                currentLocal = obj.Transform.Inverse(ApplyNodeSnap(currentWorld), obj.LocalPivot);
+            {
+                // Preserve the pointer-to-anchor offset from mouse-down. Snapping the pointer itself
+                // would leave the actual node a few pixels away from the reported target whenever
+                // the user grabbed inside its hit circle rather than at its exact centre.
+                var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
+                var originalAnchor = _nodeDragOriginalPath.Subpaths[subpathIndex].Nodes[nodeIndex].Anchor;
+                var anchorWorld = obj.Transform.Apply(originalAnchor, obj.LocalPivot);
+                var proposedAnchor = new Position(
+                    anchorWorld.X + currentWorld.X - _nodeDragStartWorld.X,
+                    anchorWorld.Y + currentWorld.Y - _nodeDragStartWorld.Y, 0);
+                var snappedAnchor = ApplyNodeSnap(proposedAnchor);
+                currentWorld = new Position(
+                    currentWorld.X + snappedAnchor.X - proposedAnchor.X,
+                    currentWorld.Y + snappedAnchor.Y - proposedAnchor.Y, 0);
+                currentLocal = obj.Transform.Inverse(currentWorld, obj.LocalPivot);
+            }
             else
                 _activeSnapTarget = null;
 
@@ -947,8 +975,10 @@ public partial class SceneCanvas
         }
 
         var toleranceWorld = SnapToleranceScreenPx / _scale;
-        var gridStep = RulerMath.PickStep(_scale);
-        var result = SnapEngine.Resolve(currentWorld, _nodeDragSnapCandidates, toleranceWorld, gridStep);
+        // Nastavení: snapping to other objects and to the grid are switched independently.
+        IReadOnlyList<SnapCandidate> candidates = _preferences.SnapToObjects ? _nodeDragSnapCandidates : [];
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
+        var result = SnapEngine.Resolve(currentWorld, candidates, toleranceWorld, gridStep);
         _activeSnapTarget = result.Target;
         return result.Point;
     }
@@ -964,8 +994,33 @@ public partial class SceneCanvas
         }
 
         var toleranceWorld = SnapToleranceScreenPx / _scale;
-        var gridStep = RulerMath.PickStep(_scale);
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
         var result = SnapEngine.Resolve(currentWorld, [], toleranceWorld, gridStep);
+        _activeSnapTarget = result.Target;
+        return result.Point;
+    }
+
+    private void BeginGestureSnapping(IEnumerable<SceneObject> excludedObjects)
+    {
+        _gestureSnapCandidates = [];
+        if (ViewModel is null) return;
+        var excluded = excludedObjects.Select(item => item.Id).ToHashSet();
+        var layers = ViewModel.Layers.ToDictionary(layer => layer.Id);
+        _gestureSnapCandidates = SnapCandidateBuilder.FromSceneObjects(
+            ViewModel.Objects.Where(item => !excluded.Contains(item.Id)), layers);
+    }
+
+    private Position ApplyGestureSnap(Position point)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            _activeSnapTarget = null;
+            return point;
+        }
+
+        IReadOnlyList<SnapCandidate> candidates = _preferences.SnapToObjects ? _gestureSnapCandidates : [];
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
+        var result = SnapEngine.Resolve(point, candidates, SnapToleranceScreenPx / _scale, gridStep);
         _activeSnapTarget = result.Target;
         return result.Point;
     }
@@ -1121,7 +1176,8 @@ public partial class SceneCanvas
         if (_nodeEditObject is null || _committingNodeEdit || ViewModel is null) return;
         if (ViewModel.Objects.Contains(_nodeEditObject)) return;
 
-        var replacement = ViewModel.Objects.FirstOrDefault(o => o.Id == _nodeEditObject.Id && o.IsVectorPath && !o.IsLocked);
+        var replacement = ViewModel.Objects.FirstOrDefault(o => o.Id == _nodeEditObject.Id &&
+            o.IsVectorPath && ViewModel.CanSelectObject(o));
         if (replacement is null)
         {
             ExitNodeEditMode();
@@ -1163,19 +1219,39 @@ public partial class SceneCanvas
     /// with no ViewModel equivalent, not a command that belongs on SceneViewModel.</summary>
     public void DeleteSelectedNodes()
     {
-        if (_nodeEditObject is null || _nodeEditWorkingPath is null || _selectedNodeKeys.Count == 0) return;
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null || ViewModel is null || _selectedNodeKeys.Count == 0) return;
 
         var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
-        foreach (var group in _selectedNodeKeys.GroupBy(key => key.Subpath))
+        // Remove higher subpath indexes first so deleting one contour cannot shift the indexes of
+        // other selected contours. A path must never retain a 0/1-node open contour or a 0/1/2-node
+        // closed contour: those cannot produce a matching LocalShape or reliable laser output.
+        foreach (var group in _selectedNodeKeys.GroupBy(key => key.Subpath).OrderByDescending(group => group.Key))
         {
             var subpath = subpaths[group.Key];
+            var selectedIndexes = group.Select(key => key.Node).Distinct().ToList();
+            var minimum = subpath.IsClosed ? 3 : 2;
+            if (subpath.Nodes.Count - selectedIndexes.Count < minimum)
+            {
+                subpaths.RemoveAt(group.Key);
+                continue;
+            }
             // Highest node index first so removing one does not shift the indices still queued.
-            foreach (var nodeIndex in group.Select(key => key.Node).OrderByDescending(i => i))
+            foreach (var nodeIndex in selectedIndexes.OrderByDescending(i => i))
                 subpath = VectorPathEditor.RemoveNode(subpath, nodeIndex);
             subpaths[group.Key] = subpath;
         }
 
         _selectedNodeKeys.Clear();
+        if (subpaths.Count == 0)
+        {
+            // The last contour is gone. Use the scene's regular Delete command so object removal,
+            // selection cleanup and undo all follow the same path as whole-object deletion.
+            var item = _nodeEditObject;
+            ExitNodeEditMode();
+            ViewModel.SelectedObjects.ReplaceWith([item]);
+            ViewModel.DeleteCommand.Execute(null);
+            return;
+        }
         CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
     }
 
@@ -1365,6 +1441,80 @@ public partial class SceneCanvas
         if (_nodeEditWorkingPath is null) return;
         _selectedNodeKeys.Clear();
         CommitNodeEdit(VectorPathEditor.DeleteSegment(_nodeEditWorkingPath, hit.SubpathIndex, hit.SegmentIndex));
+    }
+
+    /// <summary>Scissors tool: remove the nearest segment under the pointer from an editable path.
+    /// Plain imported shapes are converted to editable paths only after a segment was hit.</summary>
+    private void TrimPathAt(Point screen)
+    {
+        if (ViewModel is null) return;
+        var nearest = ViewModel.Objects
+            .Where(item => !item.IsLocked && !item.IsRaster)
+            .Select(item =>
+            {
+                var path = item.VectorPath ?? BuildTrimCandidatePath(item);
+                return (Object: item, Path: path,
+                    Hit: path is null ? null : HitTestNearestSegment(item, path, screen, SegmentInsertTolerancePx));
+            })
+            .Where(candidate => candidate.Hit is not null)
+            .OrderBy(candidate => candidate.Hit!.Value.Distance)
+            .FirstOrDefault();
+        if (nearest.Object is null) return;
+
+        var source = nearest.Object;
+        var pathToEdit = nearest.Path;
+        var hit = nearest.Hit!.Value;
+        if (pathToEdit is null)
+        {
+            ViewModel.SelectedObjects.Clear();
+            ViewModel.SelectedObjects.Add(source);
+            source = ViewModel.ConvertSelectedObjectToCurves() ?? source;
+            pathToEdit = source.VectorPath;
+            if (pathToEdit is null) return;
+            var refreshedHit = HitTestNearestSegment(source, pathToEdit, screen, SegmentInsertTolerancePx);
+            if (refreshedHit is null) return;
+            hit = refreshedHit.Value;
+        }
+        else
+        {
+            ViewModel.SelectedObjects.Clear();
+            ViewModel.SelectedObjects.Add(source);
+        }
+
+        try
+        {
+            var trimmed = VectorPathEditor.DeleteSegment(pathToEdit, hit.SubpathIndex, hit.SegmentIndex);
+            if (trimmed.Subpaths.Count == 0)
+            {
+                if (ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
+                return;
+            }
+            ViewModel.CommitVectorPathEdit(source, trimmed);
+        }
+        catch (ArgumentException exception)
+        {
+            ViewModel.ReportVectorOperationRejected($"Cestu se nepodařilo oříznout. {exception.Message}");
+        }
+    }
+
+    private static VectorPath? BuildTrimCandidatePath(SceneObject item)
+    {
+        if (item.IsText) return null;
+        var subpaths = new List<VectorSubpath>();
+        foreach (var shape in item.LocalShapes)
+        {
+            var points = shape.Points.ToList();
+            if (shape.IsClosed && points.Count > 1 &&
+                Math.Abs(points[0].X - points[^1].X) < 1e-9 && Math.Abs(points[0].Y - points[^1].Y) < 1e-9)
+                points.RemoveAt(points.Count - 1);
+            if (points.Count < (shape.IsClosed ? 3 : 2)) continue;
+            subpaths.Add(new VectorSubpath
+            {
+                Nodes = points.Select(VectorNode.CornerAt).ToList(),
+                IsClosed = shape.IsClosed,
+            });
+        }
+        return subpaths.Count == 0 ? null : new VectorPath { Subpaths = subpaths };
     }
 
     // ------------------------------------------------------------------

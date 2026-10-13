@@ -11,6 +11,10 @@
     <Resource Include="Assets\LaseroWordmark.png" />
     <Resource Include="Assets\LaseroWordmarkLight.png" />
     <Resource Include="Assets\LaseroAvatar.png" />
+    <Resource Include="Assets\KamilLive\kamil-blink.png" />
+    <Resource Include="Assets\KamilLive\kamil-thinking.png" />
+    <Resource Include="Assets\KamilLive\kamil-happy.png" />
+    <Resource Include="Assets\KamilLive\kamil-error.png" />
     <Resource Include="Assets\LaseroDesignIcon.png" />
     <!-- Brand motion videos for LaseroIntroVideo (a MediaElement needs a real file, not a pack resource).
          Only the 720p variants ship; 1080p and the poster stay in the repo for the owner's use.
@@ -23,6 +27,12 @@
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
     <None Include="Assets\Iconoir-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\FluentIcons-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\FluentIcons-NOTICE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
     <!-- Inter ships with the app rather than being assumed present on the machine: it is not a
@@ -53,6 +63,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260627" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>

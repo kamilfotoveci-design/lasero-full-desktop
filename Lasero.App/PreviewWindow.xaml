@@ -3,107 +3,213 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Lasero.App.Controls"
         xmlns:components="clr-namespace:Lasero.App.Components"
-        xmlns:conv="clr-namespace:Lasero.App.Converters"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Náhled úlohy" Width="1120" Height="760" MinWidth="760" MinHeight="520"
-        WindowStartupLocation="CenterOwner" WindowStyle="None" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
+        Title="Náhled" Width="1180" Height="780" MinWidth="880" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" WindowStyle="None"
+        AutomationProperties.AutomationId="JobPreviewWindow"
+        Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+
+        <!--
+            Flat, rectangular action button with the small radius: this window is a tool surface, so its
+            buttons stay quiet next to the canvas. A keyboard focus ring only, no fill on hover beyond a wash.
+        -->
+        <Style x:Key="PreviewActionButton" TargetType="Button">
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
+            <Setter Property="MinWidth" Value="96" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="Background" Value="{StaticResource Brush.Panel}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.PanelBorderStrong}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Xs}" />
+                            <Border x:Name="Wash" Background="{StaticResource Brush.Hover}" CornerRadius="{StaticResource Radius.Xs}" Opacity="0" />
+                            <Border x:Name="FocusRing" BorderBrush="{StaticResource Brush.FocusRing}" BorderThickness="0"
+                                    CornerRadius="{StaticResource Radius.Xs}" />
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Wash" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Selected}" />
+                            </Trigger>
+                            <Trigger Property="components:FocusVisual.IsVisible" Value="True">
+                                <Setter TargetName="FocusRing" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Border BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" Background="{StaticResource Brush.Background}">
+    <Border Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="40" />
+                <RowDefinition Height="44" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Border Background="{StaticResource Brush.TitleBar}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,0,1">
-                <Grid Margin="16,0,4,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="LASERO" FontFamily="{StaticResource Font.Display}" FontWeight="SemiBold" />
-                        <TextBlock Text="  /  Náhled úlohy  ·  " Foreground="{StaticResource Brush.TextSecondary}" />
-                        <TextBlock Text="{Binding GCode.FileLabel}" Foreground="{StaticResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" MaxWidth="420" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Button Style="{StaticResource Button.Icon}" Width="36" Height="32" Click="OnMinimizeClick" ToolTip="Minimalizovat">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                        <Button x:Name="MaximizeButton" Style="{StaticResource Button.Icon}" Width="36" Height="32" Click="OnMaximizeClick" ToolTip="Maximalizovat">
-                            <components:IconGlyph x:Name="MaximizeGlyph" IconData="{StaticResource Glyph.Maximize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                        <Button Style="{StaticResource Button.Icon}" Width="36" Height="32" Click="OnCloseClick" ToolTip="Zavřít náhled">
-                            <components:IconGlyph IconData="{StaticResource Glyph.Close}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <components:WindowTitleBar Title="Náhled" IconData="{StaticResource Glyph.Eye}" CloseButtonName="Zavřít náhled" />
 
-            <Grid Grid.Row="1" Margin="16,16,16,0">
-                <controls:WorkspaceCanvas Document="{Binding GCode.Document}"
-                                          MachineX="{Binding MachineStatus.WorkX}" MachineY="{Binding MachineStatus.WorkY}"
-                                          SimulationX="{Binding GCode.SimulationPosition.X}" SimulationY="{Binding GCode.SimulationPosition.Y}"
-                                          UseSimulationPosition="True"
-                                          ProgressPercent="{Binding GCode.SimulationProgressPercent}"
-                                          WorkAreaWidthMm="{Binding Connection.WorkAreaWidthMm}"
-                                          WorkAreaHeightMm="{Binding Connection.WorkAreaHeightMm}"
-                                          JogEnabled="False" />
-            </Grid>
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <Border Grid.Row="2" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
-                    BorderThickness="0,1,0,0" Padding="20,16">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Průběh" FontWeight="SemiBold" Margin="0,0,8,0" />
-                        <TextBlock Text="{Binding GCode.SimulationTimeLabel}" Style="{StaticResource Text.Numeric}" />
-                        <TextBlock Text=" z " Foreground="{StaticResource Brush.TextSecondary}" />
-                        <TextBlock Text="{Binding GCode.EstimatedTimeLabel}" Style="{StaticResource Text.Numeric}"
-                                   Foreground="{StaticResource Brush.TextSecondary}" />
-                    </StackPanel>
+                    <!-- Legend of operations and the display switches. -->
+                    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,0,1,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,20,20,12">
+                            <StackPanel>
+                                <StackPanel Visibility="{Binding ShowLegend, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Vrstvy" Style="{StaticResource Text.Heading}" />
+                                    <ItemsControl ItemsSource="{Binding Legend}" Focusable="False" Margin="0,0,0,12">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,12" ToolTip="{Binding Detail}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="16" Height="16" Margin="0,2,12,0" VerticalAlignment="Top"
+                                                            Background="{Binding Swatch}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
+                                                            BorderThickness="1" CornerRadius="{StaticResource Radius.Xs}" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Faint}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
 
-                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Margin="0,0,20,0"
-                            Value="{Binding GCode.SimulationProgressPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            ToolTip="Posunout přehrávání na zvolené místo" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <Button Command="{Binding GCode.RestartSimulationCommand}" Height="36" Padding="12,0" Margin="0,0,8,0" ToolTip="Spustit náhled od začátku">
-                            <components:IconLabel IconData="{StaticResource Glyph.Refresh}" Text="Od začátku" />
-                        </Button>
-                        <Button Command="{Binding GCode.PauseResumeSimulationCommand}" Height="36" Padding="12,0" Margin="0,0,12,0">
-                            <components:IconLabel>
-                                <components:IconLabel.Style>
-                                    <Style TargetType="components:IconLabel">
-                                        <Setter Property="IconData" Value="{StaticResource Glyph.Pause}" />
-                                        <Setter Property="Text" Value="Pozastavit" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding GCode.IsSimulationPlaying}" Value="False">
-                                                <Setter Property="IconData" Value="{StaticResource Glyph.Play}" />
-                                                <Setter Property="Text" Value="Přehrát" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </components:IconLabel.Style>
-                            </components:IconLabel>
-                        </Button>
-                        <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <ComboBox Width="76" Height="36" ItemsSource="{Binding GCode.SimulationSpeedPresets}"
-                                  SelectedItem="{Binding GCode.SimulationSpeedMultiplier}" ToolTip="Násobek rychlosti přehrávání" />
-                        <TextBlock Text="×" VerticalAlignment="Center" Margin="4,0,0,0" Foreground="{StaticResource Brush.TextSecondary}" />
-                    </StackPanel>
+                                <TextBlock Text="Zobrazení" Style="{StaticResource Text.Heading}" Margin="0,4,0,2" />
+                                <components:SettingRow Title="Zobrazit šikmé pohyby">
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ShowRapids, Mode=TwoWay}"
+                                              AutomationProperties.Name="Zobrazit šikmé pohyby" />
+                                </components:SettingRow>
+                                <components:SettingRow Title="Stínovat podle výkonu">
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ShadeByPower, Mode=TwoWay}"
+                                              AutomationProperties.Name="Stínovat podle výkonu" />
+                                </components:SettingRow>
+                                <components:SettingRow Title="Invertovat">
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding Invert, Mode=TwoWay}"
+                                              AutomationProperties.Name="Invertovat" />
+                                </components:SettingRow>
+                                <components:SettingRow Title="Zobrazit legendu" ShowRule="False">
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ShowLegend, Mode=TwoWay}"
+                                              AutomationProperties.Name="Zobrazit legendu" />
+                                </components:SettingRow>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
 
-                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,12,0,0" Style="{StaticResource Text.Muted}"
-                               Text="Modrá trasa je již přehraná. Červená značí práci laseru, přerušovaná šedá rychlý přesun bez gravírování." />
+                    <!-- Toolpath canvas and timeline. -->
+                    <Grid Grid.Column="1" Margin="16,16,16,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border BorderBrush="{StaticResource Brush.PanelBorderStrong}" BorderThickness="1" ClipToBounds="True">
+                            <controls:JobPreviewCanvas x:Name="PreviewCanvas"
+                                                       Model="{Binding Model}"
+                                                       ShowRapids="{Binding ShowRapids}"
+                                                       ShadeByPower="{Binding ShadeByPower}"
+                                                       Invert="{Binding Invert}"
+                                                       Progress="{Binding Progress}"
+                                                       AutomationProperties.Name="Dráha laseru" />
+                        </Border>
+
+                        <Grid Grid.Row="1" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Časová osa" Style="{StaticResource Text.Muted}" VerticalAlignment="Center" Margin="0,0,16,0" MinWidth="120" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.005" LargeChange="0.1" VerticalAlignment="Center"
+                                    Value="{Binding Progress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Thumb.DragStarted="OnTimelineDragStarted"
+                                    AutomationProperties.Name="Časová osa úlohy"
+                                    ToolTip="Posunout náhled na zvolené místo úlohy" />
+                            <TextBlock Grid.Column="2" Text="{Binding TimeLabel, Mode=OneWay}" Style="{StaticResource Text.Numeric}"
+                                       VerticalAlignment="Center" MinWidth="104" TextAlignment="Right" Margin="16,0,0,0" />
+
+                        </Grid>
+                    </Grid>
                 </Grid>
-            </Border>
+
+                <!-- What the job is made of, in the operator's terms. -->
+                <Border Grid.Row="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}"
+                        BorderThickness="0,1,0,0" Padding="20,12">
+                    <StackPanel>
+                        <TextBlock>
+                            <Run Text="Celkový odhadovaný čas:" Foreground="{StaticResource Brush.TextSecondary}" />
+                            <Run Text="{Binding TotalLabel, Mode=OneWay}" FontWeight="Medium" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding NotesText, Mode=OneWay}" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap"
+                                   Margin="0,8,0,0" Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <components:DialogFooter Grid.Row="2">
+                    <TextBlock components:DialogFooter.IsLeading="True" Style="{StaticResource Text.Muted}" VerticalAlignment="Center"
+                               Text="Kolečkem myši lze přiblížit, prostředním tlačítkem posouvat a dvojitým kliknutím zobrazit celou úlohu." />
+                    <Button Style="{StaticResource PreviewActionButton}" Click="OnSaveImageClick" AutomationProperties.Name="Uložit obrázek"
+                            ToolTip="Uloží zobrazenou dráhu jako obrázek PNG">
+                        <components:IconLabel IconData="{StaticResource Glyph.Image}" Text="Uložit obrázek" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+                    </Button>
+                    <Button Style="{StaticResource PreviewActionButton}" Command="{Binding TogglePlayCommand}" MinWidth="128">
+                        <components:IconLabel IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0">
+                            <components:IconLabel.Style>
+                                <Style TargetType="components:IconLabel">
+                                    <Setter Property="IconData" Value="{StaticResource Glyph.Play}" />
+                                    <Setter Property="Text" Value="Přehrát" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                            <Setter Property="IconData" Value="{StaticResource Glyph.Pause}" />
+                                            <Setter Property="Text" Value="Pozastavit" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </components:IconLabel.Style>
+                        </components:IconLabel>
+                    </Button>
+                    <Button IsDefault="True" Style="{StaticResource Button.Primary}" Click="OnCloseClick" Height="{StaticResource Size.Control.Primary}"
+                            MinWidth="96" Content="OK" />
+                </components:DialogFooter>
+            </Grid>
         </Grid>
     </Border>
 </Window>

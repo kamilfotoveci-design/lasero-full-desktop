@@ -20,6 +20,8 @@ public static class FramingService
         var lines = new List<string>
         {
             "G90", // absolute positioning — framing always operates in absolute coordinates
+            "G21", // all scene and framing coordinates are millimetres, regardless of prior G-code mode
+            "G94", // framing feed is expressed in mm/min
             "M5",  // ensure laser is off before any rapid move
             Format("G0", box.MinX, box.MinY),
         };

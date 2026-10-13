@@ -3,15 +3,16 @@ namespace Lasero.App.ViewModels;
 /// <summary>
 /// One entry in the shape picker: which tool it activates, what its icon and tooltip are, and the
 /// keyboard shortcut it already has elsewhere in the app (if any). The toolbar button and the picker
-/// both read from <see cref="ShapeToolCatalog"/> rather than each hard-coding the same eight shapes.
+/// both read from <see cref="ShapeToolCatalog"/> rather than each hard-coding the same nine shapes.
 /// </summary>
 public sealed record ShapeToolDefinition(DesignerTool Tool, string DisplayName, string TooltipText, string IconKey);
 
-/// <summary>The eight closed-shape drawing tools, in the order they appear in the picker.</summary>
+/// <summary>The nine closed-shape drawing tools, in the order they appear in the picker.</summary>
 public static class ShapeToolCatalog
 {
     public static IReadOnlyList<ShapeToolDefinition> All { get; } =
     [
+        new(DesignerTool.Square, "Čtverec", "Čtverec", "Glyph.Square"),
         new(DesignerTool.Rectangle, "Obdélník", "Obdélník (R)", "Glyph.Rectangle"),
         new(DesignerTool.Ellipse, "Elipsa", "Elipsa (E)", "Glyph.Ellipse"),
         new(DesignerTool.Triangle, "Trojúhelník", "Trojúhelník", "Glyph.Triangle"),

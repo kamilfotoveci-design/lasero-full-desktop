@@ -18,6 +18,10 @@ public sealed class AppSettings
 
     /// <summary>How the app starts. Additive: older settings files load with the defaults.</summary>
     public StartupPreferences Startup { get; set; } = new();
+
+    /// <summary>Editor behaviour (backup interval, nudge steps, hit and snap distances, grid, motion).
+    /// Additive: older settings files have no such section and load with the defaults.</summary>
+    public EditorPreferences Editor { get; set; } = new();
 }
 
 /// <summary>
@@ -41,13 +45,13 @@ public sealed class WorkspacePreferences
     /// default) or replace the original. Remembered from the last time the dialog was applied.</summary>
     public bool OffsetKeepOriginal { get; set; } = true;
 
-    public const double DefaultInspectorWidth = 360;
-    public const double DefaultAssistantWidth = 420;
-    public const double DefaultAssistantHeight = 560;
+    public const double DefaultInspectorWidth = 400;
+    public const double DefaultAssistantWidth = 480;
+    public const double DefaultAssistantHeight = 680;
     public const double MinAssistantWidth = 320;
-    public const double MinAssistantHeight = 360;
-    public const double MaxAssistantWidth = 720;
-    public const double MaxAssistantHeight = 760;
+    public const double MinAssistantHeight = 480;
+    public const double MaxAssistantWidth = 960;
+    public const double MaxAssistantHeight = 1000;
 
     /// <summary>The lower bound has to match DesignerInspectorView's own MinWidth. When it was
     /// smaller (280 against the panel's 320), dragging the splitter narrow left the panel wider than
@@ -56,15 +60,17 @@ public sealed class WorkspacePreferences
     public const double MinInspectorWidth = 340;
     public const double MaxInspectorWidth = 560;
 
-    public double ClampedInspectorWidth => double.IsFinite(InspectorWidth)
+    public double ClampedInspectorWidth => double.IsFinite(InspectorWidth) && InspectorWidth is not (360 or 340)
         ? Math.Clamp(InspectorWidth, MinInspectorWidth, MaxInspectorWidth)
         : DefaultInspectorWidth;
 
-    public double ClampedAssistantWidth => double.IsFinite(AssistantWidth)
+    // 420 x 560 was the previous default and 360 the previous minimum height. A stored value equal to
+    // one of those is treated as never resized so existing installs pick up the larger default.
+    public double ClampedAssistantWidth => double.IsFinite(AssistantWidth) && AssistantWidth != 420
         ? Math.Clamp(AssistantWidth, MinAssistantWidth, MaxAssistantWidth)
         : DefaultAssistantWidth;
 
-    public double ClampedAssistantHeight => double.IsFinite(AssistantHeight)
+    public double ClampedAssistantHeight => double.IsFinite(AssistantHeight) && AssistantHeight is not (560 or 360)
         ? Math.Clamp(AssistantHeight, MinAssistantHeight, MaxAssistantHeight)
         : DefaultAssistantHeight;
 }
@@ -99,7 +105,33 @@ public sealed class MachinePreferences
     public bool InvertZAxis { get; set; }
     public double ZJogStepMm { get; set; } = 1;
     public double ZJogFeedRateMmPerMinute { get; set; } = 600;
+
+    /// <summary>Power (percent of $30) of the visible dot while framing; 0 keeps the laser off. Clamped to
+    /// <see cref="Lasero.Core.Jobs.FramingOptions.MaxVisiblePowerPercent"/> on load.</summary>
+    public double FramingPowerPercent { get; set; } = Lasero.Core.Jobs.FramingOptions.VisiblePowerPercent;
+
+    /// <summary>M8 or M7 is streamed before the job and M9 after it. Off by default: not every machine has an air pump.</summary>
+    public Lasero.Core.Jobs.AirAssistMode AirAssist { get; set; } = Lasero.Core.Jobs.AirAssistMode.Off;
+
+    /// <summary>After the last line the head travels (laser off) to where the job started: the work zero, or
+    /// the reference point when the job starts from the current position.</summary>
+    public bool ReturnToStartAfterJob { get; set; }
+
     public Dictionary<string, MachineProfilePreferences> Profiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Framing power for the next Frame, always inside 0..<see cref="Lasero.Core.Jobs.FramingOptions.MaxVisiblePowerPercent"/>
+    /// even when a settings object was filled in code rather than loaded.</summary>
+    public double GetFramingPowerPercent() => Lasero.Core.Jobs.FramingOptions.ClampVisiblePower(FramingPowerPercent);
+
+    /// <summary>The device-level lines wrapped around a streamed job. "Start" is the work zero in absolute
+    /// mode and the captured reference point when the job starts from the current position.</summary>
+    public Lasero.Core.Jobs.JobProgramOptions GetJobProgramOptions(Lasero.Core.Jobs.JobPlacementMode placementMode, double referenceX, double referenceY) => new()
+    {
+        AirAssist = AirAssist,
+        ReturnTo = ReturnToStartAfterJob
+            ? placementMode == Lasero.Core.Jobs.JobPlacementMode.CurrentPosition ? (referenceX, referenceY) : (0d, 0d)
+            : null,
+    };
 }
 
 public sealed class MachineProfilePreferences
@@ -188,6 +220,8 @@ public sealed class AppSettingsStore
         settings.Machine ??= new MachinePreferences();
         settings.Startup ??= new StartupPreferences();
         settings.Workspace ??= new WorkspacePreferences();
+        settings.Editor ??= new EditorPreferences();
+        settings.Editor.Normalize();
         settings.Guidance ??= new Lasero.App.Tour.GuidancePreferences();
         settings.Guidance.Accounts ??= new Dictionary<string, Lasero.App.Tour.AccountGuidance>(StringComparer.Ordinal);
         foreach (var key in settings.Guidance.Accounts.Keys.ToList())
@@ -207,6 +241,8 @@ public sealed class AppSettingsStore
         if (!double.IsFinite(settings.Machine.ZJogStepMm) || settings.Machine.ZJogStepMm <= 0) settings.Machine.ZJogStepMm = 1;
         if (!double.IsFinite(settings.Machine.ZJogFeedRateMmPerMinute) || settings.Machine.ZJogFeedRateMmPerMinute <= 0) settings.Machine.ZJogFeedRateMmPerMinute = 600;
         if (!Lasero.Core.Materials.MaterialCatalog.PowerClasses.Contains(settings.Machine.LaserPowerWatts)) settings.Machine.LaserPowerWatts = 20;
+        settings.Machine.FramingPowerPercent = Lasero.Core.Jobs.FramingOptions.ClampVisiblePower(settings.Machine.FramingPowerPercent);
+        if (!Enum.IsDefined(settings.Machine.AirAssist)) settings.Machine.AirAssist = Lasero.Core.Jobs.AirAssistMode.Off;
         foreach (var profile in settings.Machine.Profiles.Values)
         {
             if (!double.IsFinite(profile.WorkAreaWidthMm) || profile.WorkAreaWidthMm <= 0) profile.WorkAreaWidthMm = 500;
@@ -226,4 +262,116 @@ public sealed class StartupPreferences
     /// with any key or click, is a still frame when Windows animations are off, and is not shown when a
     /// project file is opened directly.</summary>
     public bool ShowIntroAnimation { get; set; } = true;
+}
+
+/// <summary>
+/// How the design editor behaves, as the operator set it in Nastavení. Every member is read by running
+/// code (the canvas, the autosave timer, the motion switch); a member nothing reads does not belong here.
+/// All distances are interaction geometry (screen pixels, or the nudge one key press makes): none of
+/// them reaches the document, the toolpath or the machine. Defaults equal the behaviour the editor had
+/// before the setting existed.
+/// </summary>
+public sealed class EditorPreferences
+{
+    public const double MinAutosaveMinutes = 0.5;
+    public const double MaxAutosaveMinutes = 60;
+    public const double MinNudgeMm = 0.01;
+    public const double MaxNudgeMm = 100;
+    public const double MinClickTolerancePx = 1;
+    public const double MaxClickTolerancePx = 20;
+    public const double MinSnapDistancePx = 1;
+    public const double MaxSnapDistancePx = 30;
+    public const double MinGridSpacingMm = 0.1;
+    public const double MaxGridSpacingMm = 500;
+
+    /// <summary>A fixed grid is drawn no denser than this many pixels between lines: closer than that it
+    /// stops being a guide and becomes a grey wash, so the spacing is doubled until it fits.</summary>
+    public const double MinGridLinePx = 8;
+
+    /// <summary>Minutes between recovery snapshots of an unsaved project (the file offered after an
+    /// unclean exit). 0.5 is the 30 seconds the editor always used.</summary>
+    public double AutosaveMinutes { get; set; } = 0.5;
+
+    /// <summary>Flips the direction of Ctrl + mouse wheel zoom.</summary>
+    public bool ReverseZoomWheel { get; set; }
+
+    /// <summary>Returns to the selection tool once a shape or a path has been drawn.</summary>
+    public bool SwitchToSelectAfterDrawing { get; set; }
+
+    /// <summary>Arrow-key nudge of the selection in millimetres: plain, with Shift, with Ctrl.</summary>
+    public double ArrowStepMm { get; set; } = 0.5;
+    public double ShiftArrowStepMm { get; set; } = 5;
+    public double CtrlArrowStepMm { get; set; } = 0.05;
+
+    /// <summary>How far, in screen pixels, a click may miss a thin line and still select it.</summary>
+    public double ClickTolerancePx { get; set; } = 6;
+
+    /// <summary>Pull range, in screen pixels, of snapping while a node is dragged in node edit.</summary>
+    public double SnapDistancePx { get; set; } = 10;
+    public bool SnapToObjects { get; set; } = true;
+    public bool SnapToGrid { get; set; } = true;
+
+    public bool ShowGrid { get; set; } = true;
+
+    /// <summary>True: the grid steps follow the zoom level. False: <see cref="GridSpacingMm"/> is used.</summary>
+    public bool AutomaticGridSpacing { get; set; } = true;
+    public double GridSpacingMm { get; set; } = 10;
+
+    /// <summary>Anti-aliased edges on the design canvas. Off draws hard pixel edges.</summary>
+    public bool SmoothEdges { get; set; } = true;
+
+    /// <summary>Turns every Lasero animation off, on top of the Windows "animation effects" setting.</summary>
+    public bool ReduceMotion { get; set; }
+
+    /// <summary>An independent copy, for a dialog that edits a draft and applies it only on confirmation.</summary>
+    public EditorPreferences Clone() => (EditorPreferences)MemberwiseClone();
+
+    public double ArrowStepFor(bool shift, bool control) => shift ? ShiftArrowStepMm : control ? CtrlArrowStepMm : ArrowStepMm;
+
+    /// <summary>Whether a wheel notch zooms in: forward zooms in, unless the direction is reversed.</summary>
+    public bool ZoomsIn(int wheelDelta) => (wheelDelta > 0) != ReverseZoomWheel;
+
+    public TimeSpan AutosaveInterval => TimeSpan.FromMinutes(
+        Fit(AutosaveMinutes, MinAutosaveMinutes, MaxAutosaveMinutes, MinAutosaveMinutes));
+
+    /// <summary>The grid spacing in millimetres at the current zoom: the zoom-driven ladder when the
+    /// spacing is automatic, otherwise the typed spacing, doubled while its lines would sit closer than
+    /// <see cref="MinGridLinePx"/> on screen. The visible grid and grid snapping both use it, so a node
+    /// always lands on a line that is drawn.</summary>
+    public double ResolveGridStepMm(double scalePxPerMm)
+    {
+        if (AutomaticGridSpacing || !(scalePxPerMm > 0)) return Controls.RulerMath.PickStep(scalePxPerMm);
+        var step = Fit(GridSpacingMm, MinGridSpacingMm, MaxGridSpacingMm, 10);
+        while (step * scalePxPerMm < MinGridLinePx && step < 1e6) step *= 2;
+        return step;
+    }
+
+    /// <summary>Puts a hand-edited or damaged value back inside the range the editor can work with.</summary>
+    public void Normalize()
+    {
+        AutosaveMinutes = Fit(AutosaveMinutes, MinAutosaveMinutes, MaxAutosaveMinutes, 0.5);
+        ArrowStepMm = Fit(ArrowStepMm, MinNudgeMm, MaxNudgeMm, 0.5);
+        ShiftArrowStepMm = Fit(ShiftArrowStepMm, MinNudgeMm, MaxNudgeMm, 5);
+        CtrlArrowStepMm = Fit(CtrlArrowStepMm, MinNudgeMm, MaxNudgeMm, 0.05);
+        ClickTolerancePx = Fit(ClickTolerancePx, MinClickTolerancePx, MaxClickTolerancePx, 6);
+        SnapDistancePx = Fit(SnapDistancePx, MinSnapDistancePx, MaxSnapDistancePx, 10);
+        GridSpacingMm = Fit(GridSpacingMm, MinGridSpacingMm, MaxGridSpacingMm, 10);
+    }
+
+    private static double Fit(double value, double min, double max, double fallback) =>
+        double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
+
+    /// <summary>Reads a number typed into a settings field. Accepts a decimal comma or point and rejects
+    /// text, non-finite values and anything outside [min, max].</summary>
+    public static bool TryParseNumber(string? text, double min, double max, out double value)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var normalized = text.Trim().Replace(',', '.');
+        if (!double.TryParse(normalized, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed)) return false;
+        if (!double.IsFinite(parsed) || parsed < min || parsed > max) return false;
+        value = parsed;
+        return true;
+    }
 }

@@ -50,7 +50,7 @@ public sealed class TourModelTests
 
         var operations = TourSteps.All.Single(s => s.Id == "operations");
         Assert.Equal(["Výkon", "Rychlost", "Průchody"], operations.Points!.Select(p => p.Term).ToArray());
-        Assert.Contains("Použít na operaci", operations.Body);
+        Assert.Contains("Použít na vrstvu", operations.Body);
     }
 
     [Fact]

@@ -1,0 +1,37 @@
+<UserControl x:Class="Lasero.App.Views.Kamil.KamilLiveAvatar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False"
+             IsHitTestVisible="False"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
+             ClipToBounds="True">
+    <!-- All pose images share the same transparent crop. The canonical customer-supplied
+         portrait stays underneath as the immediate fallback if no expression art is available. -->
+    <Grid x:Name="PortraitRoot" RenderTransformOrigin="0.5,0.5">
+        <Grid.RenderTransform>
+            <TransformGroup>
+                <ScaleTransform x:Name="IdleScale" ScaleX="1" ScaleY="1" />
+                <RotateTransform x:Name="HeadRotation" />
+                <TranslateTransform x:Name="HeadTranslation" />
+            </TransformGroup>
+        </Grid.RenderTransform>
+
+        <Image x:Name="NeutralImage"
+               Source="{StaticResource Image.LaseroAvatarSource}"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <Image x:Name="ExpressionA"
+               Opacity="0"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <Image x:Name="ExpressionB"
+               Opacity="0"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <Image x:Name="BlinkImage"
+               Opacity="0"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+    </Grid>
+</UserControl>

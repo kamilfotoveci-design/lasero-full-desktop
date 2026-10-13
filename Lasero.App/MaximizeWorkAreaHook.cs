@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -21,10 +22,16 @@ internal static class MaximizeWorkAreaHook
 {
     private const int WmGetMinMaxInfo = 0x0024;
     private const int MonitorDefaultToNearest = 0x00000002;
+    private static readonly ConditionalWeakTable<Window, object> AttachedWindows = new();
 
     public static void Attach(Window window)
     {
         ArgumentNullException.ThrowIfNull(window);
+        lock (AttachedWindows)
+        {
+            if (AttachedWindows.TryGetValue(window, out _)) return;
+            AttachedWindows.Add(window, new object());
+        }
 
         if (PresentationSource.FromVisual(window) is HwndSource existing)
         {

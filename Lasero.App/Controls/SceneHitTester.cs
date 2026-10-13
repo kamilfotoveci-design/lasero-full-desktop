@@ -51,13 +51,15 @@ internal static class SceneHitTester
         Position pointerWorld,
         double pixelsPerMillimeter,
         Func<SceneObject, ImportedShape, bool> isFilled,
-        Func<SceneObject, ImportedShape, bool>? isShapeVisible = null)
+        Func<SceneObject, ImportedShape, bool>? isShapeVisible = null,
+        double tolerancePx = DefaultTolerancePx)
     {
         ArgumentNullException.ThrowIfNull(objects);
         ArgumentNullException.ThrowIfNull(isFilled);
         if (pixelsPerMillimeter <= 0) throw new ArgumentOutOfRangeException(nameof(pixelsPerMillimeter));
+        if (!double.IsFinite(tolerancePx) || tolerancePx <= 0) tolerancePx = DefaultTolerancePx;
 
-        var toleranceMm = DefaultTolerancePx / pixelsPerMillimeter;
+        var toleranceMm = tolerancePx / pixelsPerMillimeter;
         var toleranceSquared = toleranceMm * toleranceMm;
         var matches = new List<SceneHitCandidate>();
         for (var objectIndex = objects.Count - 1; objectIndex >= 0; objectIndex--)
@@ -68,10 +70,12 @@ internal static class SceneHitTester
             // on a large scene cost tens of milliseconds.
             if (!MayReach(obj, pointerWorld, toleranceMm)) continue;
             var shapes = obj.GetWorldShapes();
+            var visibleShapes = new List<(ImportedShape Shape, int Index)>(shapes.Count);
             for (var shapeIndex = shapes.Count - 1; shapeIndex >= 0; shapeIndex--)
             {
                 var shape = shapes[shapeIndex];
                 if (shape.Points.Count < 2 || isShapeVisible?.Invoke(obj, shape) == false) continue;
+                visibleShapes.Add((shape, shapeIndex));
 
                 var bounds = BoundsOf(shape);
                 if (pointerWorld.X < bounds.MinX - toleranceMm || pointerWorld.X > bounds.MaxX + toleranceMm ||
@@ -81,11 +85,25 @@ internal static class SceneHitTester
                 if (IsNearStroke(shape, pointerWorld, toleranceSquared))
                 {
                     matches.Add(new SceneHitCandidate(obj, shapeIndex, SceneHitKind.Stroke, objectIndex));
-                    continue;
                 }
+            }
 
-                if (shape.IsClosed && isFilled(obj, shape) && ContainsPoint(shape.Points, pointerWorld))
-                    matches.Add(new SceneHitCandidate(obj, shapeIndex, SceneHitKind.Fill, objectIndex));
+            // WPF renders one compound geometry per geometry set, layer and colour with
+            // Nonzero fill. Test the same compound here: a hole must cancel its outer
+            // contour instead of the outer contour independently claiming the click.
+            foreach (var group in visibleShapes.GroupBy(entry =>
+                         (entry.Shape.GeometrySetId, entry.Shape.LayerId, entry.Shape.LayerColor)))
+            {
+                var winding = 0;
+                var topShapeIndex = -1;
+                foreach (var (shape, shapeIndex) in group)
+                {
+                    if (!shape.IsClosed || shape.Points.Count < 3 || !isFilled(obj, shape)) continue;
+                    winding += WindingNumber(shape.Points, pointerWorld);
+                    topShapeIndex = Math.Max(topShapeIndex, shapeIndex);
+                }
+                if (winding != 0 && topShapeIndex >= 0)
+                    matches.Add(new SceneHitCandidate(obj, topShapeIndex, SceneHitKind.Fill, objectIndex));
             }
         }
 
@@ -189,18 +207,22 @@ internal static class SceneHitTester
         return Squared(point.X - closestX) + Squared(point.Y - closestY);
     }
 
-    private static bool ContainsPoint(IReadOnlyList<Position> polygon, Position point)
+    private static int WindingNumber(IReadOnlyList<Position> polygon, Position point)
     {
-        var inside = false;
+        var winding = 0;
         for (int current = 0, previous = polygon.Count - 1; current < polygon.Count; previous = current++)
         {
             var a = polygon[current];
             var b = polygon[previous];
-            var crosses = (a.Y > point.Y) != (b.Y > point.Y) &&
-                          point.X < (b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y) + a.X;
-            if (crosses) inside = !inside;
+            var side = (b.X - a.X) * (point.Y - a.Y) -
+                       (point.X - a.X) * (b.Y - a.Y);
+            if (a.Y <= point.Y)
+            {
+                if (b.Y > point.Y && side > 0) winding++;
+            }
+            else if (b.Y <= point.Y && side < 0) winding--;
         }
-        return inside;
+        return winding;
     }
 
     private static bool SamePoint(Position first, Position second) =>

@@ -27,6 +27,11 @@ public static class BitmapLoader
         var width = Math.Min(original.Width, targetWidth ?? original.Width);
         var proportionalHeight = (int)Math.Round(original.Height * (width / (double)original.Width));
         var height = Math.Min(original.Height, targetHeight ?? proportionalHeight);
+        // Same size: read the pixels directly. Drawing through GDI+ here, whatever the interpolation and
+        // pixel-offset mode, is a resampling step that can blur or half-pixel shift every edge, and an
+        // edge-exact trace would then sit off the picture the user sees.
+        if (width == original.Width && height == original.Height) return ReadPixels(original);
+
         using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bitmap))
         {
@@ -37,9 +42,13 @@ public static class BitmapLoader
             // backdrop: it is the value the rest of the pipeline already treats as "leave alone".
             g.Clear(Color.White);
             g.CompositingQuality = CompositingQuality.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            // Downscale in source pixels (not the image's DPI) and mirror at the borders, so the edge
+            // rows do not fade into the transparent surface around the image.
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.DrawImage(original, 0, 0, width, height);
+            using var attributes = new ImageAttributes();
+            attributes.SetWrapMode(WrapMode.TileFlipXY);
+            g.DrawImage(original, new Rectangle(0, 0, width, height), 0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);
         }
 
         var luminance = new byte[width * height];
@@ -69,4 +78,42 @@ public static class BitmapLoader
 
         return new GrayscaleImage { Width = width, Height = height, Luminance = luminance };
     }
+
+    /// <summary>Luminance of every pixel of an image at its own size, composited onto white (transparent
+    /// pixels read as paper, see the note in LoadGrayscaleCore). LockBits converts any source format to
+    /// 32 bpp ARGB without resampling, so pixel (x, y) of the file is element y * width + x.</summary>
+    private static GrayscaleImage ReadPixels(Bitmap original)
+    {
+        var width = original.Width;
+        var height = original.Height;
+        var luminance = new byte[width * height];
+
+        var data = original.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            var stride = data.Stride;
+            var row = new byte[Math.Abs(stride)];
+            for (var y = 0; y < height; y++)
+            {
+                Marshal.Copy(data.Scan0 + y * stride, row, 0, row.Length);
+                for (var x = 0; x < width; x++)
+                {
+                    var alpha = row[x * 4 + 3];
+                    var b = Over(row[x * 4 + 0], alpha);
+                    var g = Over(row[x * 4 + 1], alpha);
+                    var r = Over(row[x * 4 + 2], alpha);
+                    luminance[y * width + x] = (byte)Math.Clamp(Math.Round(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+                }
+            }
+        }
+        finally
+        {
+            original.UnlockBits(data);
+        }
+
+        return new GrayscaleImage { Width = width, Height = height, Luminance = luminance };
+    }
+
+    /// <summary>A colour channel over a white backdrop.</summary>
+    private static int Over(byte channel, byte alpha) => (channel * alpha + 255 * (255 - alpha) + 127) / 255;
 }

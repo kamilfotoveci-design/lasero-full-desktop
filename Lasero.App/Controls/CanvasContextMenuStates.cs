@@ -8,9 +8,21 @@ namespace Lasero.App.Controls;
 /// menu cannot offer something the toolbar and shortcuts would refuse.</summary>
 public static class CanvasContextMenuStates
 {
-    public static ObjectContextState ForSelection(SceneViewModel scene)
+    /// <summary>What the hosting canvas can reach that the scene view model cannot: the job preview
+    /// (owned by the shell) and the property fields (owned by the selection bar). Absent means the row
+    /// is left out; a row nothing would answer would do nothing.</summary>
+    public sealed record Reach
+    {
+        public bool HasPreview { get; init; }
+        /// <summary>Null when the preview can open now; otherwise why it cannot.</summary>
+        public string? PreviewReason { get; init; }
+        public bool HasProperties { get; init; }
+    }
+
+    public static ObjectContextState ForSelection(SceneViewModel scene, Reach? reach = null)
     {
         ArgumentNullException.ThrowIfNull(scene);
+        reach ??= new Reach();
         var selection = scene.SelectedObjects;
         var single = selection.Count == 1 ? selection[0] : null;
 
@@ -27,20 +39,26 @@ public static class CanvasContextMenuStates
             AnyUnlocked = selection.Any(item => !item.IsLocked),
             CanPaste = scene.PasteCommand.CanExecute(null),
             CanEditNodes = single is { IsVectorPath: true, IsLocked: false },
-            CanConvertToCurves = single is { IsVectorPath: false, IsText: false, IsRaster: false, IsLocked: false }
-                && single.LocalShapes.Count == 1
-                && single.LocalShapes[0].Points.Count >= (single.LocalShapes[0].IsClosed ? 3 : 2),
+            CanConvertToCurves = scene.CanConvertSelectionToCurves,
+            IsAlreadyPath = selection.Count > 0 && selection.All(item => item.IsVectorPath),
+            BitmapReason = scene.ConvertSelectionToBitmapDisabledReason,
             CanEditText = scene.CanEditSelectedText && single is { IsText: true },
             CanGroup = scene.CanGroupSelection,
             // Splitting text into contours would silently throw away the editable wording, and the
             // command is not the same thing as "convert to path", so it is not offered for text.
             CanUngroup = scene.CanUngroupSelection && single is { IsText: false },
+            CanSelectAll = scene.SelectAllCommand.CanExecute(null) && scene.Objects.Count > selection.Count,
+            CanConvertTextToPath = scene.CanConvertSelectedTextToPath,
+            ShowPreview = reach.HasPreview,
+            PreviewReason = reach.PreviewReason,
+            ShowProperties = reach.HasProperties,
             CanAlign = scene.AlignLeftCommand.CanExecute(null),
             CanTransform = scene.FlipHorizontalCommand.CanExecute(null),
             CanTrace = scene.CanTraceSelectedRaster,
+            CanEditBitmap = scene.CanEditSelectedRaster,
             CanRemoveBackground = scene.CanRemoveSelectedBackground,
             CanRestoreBackground = scene.CanRestoreSelectedBackground,
-            BooleanReason = scene.UniteSelectionDisabledReason,
+            BooleanReason = scene.BooleanPairSelectionDisabledReason,
             OffsetReason = scene.OffsetSelectionDisabledReason,
             CanBringForward = scene.CanBringForward,
             CanSendBackward = scene.CanSendBackward,

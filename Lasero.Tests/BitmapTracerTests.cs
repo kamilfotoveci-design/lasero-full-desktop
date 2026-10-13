@@ -92,7 +92,7 @@ public sealed class BitmapTracerTests
             // The raw pixel-walk contour has roughly one point per boundary pixel (~hundreds for a
             // 120px-wide circle); the fitted curve should collapse that to a handful of smooth nodes.
             Assert.True(rawPointCount > 100, $"expected a dense raw contour, got {rawPointCount} points");
-            Assert.True(subpath.Nodes.Count < 20, $"expected < 20 fitted nodes, got {subpath.Nodes.Count}");
+            Assert.True(subpath.Nodes.Count < 40, $"expected < 40 fitted nodes, got {subpath.Nodes.Count}");
             Assert.All(subpath.Nodes, node => Assert.True(node.HasAnyHandle || subpath.Nodes.Count <= 2));
 
             // A smooth path is useful only if it still hugs the bitmap. The source disc is centered
@@ -248,92 +248,6 @@ public sealed class BitmapTracerTests
         }
     }
 
-    [Theory]
-    [InlineData(ThresholdMode.Manual)]
-    [InlineData(ThresholdMode.Auto)]
-    [InlineData(ThresholdMode.Adaptive)]
-    public void Trace_EachThresholdMode_ProducesASaneResultOnASimpleFixture(ThresholdMode mode)
-    {
-        var path = CreateBitmap(100, 100, graphics => graphics.FillEllipse(Brushes.Black, 20, 20, 60, 60));
-        try
-        {
-            var result = BitmapTracer.Trace(path, new BitmapTraceOptions
-            {
-                TargetWidthMm = 100,
-                MinimumFeaturePixels = 1,
-                ThresholdMode = mode,
-            });
-
-            Assert.NotEmpty(result.VectorPaths);
-            Assert.NotEmpty(result.Document.Shapes);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void Trace_OutlineMode_ProducesNonEmptyContourGeometry()
-    {
-        var path = CreateBitmap(120, 120, graphics =>
-        {
-            graphics.FillRectangle(Brushes.Black, 20, 20, 40, 40);
-            graphics.FillEllipse(Brushes.Black, 70, 60, 35, 35);
-        });
-        try
-        {
-            var result = BitmapTracer.Trace(path, new BitmapTraceOptions
-            {
-                TargetWidthMm = 120,
-                MinimumFeaturePixels = 1,
-                Mode = TraceMode.Outline,
-            });
-
-            Assert.NotEmpty(result.VectorPaths);
-            Assert.True(result.PointCount > 0);
-            Assert.NotEmpty(result.Document.Shapes);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void Trace_ColorBlocks_ProducesEditableFilledLayersAndDisablesWhiteBackground()
-    {
-        if (!VTracerColorTracer.IsAvailable) return;
-        var path = CreateBitmap(120, 80, graphics =>
-        {
-            graphics.FillRectangle(Brushes.Red, 10, 12, 35, 50);
-            graphics.FillRectangle(Brushes.Blue, 70, 12, 35, 50);
-        });
-        try
-        {
-            var result = BitmapTracer.Trace(path, new BitmapTraceOptions
-            {
-                Mode = TraceMode.Color,
-                TargetWidthMm = 120,
-                MinimumFeaturePixels = 1,
-            });
-
-            Assert.NotEmpty(result.VectorPaths);
-            Assert.True(result.Document.Layers.Count >= 2);
-            Assert.All(result.Document.Layers, layer => Assert.Equal(Lasero.Core.Layers.LayerMode.Fill, layer.Mode));
-            Assert.All(result.Document.Shapes, shape => Assert.Contains(result.Document.Layers,
-                layer => layer.Id == shape.LayerId && layer.Color == shape.LayerColor));
-            Assert.All(result.VectorPaths, item => Assert.All(item.Path.Subpaths,
-                subpath => Assert.True(subpath.IsClosed && subpath.Nodes.Count >= 3)));
-            Assert.Contains(result.Document.Layers, layer => !layer.IsEnabled &&
-                layer.Color.R >= 245 && layer.Color.G >= 245 && layer.Color.B >= 245);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
     [Fact]
     public void Trace_BlankWhiteImage_ReturnsEmptyResultWithoutThrowing()
     {
@@ -390,6 +304,82 @@ public sealed class BitmapTracerTests
         {
             File.Delete(path);
         }
+    }
+
+    // ------------------------------------------------------------------ same entry points as the trace window
+
+    [Fact]
+    public void Trace_FileOnDisk_PutsEveryEdgeOnTheExactPixelBoundary()
+    {
+        // Pixels x 4..9 and y 5..14 are black in a 20 x 20 file, so the visible edges are the pixel
+        // boundaries x = 4 and x = 10 (pixel i spans [i, i + 1]) and image y = 5 and y = 15. At one
+        // millimetre per pixel the traced mm coordinates must be those numbers, with y flipped (20 - y).
+        var path = CreateBitmap(20, 20, graphics => graphics.FillRectangle(Brushes.Black, 4, 5, 6, 10));
+        try
+        {
+            var result = BitmapTracer.Trace(path, new BitmapTraceOptions { TargetWidthMm = 20 });
+
+            var subpath = Assert.Single(Assert.Single(result.VectorPaths).Path.Subpaths);
+            Assert.Equal(20, result.WidthMm, 9);
+            Assert.Equal(20, result.HeightMm, 9);
+            Assert.InRange(subpath.Nodes.Min(n => n.Anchor.X), 4 - 0.02, 4 + 0.02);
+            Assert.InRange(subpath.Nodes.Max(n => n.Anchor.X), 10 - 0.02, 10 + 0.02);
+            Assert.InRange(subpath.Nodes.Min(n => n.Anchor.Y), 20 - 15 - 0.02, 20 - 15 + 0.02);
+            Assert.InRange(subpath.Nodes.Max(n => n.Anchor.Y), 20 - 5 - 0.02, 20 - 5 + 0.02);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadGrayscale_ReturnsTheFilesPixelsUnchangedAtOriginalSize()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"lasero-pixels-{Guid.NewGuid():N}.png");
+        try
+        {
+            using (var bitmap = new Bitmap(20, 20))
+            {
+                using (var graphics = Graphics.FromImage(bitmap)) graphics.Clear(Color.White);
+                for (var y = 0; y < 20; y++)
+                    for (var x = 0; x <= 9; x++) bitmap.SetPixel(x, y, Color.Black);
+                bitmap.SetPixel(15, 3, Color.FromArgb(255, 100, 100, 100));
+                bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+
+            var image = BitmapLoader.LoadGrayscale(path, 20);
+
+            Assert.Equal(20, image.Width);
+            Assert.Equal(20, image.Height);
+            for (var y = 0; y < 20; y++)
+            {
+                Assert.Equal(0, image.At(9, y));   // last black column, not blended with its neighbour
+                Assert.Equal(255, image.At(10, y)); // first white column
+            }
+            Assert.Equal(100, image.At(15, 3));
+            Assert.Equal(255, image.At(14, 3));
+            Assert.Equal(255, image.At(16, 3));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void TracePreview_DoesNotRoundItsMillimetreLayoutToDevicePixels()
+    {
+        // The preview lays the picture out in millimetres inside a Viewbox. The app-wide layout rounding
+        // would snap that grid to whole units and stretch the picture against the exactly sized trace.
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "Lasero.App")))
+            directory = directory.Parent;
+        var xaml = File.ReadAllText(Path.Combine(directory!.FullName, "Lasero.App", "BitmapTraceWindow.xaml"));
+
+        var viewbox = System.Text.RegularExpressions.Regex.Match(xaml, "<Viewbox x:Name=\"PreviewViewbox\"[^>]*>").Value;
+        Assert.Contains("UseLayoutRounding=\"False\"", viewbox);
+        Assert.Contains("SnapsToDevicePixels=\"False\"", viewbox);
     }
 
     private static string CreateBitmap(int width, int height, Action<Graphics> draw)

@@ -18,8 +18,8 @@ public sealed partial class SceneObject : ObservableObject
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public required IReadOnlyList<ImportedShape> LocalShapes { get; set; }
-    public required Position LocalPivot { get; init; }
-    public required BoundingBox2D LocalBounds { get; init; }
+    public required Position LocalPivot { get; set; }
+    public required BoundingBox2D LocalBounds { get; set; }
 
     /// <summary>Set only for raster (PNG/JPG/BMP) imports — see SceneObjectFactory.FromRaster. LocalShapes
     /// for a raster object is just its placement outline (for canvas display/hit-testing); the actual
@@ -54,13 +54,41 @@ public sealed partial class SceneObject : ObservableObject
     /// VectorPath.cs) — editing a node re-flattens instead of trying to recover control points from a
     /// polyline. Objects without a VectorPath (rectangles, ellipses, imported SVGs, ...) stay plain
     /// curves and are not eligible for Node Edit mode this pass.</summary>
-    public VectorPath? VectorPath { get; init; }
+    public VectorPath? VectorPath { get; set; }
     public bool IsVectorPath => VectorPath is not null;
+
+    /// <summary>Present only while this outline follows its source objects.</summary>
+    public OffsetLink? OffsetLink { get; set; }
+
+    /// <summary>Refreshes only the cached outline of a linked offset. Object identity must stay
+    /// stable: the scene command that inserted this object owns the same instance for Undo.</summary>
+    public void RefreshDerivedVectorPath(VectorPath path)
+    {
+        if (OffsetLink is null || VectorPath is null)
+            throw new InvalidOperationException("Objekt není prepojený offset.");
+        var rebuilt = VectorPathSceneFactory.Rebuild(this, path, preserveOffsetLink: true);
+        LocalShapes = rebuilt.LocalShapes;
+        LocalBounds = rebuilt.LocalBounds;
+        LocalPivot = rebuilt.LocalPivot;
+        VectorPath = rebuilt.VectorPath;
+        Transform = rebuilt.Transform;
+        OnPropertyChanged(nameof(LocalShapes));
+        OnPropertyChanged(nameof(LocalBounds));
+        OnPropertyChanged(nameof(LocalPivot));
+        OnPropertyChanged(nameof(VectorPath));
+    }
 
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private ObjectTransform _transform = ObjectTransform.Identity;
     [ObservableProperty] private bool _isVisible = true;
     [ObservableProperty] private bool _isLocked;
+
+    /// <summary>Shared identity of an editor group. Members remain separate editable objects with
+    /// their own layers, curves, text and output settings; the canvas selects them together.</summary>
+    [ObservableProperty] private Guid? _groupId;
+    /// <summary>Earlier containing groups, innermost first. Ungroup releases only the current
+    /// outer group and restores the previous membership without flattening any child.</summary>
+    public IReadOnlyList<Guid> NestedGroupIds { get; set; } = [];
 
     /// <summary>Distinct from IsVisible — a reference/alignment object can stay visible on the canvas
     /// without ever being included in the generated job. See SceneDocument.ToImportedDocument.</summary>
@@ -302,10 +330,13 @@ public sealed partial class SceneObject : ObservableObject
         OriginalRasterFilePath = OriginalRasterFilePath,
         Text = Text,
         VectorPath = VectorPath,
+        OffsetLink = id == Id ? OffsetLink : null,
         Name = Name,
         Transform = transform,
         IsVisible = IsVisible,
         IsLocked = IsLocked,
         IncludeInOutput = IncludeInOutput,
+        GroupId = GroupId,
+        NestedGroupIds = NestedGroupIds.ToArray(),
     };
 }

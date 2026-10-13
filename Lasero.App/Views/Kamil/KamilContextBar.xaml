@@ -1,49 +1,40 @@
 <UserControl x:Class="Lasero.App.Views.Kamil.KamilContextBar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:components="clr-namespace:Lasero.App.Components">
+             xmlns:conv="clr-namespace:Lasero.App.Converters">
     <!--
         What Kamil can see: the screen the operator is on, the material on the selected operation, and
-        the connected machine. Each chip appears only when the application actually holds that fact —
-        nothing connected means no machine chip, not a placeholder one.
+        the connected machine, as one quiet line of text. Each fact appears only when the application
+        actually holds it (nothing connected means no machine, not a placeholder one), and the line is
+        hidden while the screen is the only fact: "Návrh" alone says nothing the operator does not know.
 
-        These are the same values sent with the question, so the row doubles as an honest statement of
+        These are the same values sent with the question, so the line doubles as an honest statement of
         what the answer was based on.
     -->
-    <WrapPanel>
-        <Border Style="{StaticResource Kamil.ContextChip}">
-            <StackPanel Orientation="Horizontal">
-                <components:IconGlyph IconData="{StaticResource Glyph.Design}"
-                                      Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
-                                      Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding ScreenLabel}" Style="{StaticResource Kamil.MetaText}"
-                           VerticalAlignment="Center" />
-            </StackPanel>
-        </Border>
+    <UserControl.Resources>
+        <conv:JoinNonEmptyConverter x:Key="JoinNonEmpty" />
+    </UserControl.Resources>
 
-        <Border Style="{StaticResource Kamil.ContextChip}"
-                Visibility="{Binding HasMaterialContext, Converter={StaticResource BoolToVisibilityShared}}">
-            <StackPanel Orientation="Horizontal">
-                <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
-                                      Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
-                                      Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding MaterialContext}" Style="{StaticResource Kamil.MetaText}"
-                           VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Kamil.ContextChip}"
-                Visibility="{Binding HasMachineContext, Converter={StaticResource BoolToVisibilityShared}}">
-            <StackPanel Orientation="Horizontal">
-                <components:IconGlyph IconData="{StaticResource Glyph.Device}"
-                                      Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}"
-                                      Foreground="{DynamicResource Brush.TextMuted}"
-                                      VerticalAlignment="Center" Margin="0,0,4,0" />
-                <TextBlock Text="{Binding MachineContext}" Style="{StaticResource Kamil.MetaText}"
-                           VerticalAlignment="Center" MaxWidth="130" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-        </Border>
-    </WrapPanel>
+    <TextBlock ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}">
+        <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource Kamil.ContextLine}">
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding HasMaterialContext}" Value="False" />
+                            <Condition Binding="{Binding HasMachineContext}" Value="False" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </TextBlock.Style>
+        <TextBlock.Text>
+            <MultiBinding Converter="{StaticResource JoinNonEmpty}">
+                <Binding Path="ScreenLabel" />
+                <Binding Path="MaterialContext" />
+                <Binding Path="MachineContext" />
+            </MultiBinding>
+        </TextBlock.Text>
+    </TextBlock>
 </UserControl>

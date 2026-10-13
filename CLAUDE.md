@@ -164,3 +164,18 @@ Preserve unrelated dirty-tree changes.
 For user-editing operations, one gesture must equal one undo transaction.
 
 A task is not complete merely because it builds.
+
+## Preferred skills (wondelai)
+
+Installed in `.claude/skills/` from github.com/wondelai/skills (MIT). Prefer these when they fit:
+UI/UX — `refactoring-ui`, `ux-heuristics`, `web-typography`, `top-design`, `design-everyday-things`,
+`microinteractions`, `steve-jobs-design-review`. Code — `clean-code`, `refactoring-patterns`,
+`software-design-philosophy`, `pragmatic-programmer`, `working-with-legacy-code`, `clean-architecture`,
+`domain-driven-design`, `release-it`, `improve-code-quality`, `remove-technical-debt`,
+`design-code-architecture`, `architecture-optimization`, `technical-documentation`.
+They are web-oriented in places: `DESIGN.md` tokens and the Safety rules above always win.
+
+Desktop UI skills (use for any WPF UI work, alongside the above): `desktop-ui-design`, `07-fluent-windows-11-ui`,
+`08-split-panel-workspace`, `04-command-palette-ui`, `12-workspace-ui`. Copied from the Codex install
+(palamut62/desktop-ui-design-skills-pack + smithery "Desktop UI Design"). Four of the five are written in
+Turkish; follow their guidance, keep Lasero copy in neutral Czech/Slovak per the existing copy tests.

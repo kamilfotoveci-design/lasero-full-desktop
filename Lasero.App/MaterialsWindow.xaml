@@ -12,7 +12,7 @@
         WindowStartupLocation="CenterOwner" ShowInTaskbar="True" ResizeMode="CanResize" WindowStyle="None"
         Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -73,7 +73,7 @@
                         </Border>
                         <!-- The selected tab's 2px graphite indicator. -->
                         <Border x:Name="TabIndicator" Height="2" VerticalAlignment="Bottom" Margin="16,0,24,0"
-                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                                Background="Transparent" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform><ScaleTransform x:Name="IndicatorScale" /></Border.RenderTransform>
                         </Border>
                         </Grid>
@@ -165,39 +165,23 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="32,32,32,16">
+        <Border Grid.Row="0" Padding="24,12,24,0">
             <components:PageHeader Title="Vzorník materiálů"
-                                   Subtitle="Bezpečné výchozí hodnoty jsou dostupné offline. Před ostrou úlohou je vždy potřeba hodnoty ověřit na odřezku.">
-                <components:PageHeader.Actions>
-                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Border Style="{StaticResource Badge.Aligned}" Margin="0,0,8,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Ellipse Width="8" Height="8" Fill="{StaticResource Brush.Success}" Margin="0,0,8,0" />
-                                    <TextBlock Text="Dostupné offline" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Border>
-                            <Button Style="{StaticResource Button.Secondary}" Command="{Binding SynchronizeCommand}" ToolTip="Synchronizovat osobní recepty s účtem Lasero">
-                                <components:IconLabel IconData="{StaticResource Glyph.CloudSync}" Text="Synchronizovat" IconSize="{StaticResource Size.Icon.Sm}" />
-                            </Button>
-                        </StackPanel>
-                        <TextBlock Text="{Binding SyncStatus}" Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Meta}" HorizontalAlignment="Right" Margin="0,4,0,0" />
-                    </StackPanel>
-                </components:PageHeader.Actions>
+                                   Subtitle="">
             </components:PageHeader>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="32,0,32,16" Style="{StaticResource MaterialTabs}"
+        <TabControl Grid.Row="1" Margin="24,0,24,12" Style="{StaticResource MaterialTabs}"
                     ItemContainerStyle="{StaticResource MaterialTab}">
             <TabItem Header="Doporučené parametry">
-                <Grid Margin="0,16,0,0">
+                <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="12" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <components:ElevatedBorder Style="{StaticResource Card}" Padding="16,12,8,4">
+                    <components:ElevatedBorder Style="{StaticResource Card}" Padding="12,8,8,0">
                         <WrapPanel>
                             <StackPanel Width="174" Margin="0,0,8,8">
                                 <TextBlock Text="Typ laseru" Style="{StaticResource FieldLabel}" />
@@ -247,15 +231,16 @@
                         </Grid.ColumnDefinitions>
 
                         <Grid>
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320"
                                         Visibility="{Binding HasSwatchCards, Converter={StaticResource InverseBoolToVisibility}}">
                                 <components:IconGlyph IconData="{StaticResource Glyph.Search}"
                                                       Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                       HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
-                                <TextBlock Text="Žádný materiál neodpovídá filtrům" FontWeight="SemiBold" Margin="0,12,0,0" />
-                                <TextBlock Text="Lze změnit typ laseru, výkon nebo hledaný výraz." Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                                <TextBlock Text="Žádný materiál neodpovídá filtrům" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0" />
+                                <TextBlock Text="Lze změnit typ laseru, výkon nebo hledaný výraz." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0" />
                             </StackPanel>
                             <ScrollViewer x:Name="SwatchScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          SizeChanged="OnSwatchViewportSizeChanged"
                                           Visibility="{Binding HasSwatchCards, Converter={StaticResource BoolToVisibility}}">
                                 <ItemsControl ItemsSource="{Binding SwatchCards}">
                                     <ItemsControl.ItemsPanel>
@@ -265,7 +250,8 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <components:ElevatedBorder Width="360" Style="{StaticResource Card}" Padding="0" Margin="0,0,12,12">
+                                            <components:ElevatedBorder Width="{Binding SwatchCardWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                       Style="{StaticResource Card}" Padding="0" Margin="0,0,12,12">
                                                 <Grid>
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto" />
@@ -276,8 +262,8 @@
                                                         <DockPanel>
                                                             <components:IconTile DockPanel.Dock="Left" IconData="{StaticResource Glyph.Materials}" Tone="{Binding Tone}" Margin="0,0,12,0" VerticalAlignment="Center" />
                                                             <StackPanel VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding Material.Name}" FontWeight="SemiBold" />
-                                                                <TextBlock Text="{Binding Material.Description}" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding Material.Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                                <TextBlock Text="{Binding Material.Description}" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                                             </StackPanel>
                                                         </DockPanel>
                                                     </Border>
@@ -360,31 +346,29 @@
                             </ScrollViewer>
                         </Grid>
 
-                        <components:ElevatedBorder Grid.Column="2" Style="{StaticResource Card}" Padding="20">
+                        <!-- Detail column: padding lives on the content (24 px) so the one scroll region reaches the
+                             card edge; exactly one ScrollViewer, Auto, no horizontal bar. -->
+                        <components:ElevatedBorder Grid.Column="2" Style="{StaticResource Card}" Padding="0">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
                                             Visibility="{Binding HasSelectedRecipe, Converter={StaticResource InverseBoolToVisibility}}">
                                     <components:IconGlyph IconData="{StaticResource Glyph.Materials}"
                                                           Width="{StaticResource Size.Icon.Xl}" Height="{StaticResource Size.Icon.Xl}"
                                                           HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" />
                                     <TextBlock Text="Odstín zatím není zvolen" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
-                                    <TextBlock Text="Kliknutím na políčko ve vzorníku se rychlost a výkon nastaví automaticky."
+                                    <TextBlock Text="{Binding SelectionHintText, ElementName=MaterialsDialog, Mode=OneTime}"
                                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" TextAlignment="Center"
-                                               MaxWidth="230" Margin="0,4,0,0" />
+                                               MaxWidth="240" Margin="0,8,0,0" />
                                 </StackPanel>
-                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                               Visibility="{Binding HasSelectedRecipe, Converter={StaticResource BoolToVisibility}}">
-                                    <StackPanel>
-                                        <TextBlock Text="Vybrané nastavení" Style="{StaticResource Text.Muted}" FontWeight="SemiBold" />
+                                    <StackPanel Margin="24,24,24,16">
+                                        <!-- A title is never trimmed: it wraps onto a second line instead. -->
                                         <TextBlock Text="{Binding SelectedRecipe.MaterialName}" FontFamily="{StaticResource Font.Display}"
-                                                   FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,8,0,0" />
-                                        <TextBlock Margin="0,4,0,16" Style="{StaticResource Text.Muted}">
-                                            <Run Text="{Binding SelectedRecipe.TechnologyName, Mode=OneWay}" /><Run Text="  ·  " />
-                                            <Run Text="{Binding SelectedRecipe.PowerWatts, Mode=OneWay}" /><Run Text=" W  ·  " />
-                                            <Run Text="{Binding SelectedRecipe.OperationName, Mode=OneWay}" />
-                                        </TextBlock>
-                                        <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Margin="0,0,0,12">
+                                                   FontSize="{StaticResource Size.Text.Title}" FontWeight="SemiBold" Margin="0,12,0,0"
+                                                   TextWrapping="Wrap" />
+                                        <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" Margin="0,0,0,16" Padding="16">
                                             <StackPanel>
                                                 <TextBlock Text="Rychlost" Style="{StaticResource Text.Muted}" />
                                                 <TextBlock Text="{Binding SelectedRecipe.SpeedMmPerMinute, StringFormat={}{0:0} mm/min}"
@@ -395,26 +379,36 @@
                                                 <TextBlock Text="Průchody" Style="{StaticResource Text.Muted}" />
                                                 <TextBlock Text="{Binding SelectedRecipe.Passes, StringFormat={}{0}×}"
                                                            FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                <StackPanel Margin="0,12,0,0"
+                                                            Visibility="{Binding HasSelectedLineInterval, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Rozestup řádků" Style="{StaticResource Text.Muted}" />
+                                                    <TextBlock Text="{Binding SelectedLineIntervalText}"
+                                                               FontFamily="{StaticResource Font.Numeric}" FontSize="{StaticResource Size.Text.Section}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </components:ElevatedBorder>
-                                        <components:ElevatedBorder Elevation="None" Style="{StaticResource InspectorSection}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
-                                                Visibility="{Binding HasSelectedWarning, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Text="{Binding SelectedRecipe.Warning}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
-                                        </components:ElevatedBorder>
+                                        <!-- Picker mode only: what Aplikovat will change besides the numbers, and the standing
+                                             reminder that every value is a starting point to be verified on scrap. -->
+                                        <TextBlock Text="{Binding Picker.ModeChangeNote, ElementName=MaterialsDialog}" Style="{StaticResource Text.Muted}"
+                                                   TextWrapping="Wrap" Margin="0,0,0,12"
+                                                   Visibility="{Binding Picker.HasModeChange, ElementName=MaterialsDialog, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
                                 </ScrollViewer>
-                                <StackPanel Grid.Row="1" Margin="0,16,0,0"
+                                <!-- Standalone Vzorník only: the picker applies through its own bottom bar. -->
+                                <StackPanel Grid.Row="1" Margin="24,0,24,24"
                                             Visibility="{Binding HasSelectedRecipe, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Text="Použít na vrstvu" Style="{StaticResource FieldLabel}" />
-                                    <ComboBox x:Name="TargetLayerComboBox" ItemsSource="{Binding ProjectLayers, ElementName=MaterialsDialog}">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                    <Button Style="{StaticResource PrimaryBlue}" Click="OnApplySelectedRecipeClick" Margin="0,12,0,0"
-                                            IsEnabled="{Binding HasItems, ElementName=TargetLayerComboBox}">
-                                        <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít parametry" Foreground="White" />
-                                    </Button>
+                                    <StackPanel Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource InverseBoolToVisibility}}">
+                                        <TextBlock Text="Použít na vrstvu" Style="{StaticResource FieldLabel}" />
+                                        <ComboBox x:Name="TargetLayerComboBox" ItemsSource="{Binding ProjectLayers, ElementName=MaterialsDialog}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button Style="{StaticResource PrimaryBlue}" Click="OnApplySelectedRecipeClick" Margin="0,16,0,0"
+                                                IsEnabled="{Binding HasItems, ElementName=TargetLayerComboBox}">
+                                            <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Použít parametry" Foreground="White" />
+                                        </Button>
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </components:ElevatedBorder>
@@ -429,7 +423,7 @@
                     <!-- One plain sentence so a first-time owner knows what a recipe is and where it is used. -->
                     <StackPanel Grid.Row="0" Margin="0,0,0,12">
                         <TextBlock x:Name="RecipeHelpText" FontSize="{StaticResource Size.Text.Body}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}"
-                                   Text="Recept je uložené nastavení rychlosti, výkonu a počtu průchodů pro jeden materiál. V Návrhu ho lze použít přes Použít na operaci." />
+                                   Text="Recept je uložené nastavení rychlosti, výkonu a počtu průchodů pro jeden materiál. V Návrhu ho lze použít přes Použít na vrstvu." />
                         <TextBlock FontSize="{StaticResource Size.Text.Body}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource Brush.Warning}"
                                    Text="{Binding CutSafetyHint}"
                                    Visibility="{Binding HasCutPreset, Converter={StaticResource BoolToVisibility}}" />
@@ -510,6 +504,14 @@
                                                     </StackPanel>
                                                 </WrapPanel>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,20,0,0">
+                                                    <!-- Picker mode only: a saved recipe is applied to the target operation straight away. -->
+                                                    <Button Style="{StaticResource Button.Secondary}" Height="{StaticResource Size.Control.Base}" Padding="16,0" Margin="0,0,8,0"
+                                                            Content="Aplikovat"
+                                                            ToolTip="Zapíše hodnoty tohoto receptu do vybrané vrstvy"
+                                                            AutomationProperties.Name="Aplikovat recept na vrstvu"
+                                                            Command="{Binding Picker.ApplyPresetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Visibility="{Binding IsPickerMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
                                                     <Button Style="{StaticResource Button.Tool}" Width="{StaticResource Size.Control.Base}" Height="{StaticResource Size.Control.Base}"
                                                             MinHeight="{StaticResource Size.Control.Base}" Padding="8" Margin="0,0,8,0"
                                                             ToolTip="Duplikovat recept" AutomationProperties.Name="Duplikovat recept"
@@ -545,9 +547,28 @@
         </TabControl>
 
         <components:DialogFooter Grid.Row="2">
+            <!-- Standalone Vzorník: hint + Hotovo. Picker: the reason Aplikovat is disabled (or where it writes),
+                 then Zrušit + Aplikovat. Collapsed footer children take no space. -->
             <TextBlock components:DialogFooter.IsLeading="True" Text="Recepty jsou výchozí doporučení; materiál, fokus a stav optiky mohou výsledek změnit."
-                       Style="{StaticResource Text.Muted}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <Button Style="{StaticResource Button.Primary}" Click="OnCloseClick" Height="{StaticResource Size.Control.Primary}" Padding="24,0">
+                       Style="{StaticResource Text.Muted}" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource InverseBoolToVisibility}}" />
+            <TextBlock components:DialogFooter.IsLeading="True" Text="{Binding Picker.ApplyHint, ElementName=MaterialsDialog}"
+                       Style="{StaticResource Text.Muted}" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource BoolToVisibility}}" />
+            <Button Style="{StaticResource Button.Secondary}" Height="{StaticResource Size.Control.Primary}" Padding="24,0"
+                    Command="{Binding Picker.CancelCommand, ElementName=MaterialsDialog}" Content="Zrušit"
+                    ToolTip="Zavře vzorník beze změny operace"
+                    AutomationProperties.Name="Zrušit výběr materiálu"
+                    Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource BoolToVisibility}}" />
+            <Button Style="{StaticResource Button.Primary}" Height="{StaticResource Size.Control.Primary}" Padding="24,0"
+                    Command="{Binding Picker.ApplyCommand, ElementName=MaterialsDialog}"
+                    ToolTip="{Binding Picker.ApplyHint, ElementName=MaterialsDialog}" ToolTipService.ShowOnDisabled="True"
+                    AutomationProperties.Name="Aplikovat vybraný materiál na operaci"
+                    Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource BoolToVisibility}}">
+                <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Aplikovat" Foreground="White" />
+            </Button>
+            <Button Style="{StaticResource Button.Primary}" Click="OnCloseClick" Height="{StaticResource Size.Control.Primary}" Padding="24,0"
+                    Visibility="{Binding IsPickerMode, ElementName=MaterialsDialog, Mode=OneTime, Converter={StaticResource InverseBoolToVisibility}}">
                 <components:IconLabel IconData="{StaticResource Glyph.Check}" Text="Hotovo" Foreground="White" />
             </Button>
         </components:DialogFooter>

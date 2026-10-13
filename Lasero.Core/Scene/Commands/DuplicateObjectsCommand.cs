@@ -22,19 +22,51 @@ public sealed class DuplicateObjectsCommand : ISceneCommand
 
     public void Do()
     {
-        _clones = _sources.Select(source =>
+        if (_clones.Count == 0)
         {
-            var clone = source.Clone();
-            clone.Transform = clone.Transform with
+            var groupCopies = new Dictionary<Guid, Guid>();
+            Guid RemapGroup(Guid id)
             {
-                X = clone.Transform.X + _cascadeOffset.X,
-                Y = clone.Transform.Y + _cascadeOffset.Y,
-            };
-            return clone;
-        }).ToList();
+                if (!groupCopies.TryGetValue(id, out var replacement))
+                    groupCopies[id] = replacement = Guid.NewGuid();
+                return replacement;
+            }
+            _clones = _sources.Select(source =>
+            {
+                var clone = source.Clone();
+                if (source.GroupId is { } groupId)
+                    clone.GroupId = RemapGroup(groupId);
+                clone.NestedGroupIds = source.NestedGroupIds.Select(RemapGroup).ToArray();
+                clone.Transform = clone.Transform with
+                {
+                    X = clone.Transform.X + _cascadeOffset.X,
+                    Y = clone.Transform.Y + _cascadeOffset.Y,
+                };
+                return clone;
+            }).ToList();
+
+            var objectCopies = _sources.Select((source, index) => (source.Id, Clone: _clones[index]))
+                .ToDictionary(pair => pair.Id, pair => pair.Clone);
+            var linkCopies = new Dictionary<Guid, Guid>();
+            foreach (var (source, index) in _sources.Select((source, index) => (source, index)))
+            {
+                if (source.OffsetLink is not { } link ||
+                    !link.SourceIds.All(objectCopies.ContainsKey)) continue;
+                if (!linkCopies.TryGetValue(link.LinkId, out var newLinkId))
+                    linkCopies[link.LinkId] = newLinkId = Guid.NewGuid();
+                _clones[index].OffsetLink = link with
+                {
+                    LinkId = newLinkId,
+                    SourceIds = link.SourceIds.Select(id => objectCopies[id].Id).ToArray(),
+                };
+                // The copied sources already receive the cascade; a linked result derives that
+                // movement from them when its cached outline is refreshed after this command.
+                _clones[index].Transform = source.Transform;
+            }
+        }
 
         foreach (var clone in _clones)
-            _scene.Objects.Add(clone);
+            if (!_scene.Objects.Contains(clone)) _scene.Objects.Add(clone);
     }
 
     public void Undo()

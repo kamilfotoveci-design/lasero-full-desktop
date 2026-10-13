@@ -13,6 +13,7 @@ public partial class DeviceView : UserControl
     public DeviceView()
     {
         InitializeComponent();
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -41,13 +42,10 @@ public partial class DeviceView : UserControl
         e.Handled = true;
     }
 
-    private void OnDeviceSettingsClick(object sender, RoutedEventArgs e)
+    /// <summary>The settings draft is filled from the saved values every time the screen is entered, so an edit that was
+    /// never saved does not come back after leaving the screen. Switching tabs inside the screen does not pass through here.</summary>
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel) return;
-        var dialog = new DeviceSettingsWindow(viewModel)
-        {
-            Owner = Window.GetWindow(this),
-        };
-        dialog.ShowDialog();
+        if (e.NewValue is true) SettingsPage.Refresh();
     }
 }

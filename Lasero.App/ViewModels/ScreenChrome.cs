@@ -35,10 +35,6 @@ public static class ScreenChrome
     public static bool ShowJobActionZone(AppScreen screen, JobRunState state)
         => ShowLaunchControls(screen) || ShowActiveJobControls(state);
 
-    /// <summary>The title bar's machine settings shortcut. The Device screen carries its own button,
-    /// Home and Chat have no use for it.</summary>
-    public static bool ShowDeviceSettingsShortcut(AppScreen screen) => screen == AppScreen.Designer;
-
     /// <summary>The strip's Připojit. Home (device rail) and Zařízení (status card) already carry a
     /// connect call-to-action in the same state, so repeating it in the strip is a duplicate there. Návrh and
     /// Chat have none of their own, so the strip keeps it. The connected/disconnected condition stays on

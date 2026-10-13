@@ -27,7 +27,8 @@ public partial class TipChip : UserControl
     public bool ForceStatic { get; set; }
 
     private bool AnimationsEnabled =>
-        !ForceStatic && SystemParameters.ClientAreaAnimation && RenderCapability.Tier > 0;
+        !ForceStatic && SystemParameters.ClientAreaAnimation && RenderCapability.Tier > 0 &&
+        !Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion;
 
     public void Attach(GuidanceService service)
     {

@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Lasero.Avalonia.Views.ConfirmationDialog"
+        Title="Potvrzení"
+        Width="380" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Brush.Panel}">
+  <!--
+      Minimal, narrow equivalent of Lasero.App's LaseroDialogWindow — only what the two real safety
+      gates that need it (JogViewModel.SoftReset, ConsoleViewModel.Send's risky-command guard) actually
+      use: a title, a message, and a primary/cancel choice, with the primary button in danger red when
+      the action is destructive. Not a general dialog service/theming framework.
+  -->
+  <StackPanel Margin="20">
+    <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,20" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Classes="secondary" Content="Zrušit" />
+      <Button x:Name="PrimaryButton" Classes="primary" />
+    </StackPanel>
+  </StackPanel>
+</Window>

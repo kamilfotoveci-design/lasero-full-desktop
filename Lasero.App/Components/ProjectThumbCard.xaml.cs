@@ -39,7 +39,7 @@ public partial class ProjectThumbCard : UserControl
     /// <summary>Same reduced-motion check KamilAssistantHost and DeviceWizardOverlay already
     /// established, applied here rather than inventing a second one.</summary>
     private static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation
-        && RenderCapability.Tier > 0;
+        && RenderCapability.Tier > 0 && !Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

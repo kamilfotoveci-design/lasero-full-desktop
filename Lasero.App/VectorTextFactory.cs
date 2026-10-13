@@ -145,6 +145,8 @@ public static class VectorTextFactory
         return new SceneObject
         {
             Id = existing.Id,
+            GroupId = existing.GroupId,
+            NestedGroupIds = existing.NestedGroupIds.ToArray(),
             Name = BuildName(source),
             LocalShapes = localShapes,
             LocalBounds = render.Bounds,

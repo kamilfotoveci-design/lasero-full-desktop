@@ -84,7 +84,8 @@ public partial class TourOverlay : UserControl
     public TourLayoutResult? LastLayout { get; private set; }
 
     private bool AnimationsEnabled =>
-        !ForceStatic && SystemParameters.ClientAreaAnimation && RenderCapability.Tier > 0;
+        !ForceStatic && SystemParameters.ClientAreaAnimation && RenderCapability.Tier > 0 &&
+        !Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion;
 
     // ------------------------------------------------------------------------------------ open / close
 

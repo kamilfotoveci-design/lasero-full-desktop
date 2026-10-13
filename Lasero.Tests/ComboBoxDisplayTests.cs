@@ -53,7 +53,6 @@ public sealed class ComboBoxDisplayTests
     public void ComboBoxItemTypesNeverRenderAsARecordDump()
     {
         var texts = new List<string>();
-        texts.AddRange(new OffsetPathViewModel([new Lasero.Core.Scene.SceneObject { LocalShapes = [], LocalPivot = Lasero.Core.Grbl.Position.Zero, LocalBounds = Lasero.Core.GCode.BoundingBox2D.Empty, Name = "t" }]).JoinTypeOptions.Select(o => o.ToString()));
         texts.AddRange(RasterImportViewModel.DitheringChoices.Select(o => o.ToString()));
         texts.AddRange(MachineCompatibilityCatalog.All.Select(o => o.ToString()));
 

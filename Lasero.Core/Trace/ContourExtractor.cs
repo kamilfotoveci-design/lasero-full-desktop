@@ -17,6 +17,9 @@ public sealed record RawContour
     public required IReadOnlyList<PixelPoint> Points { get; init; }
     public required int Depth { get; init; }
     public required IReadOnlyList<RawContour> Children { get; init; }
+    /// <summary>The unsmoothed contour this one was derived from, when the extractor has it. The path builder
+    /// uses it to prove a fitted curve never strays from the artwork.</summary>
+    public IReadOnlyList<PixelPoint>? Reference { get; init; }
     public bool IsHole => Depth % 2 == 1;
 }
 

@@ -28,6 +28,8 @@ public partial class ChatViewModel : ObservableObject
     ];
 
     [ObservableProperty] private string _input = string.Empty;
+    /// <summary>Optional explicit choice; when null Kamil follows the latest user message.</summary>
+    [ObservableProperty] private string? _preferredLanguage;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private bool _hasMessages;
@@ -50,9 +52,8 @@ public partial class ChatViewModel : ObservableObject
     public Func<LaseroChatContext>? ContextProvider { get; set; }
 
     /// <summary>
-    /// Reports which operation is selected in the workspace at the moment a message is recorded, so a
-    /// recommendation parsed out of that message can later tell whether it is still about the
-    /// operation it was talking about. Same "set by the host once at startup" shape as
+    /// Reports the active operation at submit time. The request captures it once before any await, so
+    /// a later selection change cannot silently retarget the returned recommendation. Same wiring as
     /// <see cref="ContextProvider"/>, and optional for the same reason: a chat opened before a host
     /// attaches must still work, just without staleness tracking.
     /// </summary>
@@ -71,12 +72,12 @@ public partial class ChatViewModel : ObservableObject
     private static LaseroChatContext DefaultContext => new(
         MachineName: null,
         MachineId: null,
-        PowerWatts: 20,
-        LaserType: "diode",
-        LaserDescription: "diodový laser 450 nm",
-        Experience: "beginner",
+        PowerWatts: null,
+        LaserType: null,
+        LaserDescription: null,
+        Experience: null,
         MaterialName: null,
-        Operation: "engrave");
+        Operation: null);
 
     public void InitializeForCurrentAccount()
     {
@@ -116,10 +117,15 @@ public partial class ChatViewModel : ObservableObject
         var text = Input.Trim();
         if (text.Length == 0 || text.Length > MaxInputLength) return;
 
+        // One immutable snapshot of the user's workspace and intended operation, taken before
+        // token refresh or network latency can let the selection move underneath the request.
+        var context = ResolveContext() with { PreferredLanguage = PreferredLanguage };
+        var originLayerId = ResolveOriginLayerId();
+
         Input = string.Empty;
         StatusMessage = null;
         EnsureCurrentSession(text);
-        var pendingMessage = AddMessage(LaseroChatRole.User, text);
+        var pendingMessage = AddMessage(LaseroChatRole.User, text, originLayerId);
         Persist();
         IsBusy = true;
 
@@ -129,8 +135,8 @@ public partial class ChatViewModel : ObservableObject
             var history = Messages
                 .Select(message => new LaseroChatTurn(message.Role, message.Text))
                 .ToArray();
-            var response = await _client.SendAsync(idToken, history, ResolveContext());
-            AddMessage(LaseroChatRole.Assistant, response);
+            var response = await _client.SendAsync(idToken, history, context);
+            AddMessage(LaseroChatRole.Assistant, response, originLayerId);
             Persist();
         }
         catch (LaseroChatException exception)
@@ -173,6 +179,16 @@ public partial class ChatViewModel : ObservableObject
             // getting one.
             Log.Warning(exception, "Could not read workspace context for Kamil; sending defaults");
             return DefaultContext;
+        }
+    }
+
+    private Guid? ResolveOriginLayerId()
+    {
+        try { return SelectedLayerIdProvider?.Invoke(); }
+        catch (Exception exception)
+        {
+            Log.Warning(exception, "Could not capture Kamil's selected operation");
+            return null;
         }
     }
 
@@ -237,11 +253,11 @@ public partial class ChatViewModel : ObservableObject
         RefreshSessionList();
     }
 
-    private ChatMessageItem AddMessage(LaseroChatRole role, string text)
+    private ChatMessageItem AddMessage(LaseroChatRole role, string text, Guid? originLayerId)
     {
         var message = new ChatMessageItem(Guid.NewGuid(), role, text, DateTimeOffset.Now)
         {
-            OriginLayerId = SelectedLayerIdProvider?.Invoke(),
+            OriginLayerId = originLayerId,
         };
         Messages.Add(message);
         RefreshState();
@@ -407,7 +423,7 @@ public sealed class ChatMessageItem(Guid id, LaseroChatRole role, string text, D
     public bool IsUser => Role == LaseroChatRole.User;
     public string Author => IsUser ? "Vy" : "Kamil";
     public string TimeLabel => CreatedAt.ToString("HH:mm");
-    private CondensedResponse Condensed => _condensed ??= ChatResponseNormalizer.Condense(Text);
+    private CondensedResponse Condensed => _condensed ??= ChatResponseNormalizer.Condense(ParameterRecommendation.StripMachineLine(Text));
 
     /// <summary>What the bubble shows. The operator's own words are shown as typed; KAMIL's answer is
     /// the short version unless it is short already or the operator asked for more.</summary>

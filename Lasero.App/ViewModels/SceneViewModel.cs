@@ -32,6 +32,10 @@ public partial class SceneViewModel : ObservableObject
     private readonly SceneCommandStack _commandStack = new();
     private int _importCount;
     private List<SceneObject> _clipboard = [];
+    private List<LayerSettings> _clipboardLayers = [];
+    private bool _reconcilingSelectionEligibility;
+    private bool _refreshingLinkedOffsets;
+    private System.Windows.Threading.DispatcherTimer? _linkedOffsetPreviewTimer;
 
     public SceneDocument Scene { get; } = new();
 
@@ -41,6 +45,10 @@ public partial class SceneViewModel : ObservableObject
     /// <summary>Multi-select set the canvas maintains (rubber-band / shift-click). The property panel
     /// (round 1) only edits a single object, so Selected mirrors this when exactly one is selected.</summary>
     public SelectionCollection SelectedObjects { get; } = new();
+
+    /// <summary>True right after a bitmap trace: the canvas marks the traced contours but draws no
+    /// selection rectangle or handles until the operator next clicks the canvas.</summary>
+    public bool HideSelectionFrame { get; set; }
 
     public IReadOnlyList<RgbColor> LayerPalette { get; } =
     [
@@ -64,7 +72,7 @@ public partial class SceneViewModel : ObservableObject
     /// Select - it is what a short click on the shape button activates, and what the shape picker
     /// shows as selected.
     /// </summary>
-    [ObservableProperty] private DesignerTool _currentShapeTool = DesignerTool.Rectangle;
+    [ObservableProperty] private DesignerTool _currentShapeTool = DesignerTool.Square;
 
     /// <summary>Drives the OBRÁZEK section's inline progress UI while MainWindow sends the image to
     /// the authenticated Gemini service and awaits its result.</summary>
@@ -72,8 +80,10 @@ public partial class SceneViewModel : ObservableObject
     [ObservableProperty] private bool _backgroundRemovalIsIndeterminate;
     [ObservableProperty] private string? _backgroundRemovalStatus;
     [ObservableProperty] private string? _backgroundRemovalError;
-    [ObservableProperty] private double _backgroundRemovalProgress;
     private readonly HashSet<SceneObject> _observedSelection = [];
+    private readonly HashSet<LayerSettings> _hookedLayers = [];
+    private readonly Dictionary<LayerSettings, LayerSettingsState> _pendingLayerEdits = [];
+    private bool _layerHistoryScheduled;
 
     public bool HasSelection => SelectedObjects.Count > 0;
     public bool HasMultipleSelection => SelectedObjects.Count > 1;
@@ -89,9 +99,14 @@ public partial class SceneViewModel : ObservableObject
     public bool CanTransformSelectedObject => CanEditSelectedPosition;
     public bool CanRotateSelectedObject => Selected is { IsLocked: false, IsRaster: false };
     public bool IsSelectedLocked => Selected?.IsLocked == true;
-    public bool CanGroupSelection => SelectedObjects.Count >= 2 && SelectedObjects.All(item => !item.IsRaster && !item.IsLocked);
-    public bool CanUngroupSelection => SelectedObjects.Count == 1 && Selected is { IsRaster: false, IsLocked: false } item && item.LocalShapes.Count > 1;
-    /// <summary>Null when Union/Subtract/Intersect/Exclude are available; otherwise a specific Czech
+    public bool CanGroupSelection => ExpandedGroupSelection() is { Count: >= 2 } members &&
+        members.All(item => !item.IsLocked);
+    public bool CanUngroupSelection => SelectedObjects.Select(item => item.GroupId)
+        .OfType<Guid>().Any(id => Objects.Where(item => item.GroupId == id).All(item => !item.IsLocked));
+    public bool CanBreakApartSelection => SelectedObjects.Count == 1 && Selected is
+        { IsRaster: false, IsLocked: false, IsText: false, LocalShapes.Count: > 1 } item &&
+        (item.VectorPath is null || item.VectorPath.Subpaths.Count == item.LocalShapes.Count);
+    /// <summary>Null when the selection contains valid closed vector geometry; otherwise a specific Czech
     /// explanation of whichever precondition actually fails. CanUniteSelection derives from this so
     /// there is one source of truth — the menu items that used to bind straight to CanUniteSelection's
     /// Visibility now bind to this being null/non-null for IsEnabled and show the text as a ToolTip,
@@ -106,6 +121,8 @@ public partial class SceneViewModel : ObservableObject
             if (SelectedObjects.Count == 0) return "Nic není vybráno.";
             if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze sjednotit ani kombinovat. Lze vybrat pouze vektory.";
             if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze sjednotit ani kombinovat. Nejprve je potřeba je odemknout.";
+            if (ExpandedGroupSelection().Any(item => !SelectedObjects.Contains(item)))
+                return "Vybraná skupina obsahuje skryté nebo zamknuté členy. Zpřístupni všechny členy před booleovskou operací.";
             if (SelectedObjects.SelectMany(item => item.LocalShapes).Count() < 2) return "Je potřeba vybrat alespoň dva tvary.";
             if (SelectedObjects.SelectMany(item => item.LocalShapes).Any(shape => !shape.IsClosed || shape.Points.Count < 3))
                 return "Výběr obsahuje otevřenou dráhu — booleovské operace vyžadují uzavřené tvary.";
@@ -121,7 +138,24 @@ public partial class SceneViewModel : ObservableObject
         _ => null,
     };
 
-    public bool CanUniteSelection => UniteSelectionDisabledReason is null;
+    public string? BooleanPairSelectionDisabledReason => UniteSelectionDisabledReason ??
+        (BooleanOperands().Count == 2 ? null : "Tato operace pracuje přesně se dvěma vybranými objekty nebo skupinami.");
+    public bool CanUniteSelection => BooleanPairSelectionDisabledReason is null;
+    public bool CanWeldSelection => BooleanOperands().Count >= 2 && UniteSelectionDisabledReason is null;
+    public bool CanBooleanPairSelection => BooleanPairSelectionDisabledReason is null;
+    public bool CanDivideSelection => BooleanOperands().Count == 2 &&
+        ExpandedGroupSelection().All(SelectedObjects.Contains) &&
+        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked &&
+            item.GetWorldShapes().Any() && item.GetWorldShapes().All(shape => shape.IsClosed && shape.Points.Count >= 3));
+    public bool CanFractureSelection => BooleanOperands().Count >= 2 &&
+        ExpandedGroupSelection().All(SelectedObjects.Contains) &&
+        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked &&
+            item.GetWorldShapes().Any() && item.GetWorldShapes().All(shape => shape.IsClosed && shape.Points.Count >= 3));
+    public bool CanFillBetweenPaths => SelectedObjects.Count == 2 &&
+        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked && item.VectorPath is { Subpaths.Count: 1 } path &&
+            !path.Subpaths[0].IsClosed && path.Subpaths[0].Nodes.Count >= 2);
+    public bool CanEditSelectedVectorPaths => SelectedObjects.Count > 0 &&
+        SelectedObjects.All(item => !item.IsRaster && !item.IsLocked && item.VectorPath is { Subpaths.Count: > 0 });
     public bool CanTraceSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false };
 
     /// <summary>Null when Offset Path is available; otherwise a specific Czech explanation of whichever
@@ -142,7 +176,7 @@ public partial class SceneViewModel : ObservableObject
         }
     }
     public bool CanOffsetSelection => OffsetSelectionDisabledReason is null;
-    public bool CanRemoveSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false };
+    public bool CanRemoveSelectedBackground => !IsRemovingBackground && SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false };
     public bool CanRestoreSelectedBackground => SelectedObjects.Count == 1 && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: true };
 
     /// <summary>Gates the inspector's OBRÁZEK section — true for exactly one selected raster object,
@@ -157,7 +191,18 @@ public partial class SceneViewModel : ObservableObject
     /// this does not depend on which layer row is currently highlighted, so a context menu can offer
     /// every layer by name.</summary>
     public bool CanAssignToAnyLayer => HasSelection && SelectedObjects.All(item => !item.IsRaster && !item.IsLocked);
-    public bool CanDeleteSelectedLayer => SelectedLayer is not null && CountObjectsUsingLayer(SelectedLayer) == 0;
+    public string? DeleteSelectedLayerDisabledReason
+    {
+        get
+        {
+            if (SelectedLayer is null) return "Nejprve vyber vrstvu.";
+            if (Layers.Count <= 1) return "Poslední vrstvu nelze odstranit.";
+            if (Objects.Any(item => !DeleteLayerCommand.CanKeepOtherContours(item, SelectedLayer)))
+                return "Tato vrstva sdílí editovatelný text nebo cestu, kterou nelze bezpečně rozdělit po obrysech.";
+            return null;
+        }
+    }
+    public bool CanDeleteSelectedLayer => DeleteSelectedLayerDisabledReason is null;
     public bool CanMoveSelectedLayerUp => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) > 0;
     public bool CanMoveSelectedLayerDown => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) is var index && index >= 0 && index < Layers.Count - 1;
 
@@ -185,13 +230,20 @@ public partial class SceneViewModel : ObservableObject
 
     public event Action? Changed;
     public event Action<SceneObject>? TraceRasterRequested;
+    public event Action<SceneObject>? EditRasterRequested;
+    public event Action<string>? RasterOperationRejected;
     public event Action<SceneObject>? BackgroundRemovalRequested;
     public event Action? BackgroundRemovalCancelRequested;
     public event Action<string>? VectorOperationRejected;
+    public event Action<VectorOperationPreview>? BooleanPreviewRequested;
+
+    /// <summary>Report a vector edit rejection from a canvas interaction without exposing the event
+    /// invocation outside this view model.</summary>
+    public void ReportVectorOperationRejected(string message) => VectorOperationRejected?.Invoke(message);
     /// <summary>Raised by OffsetSelectionCommand — MainWindow owns opening OffsetPathWindow and
     /// calling ApplyOffset back with its result, the same hand-off shape TraceRasterRequested already
     /// uses for BitmapTraceWindow.</summary>
-    public event Action<IReadOnlyList<SceneObject>>? OffsetRequested;
+    public event Action<IReadOnlyList<SceneObject>, VectorOffsetDirection?>? OffsetRequested;
 
     public SceneViewModel()
     {
@@ -204,6 +256,24 @@ public partial class SceneViewModel : ObservableObject
 
     private void OnSelectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // A font popup can still be open while selection moves to another object. Its temporary
+        // geometry belongs only to the original selection and must not remain in the document.
+        if (_fontPreviewShown is not null && !SelectedObjects.Contains(_fontPreviewShown))
+            EndTextFontPreview();
+        if (!_reconcilingSelectionEligibility)
+        {
+            var ineligible = SelectedObjects.Where(item => !CanSelectObject(item)).ToList();
+            if (ineligible.Count > 0)
+            {
+                _reconcilingSelectionEligibility = true;
+                try
+                {
+                    foreach (var item in ineligible) SelectedObjects.Remove(item);
+                }
+                finally { _reconcilingSelectionEligibility = false; }
+            }
+        }
+
         foreach (var item in _observedSelection.Except(SelectedObjects).ToList())
         {
             item.PropertyChanged -= OnSelectedObjectPropertyChanged;
@@ -218,7 +288,11 @@ public partial class SceneViewModel : ObservableObject
             .ToList();
         if (selectedColors.Count > 0 && selectedColors.All(color => color.IsApproximately(selectedColors[0])))
             SelectedLayer = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(selectedColors[0]));
-        BackgroundRemovalError = null;
+        if (!IsRemovingBackground)
+        {
+            BackgroundRemovalError = null;
+            BackgroundRemovalStatus = null;
+        }
         NotifySelectionStateChanged();
         NotifyLayerStateChanged();
         RefreshCommands();
@@ -226,6 +300,8 @@ public partial class SceneViewModel : ObservableObject
 
     private void OnCommandStackChanged()
     {
+        _linkedOffsetPreviewTimer?.Stop();
+        RefreshLinkedOffsets();
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanRedo));
         NotifyLayerStateChanged();
@@ -235,14 +311,75 @@ public partial class SceneViewModel : ObservableObject
 
     private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.OldItems is not null) foreach (Lasero.Core.Layers.LayerSettings layer in e.OldItems) layer.PropertyChanged -= OnLayerPropertyChanged;
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            foreach (var layer in _hookedLayers)
+            {
+                layer.PropertyChanged -= OnLayerPropertyChanged;
+                layer.PropertyChanging -= OnLayerPropertyChanging;
+            }
+            _hookedLayers.Clear();
+            _pendingLayerEdits.Clear();
+            foreach (var layer in Layers) HookLayer(layer);
+        }
+        if (e.OldItems is not null) foreach (Lasero.Core.Layers.LayerSettings layer in e.OldItems)
+        {
+            layer.PropertyChanged -= OnLayerPropertyChanged;
+            layer.PropertyChanging -= OnLayerPropertyChanging;
+            _hookedLayers.Remove(layer);
+            _pendingLayerEdits.Remove(layer);
+        }
         if (e.NewItems is not null) foreach (Lasero.Core.Layers.LayerSettings layer in e.NewItems) HookLayer(layer);
         if (SelectedLayer is null || !Layers.Contains(SelectedLayer))
             SelectedLayer = Layers.FirstOrDefault();
         if (e.Action != NotifyCollectionChangedAction.Reset) Changed?.Invoke();
     }
 
-    private void HookLayer(Lasero.Core.Layers.LayerSettings layer) => layer.PropertyChanged += OnLayerPropertyChanged;
+    private void HookLayer(Lasero.Core.Layers.LayerSettings layer)
+    {
+        if (!_hookedLayers.Add(layer)) return;
+        layer.PropertyChanged += OnLayerPropertyChanged;
+        layer.PropertyChanging += OnLayerPropertyChanging;
+    }
+
+    private static bool IsStoredLayerProperty(string? name) => name is
+        nameof(LayerSettings.Color) or nameof(LayerSettings.Name) or nameof(LayerSettings.Mode) or
+        nameof(LayerSettings.Speed) or nameof(LayerSettings.Power) or nameof(LayerSettings.Passes) or
+        nameof(LayerSettings.FillLineIntervalMm) or nameof(LayerSettings.MaterialLabel) or
+        nameof(LayerSettings.IsEnabled) or nameof(LayerSettings.IsVisible) or
+        nameof(LayerSettings.IsLocked) or nameof(LayerSettings.IsRaster);
+
+    private void OnLayerPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
+    {
+        if (IsApplyingCommand || sender is not LayerSettings layer || !IsStoredLayerProperty(e.PropertyName)) return;
+        _pendingLayerEdits.TryAdd(layer, LayerSettingsState.Capture(layer));
+    }
+
+    private void ScheduleLayerHistory()
+    {
+        if (_layerHistoryScheduled || _pendingLayerEdits.Count == 0) return;
+        _layerHistoryScheduled = true;
+        System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+            {
+                _layerHistoryScheduled = false;
+                FlushPendingLayerEdits();
+            }));
+    }
+
+    private void FlushPendingLayerEdits()
+    {
+        if (_pendingLayerEdits.Count == 0) return;
+        var pending = _pendingLayerEdits.ToList();
+        _pendingLayerEdits.Clear();
+        foreach (var (layer, before) in pending)
+        {
+            if (!Layers.Contains(layer)) continue;
+            var after = LayerSettingsState.Capture(layer);
+            if (before == after) continue;
+            ApplyCommand(() => _commandStack.Execute(new LayerSettingsHistoryCommand(layer, before, after)));
+        }
+    }
     /// <summary>
     /// False while <see cref="Changed"/> is being raised for an edit that cannot change what the canvas
     /// draws (a layer's power, speed, passes, line interval, name or output switch). Job generation
@@ -259,7 +396,10 @@ public partial class SceneViewModel : ObservableObject
 
     private void OnLayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (!IsApplyingCommand && IsStoredLayerProperty(e.PropertyName)) ScheduleLayerHistory();
         var affectsCanvas = LayerPropertyAffectsCanvas(e.PropertyName);
+        if (e.PropertyName is nameof(LayerSettings.IsVisible) or nameof(LayerSettings.IsLocked))
+            ReconcileSelectionEligibility();
         if (affectsCanvas)
             foreach (var item in Objects)
                 item.InvalidateLayerAppearance();
@@ -270,6 +410,10 @@ public partial class SceneViewModel : ObservableObject
     }
 
     private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item => UsesLayer(item, layer));
+
+    private static bool ShapeUsesLayer(ImportedShape shape, LayerSettings layer) => shape.LayerId != Guid.Empty
+        ? shape.LayerId == layer.Id
+        : shape.LayerColor.IsApproximately(layer.Color);
 
     // Shapes reference a layer by id, but projects saved before layer ids existed only carry a colour,
     // so both routes have to count. Raster objects belong to the raster layer by kind rather than by
@@ -287,6 +431,7 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanEditSelectedLayerColor));
         OnPropertyChanged(nameof(CanAssignSelectionToLayer));
         OnPropertyChanged(nameof(CanDeleteSelectedLayer));
+        OnPropertyChanged(nameof(DeleteSelectedLayerDisabledReason));
         OnPropertyChanged(nameof(CanMoveSelectedLayerUp));
         OnPropertyChanged(nameof(CanMoveSelectedLayerDown));
         OnPropertyChanged(nameof(CanReorderLayers));
@@ -294,6 +439,9 @@ public partial class SceneViewModel : ObservableObject
         DeleteSelectedLayerCommand.NotifyCanExecuteChanged();
         MoveSelectedLayerUpCommand.NotifyCanExecuteChanged();
         MoveSelectedLayerDownCommand.NotifyCanExecuteChanged();
+        SelectAllInActiveLayerCommand.NotifyCanExecuteChanged();
+        MergeSelectedLayerIntoCommand.NotifyCanExecuteChanged();
+        MergeSelectedLayerIntoWithSourceSettingsCommand.NotifyCanExecuteChanged();
     }
 
     public bool IsLayerVisible(Lasero.Core.Layers.RgbColor color) =>
@@ -303,6 +451,24 @@ public partial class SceneViewModel : ObservableObject
         (layerId != Guid.Empty
             ? Layers.FirstOrDefault(layer => layer.Id == layerId)
             : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.IsVisible ?? true;
+
+    public bool IsLayerLocked(Guid layerId, Lasero.Core.Layers.RgbColor legacyColor) =>
+        (layerId != Guid.Empty
+            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
+            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.IsLocked ?? false;
+
+    /// <summary>Central gate for ordinary canvas selection. If one scene object spans multiple
+    /// layers, every contour must be editable before the whole object can be transformed.</summary>
+    public bool CanSelectObject(SceneObject item) =>
+        Objects.Contains(item) && item.IsVisible && !item.IsLocked &&
+        (item.LocalShapes.Count == 0 || item.LocalShapes.All(shape =>
+            IsLayerVisible(shape.LayerId, shape.LayerColor) && !IsLayerLocked(shape.LayerId, shape.LayerColor)));
+
+    private void ReconcileSelectionEligibility()
+    {
+        var ineligible = SelectedObjects.Where(item => !CanSelectObject(item)).ToList();
+        foreach (var item in ineligible) SelectedObjects.Remove(item);
+    }
 
     public LayerMode LayerModeFor(RgbColor color) =>
         Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color))?.Mode ?? LayerMode.Cut;
@@ -314,10 +480,43 @@ public partial class SceneViewModel : ObservableObject
 
     /// <summary>Executed by every mutating gesture the canvas performs (drag-move/rotate/resize on
     /// MouseUp, keyboard nudge) — kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
-    public void Execute(ISceneCommand command) => ApplyCommand(() => _commandStack.Execute(command));
+    public void Execute(ISceneCommand command)
+    {
+        FlushPendingLayerEdits();
+        ApplyCommand(() => _commandStack.Execute(command));
+    }
+
+    /// <summary>
+    /// Runs a live, uncommitted assignment of several objects' transforms during a group drag. It uses
+    /// the same bracket as a command so the per-object notifications collapse: the inspector's
+    /// X/Y/size fields are told once afterwards instead of once per object (quadratic in the selection),
+    /// and the canvas, which skips per-object repaints while this is open, refreshes what it needs
+    /// itself. It does not touch the undo stack; the gesture commits one command on mouse-up.
+    /// </summary>
+    public void ApplyGesturePreview(Action assign)
+    {
+        ApplyCommand(assign);
+        ScheduleLinkedOffsetPreview();
+    }
+
+    private void ScheduleLinkedOffsetPreview()
+    {
+        if (!Objects.Any(item => item.OffsetLink is not null)) return;
+        _linkedOffsetPreviewTimer ??= new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(120), System.Windows.Threading.DispatcherPriority.Background,
+            (_, _) =>
+            {
+                _linkedOffsetPreviewTimer!.Stop();
+                RefreshLinkedOffsets();
+                Changed?.Invoke();
+            }, System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        _linkedOffsetPreviewTimer.Stop();
+        _linkedOffsetPreviewTimer.Start();
+    }
 
     private int _commandDepth;
     private bool _selectedTransformNotificationPending;
+    private bool _selectedGroupNotificationPending;
 
     /// <summary>
     /// True while a command is being executed, undone or redone. Every such operation ends in
@@ -338,6 +537,12 @@ public partial class SceneViewModel : ObservableObject
         {
             _selectedTransformNotificationPending = false;
             NotifySelectedTransformChanged();
+        }
+        if (_commandDepth == 0 && _selectedGroupNotificationPending)
+        {
+            _selectedGroupNotificationPending = false;
+            NotifySelectionStateChanged();
+            RefreshCommands();
         }
     }
 
@@ -375,9 +580,48 @@ public partial class SceneViewModel : ObservableObject
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void ImportRasterFile(string path, RasterImportOptions options)
     {
-        var layer = SceneObjectFactory.CreateRasterLayer(options);
+        if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
+        {
+            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku ji zobrazte a odemkněte.");
+            return;
+        }
+
+        path = RasterImportSource.NormalizeWebp(path);
+        var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && candidate.IsVisible && !candidate.IsLocked)
+            ?? SceneObjectFactory.CreateRasterLayer(options);
         var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path), layer);
         PlaceAndAdd(obj, [layer]);
+        FileImported?.Invoke();
+    }
+
+    public void ImportRasterFiles(IEnumerable<string> paths, RasterImportOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        var inputPaths = paths.Where(File.Exists).ToList();
+        if (inputPaths.Count == 0) return;
+        if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
+        {
+            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku ji zobrazte a odemkněte.");
+            return;
+        }
+
+        var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && candidate.IsVisible && !candidate.IsLocked)
+            ?? SceneObjectFactory.CreateRasterLayer(options);
+        var objects = new List<SceneObject>();
+        var commands = new List<ISceneCommand>();
+        foreach (var sourcePath in inputPaths)
+        {
+            var path = RasterImportSource.NormalizeWebp(sourcePath);
+            var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(sourcePath), layer);
+            var (offsetX, offsetY) = NextCascadeOffset();
+            obj.Transform = obj.Transform with { X = offsetX, Y = offsetY };
+            objects.Add(obj);
+            commands.Add(new AddObjectCommand(Scene, obj, [layer]));
+        }
+
+        Execute(commands.Count == 1 ? commands[0] : new CompositeSceneCommand(commands));
+        SelectedObjects.ReplaceWith(objects);
+        ActiveTool = DesignerTool.Select;
         FileImported?.Invoke();
     }
 
@@ -388,12 +632,57 @@ public partial class SceneViewModel : ObservableObject
             TraceRasterRequested?.Invoke(source);
     }
 
+    public bool CanEditSelectedRaster => SelectedObjects.Count == 1 && Selected is { IsRaster: true } item && CanSelectObject(item);
+
+    [RelayCommand(CanExecute = nameof(CanEditSelectedRaster))]
+    private void EditSelectedRaster()
+    {
+        if (CanEditSelectedRaster && Selected is { } source) EditRasterRequested?.Invoke(source);
+    }
+
+    public void ApplyRasterEdit(SceneObject source, RasterImportOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(options);
+        if (!Objects.Contains(source) || !CanSelectObject(source) || source.RasterFilePath is not { } path) return;
+        var layerId = source.LocalShapes.FirstOrDefault()?.LayerId ?? Guid.Empty;
+        var layer = Layers.FirstOrDefault(candidate => candidate.Id == layerId)
+            ?? Layers.FirstOrDefault(candidate => candidate.IsRaster);
+        if (layer is null) return;
+
+        var rebuilt = SceneObjectFactory.FromRaster(path, options, source.Name, layer);
+        var replacement = new SceneObject
+        {
+            Id = source.Id,
+            GroupId = source.GroupId,
+            NestedGroupIds = source.NestedGroupIds.ToArray(),
+            Name = source.Name,
+            LocalShapes = rebuilt.LocalShapes,
+            LocalPivot = rebuilt.LocalPivot,
+            LocalBounds = rebuilt.LocalBounds,
+            Transform = source.Transform,
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
+            IncludeInOutput = source.IncludeInOutput,
+            RasterFilePath = path,
+            RasterOptions = options,
+            OriginalRasterFilePath = source.OriginalRasterFilePath,
+        };
+
+        var commands = new List<ISceneCommand>();
+        if (layer.FillLineIntervalMm > 0 && Math.Abs(layer.FillLineIntervalMm - options.LineIntervalMm) > 1e-9)
+            commands.Add(new SetRasterLayerIntervalCommand(layer, options.LineIntervalMm));
+        commands.Add(new ReplaceObjectsCommand(Scene, [source], [replacement]));
+        Execute(commands.Count == 1 ? commands[0] : new CompositeSceneCommand(commands));
+        SelectedObjects.ReplaceWith([replacement]);
+    }
+
     /// <summary>Requests cloud background removal — MainWindow owns consent, HTTP work and the
     /// processing-state UI, while this view model remains responsible for document undo/redo.</summary>
     [RelayCommand(CanExecute = nameof(CanRemoveSelectedBackground))]
     private void RemoveSelectedBackground()
     {
-        if (Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false } source)
+        if (CanRemoveSelectedBackground && Selected is { IsRaster: true, IsLocked: false, HasBackgroundRemoved: false } source)
             BackgroundRemovalRequested?.Invoke(source);
     }
 
@@ -411,7 +700,7 @@ public partial class SceneViewModel : ObservableObject
     /// rotate/scale the result around the wrong pivot (the source's, not the result's), which is
     /// exactly the same reason ScenePrimitiveFactory's other object types don't pair a
     /// borrowed Transform with newly built local geometry either.</summary>
-    public void ReplaceRasterWithTrace(SceneObject source, BitmapTraceResult result)
+    public void ReplaceRasterWithTrace(SceneObject source, BitmapTraceResult result, bool deleteSource = true)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(result);
@@ -420,11 +709,17 @@ public partial class SceneViewModel : ObservableObject
         if (result.VectorPaths.Count == 0)
             throw new InvalidOperationException("Tracing did not produce any vector contours.");
 
-        var multipleObjects = result.VectorPaths.Count > 1;
-        var tracedObjects = new List<SceneObject>(result.VectorPaths.Count);
-        for (var index = 0; index < result.VectorPaths.Count; index++)
+        // The whole trace is one object per colour (the logo is one object), so it selects and scales as a
+        // single piece with the normal frame and handles instead of as hundreds of loose contours.
+        var mergedPaths = result.VectorPaths
+            .GroupBy(item => item.Color)
+            .Select(group => (Color: group.Key, Path: new VectorPath { Subpaths = group.SelectMany(item => item.Path.Subpaths).ToList() }))
+            .ToList();
+        var multipleObjects = mergedPaths.Count > 1;
+        var tracedObjects = new List<SceneObject>(mergedPaths.Count);
+        for (var index = 0; index < mergedPaths.Count; index++)
         {
-            var traced = result.VectorPaths[index];
+            var traced = mergedPaths[index];
             var worldPath = ToWorldSpace(traced.Path, source.Transform, source.LocalPivot);
             var name = multipleObjects ? $"Trasování · {source.Name} ({index + 1})" : $"Trasování · {source.Name}";
             var tracedObject = VectorPathSceneFactory.Create(worldPath, traced.Color, name);
@@ -435,7 +730,13 @@ public partial class SceneViewModel : ObservableObject
             tracedObjects.Add(tracedObject);
         }
 
-        Execute(new ReplaceObjectsCommand(Scene, [source], tracedObjects, result.Document.Layers));
+        // Deleting the bitmap must not leave its "Bitmapa" operation behind: when it was the last
+        // bitmap in the scene, its raster operation goes with it (undo brings both back).
+        var orphanedLayers = deleteSource && !Objects.Any(item => item.IsRaster && !ReferenceEquals(item, source))
+            ? Layers.Where(layer => layer.IsRaster).ToList()
+            : [];
+        Execute(new ReplaceObjectsCommand(
+            Scene, deleteSource ? new[] { source } : Array.Empty<SceneObject>(), tracedObjects, result.Document.Layers, orphanedLayers));
         SelectedObjects.ReplaceWith(tracedObjects);
         ActiveTool = DesignerTool.Select;
     }
@@ -495,7 +796,8 @@ public partial class SceneViewModel : ObservableObject
         var obj = VectorTextFactory.Create(source, origin, color);
         AddDrawingObject(
             obj,
-            [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Fill, "Text")]);
+            [Lasero.Core.Layers.LayerSettings.CreateDefault(
+                color, Lasero.Core.Layers.LayerMode.Fill, "Text", removeWhenEmpty: true)]);
     }
 
     /// <summary>Adds a finished vector path (from the "Čára" multi-click path tool) as one new
@@ -540,30 +842,53 @@ public partial class SceneViewModel : ObservableObject
         }
     }
 
+    /// <summary>One unlocked vector object that is not yet an editable path (a primitive, an imported
+    /// outline, converted text) and has at least one contour long enough to become one.</summary>
+    public bool CanConvertSelectionToCurves =>
+        SelectedObjects.Count == 1
+        && Selected is { IsLocked: false, IsRaster: false, IsText: false, IsVectorPath: false } source
+        && source.LocalShapes.Any(shape =>
+        {
+            var points = shape.Points;
+            var uniqueCount = shape.IsClosed && points.Count > 1 && points[0] == points[^1] ? points.Count - 1 : points.Count;
+            return uniqueCount >= (shape.IsClosed ? 3 : 2);
+        });
+
     /// <summary>Converts one simple vector outline into an editable path without changing its
     /// rendered geometry, placement, layer, or output settings. The conversion is one undoable
     /// replacement; the caller may then enter Node Edit mode on the returned object.</summary>
     public SceneObject? ConvertSelectedObjectToCurves()
     {
+        if (!CanConvertSelectionToCurves) return null;
+
         if (Selected is not { IsLocked: false, IsRaster: false, IsText: false, IsVectorPath: false } source
-            || source.LocalShapes.Count != 1)
+            || source.LocalShapes.Count == 0)
             return null;
 
-        var shape = source.LocalShapes[0];
-        var points = shape.Points;
-        if (points.Count < (shape.IsClosed ? 3 : 2)) return null;
-        var uniqueCount = points.Count;
-        if (shape.IsClosed && uniqueCount > 1 && points[0] == points[^1]) uniqueCount--;
-        if (uniqueCount < (shape.IsClosed ? 3 : 2)) return null;
-
-        var nodes = points.Take(uniqueCount).Select(VectorNode.CornerAt).ToArray();
-        var path = new VectorPath
+        // One subpath per contour, so converted text (letters and their counters) or a multi-part
+        // import keeps every contour. Contours too short to be a path are skipped.
+        var subpaths = new List<VectorSubpath>(source.LocalShapes.Count);
+        foreach (var shape in source.LocalShapes)
         {
-            Subpaths = [new VectorSubpath { Nodes = nodes, IsClosed = shape.IsClosed }],
-        };
+            var points = shape.Points;
+            if (points.Count < (shape.IsClosed ? 3 : 2)) continue;
+            var uniqueCount = points.Count;
+            if (shape.IsClosed && uniqueCount > 1 && points[0] == points[^1]) uniqueCount--;
+            if (uniqueCount < (shape.IsClosed ? 3 : 2)) continue;
+            subpaths.Add(new VectorSubpath
+            {
+                Nodes = points.Take(uniqueCount).Select(VectorNode.CornerAt).ToArray(),
+                IsClosed = shape.IsClosed,
+            });
+        }
+
+        if (subpaths.Count == 0) return null;
+        var path = new VectorPath { Subpaths = subpaths };
         var replacement = new SceneObject
         {
             Id = source.Id,
+            GroupId = source.GroupId,
+            NestedGroupIds = source.NestedGroupIds.ToArray(),
             Name = source.Name,
             LocalShapes = source.LocalShapes,
             LocalPivot = source.LocalPivot,
@@ -580,6 +905,165 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.Add(replacement);
         return replacement;
     }
+
+    /// <summary>Every selected object is unlocked text, so "Převést na dráhu" has something to act on.</summary>
+    public bool CanConvertSelectedTextToPath =>
+        SelectedObjects.Count > 0 && SelectedObjects.All(item => item is { IsText: true, IsLocked: false });
+
+    /// <summary>
+    /// "Převést na dráhu" for text: drops the wording and type settings and keeps the contours exactly
+    /// as they are drawn and burned, so the letters become ordinary curves. Position, rotation, scale,
+    /// layer, visibility and stacking order carry over unchanged; only the ability to retype the text
+    /// is given up, which is the point of the conversion.
+    ///
+    /// One gesture is one undo step: each text becomes one ReplaceObjectsCommand in place (so every
+    /// object keeps its own stacking position) and all of them are wrapped in one composite.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanConvertSelectedTextToPath))]
+    private void ConvertSelectedTextToPath()
+    {
+        if (!CanConvertSelectedTextToPath) return;
+        var sources = SelectedObjects.ToList();
+        var replacements = sources.Select(source => new SceneObject
+        {
+            Id = source.Id,
+            GroupId = source.GroupId,
+            NestedGroupIds = source.NestedGroupIds.ToArray(),
+            Name = source.Name,
+            LocalShapes = source.LocalShapes,
+            LocalPivot = source.LocalPivot,
+            LocalBounds = source.LocalBounds,
+            Transform = source.Transform,
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
+            IncludeInOutput = source.IncludeInOutput,
+        }).ToList();
+
+        var commands = sources
+            .Select((source, index) => (ISceneCommand)new ReplaceObjectsCommand(Scene, [source], [replacements[index]]))
+            .ToList();
+        Execute(commands.Count == 1 ? commands[0] : new CompositeSceneCommand(commands));
+
+        SelectedObjects.Clear();
+        foreach (var replacement in replacements)
+            SelectedObjects.Add(replacement);
+        NotifySelectionStateChanged();
+    }
+
+    /// <summary>Null when "Převést na bitmapu" can run; otherwise the sentence saying why not. Vectors and
+    /// text qualify, in any mix; a bitmap is already a bitmap, and locked objects are left alone.</summary>
+    public string? ConvertSelectionToBitmapDisabledReason
+    {
+        get
+        {
+            if (SelectedObjects.Count == 0) return "Nic není vybráno.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Výběr už obsahuje bitmapu. Na bitmapu lze převést jen vektory a text.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamčené objekty nelze převést na bitmapu. Nejprve je potřeba je odemknout.";
+            if (!SelectedObjects.SelectMany(item => item.LocalShapes).Any(shape => shape.Points.Count >= 2))
+                return "Vybraný objekt neobsahuje žádnou dráhu, kterou by šlo převést.";
+            return null;
+        }
+    }
+
+    public bool CanConvertSelectionToBitmap => ConvertSelectionToBitmapDisabledReason is null;
+
+    /// <summary>Folder that receives the PNG made by "Převést na bitmapu". It is the same app-local area
+    /// background removal writes to, outside the project; saving the project packs the file into the
+    /// project archive like any imported bitmap. Tests point it at a temporary folder.</summary>
+    public string BitmapConversionDirectory { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lasero", "converted-bitmaps");
+
+    [RelayCommand(CanExecute = nameof(CanConvertSelectionToBitmap))]
+    private void ConvertSelectionToBitmap() => TryConvertSelectionToBitmap();
+
+    /// <summary>
+    /// "Převést na bitmapu": renders the selected vectors and text, as they are placed on the canvas, into
+    /// one black-on-white PNG at the finest scan-line resolution of the layers they use (254 DPI when a
+    /// layer gives none), and swaps them for one bitmap object covering the same rectangle on the bitmap
+    /// layer. Fill layers become solid, line layers stay outlines (what would be burned). It is one
+    /// ReplaceObjectsCommand, so undo brings the originals back (and removes a bitmap layer the conversion
+    /// created) in one step; the PNG itself stays on disk, because redo needs it.
+    /// Returns the new object, or null when nothing was converted.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public SceneObject? TryConvertSelectionToBitmap()
+    {
+        if (!CanConvertSelectionToBitmap) return null;
+        var sources = SelectedObjects.ToList();
+
+        var frame = BoundingBox2D.Empty;
+        foreach (var source in sources)
+        {
+            var bounds = source.WorldBounds();
+            frame = frame.Include(bounds.MinX, bounds.MinY).Include(bounds.MaxX, bounds.MaxY);
+        }
+
+        // Contours of one object are one compound path (outer shape plus its holes); give legacy geometry
+        // a shared identity per object, exactly like grouping does, so separate objects never cancel out.
+        var worldShapes = sources.SelectMany(item =>
+        {
+            var legacyGeometrySetId = Guid.NewGuid();
+            return item.GetWorldShapes().Select(shape => shape.GeometrySetId == Guid.Empty
+                ? shape with { GeometrySetId = legacyGeometrySetId }
+                : shape);
+        }).ToList();
+
+        var dpi = worldShapes
+            .Select(shape => FindLayer(shape.LayerId, shape.LayerColor))
+            .Where(layer => layer is not null)
+            .Select(layer => Lasero.Core.Raster.VectorRasterizer.DpiFromLineInterval(layer!.FillLineIntervalMm))
+            .DefaultIfEmpty(Lasero.Core.Raster.VectorRasterizer.DefaultDpi)
+            .Max();
+
+        SceneObject raster;
+        LayerSettings rasterLayer;
+        try
+        {
+            var rendered = Lasero.Core.Raster.VectorRasterizer.Render(
+                worldShapes, frame, dpi,
+                shape => LayerModeFor(shape.LayerId, shape.LayerColor) is LayerMode.Fill or LayerMode.FillAndCut,
+                Path.Combine(BitmapConversionDirectory, $"bitmap-{Guid.NewGuid():N}.png"));
+
+            var options = new RasterImportOptions
+            {
+                TargetWidthMm = rendered.Frame.Width,
+                TargetHeightMm = rendered.Frame.Height,
+                Dpi = rendered.Dpi,
+                UseThreshold = true,
+                UseDithering = false,
+                ThresholdValue = 128,
+            };
+            rasterLayer = Layers.FirstOrDefault(layer => layer.IsRaster) ?? SceneObjectFactory.CreateRasterLayer(options);
+            raster = SceneObjectFactory.FromRaster(
+                rendered.FilePath, options, sources.Count == 1 ? $"Bitmapa · {sources[0].Name}" : "Bitmapa · výběr", rasterLayer);
+
+            // The picture's pixel grid rounds its height, so a hair of vertical scale (well under one scan
+            // line) keeps the bitmap exactly as tall as the selection it replaces.
+            var scaleY = raster.LocalBounds.Height > 0 ? rendered.Frame.Height / raster.LocalBounds.Height : 1;
+            raster.Transform = new ObjectTransform(
+                (rendered.Frame.MinX + rendered.Frame.MaxX) / 2 - raster.LocalPivot.X,
+                (rendered.Frame.MinY + rendered.Frame.MaxY) / 2 - raster.LocalPivot.Y,
+                0, 1, Math.Abs(scaleY - 1) < 1e-6 ? 1 : scaleY);
+            raster.IsVisible = sources.All(item => item.IsVisible);
+            raster.IncludeInOutput = sources.All(item => item.IncludeInOutput);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
+                                       or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
+        {
+            VectorOperationRejected?.Invoke($"Převod na bitmapu se nepovedl. {ex.Message}");
+            return null;
+        }
+
+        Execute(new ReplaceObjectsCommand(Scene, sources, [raster], [rasterLayer]));
+        SelectedObjects.ReplaceWith([raster]);
+        NotifySelectionStateChanged();
+        return raster;
+    }
+
+    private LayerSettings? FindLayer(Guid layerId, RgbColor legacyColor) =>
+        layerId != Guid.Empty
+            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
+            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor));
 
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
@@ -628,6 +1112,8 @@ public partial class SceneViewModel : ObservableObject
 
     private static SceneObject WithRasterFile(SceneObject item, string rasterFilePath, string? originalRasterFilePath) => new()
     {
+        GroupId = item.GroupId,
+        NestedGroupIds = item.NestedGroupIds.ToArray(),
         LocalShapes = item.LocalShapes,
         LocalPivot = item.LocalPivot,
         LocalBounds = item.LocalBounds,
@@ -662,23 +1148,30 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.Add(obj);
     }
 
-    // Layer row context menu. LightBurn puts these on right-click and nowhere else, and the reason
-    // holds here: they act on one named row, so a toolbar button for them would first have to say
-    // which row it meant. Each one is a plain state write on LayerSettings — nothing here decides
-    // what the machine does, only which layers the job generator will find enabled.
+    // Layer row actions share the document command stack, including the machine output order.
+
+    private void ExecuteLayerChange(Action mutation) => Execute(new SceneLayerMutationCommand(
+        Scene, mutation, () => SelectedLayer, layer => SelectedLayer = layer));
 
     [RelayCommand]
     private void ToggleLayerOutput(LayerSettings? layer)
     {
         if (layer is null) return;
-        layer.IsEnabled = !layer.IsEnabled;
+        ExecuteLayerChange(() => layer.IsEnabled = !layer.IsEnabled);
     }
 
     [RelayCommand]
     private void ToggleLayerVisibility(LayerSettings? layer)
     {
         if (layer is null) return;
-        layer.IsVisible = !layer.IsVisible;
+        ExecuteLayerChange(() => layer.IsVisible = !layer.IsVisible);
+    }
+
+    [RelayCommand]
+    private void ToggleLayerLock(LayerSettings? layer)
+    {
+        if (layer is null) return;
+        ExecuteLayerChange(() => layer.IsLocked = !layer.IsLocked);
     }
 
     /// <summary>Leaves only this layer in the job. The quickest way to make one test cut.</summary>
@@ -686,8 +1179,11 @@ public partial class SceneViewModel : ObservableObject
     private void IsolateLayerOutput(LayerSettings? layer)
     {
         if (layer is null) return;
-        foreach (var candidate in Layers)
-            candidate.IsEnabled = ReferenceEquals(candidate, layer);
+        ExecuteLayerChange(() =>
+        {
+            foreach (var candidate in Layers)
+                candidate.IsEnabled = ReferenceEquals(candidate, layer);
+        });
     }
 
     /// <summary>Leaves only this layer on the canvas. Visibility never changes what is produced.</summary>
@@ -695,8 +1191,11 @@ public partial class SceneViewModel : ObservableObject
     private void IsolateLayerVisibility(LayerSettings? layer)
     {
         if (layer is null) return;
-        foreach (var candidate in Layers)
-            candidate.IsVisible = ReferenceEquals(candidate, layer);
+        ExecuteLayerChange(() =>
+        {
+            foreach (var candidate in Layers)
+                candidate.IsVisible = ReferenceEquals(candidate, layer);
+        });
     }
 
     [RelayCommand]
@@ -704,7 +1203,7 @@ public partial class SceneViewModel : ObservableObject
     {
         if (layer is null) return;
         SelectedLayer = layer;
-        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, layer)).ToList());
+        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, layer) && CanSelectObject(item)).ToList());
     }
 
     [RelayCommand]
@@ -717,14 +1216,23 @@ public partial class SceneViewModel : ObservableObject
             SelectedLayer = layer;
     }
 
+    /// <summary>Drag and drop in the layer list: the layer takes the given place. The list order is the
+    /// order the machine runs the layers, top first.</summary>
+    public void MoveLayerTo(LayerSettings layer, int newIndex)
+    {
+        var index = Layers.IndexOf(layer);
+        newIndex = Math.Clamp(newIndex, 0, Layers.Count - 1);
+        if (index < 0 || index == newIndex) return;
+        ExecuteLayerChange(() => Layers.Move(index, newIndex));
+    }
+
     [RelayCommand(CanExecute = nameof(CanMoveSelectedLayerUp))]
     private void MoveSelectedLayerUp()
     {
         if (SelectedLayer is null) return;
         var index = Layers.IndexOf(SelectedLayer);
         if (index <= 0) return;
-        Layers.Move(index, index - 1);
-        NotifyLayerStateChanged();
+        ExecuteLayerChange(() => Layers.Move(index, index - 1));
     }
 
     [RelayCommand(CanExecute = nameof(CanMoveSelectedLayerDown))]
@@ -733,8 +1241,7 @@ public partial class SceneViewModel : ObservableObject
         if (SelectedLayer is null) return;
         var index = Layers.IndexOf(SelectedLayer);
         if (index < 0 || index >= Layers.Count - 1) return;
-        Layers.Move(index, index + 1);
-        NotifyLayerStateChanged();
+        ExecuteLayerChange(() => Layers.Move(index, index + 1));
     }
 
     [RelayCommand]
@@ -754,10 +1261,48 @@ public partial class SceneViewModel : ObservableObject
             MaterialLabel = source.MaterialLabel,
             IsEnabled = source.IsEnabled,
             IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
             IsRaster = source.IsRaster,
         };
-        Layers.Insert(Layers.IndexOf(source) + 1, copy);
-        SelectedLayer = copy;
+        ExecuteLayerChange(() =>
+        {
+            Layers.Insert(Layers.IndexOf(source) + 1, copy);
+            SelectedLayer = copy;
+        });
+    }
+
+    private bool CanMergeSelectedLayerInto(LayerSettings? target) =>
+        SelectedLayer is { IsRaster: false } source && target is { IsRaster: false } &&
+        !ReferenceEquals(source, target) && Layers.Contains(source) && Layers.Contains(target);
+
+    [RelayCommand(CanExecute = nameof(CanMergeSelectedLayerInto))]
+    private void MergeSelectedLayerInto(LayerSettings? target) => MergeSelectedLayer(target, useSourceSettings: false);
+
+    [RelayCommand(CanExecute = nameof(CanMergeSelectedLayerInto))]
+    private void MergeSelectedLayerIntoWithSourceSettings(LayerSettings? target) =>
+        MergeSelectedLayer(target, useSourceSettings: true);
+
+    private void MergeSelectedLayer(LayerSettings? target, bool useSourceSettings)
+    {
+        if (!CanMergeSelectedLayerInto(target) || SelectedLayer is not { } source || target is null) return;
+        ExecuteLayerChange(() =>
+        {
+            if (useSourceSettings)
+            {
+                target.Mode = source.Mode;
+                target.Speed = source.Speed;
+                target.Power = source.Power;
+                target.Passes = source.Passes;
+                target.FillLineIntervalMm = source.FillLineIntervalMm;
+                target.MaterialLabel = source.MaterialLabel;
+                target.IsEnabled = source.IsEnabled;
+                target.IsVisible = source.IsVisible;
+            }
+            foreach (var item in Objects)
+                item.ReplaceLayer(source.Id, source.Color, target);
+            Layers.Remove(source);
+            SelectedLayer = target;
+        });
     }
 
     private RgbColor FindAvailableLayerColor()
@@ -781,31 +1326,34 @@ public partial class SceneViewModel : ObservableObject
         // created empty layer stayed selected while the artwork visibly remained in another layer.
         if (SelectedObjects.Count > 0 && SelectedObjects.All(item => !item.IsRaster))
         {
-            ApplyColorToSelection(color, source);
+            var destination = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
+            if (destination is not null && SelectedObjects.SelectMany(item => item.LocalShapes).All(shape =>
+                    shape.LayerId == destination.Id && shape.LayerColor.Equals(destination.Color)))
+                return;
+
+            Execute(new SceneLayerMutationCommand(Scene, () => ApplyColorToSelection(color, source),
+                () => SelectedLayer, layer => SelectedLayer = layer));
             return;
         }
 
         if (source is null || source.Color.IsApproximately(color)) return;
 
-        var sourceColor = source.Color;
-        var destination = Layers.FirstOrDefault(layer => layer != source && layer.Color.IsApproximately(color));
-
-        if (destination is not null)
+        var occupied = Layers.FirstOrDefault(layer => layer != source && layer.Color.IsApproximately(color));
+        if (occupied is not null)
         {
-            foreach (var item in Objects)
-                item.ReplaceLayer(source.Id, sourceColor, destination);
-            Layers.Remove(source);
-            SelectedLayer = destination;
+            VectorOperationRejected?.Invoke("Barvu už používá jiná vrstva. Použij „Sloučit do vrstvy“ a zvol, která nastavení zachovat.");
+            return;
         }
-        else
+
+        Execute(new SceneLayerMutationCommand(Scene, () =>
         {
+            var sourceColor = source.Color;
             source.Color = color;
             foreach (var item in Objects)
                 item.ReplaceLayer(source.Id, sourceColor, source);
-        }
 
-        NotifyLayerStateChanged();
-        Changed?.Invoke();
+            NotifyLayerStateChanged();
+        }, () => SelectedLayer, layer => SelectedLayer = layer));
     }
 
     private void ApplyColorToSelection(RgbColor color, LayerSettings? template)
@@ -857,7 +1405,7 @@ public partial class SceneViewModel : ObservableObject
                 layer != destination && (previous.Id != Guid.Empty
                     ? layer.Id == previous.Id
                     : layer.Color.IsApproximately(previous.Color)));
-            if (previousLayer is not null &&
+            if (previousLayer is { RemoveWhenEmpty: true } &&
                 !previousLayer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) &&
                 CountObjectsUsingLayer(previousLayer) == 0)
                 Layers.Remove(previousLayer);
@@ -865,7 +1413,6 @@ public partial class SceneViewModel : ObservableObject
 
         SelectedLayer = destination;
         NotifyLayerStateChanged();
-        Changed?.Invoke();
     }
 
     [RelayCommand]
@@ -889,7 +1436,8 @@ public partial class SceneViewModel : ObservableObject
     private void DeleteSelectedLayer()
     {
         if (SelectedLayer is null || !CanDeleteSelectedLayer) return;
-        Layers.Remove(SelectedLayer);
+        Execute(new DeleteLayerCommand(Scene, SelectedLayer));
+        ReconcileSelectionWithScene();
         SelectedLayer = Layers.FirstOrDefault();
         NotifyLayerStateChanged();
     }
@@ -909,6 +1457,8 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanUndoExecute))]
     private void Undo()
     {
+        EndTextFontPreview();
+        FlushPendingLayerEdits();
         ApplyCommand(_commandStack.Undo);
         ReconcileSelectionWithScene();
     }
@@ -917,6 +1467,8 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRedoExecute))]
     private void Redo()
     {
+        EndTextFontPreview();
+        FlushPendingLayerEdits();
         ApplyCommand(_commandStack.Redo);
         ReconcileSelectionWithScene();
     }
@@ -940,6 +1492,7 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void Delete()
     {
+        EndTextFontPreview();
         var targets = SelectedObjects.ToList();
         SelectedObjects.Clear();
         Execute(new DeleteObjectsCommand(Scene, targets));
@@ -958,17 +1511,95 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void Copy()
     {
-        _clipboard = SelectedObjects.ToList();
+        // The clipboard owns copy-time geometry. Keeping live scene instances here made Ctrl+V
+        // reproduce later edits to the originals instead of what the operator copied.
+        _clipboard = SelectedObjects.Select(SnapshotClipboardObject).ToList();
+        _clipboardLayers = [];
+        foreach (var shape in _clipboard.SelectMany(item => item.LocalShapes))
+        {
+            if (_clipboardLayers.Any(layer => shape.LayerId != Guid.Empty
+                    ? layer.Id == shape.LayerId
+                    : layer.Color.IsApproximately(shape.LayerColor))) continue;
+            var original = shape.LayerId != Guid.Empty
+                ? Layers.FirstOrDefault(layer => layer.Id == shape.LayerId)
+                : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(shape.LayerColor));
+            _clipboardLayers.Add(original is null
+                ? new LayerSettings
+                {
+                    Id = shape.LayerId == Guid.Empty ? Guid.NewGuid() : shape.LayerId,
+                    Name = shape.LayerColor.ToHex(),
+                    Color = shape.LayerColor,
+                    Mode = shape.PreferredMode,
+                }
+                : SnapshotClipboardLayer(original));
+        }
         PasteCommand.NotifyCanExecuteChanged();
     }
+
+    private static LayerSettings SnapshotClipboardLayer(LayerSettings layer) => new()
+    {
+        Id = layer.Id,
+        RemoveWhenEmpty = layer.RemoveWhenEmpty,
+        Color = layer.Color,
+        Name = layer.Name,
+        Mode = layer.Mode,
+        Speed = layer.Speed,
+        Power = layer.Power,
+        Passes = layer.Passes,
+        FillLineIntervalMm = layer.FillLineIntervalMm,
+        MaterialLabel = layer.MaterialLabel,
+        IsEnabled = layer.IsEnabled,
+        IsVisible = layer.IsVisible,
+        IsLocked = layer.IsLocked,
+        IsRaster = layer.IsRaster,
+    };
+
+    private static SceneObject SnapshotClipboardObject(SceneObject source) => new()
+    {
+        // Keep source identities inside the detached snapshot so DuplicateObjectsCommand can
+        // remap a copied linked offset to its copied sources when both are selected.
+        Id = source.Id,
+        Name = source.Name,
+        LocalShapes = source.LocalShapes.Select(shape => shape with { Points = shape.Points.ToArray() }).ToArray(),
+        LocalPivot = source.LocalPivot,
+        LocalBounds = source.LocalBounds,
+        RasterFilePath = source.RasterFilePath,
+        RasterOptions = source.RasterOptions,
+        OriginalRasterFilePath = source.OriginalRasterFilePath,
+        Text = source.Text,
+        VectorPath = source.VectorPath is { } path
+            ? path with
+            {
+                Subpaths = path.Subpaths.Select(subpath => subpath with
+                {
+                    Nodes = subpath.Nodes.ToArray(),
+                }).ToArray(),
+            }
+            : null,
+        OffsetLink = source.OffsetLink is { } link
+            ? link with { SourceIds = link.SourceIds.ToArray() }
+            : null,
+        Transform = source.Transform,
+        IsVisible = source.IsVisible,
+        IsLocked = source.IsLocked,
+        IncludeInOutput = source.IncludeInOutput,
+        GroupId = source.GroupId,
+        NestedGroupIds = source.NestedGroupIds.ToArray(),
+    };
 
     private bool HasClipboard() => _clipboard.Count > 0;
 
     [RelayCommand(CanExecute = nameof(HasClipboard))]
     private void Paste()
     {
-        var command = new DuplicateObjectsCommand(Scene, _clipboard, new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
-        Execute(command);
+        // Resolve copied layer identities against this document before inserting objects. This
+        // also makes cross-project paste safe when the original project has since been replaced.
+        var sources = _clipboard.Select(SnapshotClipboardObject).ToList();
+        var copiedLayers = _clipboardLayers.Select(SnapshotClipboardLayer).ToList();
+        var reconcileLayers = new SceneLayerMutationCommand(Scene,
+            () => Scene.EnsureLayers(copiedLayers, sources));
+        var command = new DuplicateObjectsCommand(Scene, sources, new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
+        Execute(new CompositeSceneCommand([reconcileLayers, command]));
 
         SelectedObjects.ReplaceWith(command.Clones);
     }
@@ -980,13 +1611,22 @@ public partial class SceneViewModel : ObservableObject
         Delete();
     }
 
-    private bool CanSelectAll() => Objects.Count > 0;
+    private bool CanSelectAll() => Objects.Any(CanSelectObject);
 
     [RelayCommand(CanExecute = nameof(CanSelectAll))]
     private void SelectAll()
     {
-        SelectedObjects.ReplaceWith(Objects.ToList());
+        SelectedObjects.ReplaceWith(Objects.Where(CanSelectObject).ToList());
     }
+
+    [RelayCommand(CanExecute = nameof(CanSelectActiveLayer))]
+    private void SelectAllInActiveLayer()
+    {
+        if (SelectedLayer is null) return;
+        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, SelectedLayer) && CanSelectObject(item)).ToList());
+    }
+
+    private bool CanSelectActiveLayer() => SelectedLayer is { IsVisible: true, IsLocked: false };
 
     private bool CanAlign() => SelectedObjects.Count >= 2;
 
@@ -1023,6 +1663,35 @@ public partial class SceneViewModel : ObservableObject
     {
         var target = (objects.Min(o => o.WorldBounds().MinY) + objects.Max(o => o.WorldBounds().MaxY)) / 2;
         return objects.Select(o => Move(o, dx: 0, dy: target - (o.WorldBounds().MinY + o.WorldBounds().MaxY) / 2));
+    });
+
+    /// <summary>Raised by CenterOnWorkAreaCommand. The work-area size lives in the machine settings, so the
+    /// shell answers with CenterSelectionAt(width / 2, height / 2).</summary>
+    public event Action? CenterOnWorkAreaRequested;
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void CenterOnWorkArea() => CenterOnWorkAreaRequested?.Invoke();
+
+    /// <summary>Moves the whole selection, as one group, so its common centre lands on the given point.
+    /// One undo step; locked objects stay where they are.</summary>
+    public void CenterSelectionAt(double centerX, double centerY) => Align(objects =>
+    {
+        var movable = objects.Where(o => !o.IsLocked).ToList();
+        if (movable.Count == 0) return [];
+        var cx = (movable.Min(o => o.WorldBounds().MinX) + movable.Max(o => o.WorldBounds().MaxX)) / 2;
+        var cy = (movable.Min(o => o.WorldBounds().MinY) + movable.Max(o => o.WorldBounds().MaxY)) / 2;
+        return movable.Select(o => Move(o, dx: centerX - cx, dy: centerY - cy));
+    });
+
+    /// <summary>Center both: the common centre of the selection on both axes in one undo step.</summary>
+    [RelayCommand(CanExecute = nameof(CanAlign))]
+    private void AlignCenterBoth() => Align(objects =>
+    {
+        var targetX = (objects.Min(o => o.WorldBounds().MinX) + objects.Max(o => o.WorldBounds().MaxX)) / 2;
+        var targetY = (objects.Min(o => o.WorldBounds().MinY) + objects.Max(o => o.WorldBounds().MaxY)) / 2;
+        return objects.Select(o => Move(o,
+            dx: targetX - (o.WorldBounds().MinX + o.WorldBounds().MaxX) / 2,
+            dy: targetY - (o.WorldBounds().MinY + o.WorldBounds().MaxY) / 2));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
@@ -1112,91 +1781,130 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanGroupSelection))]
     private void GroupSelection()
     {
-        var sources = SelectedObjects.ToList();
-        // Preserve compound paths (outer contour + holes), but give legacy geometry from every
-        // separately selected object its own identity. Without this distinction a later Union
-        // could apply EvenOdd across unrelated overlapping objects and cancel them completely.
-        var worldShapes = sources.SelectMany(item =>
-        {
-            var legacyGeometrySetId = Guid.NewGuid();
-            return item.GetWorldShapes().Select(shape => shape.GeometrySetId == Guid.Empty
-                ? shape with { GeometrySetId = legacyGeometrySetId }
-                : shape);
-        }).ToList();
-        var group = CreateVectorObject(
-            worldShapes,
-            sources.Count == 2 ? "Skupina · 2 objekty" : $"Skupina · {sources.Count} objektů",
-            sources.All(item => item.IsVisible),
-            sources.All(item => item.IncludeInOutput),
-            BuildCombinedWorldVectorPath(sources));
-
-        Execute(new ReplaceObjectsCommand(Scene, sources, [group]));
-        SelectedObjects.Clear();
-        SelectedObjects.Add(group);
+        if (!CanGroupSelection) return;
+        // A group is membership, not a geometry operation. Keep the children and their source paths.
+        var members = ExpandedGroupSelection();
+        Execute(new SetObjectGroupCommand(members, Guid.NewGuid()));
+        SelectedObjects.ReplaceWith(members.Where(CanSelectObject));
     }
 
-    /// <summary>Every source's own editable curve geometry, transformed into one shared world-space
-    /// VectorPath, subpath-per-shape in the exact same order GroupSelection's own worldShapes
-    /// collection already iterates (source-by-source, GetWorldShapes()'s own per-shape order within
-    /// each source) — the two lists MUST stay index-aligned, since CreateVectorObject zips this
-    /// path's flattened output back onto worldShapes' per-shape metadata (LayerId, GeometrySetId,
-    /// PreferredMode). A source with no VectorPath (an old flattened import, or a boolean/union
-    /// result predating this fix) falls back to a straight-segment subpath per shape — the same
-    /// BuildStraightVectorPath logic CreateVectorObject already uses when no curve data exists at
-    /// all, just applied per-source here so ONE non-vector source in a mixed selection does not force
-    /// every other source's real curves to flatten too.</summary>
-    private static VectorPath BuildCombinedWorldVectorPath(IReadOnlyList<SceneObject> sources)
+    private IReadOnlyList<SceneObject> ExpandedGroupSelection()
     {
-        var subpaths = new List<VectorSubpath>();
-        foreach (var source in sources)
-        {
-            var worldPath = source.GetWorldVectorPath();
-            subpaths.AddRange(worldPath is not null
-                ? worldPath.Subpaths
-                : BuildStraightVectorPath(source.GetWorldShapes()).Subpaths);
-        }
-        return new VectorPath { Subpaths = subpaths };
+        var selected = SelectedObjects.ToHashSet();
+        var groupIds = SelectedObjects.Select(item => item.GroupId).OfType<Guid>().ToHashSet();
+        return Objects.Where(item => selected.Contains(item) ||
+            item.GroupId is { } id && groupIds.Contains(id)).ToList();
     }
 
     [RelayCommand(CanExecute = nameof(CanUngroupSelection))]
     private void UngroupSelection()
     {
-        if (Selected is null) return;
-        var source = Selected;
-        // All legacy contours inside one object form one compound path. Give them a stable shared
-        // identity before splitting so an outer glyph contour and its counter (for example the
-        // opening inside "e") can be put back together without the counter becoming a filled shape.
-        var legacyGeometrySetId = Guid.NewGuid();
-        // Mirrors GroupSelection's own source: the source's world VectorPath, subpath-per-shape in
-        // the same order GetWorldShapes() below iterates (see GetWorldVectorPath's own guarantee that
-        // Subpaths.Count/order matches LocalShapes exactly) — so Ungroup recovers the exact editable
-        // curve each part had before it was grouped, rather than flattening it to straight segments
-        // the way the pre-fix CreateVectorObject always did.
-        var sourceWorldPath = source.GetWorldVectorPath();
-        var parts = source.GetWorldShapes()
-            .Select(shape => shape.GeometrySetId == Guid.Empty
-                ? shape with { GeometrySetId = legacyGeometrySetId }
-                : shape)
-            .Select((shape, index) => CreateVectorObject(
-                [shape],
-                $"{source.Name} · část {index + 1}",
-                source.IsVisible,
-                source.IncludeInOutput,
-                sourceWorldPath is not null && index < sourceWorldPath.Subpaths.Count
-                    ? new VectorPath { Subpaths = [sourceWorldPath.Subpaths[index]] }
-                    : null))
-            .ToList();
+        var groupIds = SelectedObjects.Select(item => item.GroupId).OfType<Guid>()
+            .Distinct().Where(id => Objects.Where(item => item.GroupId == id)
+                .All(item => !item.IsLocked)).ToHashSet();
+        if (groupIds.Count == 0) return;
+        Execute(new SetObjectGroupCommand(Objects.Where(item => item.GroupId is { } id && groupIds.Contains(id)), null));
+    }
 
+    private void PreviewBooleanChange(string title, IReadOnlyList<SceneObject> sources,
+        IReadOnlyList<SceneObject> results, bool approximatesCurves = false)
+    {
+        var resultLayers = results.SelectMany(item => item.LocalShapes)
+            .Select(shape => Layers.FirstOrDefault(layer => layer.Id == shape.LayerId)?.Name ?? "Původní vrstva")
+            .Distinct().ToList();
+        var resultLayer = resultLayers.Count == 0 ? "Bez vrstvy" : string.Join(", ", resultLayers);
+        void Commit()
+        {
+            if (sources.Any(item => !Objects.Contains(item))) return;
+            Execute(new ReplaceObjectsCommand(Scene, sources, results));
+            SelectedObjects.ReplaceWith(results);
+        }
+        var orderedSources = sources.OrderBy(item => Objects.IndexOf(item)).ToList();
+        var geometryNotice = sources.Any(item => item.VectorPath is null &&
+            item.LocalShapes.Any(shape => shape.IsClosed && shape.Points.Count > 8))
+            ? "Část vstupů už nemá Bézierovy uzly. Pro tyto obrysy se použijí jejich uložené úsečky."
+            : null;
+        var preview = new VectorOperationPreview(title, orderedSources, results, resultLayer,
+            approximatesCurves, Commit, geometryNotice);
+        if (BooleanPreviewRequested is { } showPreview) showPreview(preview);
+        else Commit();
+    }
+
+    private IReadOnlyList<IReadOnlyList<SceneObject>> BooleanOperands() => SelectedObjects
+        .GroupBy(item => item.GroupId ?? item.Id)
+        .Select(group => (IReadOnlyList<SceneObject>)group.OrderBy(item => Objects.IndexOf(item)).ToList())
+        .OrderBy(group => group.Max(item => Objects.IndexOf(item)))
+        .ToList();
+
+    private static bool HasCurveArea(VectorPath path) => path.Subpaths.Any(subpath =>
+        subpath.IsClosed && subpath.Nodes.Count >= 2 &&
+        Math.Abs(SignedArea(subpath.Flatten())) > MinimumUnitedAreaSquareMm);
+
+    private static IReadOnlyList<SceneObject> CreateCurveResults(VectorPath path,
+        ImportedShape target, string name, bool visible, bool includeInOutput)
+    {
+        var results = new List<SceneObject>();
+        foreach (var component in CurveBooleanService.SplitRegions(path))
+        {
+            var item = VectorPathSceneFactory.Create(component, target.LayerColor, name);
+            item.LocalShapes = item.LocalShapes.Select(shape => shape with
+            {
+                LayerId = target.LayerId,
+                PreferredMode = target.PreferredMode,
+            }).ToList();
+            item.IsVisible = visible;
+            item.IncludeInOutput = includeInOutput;
+            results.Add(item);
+        }
+        return results;
+    }
+
+    private static IReadOnlyList<IReadOnlyList<Position>>? BuildOperandRings(
+        IReadOnlyList<SceneObject> members)
+    {
+        IReadOnlyList<IReadOnlyList<Position>>? combined = null;
+        foreach (var member in members)
+        {
+            var rings = BuildSourceRings(member);
+            if (rings is null) return null;
+            combined = combined is null ? rings :
+                BooleanService.Union(combined, rings, VectorFillRule.EvenOdd);
+        }
+        return combined;
+    }
+
+    /// <summary>Turns one compound object into independent contour objects. Unlike Ungroup this
+    /// intentionally changes the contour structure; editable subpaths and layer metadata are kept.</summary>
+    [RelayCommand(CanExecute = nameof(CanBreakApartSelection))]
+    private void BreakApartSelection()
+    {
+        if (!CanBreakApartSelection || Selected is not { } source) return;
+        var worldPath = source.GetWorldVectorPath();
+        if (worldPath is not null && worldPath.Subpaths.Count != source.LocalShapes.Count)
+        {
+            RejectVectorUnion("Obrysy a uzly cesty si neodpovídají. Rozdělení by poškodilo křivku.");
+            return;
+        }
+        var parts = source.GetWorldShapes().Select((shape, index) =>
+        {
+            var part = CreateVectorObject(
+                [shape with { GeometrySetId = Guid.NewGuid() }],
+                $"{source.Name} · obrys {index + 1}",
+                source.IsVisible, source.IncludeInOutput,
+                worldPath is null ? null : new VectorPath { Subpaths = [worldPath.Subpaths[index]] });
+            part.GroupId = source.GroupId;
+            part.NestedGroupIds = source.NestedGroupIds.ToArray();
+            return part;
+        }).ToList();
         Execute(new ReplaceObjectsCommand(Scene, [source], parts));
-        SelectedObjects.Clear();
-        foreach (var part in parts)
-            SelectedObjects.Add(part);
+        SelectedObjects.ReplaceWith(parts);
     }
 
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
     private void UniteSelection()
     {
-        var sources = SelectedObjects.ToList();
+        var operands = BooleanOperands();
+        var sources = operands.SelectMany(group => group).ToList();
         if (sources.Count == 0) return;
 
         var sourceShapes = sources.SelectMany(item => item.GetWorldShapes()).ToList();
@@ -1204,43 +1912,30 @@ public partial class SceneViewModel : ObservableObject
 
         try
         {
-            IReadOnlyList<IReadOnlyList<Position>>? united = null;
-            foreach (var source in sources)
+            VectorPath? united = null;
+            foreach (var operand in operands)
             {
-                var sourceRings = BuildSourceRings(source);
-                if (sourceRings is null) continue;
-                united = united is null
-                    ? sourceRings
-                    : BooleanService.Union(united, sourceRings, VectorFillRule.EvenOdd);
+                var path = CurveBooleanService.FromObjects(operand);
+                if (!HasCurveArea(path)) continue;
+                united = united is null ? path :
+                    CurveBooleanService.Apply(united, path, CurveBooleanService.Operation.Union);
             }
 
-            if (united is null || TotalArea(united) <= MinimumUnitedAreaSquareMm)
+            if (united is null || !HasCurveArea(united))
             {
                 RejectVectorUnion("Vybrané křivky nevytvářejí platnou uzavřenou plochu.");
                 return;
             }
 
-            var contours = ToImportedShapes(
-                united,
-                Guid.NewGuid(),
-                targetShape.LayerId,
-                targetShape.LayerColor,
-                targetShape.PreferredMode);
-            if (!IsSafeUnionResult(sourceShapes, contours))
+            var results = CreateCurveResults(united, targetShape, "Sjednocený vektor",
+                sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput));
+            if (results.Count == 0 || !IsSafeUnionResult(sourceShapes,
+                    results.SelectMany(item => item.GetWorldShapes()).ToList()))
             {
                 RejectVectorUnion("Výsledná geometrie by byla prázdná nebo poškozená.");
                 return;
             }
-
-            var result = CreateVectorObject(
-                contours,
-                "Sjednocený vektor",
-                sources.Any(item => item.IsVisible),
-                sources.Any(item => item.IncludeInOutput));
-
-            Execute(new ReplaceObjectsCommand(Scene, sources, [result]));
-            SelectedObjects.Clear();
-            SelectedObjects.Add(result);
+            PreviewBooleanChange("Sjednotit", sources, results);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
@@ -1248,26 +1943,18 @@ public partial class SceneViewModel : ObservableObject
         }
     }
 
-    /// <summary>Subtract, intersect and exclude (XOR) — the other three of the four standard boolean
-    /// modes, sharing UniteSelection's CanExecute (CanUniteSelection: same "closed shapes only, at
-    /// least two" requirement applies to any of the four) and its geometry/rejection plumbing
-    /// (BuildSourceRings, ToImportedShapes, IsSafeUnionResult, NormalizeNestedCompoundPaths,
-    /// FindUnionTargetShape, RejectVectorUnion). Their names say "union", but the logic underneath is
-    /// identical for every mode — only which IVectorBooleanService method combine calls changes,
-    /// which is exactly what this method threads through. Kept as a copy of UniteSelection's shape
-    /// rather than a shared refactor of it, so this addition cannot regress the existing,
-    /// already-tested union path.
+    /// <summary>Subtract, intersect and exclude (XOR) share the pairwise gate and the curve-aware
+    /// result path. Every disconnected filled island becomes its own editable scene object.
     ///
     /// Source order matters for Subtract (it does not, mathematically, for Intersect/Xor, but folding
     /// left-to-right is deterministic either way): sources are processed back-to-front by scene
     /// z-order, so Subtract reads as "shapes in front cut a hole in the shape behind them" — Minus
     /// Front in Illustrator, Subtract in Figma — rather than an order the user cannot predict from
     /// selection order alone.</summary>
-    private void CombineSelection(
-        Func<IReadOnlyList<IReadOnlyList<Position>>, IReadOnlyList<IReadOnlyList<Position>>, VectorFillRule, IReadOnlyList<IReadOnlyList<Position>>> combine,
-        string resultName)
+    private void CombineSelection(CurveBooleanService.Operation operation, string resultName)
     {
-        var sources = SelectedObjects.OrderBy(item => Scene.Objects.IndexOf(item)).ToList();
+        var operands = BooleanOperands();
+        var sources = operands.SelectMany(group => group).ToList();
         if (sources.Count == 0) return;
 
         var sourceShapes = sources.SelectMany(item => item.GetWorldShapes()).ToList();
@@ -1275,43 +1962,31 @@ public partial class SceneViewModel : ObservableObject
 
         try
         {
-            IReadOnlyList<IReadOnlyList<Position>>? combined = null;
-            foreach (var source in sources)
+            VectorPath? combined = null;
+            foreach (var operand in operands)
             {
-                var sourceRings = BuildSourceRings(source);
-                if (sourceRings is null) continue;
+                var sourcePath = CurveBooleanService.FromObjects(operand);
+                if (!HasCurveArea(sourcePath)) continue;
                 combined = combined is null
-                    ? sourceRings
-                    : combine(combined, sourceRings, VectorFillRule.EvenOdd);
+                    ? sourcePath
+                    : CurveBooleanService.Apply(combined, sourcePath, operation);
             }
 
-            if (combined is null || TotalArea(combined) <= MinimumUnitedAreaSquareMm)
+            if (combined is null || !HasCurveArea(combined))
             {
                 RejectVectorUnion("Výsledkem operace by byla prázdná plocha.");
                 return;
             }
 
-            var contours = ToImportedShapes(
-                combined,
-                Guid.NewGuid(),
-                targetShape.LayerId,
-                targetShape.LayerColor,
-                targetShape.PreferredMode);
-            if (!IsSafeBooleanResult(sourceShapes, contours))
+            var results = CreateCurveResults(combined, targetShape, resultName,
+                sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput));
+            if (results.Count == 0 || results.Any(item => !IsSafeBooleanResult(sourceShapes, item.GetWorldShapes())))
             {
                 RejectVectorUnion("Výsledná geometrie by byla prázdná nebo poškozená.");
                 return;
             }
 
-            var result = CreateVectorObject(
-                contours,
-                resultName,
-                sources.Any(item => item.IsVisible),
-                sources.Any(item => item.IncludeInOutput));
-
-            Execute(new ReplaceObjectsCommand(Scene, sources, [result]));
-            SelectedObjects.Clear();
-            SelectedObjects.Add(result);
+            PreviewBooleanChange(resultName, sources, results);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
@@ -1319,14 +1994,247 @@ public partial class SceneViewModel : ObservableObject
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void SubtractSelection() => CombineSelection(BooleanService.Subtract, "Odečtený vektor");
+    [RelayCommand(CanExecute = nameof(CanBooleanPairSelection))]
+    private void SubtractSelection() => CombineSelection(CurveBooleanService.Operation.Difference, "Odečtený vektor");
 
-    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void IntersectSelection() => CombineSelection(BooleanService.Intersect, "Průnik vektorů");
+    [RelayCommand(CanExecute = nameof(CanBooleanPairSelection))]
+    private void IntersectSelection() => CombineSelection(CurveBooleanService.Operation.Intersection, "Průnik vektorů");
 
-    [RelayCommand(CanExecute = nameof(CanUniteSelection))]
-    private void ExcludeSelection() => CombineSelection(BooleanService.Xor, "Vyloučený vektor");
+    [RelayCommand(CanExecute = nameof(CanBooleanPairSelection))]
+    private void ExcludeSelection() => CombineSelection(CurveBooleanService.Operation.Xor, "Vyloučený vektor");
+
+    /// <summary>Partitions exactly two closed operands into A\B, A∩B, and B\A. Each non-empty
+    /// region becomes its own editable object. Z-order defines A (back) and B (front), matching
+    /// subtraction. All pieces are committed as one undoable replacement.</summary>
+    [RelayCommand(CanExecute = nameof(CanDivideSelection))]
+    private void DivideSelection() => PartitionSelectedShapes("Rozdělený vektor");
+
+    /// <summary>Splits every selected closed shape at all other selected boundaries. Each resulting
+    /// non-overlapping region is emitted as its own object; unlike Divide this accepts any number of
+    /// operands. The topmost shape owns newly uncovered regions, while intersections keep the
+    /// metadata of the region that existed first in the z-order. Each independent filled island
+    /// becomes an object, with its holes kept in the same compound path.</summary>
+    [RelayCommand(CanExecute = nameof(CanFractureSelection))]
+    private void FractureSelection()
+    {
+        var operands = BooleanOperands();
+        var sources = operands.SelectMany(group => group).ToList();
+        if (operands.Count < 2) return;
+        try
+        {
+            var partitions = new List<(VectorPath Path, SceneObject Owner)>();
+            VectorPath? covered = null;
+            foreach (var operand in operands)
+            {
+                var source = operand[^1];
+                var sourcePath = CurveBooleanService.FromObjects(operand);
+                if (!HasCurveArea(sourcePath)) return;
+
+                var next = new List<(VectorPath Path, SceneObject Owner)>();
+                foreach (var partition in partitions)
+                {
+                    var outside = CurveBooleanService.Apply(partition.Path, sourcePath,
+                        CurveBooleanService.Operation.Difference);
+                    var overlap = CurveBooleanService.Apply(partition.Path, sourcePath,
+                        CurveBooleanService.Operation.Intersection);
+                    if (HasCurveArea(outside)) next.Add((outside, partition.Owner));
+                    if (HasCurveArea(overlap)) next.Add((overlap, partition.Owner));
+                }
+
+                var uncovered = covered is null ? sourcePath : CurveBooleanService.Apply(sourcePath,
+                    covered, CurveBooleanService.Operation.Difference);
+                if (HasCurveArea(uncovered)) next.Add((uncovered, source));
+                covered = covered is null ? sourcePath : CurveBooleanService.Apply(covered,
+                    sourcePath, CurveBooleanService.Operation.Union);
+                partitions = next;
+            }
+
+            var pieces = new List<SceneObject>();
+            foreach (var partition in partitions)
+            {
+                var representative = partition.Owner.GetWorldShapes().FirstOrDefault(shape => shape.IsClosed);
+                if (representative is null) continue;
+                var components = CreateCurveResults(partition.Path, representative, "Fracture díl",
+                    partition.Owner.IsVisible, partition.Owner.IncludeInOutput);
+                if (components.Any(item => !IsSafeBooleanResult(
+                    sources.SelectMany(source => source.GetWorldShapes()).ToList(), item.GetWorldShapes())))
+                    throw new InvalidOperationException("Výsledná oblast není platná uzavřená plocha.");
+                pieces.AddRange(components);
+            }
+
+            if (pieces.Count == 0)
+            {
+                RejectVectorUnion("Vybrané tvary nevytvářejí žádné oblasti pro Fracture.");
+                return;
+            }
+            PreviewBooleanChange("Fracture", sources, pieces);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            RejectVectorUnion($"Fracture se nepodařilo bezpečně vytvořit. {exception.Message}");
+        }
+    }
+
+    private void PartitionSelectedShapes(string resultName)
+    {
+        var operands = BooleanOperands();
+        if (operands.Count != 2) return;
+        var sources = operands.SelectMany(group => group).ToList();
+        try
+        {
+            var a = CurveBooleanService.FromObjects(operands[0]);
+            var b = CurveBooleanService.FromObjects(operands[1]);
+            if (!HasCurveArea(a) || !HasCurveArea(b)) return;
+
+            var regions = new[]
+            {
+                (Path: CurveBooleanService.Apply(a, b, CurveBooleanService.Operation.Difference), Source: operands[0][^1]),
+                (Path: CurveBooleanService.Apply(a, b, CurveBooleanService.Operation.Intersection), Source: operands[1][^1]),
+                (Path: CurveBooleanService.Apply(b, a, CurveBooleanService.Operation.Difference), Source: operands[1][^1]),
+            };
+            var pieces = new List<SceneObject>();
+            foreach (var (path, source) in regions)
+            {
+                if (!HasCurveArea(path)) continue;
+                var representative = source.GetWorldShapes().FirstOrDefault(shape => shape.IsClosed);
+                if (representative is null) continue;
+                var components = CreateCurveResults(path, representative, resultName,
+                    source.IsVisible, source.IncludeInOutput);
+                if (components.Any(item => !IsSafeBooleanResult(
+                    sources.SelectMany(item => item.GetWorldShapes()).ToList(), item.GetWorldShapes())))
+                    throw new InvalidOperationException("Výsledná část není platná uzavřená plocha.");
+                pieces.AddRange(components);
+            }
+
+            if (pieces.Count == 0)
+            {
+                RejectVectorUnion("Vybrané tvary nevytvářejí žádné rozdělené plochy.");
+                return;
+            }
+            PreviewBooleanChange("Rozdělit překryv", sources, pieces);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            RejectVectorUnion($"Tvary nešlo bezpečně rozdělit. {exception.Message}");
+        }
+    }
+
+    /// <summary>Joins two open editable curves into one filled path without sampling away handles.</summary>
+    [RelayCommand(CanExecute = nameof(CanFillBetweenPaths))]
+    private void FillBetweenPaths()
+    {
+        var sources = SelectedObjects.OrderBy(item => Scene.Objects.IndexOf(item)).ToList();
+        if (sources.Count != 2 || sources.Any(item => item.GetWorldVectorPath() is not { Subpaths.Count: 1 })) return;
+
+        try
+        {
+            var first = sources[0].GetWorldVectorPath()!.Subpaths[0];
+            var second = sources[1].GetWorldVectorPath()!.Subpaths[0];
+            if (first.IsClosed || second.IsClosed || first.Nodes.Count < 2 || second.Nodes.Count < 2)
+            {
+                RejectVectorUnion("Cesty jsou příliš krátké nebo se překrývají. Výplň nelze vytvořit.");
+                return;
+            }
+            var reversed = second.Nodes.Reverse().Select(node => node with
+            {
+                HandleIn = node.HandleOut,
+                HandleOut = node.HandleIn,
+            }).ToList();
+            var nodes = first.Nodes.ToList();
+            nodes[0] = nodes[0] with { HandleIn = null };
+            nodes[^1] = nodes[^1] with { HandleOut = null };
+            reversed[0] = reversed[0] with { HandleIn = null };
+            reversed[^1] = reversed[^1] with { HandleOut = null };
+            nodes.AddRange(reversed);
+            var joined = new VectorPath { Subpaths = [new VectorSubpath { Nodes = nodes, IsClosed = true }] };
+            var regions = CurveBooleanService.Resolve(joined);
+            if (!HasCurveArea(regions))
+            {
+                RejectVectorUnion("Mezi vybranými cestami nevznikla vyplnitelná plocha.");
+                return;
+            }
+
+            var target = FindUnionTargetShape(sources, sources.SelectMany(item => item.GetWorldShapes()).ToList());
+            var results = CreateCurveResults(regions, target, "Výplň mezi cestami",
+                sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput));
+            if (results.Count == 0) return;
+            PreviewBooleanChange("Výplň mezi cestami", sources, results);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            RejectVectorUnion($"Výplň mezi cestami se nepodařilo vytvořit. {exception.Message}");
+        }
+    }
+
+    private static bool SameVectorPoint(Position first, Position second) =>
+        Math.Abs(first.X - second.X) < 1e-9 && Math.Abs(first.Y - second.Y) < 1e-9;
+
+    // Weld accepts any number of closed operands; Boolean Union stays pairwise like LightBurn.
+    // Both use the same geometry implementation and one undo transaction.
+    [RelayCommand(CanExecute = nameof(CanWeldSelection))]
+    private void WeldSelection() => UniteSelection();
+
+    [RelayCommand(CanExecute = nameof(CanEditSelectedVectorPaths))]
+    private void FlattenSelectedVectorPaths() => RewriteSelectedVectorPaths(simplify: false);
+
+    [RelayCommand(CanExecute = nameof(CanEditSelectedVectorPaths))]
+    private void SimplifySelectedVectorPaths() => RewriteSelectedVectorPaths(simplify: true);
+
+    /// <summary>Converts curves into editable straight segments, optionally removing points within
+    /// 0.05 mm of a straight chord. Existing transforms, layer/output metadata, and object identity
+    /// are retained through one undoable replacement per selected path.</summary>
+    private void RewriteSelectedVectorPaths(bool simplify)
+    {
+        const double toleranceMm = VectorPath.DefaultFlattenToleranceMm;
+        var replacements = new List<ISceneCommand>();
+        var updated = new List<SceneObject>();
+        try
+        {
+            foreach (var source in SelectedObjects.ToList())
+            {
+                if (source.VectorPath is not { } path) return;
+                var subpaths = new List<VectorSubpath>(path.Subpaths.Count);
+                foreach (var subpath in path.Subpaths)
+                {
+                    var minimumNodes = subpath.IsClosed ? 3 : 2;
+                    if (subpath.Nodes.Count < minimumNodes)
+                        throw new InvalidOperationException("Cesta nemá dostatek uzlů.");
+                    var points = subpath.Flatten(toleranceMm).ToList();
+                    if (points.Any(point => !double.IsFinite(point.X) || !double.IsFinite(point.Y)))
+                        throw new InvalidOperationException("Cesta obsahuje neplatné souřadnice.");
+                    if (subpath.IsClosed && points.Count > 1 && SamePoint(points[0], points[^1]))
+                        points.RemoveAt(points.Count - 1);
+                    var reduced = subpath.IsClosed
+                        ? RingSimplifier.SimplifyClosed(points, simplify ? toleranceMm : 0)
+                        : RingSimplifier.SimplifyOpen(points, simplify ? toleranceMm : 0);
+                    var minimum = subpath.IsClosed ? 3 : 2;
+                    if (reduced.Count < minimum)
+                        throw new InvalidOperationException("Zjednodušení by odstranilo celou cestu.");
+                    subpaths.Add(new VectorSubpath
+                    {
+                        Nodes = reduced.Select(VectorNode.CornerAt).ToList(),
+                        IsClosed = subpath.IsClosed,
+                    });
+                }
+
+                var replacement = VectorPathSceneFactory.Rebuild(source, new VectorPath { Subpaths = subpaths });
+                replacements.Add(new ReplaceObjectsCommand(Scene, [source], [replacement]));
+                updated.Add(replacement);
+            }
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            VectorOperationRejected?.Invoke($"Cestu se nepodařilo {(simplify ? "zjednodušit" : "zploštit")}. {exception.Message}");
+            return;
+        }
+
+        if (replacements.Count == 0) return;
+        Execute(new CompositeSceneCommand(replacements));
+        SelectedObjects.ReplaceWith(updated);
+    }
+
+    private static bool SamePoint(Position first, Position second) =>
+        Math.Abs(first.X - second.X) < 1e-9 && Math.Abs(first.Y - second.Y) < 1e-9;
 
     // -------------------------------------------------------------------------------------------
     // Offset Path — vector inset/outset. Unlike the boolean ops above, offset never merges sources
@@ -1339,8 +2247,14 @@ public partial class SceneViewModel : ObservableObject
     private void OffsetSelection()
     {
         if (SelectedObjects.Count == 0) return;
-        OffsetRequested?.Invoke(SelectedObjects.ToList());
+        OffsetRequested?.Invoke(SelectedObjects.ToList(), null);
     }
+
+    [RelayCommand(CanExecute = nameof(CanOffsetSelection))]
+    private void ShrinkSelection() => OffsetRequested?.Invoke(SelectedObjects.ToList(), VectorOffsetDirection.Inward);
+
+    [RelayCommand(CanExecute = nameof(CanOffsetSelection))]
+    private void ExpandSelection() => OffsetRequested?.Invoke(SelectedObjects.ToList(), VectorOffsetDirection.Outward);
 
     /// <summary>Commits the Offset Path dialog's result as one undo step covering every selected
     /// source that produced a surviving result. A source whose offset vanished entirely at the chosen
@@ -1469,6 +2383,186 @@ public partial class SceneViewModel : ObservableObject
         }
 
         SelectedObjects.ReplaceWith(added);
+    }
+
+    /// <summary>Commits the Offset dialog's merged result (VectorOffsetPlanner.ComputeMergedOffset) as
+    /// ONE undo step. The results belong to the selection as a whole, so they take the layer, colour and
+    /// mode of the topmost visible source (the same rule the boolean operations use) and are inserted
+    /// directly above the topmost source. Originals stay unless <paramref name="deleteOriginals"/>; a
+    /// locked source is never removed. The selection changes only when <paramref name="selectResults"/>
+    /// (or when removed originals would otherwise stay selected).</summary>
+    public void ApplyOffsetResults(
+        IReadOnlyList<SceneObject> sources,
+        IReadOnlyList<VectorPath> results,
+        bool deleteOriginals = false,
+        bool selectResults = false,
+        VectorOffsetOptions? options = null,
+        bool linked = false,
+        Guid? replaceLinkId = null,
+        IReadOnlyList<VectorOffsetResultKind>? resultKinds = null)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        ArgumentNullException.ThrowIfNull(results);
+
+        var present = sources
+            .Where(Objects.Contains)
+            .OrderBy(item => Scene.Objects.IndexOf(item))
+            .ToList();
+        var paths = results.Where(path => path.Subpaths.Count > 0).ToList();
+        if (present.Count == 0 || paths.Count == 0) return;
+        if (linked && (options is null || deleteOriginals || present.Any(item => item.OffsetLink is not null)))
+        {
+            VectorOperationRejected?.Invoke("Prepojený offset potřebuje zachované původní objekty a nemůže záviset na jiném offsetu.");
+            return;
+        }
+        if (linked && (resultKinds is null || resultKinds.Count != paths.Count))
+        {
+            VectorOperationRejected?.Invoke("Prepojený offset nemá úplný popis výsledných obrysov.");
+            return;
+        }
+        var initialResultCount = paths.Count;
+        var kinds = resultKinds?.ToList() ?? [];
+        if (linked && present.Any(item => item.GetWorldShapes().Any(shape => shape.IsClosed)))
+        {
+            if (options!.Direction != VectorOffsetDirection.Inward && !kinds.Contains(VectorOffsetResultKind.Outward))
+            {
+                paths.Add(paths[0]);
+                kinds.Add(VectorOffsetResultKind.Outward);
+            }
+            if (options.Direction != VectorOffsetDirection.Outward && !kinds.Contains(VectorOffsetResultKind.Inward))
+            {
+                paths.Add(paths[0]);
+                kinds.Add(VectorOffsetResultKind.Inward);
+            }
+        }
+
+        var sourceShapes = present.SelectMany(item => item.GetWorldShapes()).ToList();
+        if (sourceShapes.Count == 0) return;
+        var target = FindUnionTargetShape(present, sourceShapes);
+        var name = present.Count == 1 ? $"Offset · {present[0].Name}" : "Offset";
+
+        var added = new List<SceneObject>(paths.Count);
+        var linkId = Guid.NewGuid();
+        for (var resultIndex = 0; resultIndex < paths.Count; resultIndex++)
+        {
+            var path = paths[resultIndex];
+            var created = VectorPathSceneFactory.Create(path, target.LayerColor, name);
+            created.LocalShapes = created.LocalShapes.Select(shape => shape with
+            {
+                LayerId = target.LayerId,
+                PreferredMode = target.PreferredMode,
+            }).ToList();
+            created.IsVisible = present.Any(item => item.IsVisible);
+            created.IncludeInOutput = present.Any(item => item.IncludeInOutput);
+            if (linked)
+            {
+                var suspended = resultIndex >= initialResultCount;
+                var requestedVisible = created.IsVisible;
+                var requestedOutput = created.IncludeInOutput;
+                created = new SceneObject
+                {
+                    Id = created.Id,
+                    Name = created.Name,
+                    LocalShapes = created.LocalShapes,
+                    LocalBounds = created.LocalBounds,
+                    LocalPivot = created.LocalPivot,
+                    VectorPath = created.VectorPath,
+                    Transform = created.Transform,
+                    IsVisible = !suspended && requestedVisible,
+                    IncludeInOutput = !suspended && requestedOutput,
+                    OffsetLink = new OffsetLink
+                    {
+                        LinkId = linkId,
+                        SourceIds = present.Select(item => item.Id).ToArray(),
+                        Options = options!,
+                        Kind = kinds[resultIndex],
+                        IsVisible = requestedVisible,
+                        IncludeInOutput = requestedOutput,
+                        IsSuspended = suspended,
+                    },
+                };
+            }
+            added.Add(created);
+        }
+
+        List<SceneObject> removed = deleteOriginals ? present.Where(item => !item.IsLocked).ToList() : [];
+        if (replaceLinkId is { } oldLink)
+            removed.AddRange(Objects.Where(item => item.OffsetLink?.LinkId == oldLink));
+        if (removed.Count > 0)
+        {
+            Execute(new ReplaceObjectsCommand(Scene, removed, added));
+        }
+        else
+        {
+            var anchor = present[^1];
+            var items = new List<(SceneObject Anchor, SceneObject Added)>(added.Count);
+            foreach (var item in added)
+            {
+                items.Add((anchor, item));
+                anchor = item;
+            }
+            Execute(new InsertObjectsAboveCommand(Scene, items));
+        }
+
+        if (selectResults)
+            SelectedObjects.ReplaceWith(added.Select(item => Objects.FirstOrDefault(live => live.Id == item.Id))
+                .OfType<SceneObject>().ToList());
+        else if (removed.Count > 0)
+            SelectedObjects.ReplaceWith(SelectedObjects.Where(item => !removed.Contains(item)).ToList());
+    }
+
+    /// <summary>Regenerates cached offset outlines after a source command or project load. This is
+    /// derived state only: the source command remains the single Undo entry.</summary>
+    private void RefreshLinkedOffsets()
+    {
+        if (_refreshingLinkedOffsets) return;
+        var outputs = Objects.Where(item => item.OffsetLink is not null).ToList();
+        if (outputs.Count == 0) return;
+        _refreshingLinkedOffsets = true;
+        try
+        {
+            foreach (var group in outputs.GroupBy(item => item.OffsetLink!.LinkId))
+            {
+                var recipe = group.First().OffsetLink!;
+                var sources = recipe.SourceIds
+                    .Select(id => Objects.FirstOrDefault(item => item.Id == id && item.OffsetLink is null))
+                    .ToList();
+                IReadOnlyList<VectorOffsetPart> parts = [];
+                if (sources.All(item => item is not null))
+                {
+                    try
+                    {
+                        parts = VectorOffsetPlanner.ComputeMergedOffsetParts(sources.Select(item => item!).ToList(),
+                            BooleanService, OffsetService, recipe.Options);
+                    }
+                    catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+                    {
+                        VectorOperationRejected?.Invoke($"Prepojený offset nelze přepočítat: {exception.Message}");
+                    }
+                }
+                foreach (var previous in group)
+                {
+                    if (!Objects.Contains(previous) || previous.VectorPath is null) continue;
+                    var link = previous.OffsetLink!;
+                    var part = parts.FirstOrDefault(candidate => candidate.Kind == link.Kind);
+                    var available = part is not null;
+                    var requestedVisible = link.IsSuspended ? link.IsVisible : previous.IsVisible;
+                    var requestedOutput = link.IsSuspended ? link.IncludeInOutput : previous.IncludeInOutput;
+                    if (part is not null) previous.RefreshDerivedVectorPath(part.Path);
+                    previous.IsVisible = available && requestedVisible;
+                    previous.IncludeInOutput = available && requestedOutput;
+                    previous.OffsetLink = available
+                        ? link with { IsSuspended = false }
+                        : link.IsSuspended ? link : link with
+                        {
+                            IsSuspended = true,
+                            IsVisible = requestedVisible,
+                            IncludeInOutput = requestedOutput,
+                        };
+                }
+            }
+        }
+        finally { _refreshingLinkedOffsets = false; }
     }
 
     /// <summary>Wraps one source's offset VectorPath into a new node-editable SceneObject, preserving
@@ -1769,8 +2863,7 @@ public partial class SceneViewModel : ObservableObject
         // worldVectorPath (Group's curve-preserving path, or Ungroup's recovered single subpath) is
         // already real editable geometry in world space — just recenter it the same way the shapes
         // above were. Only fall back to a fabricated straight-segment path when the caller has no
-        // curve data at all (Union/Subtract/Intersect/Exclude, which fold through Clipper2's polygon
-        // rings and never had curves to begin with).
+        // curve data at all (legacy polygon operations and imported shapes without a VectorPath).
         var vectorPath = worldVectorPath is not null
             ? RecenterVectorPath(worldVectorPath, centerX, centerY)
             : BuildStraightVectorPath(recentered);
@@ -1802,17 +2895,6 @@ public partial class SceneViewModel : ObservableObject
         };
     }
 
-    /// <summary>Wraps a set of already-flat, recentered ImportedShapes (Group/Ungroup/boolean
-    /// results — none of which have curve data available: booleans fold through Clipper2's polygon
-    /// rings, and Group merely re-centers existing polylines) into a node-editable VectorPath with
-    /// one Corner-only, straight-segment VectorSubpath per shape, in the same order. Without this,
-    /// every result of Group/Ungroup/Union/Subtract/Intersect/Exclude was a dead end for node
-    /// editing — see docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md, "Group/Ungroup destroys
-    /// VectorPath" / "Boolean ops destroy VectorPath". This does not recover the Bezier curves a
-    /// source object may have had (that would require merging each source's own VectorPath
-    /// subpaths, which the boolean services do not operate on at all); it guarantees the result is
-    /// at least as editable as any other polyline-based node-edit path (SVG import, bitmap trace)
-    /// rather than not editable at all.</summary>
     /// <summary>Translates every node's anchor and both handles by (-centerX, -centerY) — the
     /// VectorPath counterpart of the plain-point recentering already applied to worldShapes above.
     /// A pure translation (Group/Ungroup never rotate or scale geometry, only recenter it around the
@@ -1831,6 +2913,7 @@ public partial class SceneViewModel : ObservableObject
         return path with { Subpaths = subpaths };
     }
 
+    /// <summary>Constructs editable straight segments for legacy artwork that has no curve source.</summary>
     private static VectorPath BuildStraightVectorPath(IReadOnlyList<ImportedShape> shapes)
     {
         var subpaths = shapes
@@ -1873,6 +2956,7 @@ public partial class SceneViewModel : ObservableObject
         {
             Objects = Objects.Select(obj => new ProjectObject
             {
+                Id = obj.Id,
                 Name = obj.Name,
                 Shapes = obj.LocalShapes.Select(shape => new ProjectShape
                 {
@@ -1889,11 +2973,14 @@ public partial class SceneViewModel : ObservableObject
                 IsVisible = obj.IsVisible,
                 IsLocked = obj.IsLocked,
                 IncludeInOutput = obj.IncludeInOutput,
+                GroupId = obj.GroupId,
+                NestedGroupIds = obj.NestedGroupIds.ToList(),
                 RasterFilePath = obj.RasterFilePath,
                 RasterOptions = obj.RasterOptions,
                 OriginalRasterFilePath = obj.OriginalRasterFilePath,
                 Text = obj.Text,
                 VectorPath = obj.VectorPath,
+                OffsetLink = obj.OffsetLink,
             }).ToList(),
             Layers = Layers.Select(layer => new ProjectLayer
             {
@@ -1908,13 +2995,17 @@ public partial class SceneViewModel : ObservableObject
                 MaterialLabel = layer.MaterialLabel,
                 IsEnabled = layer.IsEnabled,
                 IsVisible = layer.IsVisible,
+                IsLocked = layer.IsLocked,
                 IsRaster = layer.IsRaster,
+                RemoveWhenEmpty = layer.RemoveWhenEmpty,
             }).ToList(),
         };
     }
 
     public void ResetDocument()
     {
+        EndTextFontPreview();
+        _linkedOffsetPreviewTimer?.Stop();
         SelectedObjects.Clear();
         Objects.Clear();
         Layers.Clear();
@@ -1926,6 +3017,7 @@ public partial class SceneViewModel : ObservableObject
     public void LoadProject(LaseroProjectFile project)
     {
         ArgumentNullException.ThrowIfNull(project);
+        EndTextFontPreview();
         // Materialize and validate the complete replacement before touching the live document.
         // A damaged project must never clear the user's current unsaved scene halfway through load.
         var loadedLayers = (project.Layers ?? throw new InvalidDataException("Projekt neobsahuje seznam vrstev."))
@@ -1944,7 +3036,9 @@ public partial class SceneViewModel : ObservableObject
                 MaterialLabel = layer.MaterialLabel,
                 IsEnabled = layer.IsEnabled,
                 IsVisible = layer.IsVisible,
+                IsLocked = layer.IsLocked,
                 IsRaster = layer.IsRaster || layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor),
+                RemoveWhenEmpty = layer.RemoveWhenEmpty,
             })
             .ToList();
 
@@ -1975,6 +3069,7 @@ public partial class SceneViewModel : ObservableObject
                 // selection grips, rotate and flip; objects that are already centred come back as-is.
                 return new SceneObject
                 {
+                    Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id,
                     LocalShapes = shapes,
                     LocalPivot = item.LocalPivot,
                     LocalBounds = item.LocalBounds,
@@ -1983,11 +3078,14 @@ public partial class SceneViewModel : ObservableObject
                     OriginalRasterFilePath = item.OriginalRasterFilePath,
                     Text = item.Text,
                     VectorPath = item.VectorPath,
+                    OffsetLink = item.OffsetLink,
                     Name = item.Name,
                     Transform = item.Transform,
                     IsVisible = item.IsVisible,
                     IsLocked = item.IsLocked,
                     IncludeInOutput = item.IncludeInOutput,
+                    GroupId = item.GroupId is { } groupId && groupId != Guid.Empty ? groupId : null,
+                    NestedGroupIds = item.NestedGroupIds?.Where(id => id != Guid.Empty).ToArray() ?? [],
                 }.WithPivotAtBoundsCenter();
             })
             .ToList();
@@ -2013,6 +3111,7 @@ public partial class SceneViewModel : ObservableObject
             IsLoadingProject = false;
         }
 
+        RefreshLinkedOffsets();
         ProjectLoaded?.Invoke();
         RefreshCommands();
     }
@@ -2039,6 +3138,7 @@ public partial class SceneViewModel : ObservableObject
         SelectAllCommand.NotifyCanExecuteChanged();
         AlignLeftCommand.NotifyCanExecuteChanged();
         AlignCenterHorizontalCommand.NotifyCanExecuteChanged();
+        AlignCenterBothCommand.NotifyCanExecuteChanged();
         AlignRightCommand.NotifyCanExecuteChanged();
         AlignTopCommand.NotifyCanExecuteChanged();
         AlignMiddleCommand.NotifyCanExecuteChanged();
@@ -2050,20 +3150,38 @@ public partial class SceneViewModel : ObservableObject
         ToggleLockCommand.NotifyCanExecuteChanged();
         GroupSelectionCommand.NotifyCanExecuteChanged();
         UngroupSelectionCommand.NotifyCanExecuteChanged();
+        BreakApartSelectionCommand.NotifyCanExecuteChanged();
         UniteSelectionCommand.NotifyCanExecuteChanged();
         SubtractSelectionCommand.NotifyCanExecuteChanged();
         IntersectSelectionCommand.NotifyCanExecuteChanged();
         ExcludeSelectionCommand.NotifyCanExecuteChanged();
+        DivideSelectionCommand.NotifyCanExecuteChanged();
+        FillBetweenPathsCommand.NotifyCanExecuteChanged();
+        FractureSelectionCommand.NotifyCanExecuteChanged();
+        WeldSelectionCommand.NotifyCanExecuteChanged();
+        FlattenSelectedVectorPathsCommand.NotifyCanExecuteChanged();
+        SimplifySelectedVectorPathsCommand.NotifyCanExecuteChanged();
         OffsetSelectionCommand.NotifyCanExecuteChanged();
+        ShrinkSelectionCommand.NotifyCanExecuteChanged();
+        ExpandSelectionCommand.NotifyCanExecuteChanged();
         TraceSelectedRasterCommand.NotifyCanExecuteChanged();
         RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
         RestoreSelectedBackgroundCommand.NotifyCanExecuteChanged();
+        ConvertSelectedTextToPathCommand.NotifyCanExecuteChanged();
+        ConvertSelectionToBitmapCommand.NotifyCanExecuteChanged();
+        EditSelectedRasterCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedChanged(SceneObject? value)
     {
         NotifySelectionStateChanged();
         RefreshCommands();
+    }
+
+    partial void OnIsRemovingBackgroundChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanRemoveSelectedBackground));
+        RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedLayerChanged(LayerSettings? value) => NotifyLayerStateChanged();
@@ -2211,7 +3329,73 @@ public partial class SceneViewModel : ObservableObject
     public string SelectedTextFontFamily
     {
         get => Selected?.Text?.FontFamily ?? TextSource.DefaultFontFamily;
-        set => ApplyTextSource(source => source with { FontFamily = value });
+        set
+        {
+            EndTextFontPreview();
+            ApplyTextSource(source => source with { FontFamily = value });
+        }
+    }
+
+    private SceneObject? _fontPreviewOriginal;
+    private SceneObject? _fontPreviewShown;
+
+    /// <summary>Shows the selected text in another font while the operator points at it in the list. It swaps
+    /// the object in place with no undo step; EndTextFontPreview puts the original back, and the normal
+    /// property setter then commits the chosen font as one undoable edit.</summary>
+    public void PreviewTextFontFamily(string family)
+    {
+        var baseItem = _fontPreviewOriginal ?? (Selected is { IsText: true, IsLocked: false } selected ? selected : null);
+        if (baseItem?.Text is null || string.IsNullOrWhiteSpace(family)) return;
+        if (string.Equals((_fontPreviewShown ?? baseItem).Text?.FontFamily, family, StringComparison.OrdinalIgnoreCase)) return;
+        var index = Objects.IndexOf(_fontPreviewShown ?? baseItem);
+        if (index < 0) return;
+
+        // Moving back to the committed family restores the original object without rebuilding.
+        if (string.Equals(baseItem.Text.FontFamily, family, StringComparison.OrdinalIgnoreCase))
+        {
+            EndTextFontPreview();
+            return;
+        }
+
+        SceneObject replacement;
+        try { replacement = VectorTextFactory.Rebuild(baseItem, baseItem.Text with { FontFamily = family }); }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException or InvalidOperationException) { return; }
+
+        _fontPreviewOriginal = baseItem;
+        _fontPreviewShown = replacement;
+        Objects[index] = replacement;
+        SelectedObjects.ReplaceWith([replacement]);
+    }
+
+    /// <summary>Only the explicit choice enters history. Keyboard movement and hover replace the
+    /// temporary preview; the committed edit starts from the original object exactly once.</summary>
+    public void CommitTextFontPreview(string family)
+    {
+        if (_fontPreviewShown is not null && !ReferenceEquals(Selected, _fontPreviewShown))
+        {
+            EndTextFontPreview();
+            return;
+        }
+
+        EndTextFontPreview();
+        ApplyTextSource(source => source with { FontFamily = family });
+    }
+
+    public void EndTextFontPreview()
+    {
+        if (_fontPreviewOriginal is null || _fontPreviewShown is null) return;
+        var original = _fontPreviewOriginal;
+        var shown = _fontPreviewShown;
+        _fontPreviewOriginal = null;
+        _fontPreviewShown = null;
+        var index = Objects.IndexOf(shown);
+        if (index < 0) return;
+        Objects[index] = original;
+        if (SelectedObjects.Contains(shown))
+        {
+            var selectionIndex = SelectedObjects.IndexOf(shown);
+            SelectedObjects[selectionIndex] = original;
+        }
     }
 
     public double SelectedTextHeight
@@ -2370,7 +3554,11 @@ public partial class SceneViewModel : ObservableObject
         if (e.PropertyName == nameof(SceneObject.Transform))
         {
             if (IsApplyingCommand) _selectedTransformNotificationPending = true; // raised once when the command ends
-            else NotifySelectedTransformChanged();
+            else
+            {
+                NotifySelectedTransformChanged();
+                if (!_refreshingLinkedOffsets) ScheduleLinkedOffsetPreview();
+            }
         }
         else if (e.PropertyName == nameof(SceneObject.IsLocked))
         {
@@ -2378,6 +3566,15 @@ public partial class SceneViewModel : ObservableObject
             OnPropertyChanged(nameof(CanTransformSelectedObject));
             NotifySelectionStateChanged();
             RefreshCommands();
+        }
+        else if (e.PropertyName == nameof(SceneObject.GroupId))
+        {
+            if (IsApplyingCommand) _selectedGroupNotificationPending = true;
+            else
+            {
+                NotifySelectionStateChanged();
+                RefreshCommands();
+            }
         }
 
         if (e.PropertyName is nameof(SceneObject.Name) or nameof(SceneObject.IsLocked) or
@@ -2400,15 +3597,27 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSelectedLocked));
         OnPropertyChanged(nameof(CanGroupSelection));
         OnPropertyChanged(nameof(CanUngroupSelection));
+        OnPropertyChanged(nameof(CanBreakApartSelection));
         OnPropertyChanged(nameof(CanUniteSelection));
+        OnPropertyChanged(nameof(CanWeldSelection));
+        OnPropertyChanged(nameof(CanBooleanPairSelection));
+        OnPropertyChanged(nameof(BooleanPairSelectionDisabledReason));
+        OnPropertyChanged(nameof(CanDivideSelection));
+        OnPropertyChanged(nameof(CanFractureSelection));
+        OnPropertyChanged(nameof(CanFillBetweenPaths));
+        OnPropertyChanged(nameof(CanEditSelectedVectorPaths));
         OnPropertyChanged(nameof(UniteSelectionDisabledReason));
         OnPropertyChanged(nameof(CanOffsetSelection));
         OnPropertyChanged(nameof(OffsetSelectionDisabledReason));
         OnPropertyChanged(nameof(CanTraceSelectedRaster));
         OnPropertyChanged(nameof(CanRemoveSelectedBackground));
         OnPropertyChanged(nameof(CanRestoreSelectedBackground));
+        OnPropertyChanged(nameof(CanConvertSelectedTextToPath));
+        OnPropertyChanged(nameof(CanConvertSelectionToBitmap));
+        OnPropertyChanged(nameof(ConvertSelectionToBitmapDisabledReason));
         OnPropertyChanged(nameof(IsSelectedRaster));
         OnPropertyChanged(nameof(CanAssignSelectionToLayer));
+        OnPropertyChanged(nameof(CanEditSelectedRaster));
         OnPropertyChanged(nameof(SelectedX));
         OnPropertyChanged(nameof(SelectedY));
         OnPropertyChanged(nameof(SelectedRotation));

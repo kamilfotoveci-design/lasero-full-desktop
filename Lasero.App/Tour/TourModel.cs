@@ -49,8 +49,8 @@ public static class TourSteps
             "Vlevo je lišta nástrojů: Vybrat, Text, Tvary, Čára a Importovat grafiku. Uprostřed je pracovní plocha laseru, zpracovat lze vše uvnitř jejího okraje."),
 
         new("operations", AppScreen.Designer, ["DesignerInspector"], TourPlacement.Left, "Glyph.Settings",
-            "Operace a nastavení",
-            "Každá barva v návrhu je jedna operace s vlastním nastavením. Hotové hodnoty vloží volba Materiál nebo tlačítko Použít na operaci u doporučení od Kamila.",
+            "Vrstvy a nastavení",
+            "Každá barva v návrhu je jedna vrstva s vlastním nastavením. Hotové hodnoty vloží volba Materiál nebo tlačítko Použít na vrstvu u doporučení od Kamila.",
             [
                 new TourPoint("Výkon", "síla paprsku v procentech"),
                 new TourPoint("Rychlost", "jak rychle se hlava pohybuje"),

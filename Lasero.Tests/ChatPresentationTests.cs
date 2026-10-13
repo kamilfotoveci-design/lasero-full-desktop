@@ -32,8 +32,8 @@ public sealed class ChatPresentationTests
     {
         var preferences = new WorkspacePreferences();
 
-        Assert.Equal(420, preferences.ClampedAssistantWidth);
-        Assert.Equal(560, preferences.ClampedAssistantHeight);
+        Assert.Equal(480, preferences.ClampedAssistantWidth);
+        Assert.Equal(680, preferences.ClampedAssistantHeight);
         Assert.InRange(preferences.ClampedAssistantWidth, WorkspacePreferences.MinAssistantWidth, WorkspacePreferences.MaxAssistantWidth);
         Assert.InRange(preferences.ClampedAssistantHeight, WorkspacePreferences.MinAssistantHeight, WorkspacePreferences.MaxAssistantHeight);
     }

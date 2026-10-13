@@ -1,5 +1,12 @@
 # Third-party notices
 
+## SkiaSharp / Skia
+
+Curve Boolean operations use SkiaSharp 3.119.2 (MIT License) and its native Skia engine
+(BSD-3-Clause License). Sources and license texts:
+https://github.com/mono/SkiaSharp/blob/main/LICENSE.md
+https://github.com/google/skia/blob/main/LICENSE
+
 ## VTracer (bitmap vectorization)
 
 The Windows x64 VTracer 1.0.0-alpha.4 CLI is bundled with LASERO for local bitmap tracing.
@@ -30,3 +37,11 @@ Copyright (c) 2026 Lucide Icons and Contributors.
 Lucide is distributed under the ISC License and includes portions derived from Feather Icons under the MIT License.
 
 Full license terms: https://github.com/lucide-icons/lucide/blob/main/LICENSE
+
+## Microsoft Fluent UI System Icons
+
+Selected Regular SVG icons from `@fluentui/svg-icons` 1.1.343 are bundled as WPF vector geometry.
+Copyright (c) Microsoft Corporation. MIT License.
+The full license and upstream notice are included as `FluentIcons-LICENSE.txt` and
+`FluentIcons-NOTICE.txt` next to the application.
+Source: https://github.com/microsoft/fluentui-system-icons

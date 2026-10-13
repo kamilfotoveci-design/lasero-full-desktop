@@ -76,7 +76,6 @@ public sealed class InteractionRulesTests
         Assert.True(InteractionRules.WindowClosesOnEscape(typeof(BitmapTraceWindow)));
         Assert.True(InteractionRules.WindowClosesOnEscape(typeof(OffsetPathWindow)));
         Assert.True(InteractionRules.WindowClosesOnEscape(typeof(MaterialsWindow)));
-        Assert.True(InteractionRules.WindowClosesOnEscape(typeof(DeviceSettingsWindow)));
         Assert.True(InteractionRules.WindowClosesOnEscape(typeof(PreviewWindow)));
     }
 

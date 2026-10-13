@@ -76,8 +76,10 @@ public partial class WindowTitleBar : UserControl
 
         if (_hostWindow is null) return;
 
+        MaximizeWorkAreaHook.Attach(_hostWindow);
         WindowFrameHook.Attach(_hostWindow,
-            _hostWindow.TryFindResource("Brush.PanelBorderStrong") as SolidColorBrush);
+            _hostWindow.TryFindResource("Brush.PanelBorderStrong") as SolidColorBrush,
+            MaximizeButton);
 
         MinimizeButton.Visibility = _hostWindow.ResizeMode == ResizeMode.NoResize
             ? Visibility.Collapsed
@@ -111,17 +113,16 @@ public partial class WindowTitleBar : UserControl
     private void OnMinimizeClick(object sender, RoutedEventArgs e)
     {
         if (_hostWindow is not null)
-            SystemCommands.MinimizeWindow(_hostWindow);
+            _hostWindow.WindowState = WindowState.Minimized;
     }
 
     private void OnMaximizeClick(object sender, RoutedEventArgs e)
     {
         if (_hostWindow is null) return;
 
-        if (_hostWindow.WindowState == WindowState.Maximized)
-            SystemCommands.RestoreWindow(_hostWindow);
-        else
-            SystemCommands.MaximizeWindow(_hostWindow);
+        _hostWindow.WindowState = _hostWindow.WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => _hostWindow?.Close();

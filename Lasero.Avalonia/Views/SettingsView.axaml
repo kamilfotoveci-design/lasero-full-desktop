@@ -1,0 +1,144 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Lasero.Avalonia.ViewModels"
+             xmlns:materials="using:Lasero.Core.Materials"
+             xmlns:objconv="using:Avalonia.Data.Converters"
+             x:Class="Lasero.Avalonia.Views.SettingsView"
+             x:DataType="vm:ShellViewModel">
+  <!--
+      Port of Lasero.App's SettingsWindow — same two sections, same order, same grouping (Bezpečnost a
+      pracovní postup / Výchozí zařízení), same two persistence behaviors (deferred-commit safety
+      checkboxes vs. live-committing work-area/laser-profile fields, both only flushed to disk on
+      Save). "Účet Lasero" is NOT ported — it needs the Login/Account subsystem (LaseroAuthClient),
+      which this pass was told to leave alone; omitted rather than faked, see SettingsViewModel.
+  -->
+  <Grid RowDefinitions="*,Auto" Background="{StaticResource Brush.Background}">
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="36,28,36,18">
+      <StackPanel MaxWidth="900">
+        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,5">
+          <Path Data="{StaticResource Glyph.Settings}" Width="22" Height="22" Stretch="Uniform" Stroke="{StaticResource Brush.Accent}" StrokeThickness="1.75" />
+          <TextBlock Text="Nastavení" FontFamily="{StaticResource Font.Display}" FontSize="22" FontWeight="SemiBold" />
+        </StackPanel>
+        <TextBlock Text="Upravte výchozí chování aplikace a zařízení. Změny se uloží po potvrzení."
+                   Classes="muted" Margin="34,0,0,24" />
+
+        <Grid ColumnDefinitions="*,*">
+          <StackPanel Margin="0,0,10,0">
+            <Border Classes="card" Padding="20" Margin="0,0,0,16">
+              <StackPanel>
+                <TextBlock Text="Bezpečnost a pracovní postup" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="Doporučené volby chrání materiál i stroj před nechtěným spuštěním."
+                           Classes="muted" TextWrapping="Wrap" Margin="0,0,0,16" />
+                <CheckBox Content="Před spuštěním vyžadovat kontrolu rámování" IsChecked="{Binding Settings.RequireFramingBeforeStart, Mode=TwoWay}" Margin="0,0,0,12" />
+                <CheckBox Content="Potvrdit softwarový reset" IsChecked="{Binding Settings.ConfirmSoftReset, Mode=TwoWay}" Margin="0,0,0,12" />
+                <CheckBox Content="Po připojení otevřít obrazovku zařízení" IsChecked="{Binding Settings.ShowMachineStatusAfterConnect, Mode=TwoWay}" />
+              </StackPanel>
+            </Border>
+
+            <!-- Účet Lasero — real AccountViewModel (sign-out, license activation), same as WPF's
+                 SettingsWindow.xaml active account section. -->
+            <Border Classes="card" Padding="20">
+              <StackPanel>
+                <TextBlock Text="Účet Lasero" FontWeight="SemiBold" Margin="0,0,0,12" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Settings.Account.Email}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Settings.Account.LicenceLabel}" Classes="muted" Margin="0,3,0,0" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Background="{StaticResource Brush.PanelRaised}" CornerRadius="999" Padding="10,4" VerticalAlignment="Top">
+                    <TextBlock Text="Přihlášeno" FontWeight="SemiBold" IsVisible="{Binding !Settings.Account.IsOffline}" />
+                  </Border>
+                </Grid>
+
+                <TextBlock Text="Licenční klíč" Classes="muted" Margin="0,0,0,6" />
+                <Grid ColumnDefinitions="*,8,Auto">
+                  <TextBox Text="{Binding Settings.Account.LicenseCode, Mode=TwoWay}" MaxLength="120" ToolTip.Tip="Licenční klíč z vašeho účtu Lasero" />
+                  <Button Grid.Column="2" Command="{Binding Settings.Account.RedeemLicense}" Padding="14,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Glyph.Check}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                      <TextBlock Text="Aktivovat" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+                <TextBlock Text="{Binding Settings.Account.StatusMessage}" Classes="muted" TextWrapping="Wrap" Margin="0,8,0,0"
+                           IsVisible="{Binding Settings.Account.StatusMessage, Converter={x:Static objconv:StringConverters.IsNotNullOrEmpty}}" />
+
+                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,16,0,12" />
+                <Button HorizontalAlignment="Left" Background="Transparent" BorderBrush="Transparent" Command="{Binding Settings.Account.SignOut}"
+                        ToolTip.Tip="Odstranit uložené přihlášení z tohoto počítače">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Path Data="{StaticResource Glyph.User}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                    <TextBlock Text="Odhlásit se" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Margin="10,0,0,0">
+            <Border Classes="card" Padding="20">
+              <StackPanel>
+                <TextBlock Text="Výchozí zařízení" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="Tyto hodnoty Lasero předvyplní při příštím připojení."
+                           Classes="muted" TextWrapping="Wrap" Margin="0,0,0,16" />
+
+                <TextBlock Text="Sériový port" Classes="muted" Margin="0,0,0,6" />
+                <ComboBox ItemsSource="{Binding Settings.Connection.AvailablePorts}" SelectedItem="{Binding Settings.Connection.SelectedPort, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                <TextBlock Text="Přenosová rychlost" Classes="muted" Margin="0,0,0,6" />
+                <ComboBox ItemsSource="{Binding Settings.Connection.CommonBaudRates}" SelectedItem="{Binding Settings.Connection.BaudRate, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                <Grid ColumnDefinitions="Auto,*">
+                  <TextBlock Text="Stav" Classes="muted" />
+                  <TextBlock Grid.Column="1" Text="{Binding Settings.Connection.StatusText}" HorizontalAlignment="Right" />
+                </Grid>
+
+                <Border Height="1" Background="{StaticResource Brush.PanelBorder}" Margin="0,14,0,12" />
+
+                <TextBlock Text="Profil laseru" Classes="muted" Margin="0,0,0,6" />
+                <Grid ColumnDefinitions="*,8,100" Margin="0,0,0,12">
+                  <ComboBox SelectedItem="{Binding Settings.Materials.SelectedTechnology, Mode=TwoWay}"
+                            ItemsSource="{Binding Settings.Materials.Technologies}" HorizontalAlignment="Stretch" />
+                  <ComboBox Grid.Column="2" ItemsSource="{Binding Settings.Materials.PowerClasses}"
+                            SelectedItem="{Binding Settings.Materials.SelectedPowerWatts, Mode=TwoWay}" ToolTip.Tip="Optický výkon ve wattech" />
+                </Grid>
+
+                <TextBlock Text="Pracovní plocha" Classes="muted" Margin="0,0,0,6" />
+                <Grid ColumnDefinitions="*,8,*">
+                  <StackPanel>
+                    <TextBlock Text="Šířka (mm)" Classes="muted" />
+                    <TextBox Text="{Binding Settings.Connection.WorkAreaWidthMm, Mode=TwoWay}" Margin="0,5,0,0" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Výška (mm)" Classes="muted" />
+                    <TextBox Text="{Binding Settings.Connection.WorkAreaHeightMm, Mode=TwoWay}" Margin="0,5,0,0" />
+                  </StackPanel>
+                </Grid>
+
+                <Button Classes="secondary" HorizontalAlignment="Left" Margin="0,14,0,0" Command="{Binding Settings.Connection.RefreshPorts}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Path Data="{StaticResource Glyph.Refresh}" Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="1.75" />
+                    <TextBlock Text="Znovu vyhledat porty" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="1" Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="0,1,0,0" Padding="28,12">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16">
+        <TextBlock Text="{Binding Settings.ErrorMessage}" Foreground="{StaticResource Brush.Danger}" VerticalAlignment="Center" TextWrapping="Wrap"
+                   IsVisible="{Binding Settings.ErrorMessage, Converter={x:Static objconv:StringConverters.IsNotNullOrEmpty}}" />
+        <Button Classes="primary" Padding="18,0" Command="{Binding Settings.Save}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource Glyph.Check}" Width="14" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.75" />
+            <TextBlock Text="Uložit a zavřít" Foreground="White" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

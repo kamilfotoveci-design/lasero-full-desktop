@@ -151,7 +151,6 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Strip and title-bar visibility per screen; the rules live in <see cref="ScreenChrome"/>.</summary>
     public bool ShowStripJobDetails => ScreenChrome.ShowJobDetails(CurrentScreen, GCode.JobState);
     public bool ShowStripJobActionZone => ScreenChrome.ShowJobActionZone(CurrentScreen, GCode.JobState);
-    public bool ShowDeviceSettingsShortcut => ScreenChrome.ShowDeviceSettingsShortcut(CurrentScreen);
     public bool ShowStripConnect => ScreenChrome.ShowStripConnect(CurrentScreen);
 
     /// <summary>Set by the window when it is narrower than <see cref="ScreenChrome.CompactWidth"/>.</summary>
@@ -175,7 +174,6 @@ public partial class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ShowStripJobDetails));
         OnPropertyChanged(nameof(ShowStripJobActionZone));
-        OnPropertyChanged(nameof(ShowDeviceSettingsShortcut));
         OnPropertyChanged(nameof(ShowStripConnect));
         OnPropertyChanged(nameof(ShowStripJobBadge));
         OnPropertyChanged(nameof(ScreenNextStep));
@@ -239,9 +237,11 @@ public partial class MainViewModel : ObservableObject
         Chat = chat;
         Kamil = kamil;
         Kamil.FullChatRequested += ShowChat;
-        // Questions now carry the workspace with them: selected material, operation and the connected
-        // machine, instead of the nulls the send path used to hardcode.
+        // Capture the shell's current, read-only facts alongside the scene at message submission.
         Chat.ContextProvider = Kamil.BuildContext;
+        Kamil.ShellContextProvider = () => new Lasero.Core.LaseroApi.KamilShellContext(
+            ProjectName, IsDirty, CurrentScreen.ToString(), GCode.JobState.ToString(),
+            GCode.ImportKind.ToString(), GCode.IsSimulationActive);
         GCode.MachineIdentity = () => (
             Connection.ActiveMachineName,
             Connection.SelectedPort,
@@ -249,6 +249,12 @@ public partial class MainViewModel : ObservableObject
         Kamil.ScreenLabel = DescribeScreen(CurrentScreen);
         // Homing is refused while a job is active; the Jog view model asks, the shell answers.
         Jog.IsJobActive = () => GCode.IsJobActive;
+        GCode.IsPositioningLaserBusy = () => Jog.IsPositioningLaserBusy;
+        Jog.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(JogViewModel.IsPositioningLaserBusy))
+                GCode.RefreshMachineActionAvailability();
+        };
         GCode.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(GCodeViewModel.JobState)) { NotifyScreenChrome(); Jog.RefreshJobGuard(); }
@@ -348,6 +354,18 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowDevice() => CurrentScreen = AppScreen.Device;
+
+    /// <summary>The page the Zařízení screen shows. Its tab strip is bound to it, so any part of the shell that wants a
+    /// particular page sets it (or calls <see cref="ShowDeviceSettings"/>) instead of reaching into the view.</summary>
+    [ObservableProperty] private DeviceScreenTab _deviceTab = DeviceScreenTab.Connection;
+
+    /// <summary>Takes the operator to the device settings, which live on the Zařízení screen and not in a window. The tab
+    /// is chosen first so the screen opens on it; asking for the connection page opens the first settings page instead.</summary>
+    public void ShowDeviceSettings(DeviceScreenTab tab = DeviceScreenTab.Dimensions)
+    {
+        DeviceTab = tab == DeviceScreenTab.Connection ? DeviceScreenTab.Dimensions : tab;
+        CurrentScreen = AppScreen.Device;
+    }
 
     /// <summary>Raised instead of opening a window here — the ViewModel has no business knowing about
     /// Window types, and MainWindow already owns every other dialog the app shows.</summary>

@@ -55,21 +55,26 @@ public sealed class BackgroundRemovalCoordinator
         try
         {
             _scene.BackgroundRemovalError = null;
-            _scene.IsRemovingBackground = true;
-            _scene.BackgroundRemovalIsIndeterminate = true;
-            _scene.BackgroundRemovalProgress = 0.5;
             _scene.BackgroundRemovalStatus = "Odstraňuji pozadí…";
+            _scene.BackgroundRemovalIsIndeterminate = true;
+            _scene.IsRemovingBackground = true;
 
-            var resultPath = await _service.RemoveBackgroundAsync(source.RasterFilePath, cancellationToken: cancellationToken);
+            // The cloud service reads and normalizes input before its first await. Start it off the
+            // dispatcher so the indeterminate indicator can render immediately even for large images.
+            var resultPath = await Task.Run(
+                () => _service.RemoveBackgroundAsync(source.RasterFilePath, cancellationToken: cancellationToken),
+                cancellationToken);
             uncommittedResultPath = resultPath;
             cancellationToken.ThrowIfCancellationRequested();
             if (!_scene.CommitBackgroundRemoval(source, resultPath))
             {
+                _scene.BackgroundRemovalStatus = "Odstranění pozadí se nezdařilo.";
                 _scene.BackgroundRemovalError = "Původní obrázek už není v dokumentu. Výsledek nebyl použit.";
                 return BackgroundRemovalOutcome.Failed;
             }
 
             uncommittedResultPath = null;
+            _scene.BackgroundRemovalStatus = "Pozadí bylo odstraněno.";
             return BackgroundRemovalOutcome.Committed;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -80,6 +85,7 @@ public sealed class BackgroundRemovalCoordinator
         catch (Exception ex)
         {
             Log.Warning(ex, "Background removal failed for {RasterPath}", source.RasterFilePath);
+            _scene.BackgroundRemovalStatus = "Odstranění pozadí se nezdařilo.";
             _scene.BackgroundRemovalError = DescribeFailure(ex);
             return BackgroundRemovalOutcome.Failed;
         }

@@ -48,7 +48,8 @@ public class CanvasContextMenuResourceTests
     [Fact]
     public void EveryIconTheMenuModelNamesExistsInTheIconSet()
     {
-        var icons = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "Theme", "Icons.xaml"));
+        var icons = File.ReadAllText(Path.Combine(Root(), "Lasero.App", "Theme", "Icons.xaml"))
+            + File.ReadAllText(Path.Combine(Root(), "Lasero.App", "Theme", "FluentIcons.xaml"));
         var defined = Regex.Matches(icons, "x:Key=\"([^\"]+)\"").Select(match => match.Groups[1].Value).ToHashSet();
 
         var rows = new List<ContextMenuItemModel>();

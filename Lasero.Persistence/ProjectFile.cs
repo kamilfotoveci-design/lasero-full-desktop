@@ -34,6 +34,7 @@ public sealed class ProjectJobPlacement
 
 public sealed class ProjectObject
 {
+    public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<ProjectShape> Shapes { get; set; } = [];
     public Position LocalPivot { get; set; }
@@ -42,6 +43,8 @@ public sealed class ProjectObject
     public bool IsVisible { get; set; } = true;
     public bool IsLocked { get; set; }
     public bool IncludeInOutput { get; set; } = true;
+    public Guid? GroupId { get; set; }
+    public List<Guid> NestedGroupIds { get; set; } = [];
     public string? RasterFilePath { get; set; }
     public string? RasterAssetEntry { get; set; }
     public RasterImportOptions? RasterOptions { get; set; }
@@ -61,6 +64,7 @@ public sealed class ProjectObject
     /// and continue to load their flattened Shapes; keeping both mirrors editable Text plus its
     /// cached outlines and lets rendering/toolpath consumers retain the existing shape contract.</summary>
     public VectorPath? VectorPath { get; set; }
+    public OffsetLink? OffsetLink { get; set; }
 }
 
 public sealed class ProjectShape
@@ -90,7 +94,11 @@ public sealed class ProjectLayer
 
     public bool IsEnabled { get; set; } = true;
     public bool IsVisible { get; set; } = true;
+    public bool IsLocked { get; set; }
     public bool IsRaster { get; set; }
+    /// <summary>Implicit operation layer removed with its last object. Absent in older projects:
+    /// false keeps existing user-created and imported empty layers intact.</summary>
+    public bool RemoveWhenEmpty { get; set; }
 }
 
 public static class ProjectFileSerializer
@@ -293,7 +301,7 @@ public static class ProjectFileSerializer
     private static string NormalizeAssetExtension(string extension)
     {
         var normalized = extension.ToLowerInvariant();
-        return normalized is ".png" or ".jpg" or ".jpeg" or ".bmp" ? normalized : ".bin";
+        return normalized is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp" ? normalized : ".bin";
     }
 
     private static void ValidateAssetEntryName(string entryName)

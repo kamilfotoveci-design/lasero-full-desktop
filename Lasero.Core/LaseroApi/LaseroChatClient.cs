@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Lasero.Core.LaseroApi;
 
@@ -13,33 +14,27 @@ public sealed class LaseroChatClient
 {
     private const string ChatUrl = "https://lasero.net/.netlify/functions/gemini";
     private const string Model = "gemini-3.1-flash-lite";
-    /// <summary>
-    /// Written for a complete beginner (the operator may be a grandparent with a first laser): the
-    /// answer is the recommendation, not an essay. The hard limits here are backed by
-    /// <c>ChatResponseNormalizer.Condense</c> on the client, which trims a runaway answer gracefully,
-    /// so the model missing the limit costs a "Zobrazit více" link and not a wall of text.
-    /// Brand rules stay: Czech, no question or exclamation marks, one short line about testing on a scrap piece.
-    /// </summary>
-    private const string AssistantInstruction =
-        "Jsi Kamil, vestavěný laserový asistent aplikace LASERO. Mluvíš s úplným začátečníkem. "
-        + "Odpovídej česky, obyčejnými slovy a co nejkratší. "
-        + "Pravidla: "
-        + "1. Nejvýše 60 slov. "
-        + "2. Nejvýše 3 krátké kroky nebo odrážky, jinak jedna až dvě věty. "
-        + "3. Žádný úvod ani opakování dotazu, začni rovnou odpovědí. "
-        + "4. Když se ptá na nastavení, dej jedno konkrétní doporučení s přesnými čísly, každé na vlastním řádku ve tvaru Výkon: 60 %, Rychlost: 3000 mm/min, Průchody: 2. "
-        + "5. Odborné slovo vždy vysvětli dvěma slovy v závorce, například průchod (jedno přejetí). "
-        + "6. Bezpečnost připomeň jen jednou krátkou větou a jen když se hodí, například Nejdřív vyzkoušet na odřezku. Varování neopakuj. "
-        + "7. Nepoužívej Markdown nadpisy, tabulky, tučné písmo ani vodorovné čáry. "
-        + "8. Kód a G-code vždy ponech v samostatném kódovém bloku. "
-        + "9. Rozveď odpověď jen na vyžádání. "
-        + "10. Nepoužívej otazníky ani vykřičníky; doplňující otázky formuluj jako výzvy, například Stačí napsat, jaký je materiál. "
-        + "11. Neutrální forma: nikdy netykej ani nevykej. Nepoužívej slova ty, vy, ti, tě, tvůj, váš ani rozkazovací tvary jako nastav, zkus, napiš. "
-        + "Piš věcně bez oslovení, rozkazy nahraď podstatným jménem nebo infinitivem. "
-        + "Špatně: Rád ti pomohu, nastav výkon na 60 %. Správně: Doporučené nastavení: výkon 60 %.";
+    private static readonly JsonSerializerOptions WorkspaceJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
     private readonly HttpClient _http;
 
     public LaseroChatClient(HttpClient http) => _http = http;
+
+    /// <summary>
+    /// Project, layer and material names come from the user's own file, so they are text an attacker
+    /// can author. They travel only as JSON string values (the encoder escapes quotes, newlines and
+    /// angle brackets) inside a fence the system policy names as untrusted data; a literal fence tag
+    /// is stripped as a second line of defence should the encoder ever change.
+    /// </summary>
+    private static string FenceWorkspace(KamilWorkspaceSnapshot workspace)
+    {
+        var json = JsonSerializer.Serialize(workspace, WorkspaceJsonOptions)
+            .Replace(KamilResponsePolicy.WorkspaceFenceOpen, string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace(KamilResponsePolicy.WorkspaceFenceClose, string.Empty, StringComparison.OrdinalIgnoreCase);
+        return KamilResponsePolicy.WorkspaceFenceOpen + "\n" + json + "\n" + KamilResponsePolicy.WorkspaceFenceClose;
+    }
 
     public async Task<string> SendAsync(
         string idToken,
@@ -51,18 +46,29 @@ public sealed class LaseroChatClient
         ArgumentNullException.ThrowIfNull(conversation);
         ArgumentNullException.ThrowIfNull(context);
 
-        var contents = conversation
+        var recentTurns = conversation
             .Where(turn => !string.IsNullOrWhiteSpace(turn.Text))
             .TakeLast(24)
-            .Select(turn => new
-            {
-                role = turn.Role == LaseroChatRole.Assistant ? "model" : "user",
-                parts = new[] { new { text = turn.Text.Trim() } },
-            })
             .ToArray();
 
-        if (contents.Length == 0)
+        if (recentTurns.Length == 0)
             throw new ArgumentException("Konverzace neobsahuje žádnou zprávu.", nameof(conversation));
+
+        var latestUserText = recentTurns.LastOrDefault(turn => turn.Role == LaseroChatRole.User)?.Text ?? string.Empty;
+        var language = KamilResponsePolicy.ResolveLanguage(latestUserText, context.PreferredLanguage);
+        // The legacy ctx field may be consumed by the Netlify proxy. The second, bounded copy below
+        // ensures the model also receives the facts when the proxy simply forwards body unchanged.
+        // It is data in a user turn, below the system policy, and never executable instructions.
+        var workspaceData = context.Workspace is null ? null : FenceWorkspace(context.Workspace);
+        var contents = recentTurns
+            .Select((turn, index) => new
+            {
+                role = turn.Role == LaseroChatRole.Assistant ? "model" : "user",
+                parts = index == recentTurns.Length - 1 && turn.Role == LaseroChatRole.User && workspaceData is not null
+                    ? new[] { new { text = workspaceData }, new { text = turn.Text.Trim() } }
+                    : new[] { new { text = turn.Text.Trim() } },
+            })
+            .ToArray();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, ChatUrl)
         {
@@ -74,7 +80,7 @@ public sealed class LaseroChatClient
                     contents,
                     systemInstruction = new
                     {
-                        parts = new[] { new { text = AssistantInstruction } },
+                        parts = new[] { new { text = KamilResponsePolicy.BuildInstruction(language) } },
                     },
                     generationConfig = new
                     {
@@ -93,9 +99,10 @@ public sealed class LaseroChatClient
                     software = "Lasero Desktop",
                     matName = context.MaterialName ?? string.Empty,
                     matDesc = string.Empty,
-                    lang = "cs",
+                    lang = language,
                     activeOp = context.Operation,
                     chatTurnCount = contents.Length,
+                    workspace = context.Workspace,
                 },
             }),
         };
@@ -147,12 +154,14 @@ public sealed record LaseroChatTurn(LaseroChatRole Role, string Text);
 public sealed record LaseroChatContext(
     string? MachineName,
     string? MachineId,
-    int PowerWatts,
-    string LaserType,
-    string LaserDescription,
-    string Experience,
+    int? PowerWatts,
+    string? LaserType,
+    string? LaserDescription,
+    string? Experience,
     string? MaterialName,
-    string? Operation);
+    string? Operation,
+    KamilWorkspaceSnapshot? Workspace = null,
+    string? PreferredLanguage = null);
 
 public enum LaseroChatFailure
 {

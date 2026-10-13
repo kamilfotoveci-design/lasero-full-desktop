@@ -8,14 +8,16 @@ public enum ContextAction
     // Clipboard and selection
     Cut, Copy, Paste, Duplicate, Delete, SelectAll, DeselectAll,
     // Object structure
-    EditNodes, EditText, ConvertToCurves, Group, Ungroup, ToggleLock,
+    EditNodes, EditText, ConvertToCurves, ConvertTextToPath, ConvertToBitmap, Group, Ungroup, ToggleLock,
+    // Inspection: the job preview (no machine involved) and the selection's property fields
+    Preview, ShowProperties,
     // Boolean and path operations
     Unite, Subtract, Intersect, Exclude, Offset,
     // Raster
-    TraceBitmap, RemoveBackground, RestoreBackground,
+    EditBitmap, TraceBitmap, RemoveBackground, RestoreBackground,
     // Arrange
     BringToFront, BringForward, SendBackward, SendToBack,
-    AlignLeft, AlignCenterHorizontal, AlignRight, AlignTop, AlignMiddle, AlignBottom,
+    AlignLeft, AlignCenterHorizontal, AlignRight, AlignTop, AlignMiddle, AlignBottom, AlignCenterBoth, AlignCenterWorkArea,
     RotateLeft, RotateRight, FlipHorizontal, FlipVertical,
     /// <summary>Argument is the index into SceneViewModel.Layers.</summary>
     AssignToLayer,
@@ -96,8 +98,26 @@ public sealed record ObjectContextState
     public bool CanAlign { get; init; }
     public bool CanTransform { get; init; }
     public bool CanTrace { get; init; }
+    public bool CanEditBitmap { get; init; }
     public bool CanRemoveBackground { get; init; }
     public bool CanRestoreBackground { get; init; }
+
+    /// <summary>Some object is not selected yet, so "Vybrat vše" would change the selection.</summary>
+    public bool CanSelectAll { get; init; }
+    /// <summary>Every selected object is unlocked text, which is what "Převést na dráhu" needs.</summary>
+    public bool CanConvertTextToPath { get; init; }
+    /// <summary>Every selected object is already an editable path (a traced logo, a pen-tool path, a
+    /// group of paths), so "Převést na dráhu" has nothing left to do and says so.</summary>
+    public bool IsAlreadyPath { get; init; }
+    /// <summary>Null when "Převést na bitmapu" can run; otherwise the sentence saying why not.</summary>
+    public string? BitmapReason { get; init; }
+    /// <summary>The job preview is reachable from here at all. When false the row is left out, because
+    /// a row nothing is listening to would do nothing.</summary>
+    public bool ShowPreview { get; init; }
+    /// <summary>Null when the preview can be opened right now; otherwise the sentence saying why not.</summary>
+    public string? PreviewReason { get; init; }
+    /// <summary>Something is listening for "Zobrazit vlastnosti"; without it the row is left out.</summary>
+    public bool ShowProperties { get; init; }
 
     /// <summary>Null when Unite/Subtract/Intersect/Exclude work; otherwise the sentence saying why not.</summary>
     public string? BooleanReason { get; init; }
@@ -162,6 +182,13 @@ public static class CanvasContextMenuBuilder
 
     public static IReadOnlyList<ContextMenuItemModel> ForObject(ObjectContextState s)
     {
+        // Text, vectors (paths, primitives, imported outlines, groups, a traced logo) and mixes of them
+        // share one fixed layout, the one LightBurn users know. A bitmap on its own keeps the generic
+        // menu (it leads with tracing), and an all-locked selection keeps it too: it leads with
+        // unlocking because that is all that can be done to it.
+        if (s.Kind is SelectionKind.Text or SelectionKind.Vector or SelectionKind.Mixed && !s.AllLocked)
+            return ForShapes(s);
+
         var groups = new List<List<ContextMenuItemModel>>();
 
         // An all-locked selection can do very little; the one thing the user came for is unlocking.
@@ -176,6 +203,8 @@ public static class CanvasContextMenuBuilder
             specific.Add(ContextMenuItemModel.Command(ContextAction.EditNodes, "Upravit uzly", icon: "Glyph.Vector"));
         if (s.CanConvertToCurves)
             specific.Add(ContextMenuItemModel.Command(ContextAction.ConvertToCurves, "Převést na křivky", icon: "Glyph.Vector"));
+        if (s.CanEditBitmap)
+            specific.Add(ContextMenuItemModel.Command(ContextAction.EditBitmap, "Upravit obrázek", "Alt+I", "Glyph.Image"));
         if (s.CanTrace)
             specific.Add(ContextMenuItemModel.Command(ContextAction.TraceBitmap, "Trasovat bitmapu", "Alt+T", "Glyph.Vector"));
         if (s.CanRemoveBackground)
@@ -206,7 +235,7 @@ public static class CanvasContextMenuBuilder
         {
             var offsetEnabled = s.OffsetReason is null;
             structure.Add(ContextMenuItemModel.Command(ContextAction.Offset, "Offset křivky…", "Ctrl+Shift+O",
-                enabled: offsetEnabled, reason: s.OffsetReason));
+                enabled: offsetEnabled, reason: s.OffsetReason, icon: "Glyph.Offset"));
         }
         groups.Add(structure);
 
@@ -226,6 +255,101 @@ public static class CanvasContextMenuBuilder
             groups.Add([LockRow(s)]);
 
         return Assemble(groups);
+    }
+
+    /// <summary>
+    /// Right-click on text or on any vector object. Same groups, same order every time, so the menu can
+    /// be used by position: clipboard, delete, selection and structure, conversion, preview, properties.
+    /// The rows that do not apply stay visible (a single object cannot be grouped, one that is not in a
+    /// group cannot be released from it, a path is already a path), disabled with the reason, rather
+    /// than appearing and disappearing between selections. What only some objects have (editing the
+    /// wording or the nodes, boolean operations, offset, order, alignment, flipping, layer) follows
+    /// after that core, in groups of its own, and never moves it.
+    /// </summary>
+    private static IReadOnlyList<ContextMenuItemModel> ForShapes(ObjectContextState s)
+    {
+        var clipboard = new List<ContextMenuItemModel>
+        {
+            ContextMenuItemModel.Command(ContextAction.Cut, "Vyjmout", "Ctrl+X", "Glyph.Cut"),
+            ContextMenuItemModel.Command(ContextAction.Copy, "Kopírovat", "Ctrl+C", "Glyph.Copy"),
+            ContextMenuItemModel.Command(ContextAction.Paste, "Vložit", "Ctrl+V", "Glyph.Paste",
+                enabled: s.CanPaste, reason: s.CanPaste ? null : NothingToPasteReason),
+            ContextMenuItemModel.Command(ContextAction.Duplicate, "Duplikovat", "Ctrl+D", "Glyph.Duplicate"),
+        };
+
+        var delete = new List<ContextMenuItemModel>
+        {
+            ContextMenuItemModel.Command(ContextAction.Delete, "Odstranit", "Del", "Glyph.Delete"),
+        };
+
+        var structure = new List<ContextMenuItemModel>
+        {
+            ContextMenuItemModel.Command(ContextAction.SelectAll, "Vybrat vše", "Ctrl+A",
+                enabled: s.CanSelectAll, reason: s.CanSelectAll ? null : AllSelectedReason),
+            ContextMenuItemModel.Command(ContextAction.Group, "Seskupit", "Ctrl+G", "Glyph.Group",
+                enabled: s.CanGroup, reason: s.CanGroup ? null : GroupReason(s)),
+            ContextMenuItemModel.Command(ContextAction.Ungroup, "Odebrat ze skupiny", "Ctrl+U", "Glyph.Ungroup",
+                enabled: s.CanUngroup, reason: s.CanUngroup ? null : NotInGroupReason(s)),
+            LockRow(s, "Zamknout vybrané tvary", "Odemknout vybrané tvary"),
+        };
+
+        var convert = new List<ContextMenuItemModel>
+        {
+            ConvertToPathRow(s),
+            ContextMenuItemModel.Command(ContextAction.ConvertToBitmap, "Převést na bitmapu", "Ctrl+Shift+B",
+                enabled: s.BitmapReason is null, reason: s.BitmapReason),
+        };
+
+        var inspect = new List<List<ContextMenuItemModel>>();
+        if (s.ShowPreview)
+            inspect.Add([ContextMenuItemModel.Command(ContextAction.Preview, "Náhled", "Alt+P",
+                enabled: s.PreviewReason is null, reason: s.PreviewReason)]);
+        if (s.ShowProperties)
+            inspect.Add([ContextMenuItemModel.Command(ContextAction.ShowProperties, "Zobrazit vlastnosti")]);
+
+        // After the core: what only some objects have.
+        var editing = new List<ContextMenuItemModel>();
+        if (s.CanEditText)
+            editing.Add(ContextMenuItemModel.Command(ContextAction.EditText, "Upravit text", icon: "Glyph.Text"));
+        if (s.CanEditNodes)
+            editing.Add(ContextMenuItemModel.Command(ContextAction.EditNodes, "Upravit uzly", icon: "Glyph.Vector"));
+
+        var operations = new List<ContextMenuItemModel>();
+        if (s.SelectionCount >= 2 && s.Kind is SelectionKind.Vector or SelectionKind.Text)
+            operations.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s.BooleanReason), "Glyph.Union"));
+        if (s.Kind is SelectionKind.Vector or SelectionKind.Text)
+            operations.Add(ContextMenuItemModel.Command(ContextAction.Offset, "Offset křivky…", "Ctrl+Shift+O",
+                enabled: s.OffsetReason is null, reason: s.OffsetReason, icon: "Glyph.Offset"));
+
+        var arrange = new List<ContextMenuItemModel>();
+        if (s.IsSingle && (s.CanBringForward || s.CanSendBackward))
+            arrange.Add(ContextMenuItemModel.Submenu("Pořadí", OrderRows(s)));
+        if (s.CanAlign)
+            arrange.Add(ContextMenuItemModel.Submenu("Zarovnat", AlignRows()));
+        if (s.CanTransform)
+            arrange.Add(ContextMenuItemModel.Submenu("Otočit a převrátit", TransformRows()));
+        var layerRows = LayerRows(s);
+        if (layerRows.Count > 0)
+            arrange.Add(ContextMenuItemModel.Submenu("Přiřadit do vrstvy", layerRows));
+
+        return Assemble([clipboard, delete, structure, convert, .. inspect, editing, operations, arrange]);
+    }
+
+    /// <summary>"Převést na dráhu" is one row for every kind of object: text becomes ordinary contours,
+    /// a primitive or an imported outline becomes editable curves, and what is already a path says so.</summary>
+    private static ContextMenuItemModel ConvertToPathRow(ObjectContextState s)
+    {
+        if (s.Kind == SelectionKind.Text)
+            return ContextMenuItemModel.Command(ContextAction.ConvertTextToPath, "Převést na dráhu", "Ctrl+Shift+C", "Glyph.Vector",
+                enabled: s.CanConvertTextToPath, reason: s.CanConvertTextToPath ? null : ConvertTextReason);
+
+        var reason = s.CanConvertToCurves ? null
+            : s.IsAlreadyPath ? AlreadyPathReason
+            : s.Kind == SelectionKind.Mixed ? "Bitmapu nelze převést na dráhu. K tomu slouží Trasovat bitmapu."
+            : s.SelectionCount > 1 ? "Na dráhu lze převést vždy jen jeden objekt. Výběr jich obsahuje víc."
+            : "Vybraný objekt nelze převést na dráhu.";
+        return ContextMenuItemModel.Command(ContextAction.ConvertToCurves, "Převést na dráhu", "Ctrl+Shift+C", "Glyph.Vector",
+            enabled: s.CanConvertToCurves, reason: reason);
     }
 
     public static IReadOnlyList<ContextMenuItemModel> ForEmptyCanvas(EmptyCanvasContextState s)
@@ -324,9 +448,25 @@ public static class CanvasContextMenuBuilder
 
     // --- rows -------------------------------------------------------------------------------------
 
-    private static ContextMenuItemModel LockRow(ObjectContextState s) => s.AnyUnlocked
-        ? ContextMenuItemModel.Command(ContextAction.ToggleLock, "Zamknout výběr", icon: "Glyph.Lock")
-        : ContextMenuItemModel.Command(ContextAction.ToggleLock, "Odemknout výběr", icon: "Glyph.Lock");
+    private static ContextMenuItemModel LockRow(ObjectContextState s) =>
+        LockRow(s, "Zamknout výběr", "Odemknout výběr");
+
+    private static ContextMenuItemModel LockRow(ObjectContextState s, string lockHeader, string unlockHeader) =>
+        ContextMenuItemModel.Command(ContextAction.ToggleLock, s.AnyUnlocked ? lockHeader : unlockHeader, icon: "Glyph.Lock");
+
+    private const string AllSelectedReason = "Všechny objekty jsou už vybrané.";
+    private const string AlreadyPathReason = "Vybraný objekt již je dráha.";
+    private const string ConvertTextReason = "Zamčený text nelze převést na dráhu. Nejdřív je potřeba ho odemknout.";
+
+    private static string NotInGroupReason(ObjectContextState s) =>
+        s.SelectionCount > 1 ? "Ze skupiny lze uvolnit vždy jen jeden vybraný objekt."
+        : s.Kind == SelectionKind.Text ? "Vybraný text není součástí skupiny."
+        : "Vybraný objekt není skupina.";
+
+    private static string GroupReason(ObjectContextState s) =>
+        s.SelectionCount < 2 ? "Seskupit lze nejméně dva objekty. Vybraný je jen jeden."
+        : s.Kind == SelectionKind.Mixed ? "Bitmapu nelze seskupit. Seskupit lze jen vektory a text."
+        : "Zamčené objekty nelze seskupit. Nejdřív je potřeba je odemknout.";
 
     private static List<ContextMenuItemModel> BooleanRows(string? reason)
     {
@@ -371,6 +511,9 @@ public static class CanvasContextMenuBuilder
         ContextMenuItemModel.Command(ContextAction.AlignTop, "Nahoru"),
         ContextMenuItemModel.Command(ContextAction.AlignMiddle, "Na střed svisle"),
         ContextMenuItemModel.Command(ContextAction.AlignBottom, "Dolů"),
+        ContextMenuItemModel.Separator,
+        ContextMenuItemModel.Command(ContextAction.AlignCenterBoth, "Na střed vodorovně i svisle"),
+        ContextMenuItemModel.Command(ContextAction.AlignCenterWorkArea, "Na střed pracovní plochy"),
     ];
 
     private static List<ContextMenuItemModel> TransformRows() =>

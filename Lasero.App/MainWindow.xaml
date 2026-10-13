@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterScreen" WindowStyle="None" Background="{StaticResource Brush.Background}" Foreground="{StaticResource Brush.TextPrimary}">
 
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <shell:WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -84,37 +84,63 @@
         <!-- Nav buttons that highlight based on the current screen rather than being hardcoded active. -->
         <Style x:Key="NavButton.Home" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Home}" />
+                        <Condition Binding="{Binding IsMaterialsWindowActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="NavButton.Designer" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Designer}" />
+                        <Condition Binding="{Binding IsMaterialsWindowActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="NavButton.Device" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Device}" />
+                        <Condition Binding="{Binding IsMaterialsWindowActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                     <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="NavButton.Chat" TargetType="Button" BasedOn="{StaticResource NavButton}">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding CurrentScreen}" Value="{x:Static vm:AppScreen.Chat}" />
+                        <Condition Binding="{Binding IsMaterialsWindowActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Tag" Value="Active" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="NavButton.Materials" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMaterialsWindowActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                     <Setter Property="Tag" Value="Active" />
                     <Setter Property="Background" Value="{DynamicResource Brush.SelectedSurface}" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
@@ -156,7 +182,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="60" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="48" />
+            <RowDefinition Height="60" />
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
@@ -172,6 +198,18 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="138" />
                 </Grid.ColumnDefinitions>
+
+                <!-- Job progress along the bottom edge of the title bar. Bound to the same real figure
+                     as the status strip (lines the controller has acknowledged, held at 99 % until the
+                     job reports completion), shown only while a job is active, so it never implies
+                     progress that is not happening. Not hit-testable: it must not eat window drags. -->
+                <ProgressBar Grid.ColumnSpan="5" Panel.ZIndex="5" Height="2" VerticalAlignment="Bottom"
+                             IsHitTestVisible="False" BorderThickness="0" Background="Transparent"
+                             Foreground="{StaticResource Brush.Signal}"
+                             Minimum="0" Maximum="100"
+                             Value="{Binding GCode.ProgressPercent, Mode=OneWay}"
+                             Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}"
+                             AutomationProperties.Name="Průběh úlohy" />
 
                 <!-- Identity only: wordmark, project, unsaved state, window buttons. The sidebar
                      toggle lived here for one round and did not belong - it is a control, and putting
@@ -244,20 +282,12 @@
                 <!-- The connection pill that used to live here has moved out. Connection state was
                      rendered in three places at once (here, the Device page header, the status strip);
                      the persistent bottom-left strip is now the single source of visual truth for it,
-                     and the Device page keeps its own badge because there the machine is the subject. -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Margin="16,0,12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource Button.Regular}" Click="OnDeviceSettingsClick" Padding="16,0"
-                            Visibility="{Binding ShowDeviceSettingsShortcut, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="Otevřít nastavení gravírky — pracovní plocha, osa Z, bezpečnost"
-                            AutomationProperties.Name="Nastavení zařízení">
-                        <components:IconLabel IconData="{StaticResource Glyph.Settings}" Text="Nastavení zařízení" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />
-                    </Button>
-                </StackPanel>
+                     and the Device page keeps its own badge because there the machine is the subject.
+                     Device settings are not a title-bar button either: they are tabs on the Zařízení screen. -->
 
                 <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="MinimizeButton" Style="{StaticResource Button.Chrome}" Click="OnMinimizeClick" AutomationProperties.Name="Minimalizovat">
-                        <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Sm}" Height="{StaticResource Size.Icon.Sm}" />
+                        <components:IconGlyph IconData="{StaticResource Glyph.Minimize}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
                     </Button>
                     <Button x:Name="MaximizeButton" Style="{StaticResource Button.Chrome}" Click="OnMaximizeClick" AutomationProperties.Name="Maximalizovat">
                         <components:IconGlyph x:Name="MaximizeGlyph" IconData="{StaticResource Glyph.Maximize}" Width="{StaticResource Size.Icon.Chrome}" Height="{StaticResource Size.Icon.Chrome}" />
@@ -327,13 +357,13 @@
                                 ToolTip="Pracovní plocha pro přípravu grafiky" AutomationProperties.Name="Návrh">
                             <components:IconLabel IconData="{StaticResource Glyph.Design}" Text="Návrh" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                         </Button>
-                        <Button Style="{StaticResource NavButton}" Click="OnMaterialsClick"
+                        <Button Style="{StaticResource NavButton.Materials}" Click="OnMaterialsClick"
                                 ToolTip="Materiály a doporučené parametry gravírování" AutomationProperties.Name="Materiály">
                             <components:IconLabel IconData="{StaticResource Glyph.Materials}" Text="Materiály" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Device}" Command="{Binding ShowDeviceCommand}"
                                 ToolTip="Připojení, nastavení a kontrola gravírky" AutomationProperties.Name="Zařízení">
-                            <components:IconLabel IconData="{StaticResource Glyph.Device}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
+                            <components:IconLabel IconData="{StaticResource Glyph.Tools}" Text="Zařízení" IconSize="{StaticResource Size.Icon.Lg}" TextMargin="9,0,0,0" />
                         </Button>
                         <Button Style="{StaticResource NavButton.Chat}" Command="{Binding ShowChatCommand}"
                                 ToolTip="Konverzace s asistentem Kamil o návrhu, materiálech a gravírování" AutomationProperties.Name="Chat">
@@ -694,12 +724,22 @@
                     is danger-red because it begins a physical operation; Frame stays secondary.
                     Availability is still decided entirely by CanRun/CanFrame and JobPreflight.
                 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0"
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,32,0"
                             AutomationProperties.AutomationId="StripJobActions"
                             Visibility="{Binding ShowStripJobActionZone, Converter={StaticResource BoolToVisibility}}">
+                    <!-- Náhled draws the toolpath and an estimate from the design alone: no machine, no preflight
+                         of the connection, nothing is sent. Available whenever there is something to make. -->
+                    <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.OpenPreviewCommand}" AutomationProperties.Name="Náhled"
+                            AutomationProperties.AutomationId="StripPreviewButton"
+                            Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
+                            Padding="16,0" Margin="0,0,16,0"
+                            ToolTipService.ShowOnDisabled="True"
+                            ToolTip="Zobrazí dráhu laseru a odhad času. Stroj se při tom nepoužívá">
+                        <components:IconLabel IconData="{StaticResource Glyph.Eye}" Text="Náhled" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
+                    </Button>
                     <Button Style="{StaticResource JobIdleActionButton}" Command="{Binding GCode.RunFramingCommand}" AutomationProperties.Name="Rámovat"
                             Height="{StaticResource Size.Control.Base}" MinHeight="{StaticResource Size.Control.Base}"
-                            Padding="16,0" Margin="0,0,12,0"
+                            Padding="16,0" Margin="0,0,16,0"
                             ToolTipService.ShowOnDisabled="True"
                             ToolTip="{Binding GCode.FrameActionTooltip}">
                         <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Rámovat" IconSize="{StaticResource Size.Icon.Sm}" TextMargin="8,0,0,0" />
