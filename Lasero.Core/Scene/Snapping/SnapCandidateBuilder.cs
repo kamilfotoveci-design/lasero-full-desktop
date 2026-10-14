@@ -179,6 +179,9 @@ public static class SnapCandidateBuilder
 
             for (var seg = 0; seg < subpath.SegmentCount; seg++)
             {
+                // A segment touching a dragged node moves with the drag: its pre-drag midpoint is a
+                // stale target that the node would otherwise jump onto.
+                if (TouchesExcluded(subpath, s, seg, exclude)) continue;
                 var (a, b) = subpath.Segment(seg);
                 var mid = VectorSubpath.IsStraightSegment(a, b)
                     ? CubicBezier.Lerp(a.Anchor, b.Anchor, 0.5)
@@ -187,39 +190,58 @@ public static class SnapCandidateBuilder
             }
         }
 
-        AddIntersectionCandidates(path, toWorld, candidates);
+        AddIntersectionCandidates(path, toWorld, exclude, candidates);
         return candidates;
     }
 
-    /// <summary>Path-intersection snap targets, scoped to this VectorPath's OWN subpaths crossing each
-    /// other (e.g. an outer contour crossing a hole, or two overlapping hand-drawn subpaths in one
-    /// compound object). Scene-wide intersections are built by <see cref="FromSceneObjects"/>.
-    /// Tested on already-flattened polylines
-    /// (straight-segment intersection), not the raw Bezier math, since "does this curve cross that
-    /// curve" reduces cleanly to that once both are flattened and the flatten tolerance is already far
-    /// finer than any reasonable snap tolerance.</summary>
+    /// <summary>Most Bézier segments of one path checked pairwise for crossings (an O(n²) search with
+    /// a cheap bounds rejection per pair). A larger path skips intersection candidates rather than
+    /// stalling the first frame of a drag; node/endpoint/midpoint snapping still work.</summary>
+    private const int MaxSegmentsForIntersectionSearch = 600;
+
+    /// <summary>Path-intersection snap targets from this VectorPath's own geometry: subpaths crossing
+    /// each other (an outer contour crossing a hole) AND one subpath crossing itself (a figure-8, a
+    /// loop). Computed on the Bézier segments themselves (<see cref="BezierIntersection"/>), so a
+    /// crossing of two curves is exact rather than a polyline approximation. Segments that meet at a
+    /// shared node are not tested against each other (their common node is already a candidate), and
+    /// segments touching a dragged node are skipped (their crossings move with the drag). Scene-wide
+    /// intersections are built by <see cref="FromSceneObjects"/>.</summary>
     private static void AddIntersectionCandidates(
-        VectorPath path, Func<Position, Position> toWorld, List<SnapCandidate> candidates)
+        VectorPath path, Func<Position, Position> toWorld, IReadOnlySet<(int Subpath, int Node)>? exclude,
+        List<SnapCandidate> candidates)
     {
-        if (path.Subpaths.Count < 2) return;
-
-        var flattenedPerSubpath = path.Subpaths.Select(sp => sp.Flatten()).ToList();
-        if (flattenedPerSubpath.Sum(points => points.Count) > MaxFlattenedPointsForIntersectionSearch) return;
-
-        for (var i = 0; i < flattenedPerSubpath.Count; i++)
+        var segments = new List<(int Subpath, int Index, int Count, bool Closed, BezierSegment Curve)>();
+        for (var s = 0; s < path.Subpaths.Count; s++)
         {
-            var a = flattenedPerSubpath[i];
-            for (var j = i + 1; j < flattenedPerSubpath.Count; j++)
+            var subpath = path.Subpaths[s];
+            for (var i = 0; i < subpath.SegmentCount; i++)
             {
-                var b = flattenedPerSubpath[j];
-                for (var ai = 0; ai < a.Count - 1; ai++)
-                for (var bi = 0; bi < b.Count - 1; bi++)
-                {
-                    if (TrySegmentIntersection(a[ai], a[ai + 1], b[bi], b[bi + 1], out var hit))
-                        candidates.Add(new SnapCandidate(toWorld(hit), SnapKind.Intersection));
-                }
+                if (TouchesExcluded(subpath, s, i, exclude)) continue;
+                var (a, b) = subpath.Segment(i);
+                segments.Add((s, i, subpath.SegmentCount, subpath.IsClosed, BezierSegment.FromNodes(a, b)));
             }
         }
+        if (segments.Count > MaxSegmentsForIntersectionSearch) return;
+
+        for (var i = 0; i < segments.Count; i++)
+        {
+            for (var j = i + 1; j < segments.Count; j++)
+            {
+                var first = segments[i];
+                var second = segments[j];
+                if (first.Subpath == second.Subpath && AreAdjacentSegments(first.Index, second.Index, first.Count, first.Closed))
+                    continue;
+                foreach (var hit in BezierIntersection.Intersect(first.Curve, second.Curve))
+                    candidates.Add(new SnapCandidate(toWorld(hit.Point), SnapKind.Intersection));
+            }
+        }
+    }
+
+    private static bool TouchesExcluded(VectorSubpath subpath, int subpathIndex, int segmentIndex, IReadOnlySet<(int Subpath, int Node)>? exclude)
+    {
+        if (exclude is null || exclude.Count == 0) return false;
+        var next = (segmentIndex + 1) % subpath.Nodes.Count;
+        return exclude.Contains((subpathIndex, segmentIndex)) || exclude.Contains((subpathIndex, next));
     }
 
     /// <summary>Standard parametric 2D segment-segment intersection (both t and u must land inside

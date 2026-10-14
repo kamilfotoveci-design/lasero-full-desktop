@@ -21,7 +21,7 @@ Esc peels exactly one layer per press, innermost first, and works wherever keybo
 | 4 | Inline text editing on the canvas | leaves editing, keeps the text, keeps the selection |
 | 5 | Pointer gesture in progress (move, resize, rotate, draw, pan, node drag, marquee) | cancels it, geometry restored |
 | 6 | Node-edit mode | exits it |
-| 7 | Path in progress (Line tool) | removes the last node, then exits the tool |
+| 7 | Path in progress (Line tool) | finishes the path and keeps it (two or more nodes); Backspace removes the last node |
 | 8 | Non-Select tool active | back to Select |
 | 9 | Selection present | clears it |
 | 10 | KAMIL Expanded or QuickAsk | minimizes to the avatar |
@@ -44,9 +44,14 @@ temporary is open.
 
 ### 1.3 Delete
 
-Delete removes the thing the current context is about: nodes in node edit (else the hovered
-segment), otherwise the selected objects. It never fires while a pointer gesture is in progress,
-never inside a text field (the field owns it), and never on a screen where the design is not visible.
+Delete removes the thing the current context is about: nodes in node edit (else the clicked or
+hovered segment), otherwise the selected objects. Ctrl+Delete removes nodes without refitting the
+curve around them. It never fires while a pointer gesture is in progress, never inside a text field
+(the field owns it), and never on a screen where the design is not visible.
+
+Node edit keys (Shift+letter, so they never collide with the bare tool letters): Ctrl+A all nodes,
+Shift+S smooth, Shift+Y symmetric, Shift+A auto-smooth, Shift+B break, Shift+J join, Shift+T trim
+the active segment, Shift+E extend the selected end, Shift+L / Shift+C line / curve, Shift+M midpoint.
 
 ### 1.4 Clipboard, duplicate, undo
 
@@ -77,7 +82,8 @@ Arrow keys nudge 0.5 mm, Shift 5 mm, Ctrl 0.05 mm; nodes if a node selection exi
 | Text object (Select or Text tool) | edits the text inline |
 | Segment in node edit | inserts a node at the pointer |
 | Line tool, path in progress | finishes the path |
-| Empty canvas, rectangle, ellipse, raster | nothing (no hidden action) |
+| Empty canvas, raster | nothing (no hidden action) |
+| Rectangle, ellipse, other plain outline | selects it and says to convert to curves first (Ctrl+Shift+C); no hidden conversion |
 | Work-area bed (workspace canvas) | as documented in `WorkspaceCanvas` |
 
 ### 1.7 Right click

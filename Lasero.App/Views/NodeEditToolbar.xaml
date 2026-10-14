@@ -17,17 +17,21 @@
         Structure mirrors the LightBurn/Inkscape node-tool convention of "a small ALWAYS-visible core
         (selection utilities, node type, delete) plus CONTEXTUAL groups that only appear once their
         target exists" rather than one static row of mostly-disabled buttons:
-          [ Select all | Clear ] · [ Roh | Hladký ] · [ Delete ]
-          + when 1 node selected and its subpath is unambiguous: [ Otevřít/Zavřít ] [ Obrátit směr ] [ Rozdělit v uzlu ]
-          + when that node is an open endpoint: [ Spojit ]
-          + when a segment is hovered: [ Na křivku/přímku ] [ Vložit uzel ] [ Odstranit segment ]
+          [ Select all | Clear ] · [ Roh | Hladký ] [ Souměrně ] [ Auto ] · [ Delete ]
+          + when the selection's subpath is unambiguous: [ Otevřít/Zavřít ] [ Obrátit směr ] [ Rozdělit v uzlu ]
+          + when one open end (or two) is selected: [ Spojit ] [ Úsečkou ] [ Prodloužit ]
+          + when a segment is clicked (selected) or hovered: [ Na křivku/přímku ] [ Vložit uzel ] [ Oříznout ] [ Odstranit segment ]
+
+        Shortcuts (node edit only, all documented in the tooltips): Ctrl+A all nodes, Shift+S smooth,
+        Shift+Y symmetric, Shift+A auto-smooth, Shift+B break, Shift+J join, Shift+E extend, Shift+T
+        trim, Shift+L/C line/curve, Shift+M midpoint, Delete / Ctrl+Delete (without curve refit).
 
         TargetCanvas mirrors CanvasViewControls' own precedent: node-edit selection state is
         transient view state SceneCanvas owns directly (IsNodeEditActive/SelectedNodeCount/
-        SelectedNodeType/IsSelectedSubpathClosed/IsHoveredSegmentStraight/IsSelectedNodeOpenEndpoint/
-        CanJoinSelectedEndpoint, all read-only DPs — see the "Bindable view state" section in
-        SceneCanvas.VectorPathTool.cs), not scene data, so it has no SceneViewModel equivalent to bind
-        against instead.
+        SelectedNodeType/IsSelectedSubpathClosed/CanToggleSelectedSubpathClosed/IsActiveSegmentStraight/
+        IsSelectedNodeOpenEndpoint/IsJoinContext/CanJoinSelectedNodes, all read-only DPs — see the
+        "Bindable view state" section in SceneCanvas.VectorPathTool.cs), not scene data, so it has no
+        SceneViewModel equivalent to bind against instead.
     -->
     <UserControl.Resources>
         <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
@@ -86,6 +90,7 @@
                         <StackPanel>
                             <TextBlock Text="Vybrat vše" Style="{StaticResource Tooltip.Title}" />
                             <TextBlock Text="Vybere všechny uzly aktuální dráhy." Style="{StaticResource Tooltip.Description}" />
+                            <TextBlock Text="Ctrl+A" Style="{StaticResource Tooltip.Shortcut}" />
                         </StackPanel>
                     </ToolTip>
                 </Button.ToolTip>
@@ -136,13 +141,45 @@
                             <ToolTip>
                                 <StackPanel>
                                     <TextBlock Text="Hladký uzel" Style="{StaticResource Tooltip.Title}" />
-                                    <TextBlock Text="Raménka vybraného uzlu zůstávají v jedné ose (tečná křivka)." Style="{StaticResource Tooltip.Description}" />
+                                    <TextBlock Text="Raménka vybraného uzlu zůstávají v jedné ose (tečná křivka). Uzel bez ramének je dostane podle sousedů, rovná úsečka u uzlu zůstane rovná." Style="{StaticResource Tooltip.Description}" />
+                                    <TextBlock Text="Shift+S" Style="{StaticResource Tooltip.Shortcut}" />
                                 </StackPanel>
                             </ToolTip>
                         </RadioButton.ToolTip>
                     </RadioButton>
                 </StackPanel>
             </Border>
+
+            <Button Style="{StaticResource Button.Ghost}" Padding="8,0" Height="{StaticResource Size.Control.Compact}" Margin="4,0,0,0"
+                    Click="OnSymmetricClick"
+                    IsEnabled="{Binding TargetCanvas.SelectedNodeCount, ElementName=Root, Converter={StaticResource PositiveCount}}"
+                    AutomationProperties.Name="Souměrný uzel">
+                <Button.ToolTip>
+                    <ToolTip>
+                        <StackPanel>
+                            <TextBlock Text="Souměrný uzel" Style="{StaticResource Tooltip.Title}" />
+                            <TextBlock Text="Raménka v jedné ose a stejně dlouhá." Style="{StaticResource Tooltip.Description}" />
+                            <TextBlock Text="Shift+Y" Style="{StaticResource Tooltip.Shortcut}" />
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
+                <TextBlock Text="Souměrně" VerticalAlignment="Center" />
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Padding="8,0" Height="{StaticResource Size.Control.Compact}"
+                    Click="OnAutoSmoothClick"
+                    IsEnabled="{Binding TargetCanvas.SelectedNodeCount, ElementName=Root, Converter={StaticResource PositiveCount}}"
+                    AutomationProperties.Name="Automaticky vyhladit uzel">
+                <Button.ToolTip>
+                    <ToolTip>
+                        <StackPanel>
+                            <TextBlock Text="Automaticky vyhladit" Style="{StaticResource Tooltip.Title}" />
+                            <TextBlock Text="Raménka se dopočítají podle sousedních uzlů (směr od předchozího k dalšímu, třetina délky úseku)." Style="{StaticResource Tooltip.Description}" />
+                            <TextBlock Text="Shift+A" Style="{StaticResource Tooltip.Shortcut}" />
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
+                <TextBlock Text="Auto" VerticalAlignment="Center" />
+            </Button>
 
             <Border Style="{StaticResource ToolbarDivider}" />
 
@@ -154,8 +191,8 @@
                     <ToolTip>
                         <StackPanel>
                             <TextBlock Text="Odstranit uzly" Style="{StaticResource Tooltip.Title}" />
-                            <TextBlock Text="Odstraní vybrané uzly a propojí sousední body." Style="{StaticResource Tooltip.Description}" />
-                            <TextBlock Text="Delete" Style="{StaticResource Tooltip.Shortcut}" />
+                            <TextBlock Text="Odstraní vybrané uzly a sousední úseky přizpůsobí původní křivce. Ctrl+Delete je odstraní bez přizpůsobení." Style="{StaticResource Tooltip.Description}" />
+                            <TextBlock Text="Delete · Ctrl+Delete" Style="{StaticResource Tooltip.Shortcut}" />
                         </StackPanel>
                     </ToolTip>
                 </Button.ToolTip>
@@ -172,7 +209,8 @@
                         Visibility="{Binding TargetCanvas.IsSelectedSubpathClosed, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
                 <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnToggleClosedClick"
-                        IsEnabled="{Binding TargetCanvas.CanCloseSelectedSubpath, ElementName=Root}"
+                        IsEnabled="{Binding TargetCanvas.CanToggleSelectedSubpathClosed, ElementName=Root}"
+                        ToolTipService.ShowOnDisabled="True"
                         AutomationProperties.Name="Otevřít nebo uzavřít dráhu">
                     <!-- No dedicated open/closed-path icon exists in this app's icon set, and inventing
                          one purely for this one button risked looking like a mismatched one-off. A
@@ -198,6 +236,9 @@
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Tooltip.Description}">
                                             <Setter Property="Text" Value="Spojí první a poslední uzel dráhy." />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding TargetCanvas.CanToggleSelectedSubpathClosed, ElementName=Root}" Value="False">
+                                                    <Setter Property="Text" Value="Uzavřít lze jen dráhu nejméně se třemi různými uzly. Dvojitá čára by se vypálila dvakrát." />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding TargetCanvas.IsSelectedSubpathClosed, ElementName=Root}" Value="True">
                                                     <Setter Property="Text" Value="Zruší uzavírací úsek mezi prvním a posledním uzlem." />
                                                 </DataTrigger>
@@ -245,21 +286,27 @@
                             <StackPanel>
                                 <TextBlock Text="Rozdělit v uzlu" Style="{StaticResource Tooltip.Title}" />
                                 <TextBlock Text="Rozdělí dráhu na dva konce v tomto uzlu (u uzavřené dráhy ji otevře)." Style="{StaticResource Tooltip.Description}" />
+                                <TextBlock Text="Shift+B" Style="{StaticResource Tooltip.Shortcut}" />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
                     <TextBlock Text="Rozdělit v uzlu" VerticalAlignment="Center" />
                 </Button>
+            </StackPanel>
 
-                <!-- Contextual within contextual: only when the single selected node is an open
-                     endpoint — Join only ever makes sense there. Visible (not collapsed) even when no
-                     candidate is currently in range, so its own tooltip can explain why it is
-                     disabled instead of the action seeming to not exist at all. -->
+            <!-- Contextual: one open end, or two open ends of this path, selected. Join merges ends
+                 that touch and bridges ends apart with a straight segment; Úsečkou always bridges.
+                 Visible (not collapsed) even when nothing can be joined right now, so the tooltip
+                 can explain why the buttons are disabled instead of the action seeming not to exist. -->
+            <Border Style="{StaticResource ToolbarDivider}"
+                    Visibility="{Binding TargetCanvas.IsJoinContext, ElementName=Root, Converter={StaticResource BoolToVisibility}}" />
+            <StackPanel Orientation="Horizontal"
+                        Visibility="{Binding TargetCanvas.IsJoinContext, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
                 <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnJoinClick"
-                        Visibility="{Binding TargetCanvas.IsSelectedNodeOpenEndpoint, ElementName=Root, Converter={StaticResource BoolToVisibility}}"
-                        IsEnabled="{Binding TargetCanvas.CanJoinSelectedEndpoint, ElementName=Root}"
-                        AutomationProperties.Name="Spojit s jinou dráhou">
+                        IsEnabled="{Binding TargetCanvas.CanJoinSelectedNodes, ElementName=Root}"
+                        ToolTipService.ShowOnDisabled="True"
+                        AutomationProperties.Name="Spojit uzly">
                     <Button.ToolTip>
                         <ToolTip>
                             <StackPanel>
@@ -267,15 +314,16 @@
                                 <TextBlock>
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Tooltip.Description}">
-                                            <Setter Property="Text" Value="Spojí tento konec s nejbližším otevřeným koncem jiné dráhy." />
+                                            <Setter Property="Text" Value="Spojí vybrané konce, nebo tento konec s nejbližším otevřeným koncem jiné dráhy. Konce, které se dotýkají, se sloučí do jednoho uzlu, vzdálené spojí úsečka. Nic se neposune." />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TargetCanvas.CanJoinSelectedEndpoint, ElementName=Root}" Value="False">
-                                                    <Setter Property="Text" Value="Žádný jiný otevřený konec není poblíž. Dráhy lze přesunout blíž k sobě, nebo lze tento uzel přetáhnout na cílový konec." />
+                                                <DataTrigger Binding="{Binding TargetCanvas.CanJoinSelectedNodes, ElementName=Root}" Value="False">
+                                                    <Setter Property="Text" Value="Žádný jiný otevřený konec není poblíž. Lze vybrat dva konce této dráhy, přesunout dráhy blíž k sobě, nebo tento uzel přetáhnout na cílový konec." />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
+                                <TextBlock Text="Shift+J" Style="{StaticResource Tooltip.Shortcut}" />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
@@ -285,17 +333,45 @@
                         <TextBlock Text="Spojit" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
+                        Click="OnJoinWithSegmentClick"
+                        IsEnabled="{Binding TargetCanvas.CanJoinSelectedNodes, ElementName=Root}"
+                        AutomationProperties.Name="Spojit úsečkou">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="Spojit úsečkou" Style="{StaticResource Tooltip.Title}" />
+                                <TextBlock Text="Oba konce zůstanou na místě a spojí je rovná úsečka." Style="{StaticResource Tooltip.Description}" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                    <TextBlock Text="Úsečkou" VerticalAlignment="Center" />
+                </Button>
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
+                        Click="OnExtendClick"
+                        Visibility="{Binding TargetCanvas.IsSelectedNodeOpenEndpoint, ElementName=Root, Converter={StaticResource BoolToVisibility}}"
+                        AutomationProperties.Name="Prodloužit k průsečíku">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="Prodloužit" Style="{StaticResource Tooltip.Title}" />
+                                <TextBlock Text="Prodlouží otevřený konec ve směru dráhy až k nejbližší křivce, kterou protne." Style="{StaticResource Tooltip.Description}" />
+                                <TextBlock Text="Shift+E" Style="{StaticResource Tooltip.Shortcut}" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                    <TextBlock Text="Prodloužit" VerticalAlignment="Center" />
+                </Button>
             </StackPanel>
 
             <!-- Contextual: segment-scoped commands (Priority 1 exposure — see
-                 NODE_EDIT_PARITY_AUDIT_2026-09-16.md). These target whichever segment the pointer is
-                 currently hovering (there is no separate "click to select a segment" state — see
-                 HandleNodeEditCanvasMouseDown's own doc comment), so all three share one visibility
-                 condition and only appear once a segment is actually hovered. -->
+                 NODE_EDIT_PARITY_AUDIT_2026-09-16.md). They target the ACTIVE segment: the one the
+                 operator clicked (it stays selected while the pointer travels here), else the one
+                 hovered, so they share one visibility condition. -->
             <Border Style="{StaticResource ToolbarDivider}"
-                    Visibility="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
+                    Visibility="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}" />
             <StackPanel Orientation="Horizontal"
-                        Visibility="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
+                        Visibility="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
                 <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnConvertSegmentClick" AutomationProperties.Name="Převést segment na křivku nebo přímku">
                     <Button.ToolTip>
@@ -306,7 +382,7 @@
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Tooltip.Title}">
                                             <Setter Property="Text" Value="Na křivku" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root}" Value="False">
+                                                <DataTrigger Binding="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root}" Value="False">
                                                     <Setter Property="Text" Value="Na přímku" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -316,10 +392,10 @@
                                 <TextBlock>
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Tooltip.Description}">
-                                            <Setter Property="Text" Value="Převede úsečku pod ukazatelem na Bézierovu křivku." />
+                                            <Setter Property="Text" Value="Převede vybranou úsečku na Bézierovu křivku." />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root}" Value="False">
-                                                    <Setter Property="Text" Value="Odstraní raménka a segment pod ukazatelem narovná." />
+                                                <DataTrigger Binding="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root}" Value="False">
+                                                    <Setter Property="Text" Value="Odstraní raménka a vybraný segment narovná. Hladký uzel, u kterého se tím zlomí tečna, se stane ostrým rohem." />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -330,7 +406,7 @@
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Tooltip.Shortcut}">
                                             <Setter Property="Text" Value="Shift+C" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root}" Value="False">
+                                                <DataTrigger Binding="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root}" Value="False">
                                                     <Setter Property="Text" Value="Shift+L" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -345,7 +421,7 @@
                             <Style TargetType="TextBlock">
                                 <Setter Property="Text" Value="Na křivku" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding TargetCanvas.IsHoveredSegmentStraight, ElementName=Root}" Value="False">
+                                    <DataTrigger Binding="{Binding TargetCanvas.IsActiveSegmentStraight, ElementName=Root}" Value="False">
                                         <Setter Property="Text" Value="Na přímku" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -360,12 +436,26 @@
                         <ToolTip>
                             <StackPanel>
                                 <TextBlock Text="Vložit uzel" Style="{StaticResource Tooltip.Title}" />
-                                <TextBlock Text="Vloží nový uzel přesně do poloviny segmentu pod ukazatelem." Style="{StaticResource Tooltip.Description}" />
+                                <TextBlock Text="Vloží nový uzel přesně do poloviny vybraného segmentu." Style="{StaticResource Tooltip.Description}" />
                                 <TextBlock Text="Shift+M — nebo dvojklik na dráhu kdekoli jinde" Style="{StaticResource Tooltip.Shortcut}" />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
                     <TextBlock Text="Vložit uzel" VerticalAlignment="Center" />
+                </Button>
+
+                <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
+                        Click="OnTrimSegmentClick" AutomationProperties.Name="Oříznout segment k průsečíkům">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="Oříznout" Style="{StaticResource Tooltip.Title}" />
+                                <TextBlock Text="Odstraní jen tu část vybraného segmentu, která leží mezi nejbližšími průsečíky s jinými křivkami (nebo jeho uzly). Zbytek křivky se nezmění." Style="{StaticResource Tooltip.Description}" />
+                                <TextBlock Text="Shift+T" Style="{StaticResource Tooltip.Shortcut}" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                    <TextBlock Text="Oříznout" VerticalAlignment="Center" />
                 </Button>
 
                 <Button Style="{StaticResource Button.GhostIcon}" Click="OnDeleteSegmentClick"
@@ -375,7 +465,7 @@
                         <ToolTip>
                             <StackPanel>
                                 <TextBlock Text="Odstranit segment" Style="{StaticResource Tooltip.Title}" />
-                                <TextBlock Text="Odstraní segment pod ukazatelem a otevře nebo rozdělí dráhu." Style="{StaticResource Tooltip.Description}" />
+                                <TextBlock Text="Odstraní vybraný segment a otevře nebo rozdělí dráhu." Style="{StaticResource Tooltip.Description}" />
                                 <TextBlock Text="Delete (bez výběru uzlu)" Style="{StaticResource Tooltip.Shortcut}" />
                             </StackPanel>
                         </ToolTip>

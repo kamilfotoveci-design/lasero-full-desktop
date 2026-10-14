@@ -60,18 +60,30 @@ public partial class SceneCanvas
     private static readonly RgbColor VectorPathDefaultColor = new(18, 18, 18);
 
     // --- multi-click path drawing state -------------------------------------------------------
-    private readonly List<VectorNode> _pathNodes = [];
+    private readonly PenPathSession _pen = new();
     private readonly List<FrameworkElement> _pathToolVisuals = [];
-    private bool _pathToolDrawing;
+    private bool _pathToolDrawing => _pen.IsDrawing;
     private bool _pathClosingClick;
+    private bool _pathCloseRefused;
     private Position _pathNodeDownWorld;
     private Point _pathNodeDownScreen;
+
+    private const string CloseNeedsThreeNodesMessage =
+        "Uzavřít lze jen dráhu nejméně se třemi různými uzly. Dvojitá čára by se vypálila dvakrát.";
 
     // --- node edit mode state -------------------------------------------------------------------
     private SceneObject? _nodeEditObject;
     private bool _committingNodeEdit;
     private VectorPath? _nodeEditWorkingPath;
     private readonly HashSet<(int Subpath, int Node)> _selectedNodeKeys = [];
+    // A clicked segment stays the target of the segment commands (toolbar, Shift+L/C/M/T, Delete)
+    // while the pointer travels to the toolbar; hover alone is lost on the way. Exclusive with a node
+    // selection. The node count pins it to the topology it was picked on.
+    private VectorPathHitTester.Hit? _selectedSegment;
+    private int _selectedSegmentNodeCount;
+    // The node under the pointer when a node drag began: it is the one that snaps, the rest of the
+    // selection follows with the same delta.
+    private (int Subpath, int Node)? _grabbedNodeKey;
     private (int Subpath, int Node, bool IsOutHandle)? _draggedHandle;
     private VectorPathHitTester.Hit? _draggedSegment;
     private VectorPath? _nodeDragOriginalPath;
@@ -108,9 +120,26 @@ public partial class SceneCanvas
 
     private void BeginVectorPathClick(Point screen)
     {
-        if (!_pathToolDrawing) BeginGestureSnapping([]);
-        var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
-        _pathClosingClick = _pathToolDrawing && _pathNodes.Count >= 2 && IsNearFirstNode(screen);
+        var pickedUpEnd = false;
+        if (!_pen.IsDrawing)
+        {
+            BeginGestureSnapping([]);
+            // LB-VEC-043 / LIGHTBURN_VECTOR_PARITY.md §24: pressing on an open end of an existing
+            // editable path picks that path up and keeps drawing it, instead of starting a new object.
+            if (FindPenContinuationTarget(screen) is { } target)
+            {
+                _pen.Continue(target.WorldSubpath, target.AtStart, target.Object.Id, target.SubpathIndex);
+                pickedUpEnd = true;
+            }
+        }
+
+        // The press that picks up an end lands exactly on it: a click adds nothing, a drag pulls that
+        // end's outgoing handle (see PenPathSession.Append).
+        var world = pickedUpEnd ? _pen.Nodes[^1].Anchor : ApplyPenSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
+        var nearFirst = _pen.Nodes.Count >= 2 && IsNearFirstNode(screen);
+        _pathClosingClick = nearFirst && _pen.CanClose;
+        _pathCloseRefused = nearFirst && !_pen.CanClose;
+        if (_pathClosingClick) world = _pen.Nodes[0].Anchor;
         _pathNodeDownScreen = screen;
         _pathNodeDownWorld = world;
         _dragMode = DragMode.PathTool;
@@ -120,43 +149,64 @@ public partial class SceneCanvas
 
     private void EndVectorPathClick(Point screen)
     {
-        var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
-        var dxPx = screen.X - _pathNodeDownScreen.X;
-        var dyPx = screen.Y - _pathNodeDownScreen.Y;
-        // Same "was this a real drag" pixel threshold FinishDraw already uses for the old shape tools —
-        // below it, the node is a plain corner even if the pointer trembled a pixel or two.
-        var isDrag = Math.Abs(dxPx) >= 3 || Math.Abs(dyPx) >= 3;
-        Position? dragOffset = isDrag
-            ? new Position(world.X - _pathNodeDownWorld.X, world.Y - _pathNodeDownWorld.Y, 0)
-            : null;
+        if (ViewModel?.ActiveTool != DesignerTool.Line)
+        {
+            // The tool changed under the press (a shortcut mid-click): the path was already finished
+            // by that switch, so this release must not start a new one.
+            _pathClosingClick = false;
+            _pathCloseRefused = false;
+            _dragMode = DragMode.None;
+            if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
+            return;
+        }
+        var dragOffset = PenDragOffset(screen);
+        var breakHandle = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
 
         if (_pathClosingClick)
         {
-            var subpath = new VectorSubpath { Nodes = [.. _pathNodes], IsClosed = false };
-            var closed = VectorPathEditor.Close(subpath, dragOffset);
-            CommitVectorPath(closed);
+            if (_pen.BuildClosed(dragOffset, breakHandle) is { } closed)
+                CommitVectorPath(closed);
+        }
+        else if (_pathCloseRefused)
+        {
+            // A click on the first node of a two-node path would trace the same line back: refused,
+            // with the reason, rather than closing it or stacking a node on top of the first one.
+            ShowCanvasNotice(CloseNeedsThreeNodesMessage);
         }
         else
         {
-            var subpath = VectorPathEditor.AppendNode(
-                new VectorSubpath { Nodes = [.. _pathNodes], IsClosed = false }, _pathNodeDownWorld, dragOffset);
-            _pathNodes.Clear();
-            _pathNodes.AddRange(subpath.Nodes);
-            _pathToolDrawing = true;
-            UpdateVectorPathPreview(screen);
+            _pen.Append(_pathNodeDownWorld, dragOffset, breakHandle);
         }
 
+        _pathClosingClick = false;
+        _pathCloseRefused = false;
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
+        UpdateVectorPathPreview(screen);
         UpdateToolCursor();
     }
 
-    /// <summary>Finishes the in-progress path as OPEN (double-click or Enter). Fewer than two nodes is
-    /// not a usable object — silently discarded, tool stays active for another attempt.</summary>
+    /// <summary>Drag distance of the current pen press as a handle offset, or null for a click (below
+    /// the same 3 px threshold FinishDraw uses). Shift locks the handle direction to 15° steps.</summary>
+    private Position? PenDragOffset(Point screen)
+    {
+        var dxPx = screen.X - _pathNodeDownScreen.X;
+        var dyPx = screen.Y - _pathNodeDownScreen.Y;
+        if (Math.Abs(dxPx) < 3 && Math.Abs(dyPx) < 3) return null;
+        var pointer = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        var dx = pointer.X - _pathNodeDownWorld.X;
+        var dy = pointer.Y - _pathNodeDownWorld.Y;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            (dx, dy) = AngleConstraint.Constrain(dx, dy, AngleConstraint.PenStepDegrees);
+        return new Position(dx, dy, 0);
+    }
+
+    /// <summary>Finishes the in-progress path as OPEN (double-click, Enter, Esc). Fewer than two nodes
+    /// is not a usable object — discarded, tool stays active for another attempt.</summary>
     private void FinishVectorPath()
     {
-        if (_pathNodes.Count >= 2)
-            CommitVectorPath(new VectorSubpath { Nodes = [.. _pathNodes], IsClosed = false });
+        if (_pen.BuildOpen() is { } open)
+            CommitVectorPath(open);
         else
             ResetVectorPathToolState();
 
@@ -165,81 +215,190 @@ public partial class SceneCanvas
         UpdateToolCursor();
     }
 
-    private void CommitVectorPath(VectorSubpath subpath)
+    /// <summary>One undo step for the whole drawing session: a new path object, or — when the session
+    /// continued an existing open path — that object's path with the contour replaced.
+    /// <paramref name="switchTool"/> is false when the commit happens BECAUSE the tool is changing (the
+    /// operator's new tool must win over the "switch to Select after drawing" preference).</summary>
+    private void CommitVectorPath(VectorSubpath subpath, bool switchTool = true)
     {
-        var drawn = ViewModel is not null && subpath.Nodes.Count >= 2;
-        if (drawn)
-            ViewModel!.AddVectorPath(new VectorPath { Subpaths = [subpath] });
+        var continuation = _pen.Continuation;
         ResetVectorPathToolState();
-        if (drawn && _preferences.SwitchToSelectAfterDrawing) ViewModel!.ActiveTool = DesignerTool.Select;
+        if (ViewModel is null || subpath.Nodes.Count < 2) return;
+
+        var continued = continuation is { } c
+            ? ViewModel.Objects.FirstOrDefault(o => o.Id == c.ObjectId && o.VectorPath is { } p
+                && c.SubpathIndex < p.Subpaths.Count && ViewModel.CanSelectObject(o))
+            : null;
+        if (continued is not null)
+        {
+            var local = MapSubpath(subpath, world => continued.Transform.Inverse(world, continued.LocalPivot));
+            ViewModel.CommitVectorPathEdit(continued, continued.VectorPath!.ReplaceSubpath(continuation!.Value.SubpathIndex, local));
+        }
+        else
+        {
+            ViewModel.AddVectorPath(new VectorPath { Subpaths = [subpath] });
+        }
+
+        if (switchTool && _preferences.SwitchToSelectAfterDrawing) ViewModel.ActiveTool = DesignerTool.Select;
     }
 
-    /// <summary>Esc's first layer while drawing: undo the most recently placed node (the "uncommitted
-    /// segment" the spec refers to — this tool commits a node the instant its click is released, so the
-    /// closest equivalent is dropping that last commit). A second Esc with no nodes left exits the tool,
-    /// matching the layered-Escape convention the text tool already established elsewhere in this file.</summary>
-    private void CancelLastVectorPathNode()
+    private static VectorSubpath MapSubpath(VectorSubpath subpath, Func<Position, Position> map) => subpath with
     {
-        if (_pathNodes.Count > 0)
-        {
-            _pathNodes.RemoveAt(_pathNodes.Count - 1);
-            if (_pathNodes.Count == 0)
-            {
-                ResetVectorPathToolState();
-                if (ViewModel is not null) ViewModel.ActiveTool = DesignerTool.Select;
-            }
-            else
-            {
-                UpdateVectorPathPreview(Mouse.GetPosition(DrawCanvas));
-            }
-        }
-        else if (ViewModel is not null)
-        {
-            ViewModel.ActiveTool = DesignerTool.Select;
-        }
+        Nodes = subpath.Nodes.Select(node => new VectorNode(
+            map(node.Anchor),
+            node.HandleIn is { } hi ? map(hi) : null,
+            node.HandleOut is { } ho ? map(ho) : null,
+            node.Type)).ToList(),
+    };
+
+    /// <summary>Tool switch while drawing: the path drawn so far is kept (committed when it has two
+    /// usable nodes), never silently thrown away.</summary>
+    private void CommitPenPathOnToolSwitch()
+    {
+        if (_pen.BuildOpen() is { } open) CommitVectorPath(open, switchTool: false);
+        else ResetVectorPathToolState();
+    }
+
+    /// <summary>Backspace while drawing: removes the newest placed node; the path and the tool stay.
+    /// With nothing of its own left, a continuation of an existing path is simply let go (the
+    /// existing path was never changed).</summary>
+    private void RemoveLastPenNode()
+    {
+        if (!_pen.RemoveLast()) ResetVectorPathToolState();
+        UpdateVectorPathPreview(Mouse.GetPosition(DrawCanvas));
     }
 
     private void ResetVectorPathToolState()
     {
-        _pathNodes.Clear();
-        _pathToolDrawing = false;
+        _pen.Reset();
         _pathClosingClick = false;
+        _pathCloseRefused = false;
         ClearVectorPathPreviewVisuals();
         if (_toolPreviewVisual is not null) _toolPreviewVisual.Visibility = Visibility.Collapsed;
     }
 
     private bool IsNearFirstNode(Point screen)
     {
-        if (_pathNodes.Count == 0) return false;
-        var first = new Point(ToCanvasX(_pathNodes[0].Anchor.X), ToCanvasY(_pathNodes[0].Anchor.Y));
+        if (_pen.Nodes.Count == 0) return false;
+        var first = new Point(ToCanvasX(_pen.Nodes[0].Anchor.X), ToCanvasY(_pen.Nodes[0].Anchor.Y));
         return Distance(first, screen) <= CloseHoverThresholdPx;
+    }
+
+    private readonly record struct PenContinuationTarget(SceneObject Object, int SubpathIndex, bool AtStart, VectorSubpath WorldSubpath);
+
+    /// <summary>The open end of an editable path nearest to the pointer (within the close-hover
+    /// tolerance), which a pen press would pick up and continue. Locked, hidden and derived offset
+    /// paths are not offered.</summary>
+    private PenContinuationTarget? FindPenContinuationTarget(Point screen)
+    {
+        if (ViewModel is null) return null;
+        PenContinuationTarget? best = null;
+        var bestDistance = double.MaxValue;
+        foreach (var obj in ViewModel.Objects)
+        {
+            if (obj.VectorPath is null || obj.IsLocked || obj.OffsetLink is not null || !ViewModel.CanSelectObject(obj)) continue;
+            var world = obj.GetWorldVectorPath();
+            if (world is null) continue;
+            for (var s = 0; s < world.Subpaths.Count; s++)
+            {
+                var subpath = world.Subpaths[s];
+                if (subpath.IsClosed || subpath.Nodes.Count < 2) continue;
+                foreach (var atStart in new[] { true, false })
+                {
+                    var anchor = subpath.Nodes[atStart ? 0 : subpath.Nodes.Count - 1].Anchor;
+                    var distance = Distance(new Point(ToCanvasX(anchor.X), ToCanvasY(anchor.Y)), screen);
+                    if (distance <= CloseHoverThresholdPx && distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        best = new PenContinuationTarget(obj, s, atStart, subpath);
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    /// <summary>Pen point resolution. Ctrl: raw pointer. Shift (with a node already placed): the
+    /// direction from the last node locks to 15° steps and nothing else snaps. Otherwise the scene's
+    /// snap targets plus the pen's OWN nodes placed so far (so a path can return exactly to an earlier
+    /// point), then the grid.</summary>
+    private Position ApplyPenSnap(Position point)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            _activeSnapTarget = null;
+            return point;
+        }
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _pen.Nodes.Count > 0)
+        {
+            var last = _pen.Nodes[^1].Anchor;
+            var (dx, dy) = AngleConstraint.Constrain(point.X - last.X, point.Y - last.Y, AngleConstraint.PenStepDegrees);
+            _activeSnapTarget = null;
+            return new Position(last.X + dx, last.Y + dy, 0);
+        }
+
+        var candidates = new List<SnapCandidate>();
+        if (_preferences.SnapToObjects)
+        {
+            candidates.AddRange(_gestureSnapCandidates);
+            for (var i = 0; i < _pen.Nodes.Count - 1; i++)
+                candidates.Add(new SnapCandidate(_pen.Nodes[i].Anchor, i == 0 ? SnapKind.Endpoint : SnapKind.Node));
+        }
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
+        var result = SnapEngine.Resolve(point, candidates, SnapToleranceScreenPx / _scale, gridStep);
+        _activeSnapTarget = result.Target;
+        return result.Point;
     }
 
     private void UpdateVectorPathPreview(Point cursorScreen)
     {
-        if (ViewModel is null || ViewModel.ActiveTool != DesignerTool.Line || !_pathToolDrawing)
+        if (ViewModel is null || ViewModel.ActiveTool != DesignerTool.Line)
         {
             ClearVectorPathPreviewVisuals();
             return;
         }
 
         ClearVectorPathPreviewVisuals();
-        var cursorWorld = ApplyGestureSnap(new Position(ToWorldX(cursorScreen.X), ToWorldY(cursorScreen.Y), 0));
-        var isPressed = _dragMode == DragMode.PathTool;
-        IReadOnlyList<VectorNode> previewNodes = _pathNodes;
+        if (!_pen.IsDrawing)
+        {
+            // Idle pen over an open end of an existing path: that end lights up, the way a press
+            // there will continue the path (LIGHTBURN_VECTOR_PARITY.md §24 "endpoint highlights").
+            if (_dragMode == DragMode.None && FindPenContinuationTarget(cursorScreen) is { } target)
+            {
+                var end = target.WorldSubpath.Nodes[target.AtStart ? 0 : target.WorldSubpath.Nodes.Count - 1].Anchor;
+                AddPathToolDot(new Point(ToCanvasX(end.X), ToCanvasY(end.Y)), highlight: true);
+            }
+            return;
+        }
 
-        if (!(isPressed && _pathClosingClick))
+        var isPressed = _dragMode == DragMode.PathTool;
+        var cursorWorld = isPressed
+            ? new Position(ToWorldX(cursorScreen.X), ToWorldY(cursorScreen.Y), 0)
+            : ApplyPenSnap(new Position(ToWorldX(cursorScreen.X), ToWorldY(cursorScreen.Y), 0));
+        IReadOnlyList<VectorNode> previewNodes = _pen.Nodes;
+        var previewClosed = false;
+
+        if (isPressed && _pathClosingClick)
+        {
+            if (_pen.BuildClosed(PenDragOffset(cursorScreen), Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) is { } closing)
+            {
+                // Drawing order, not the commit orientation: the preview only needs the shape.
+                previewNodes = _pen.Continuation is { FromStart: true } ? VectorPathEditor.ReverseSubpath(closing).Nodes : closing.Nodes;
+                previewClosed = true;
+            }
+        }
+        else if (!(isPressed && _pathCloseRefused))
         {
             var tentativeAnchor = isPressed ? _pathNodeDownWorld : cursorWorld;
-            Position? dragOffset = isPressed
-                ? new Position(cursorWorld.X - _pathNodeDownWorld.X, cursorWorld.Y - _pathNodeDownWorld.Y, 0)
-                : null;
+            Position? dragOffset = isPressed ? PenDragOffset(cursorScreen) : null;
             var previewSubpath = VectorPathEditor.AppendNode(
-                new VectorSubpath { Nodes = previewNodes, IsClosed = false }, tentativeAnchor, dragOffset);
+                new VectorSubpath { Nodes = previewNodes, IsClosed = false }, tentativeAnchor, dragOffset,
+                isPressed && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
             previewNodes = previewSubpath.Nodes;
         }
 
-        var flattened = new VectorSubpath { Nodes = previewNodes, IsClosed = false }.Flatten();
+        var flattened = new VectorSubpath { Nodes = previewNodes, IsClosed = previewClosed }.Flatten();
         EnsureToolPreviewVisual();
         _toolPreviewVisual!.Data = BuildCompoundGeometry(
         [
@@ -250,10 +409,11 @@ public partial class SceneCanvas
         ]);
         _toolPreviewVisual.Visibility = Visibility.Visible;
 
-        var hoveringClose = !isPressed && _pathNodes.Count >= 2 && IsNearFirstNode(cursorScreen);
-        for (var i = 0; i < _pathNodes.Count; i++)
+        // The first node only promises "click to close" when closing is actually allowed.
+        var hoveringClose = !isPressed && _pen.CanClose && IsNearFirstNode(cursorScreen);
+        for (var i = 0; i < _pen.Nodes.Count; i++)
         {
-            var screen = new Point(ToCanvasX(_pathNodes[i].Anchor.X), ToCanvasY(_pathNodes[i].Anchor.Y));
+            var screen = new Point(ToCanvasX(_pen.Nodes[i].Anchor.X), ToCanvasY(_pen.Nodes[i].Anchor.Y));
             var highlight = i == 0 && (hoveringClose || (isPressed && _pathClosingClick));
             AddPathToolDot(screen, highlight);
         }
@@ -300,6 +460,7 @@ public partial class SceneCanvas
         _nodeEditObject = obj;
         _nodeEditWorkingPath = obj.VectorPath;
         _selectedNodeKeys.Clear();
+        _selectedSegment = null;
         if (ViewModel.SelectedObjects.Count != 1 || !ViewModel.SelectedObjects.Contains(obj))
         {
             ViewModel.SelectedObjects.Clear();
@@ -322,6 +483,8 @@ public partial class SceneCanvas
         _nodeEditObject = null;
         _nodeEditWorkingPath = null;
         _selectedNodeKeys.Clear();
+        _selectedSegment = null;
+        _grabbedNodeKey = null;
         _draggedHandle = null;
         _draggedSegment = null;
         _nodeDragOriginalPath = null;
@@ -370,6 +533,9 @@ public partial class SceneCanvas
             var segmentHit = HitTestNearestSegment(obj, _nodeEditWorkingPath, screen, SegmentInsertTolerancePx);
             if (segmentHit is { } hit && hit.T is > 0.08 and < 0.92)
             {
+                // The click also SELECTS the segment, so the segment commands keep a target once the
+                // pointer has moved away to the toolbar (hover alone would be gone by then).
+                SelectSegment(hit);
                 BeginSegmentDrag(hit);
                 return;
             }
@@ -404,8 +570,15 @@ public partial class SceneCanvas
         if (w <= 2 && h <= 2)
         {
             if (!_nodeMarqueeHitObject) ExitNodeEditMode();
+            else if (_selectedSegment is not null)
+            {
+                // A click on the shape away from any segment drops the segment selection.
+                _selectedSegment = null;
+                RedrawSelectionOverlay();
+            }
             return;
         }
+        _selectedSegment = null;
 
         if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
         var obj = _nodeEditObject;
@@ -456,7 +629,10 @@ public partial class SceneCanvas
         // Hover feedback only makes sense while idle -- mid-drag, the dragged item's own live motion
         // already is the feedback, and a stale hover from before the drag started would be misleading.
         var showHover = _dragMode is DragMode.None or DragMode.NodeMarquee;
-        if (showHover && _hoveredSegment is { } hoveredSeg) DrawSegmentHoverHighlight(obj, path, hoveredSeg);
+        if (_selectedSegment is { } selectedSeg && IsValidSegment(path, selectedSeg))
+            DrawSegmentHoverHighlight(obj, path, selectedSeg, isSelected: true);
+        if (showHover && _hoveredSegment is { } hoveredSeg && IsValidSegment(path, hoveredSeg) && !IsSameSegment(_selectedSegment, hoveredSeg))
+            DrawSegmentHoverHighlight(obj, path, hoveredSeg);
 
         // Level of detail. A traced or imported path can carry thousands of nodes; one hit target, one
         // dot and up to two handles per node meant tens of thousands of elements rebuilt on every
@@ -552,7 +728,59 @@ public partial class SceneCanvas
     /// points (not a generic straight line) — drawn UNDERNEATH the node dots (added to the overlay
     /// before the node loop below) so the dots themselves stay on top, matching LIGHTBURN_VECTOR_
     /// PARITY.md §63's "highlight the target before a contextual operation" (here: before Delete).</summary>
-    private void DrawSegmentHoverHighlight(SceneObject obj, VectorPath path, VectorPathHitTester.Hit hit)
+    private static bool IsValidSegment(VectorPath path, VectorPathHitTester.Hit hit) =>
+        hit.SubpathIndex >= 0 && hit.SubpathIndex < path.Subpaths.Count
+        && hit.SegmentIndex >= 0 && hit.SegmentIndex < path.Subpaths[hit.SubpathIndex].SegmentCount;
+
+    private static bool IsSameSegment(VectorPathHitTester.Hit? a, VectorPathHitTester.Hit b) =>
+        a is { } x && x.SubpathIndex == b.SubpathIndex && x.SegmentIndex == b.SegmentIndex;
+
+    /// <summary>The segment the segment commands act on: the clicked (selected) one, else the one
+    /// under the pointer. Null when neither exists or it no longer fits the working path.</summary>
+    private VectorPathHitTester.Hit? ActiveSegment
+    {
+        get
+        {
+            if (_nodeEditWorkingPath is null) return null;
+            if (_selectedSegment is { } selected && IsValidSegment(_nodeEditWorkingPath, selected)) return selected;
+            if (_hoveredSegment is { } hovered && IsValidSegment(_nodeEditWorkingPath, hovered)) return hovered;
+            return null;
+        }
+    }
+
+    private void SelectSegment(VectorPathHitTester.Hit hit)
+    {
+        if (_nodeEditWorkingPath is null || !IsValidSegment(_nodeEditWorkingPath, hit)) return;
+        _selectedNodeKeys.Clear();
+        _selectedSegment = hit;
+        _selectedSegmentNodeCount = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex].Nodes.Count;
+    }
+
+    /// <summary>After a commit, a selected segment survives only if its contour kept its node count
+    /// (a reshape); any topology change (insert, delete, split, join) makes its index meaningless.</summary>
+    private void RevalidateSegmentSelection()
+    {
+        if (_selectedSegment is not { } selected) return;
+        if (_nodeEditWorkingPath is null || !IsValidSegment(_nodeEditWorkingPath, selected)
+            || _nodeEditWorkingPath.Subpaths[selected.SubpathIndex].Nodes.Count != _selectedSegmentNodeCount)
+            _selectedSegment = null;
+        if (_hoveredSegment is { } hovered && (_nodeEditWorkingPath is null || !IsValidSegment(_nodeEditWorkingPath, hovered)))
+            _hoveredSegment = null;
+    }
+
+    /// <summary>Pointer left the canvas: hover visuals go (they describe where the pointer is), the
+    /// selected segment stays (it is what the toolbar the pointer is heading to will act on).</summary>
+    private void OnDrawCanvasMouseLeaveForNodeEdit(object sender, MouseEventArgs e)
+    {
+        ClearTrimHover();
+        if (!_pen.IsDrawing && _dragMode == DragMode.None) ClearVectorPathPreviewVisuals();
+        if (_nodeEditObject is null || _dragMode != DragMode.None || _hoveredSegment is null) return;
+        _hoveredSegment = null;
+        Cursor = Cursors.Arrow;
+        RedrawSelectionOverlay();
+    }
+
+    private void DrawSegmentHoverHighlight(SceneObject obj, VectorPath path, VectorPathHitTester.Hit hit, bool isSelected = false)
     {
         var subpath = path.Subpaths[hit.SubpathIndex];
         var (a, b) = subpath.Segment(hit.SegmentIndex);
@@ -570,7 +798,7 @@ public partial class SceneCanvas
         {
             Stroke = SelectionBrush,
             StrokeThickness = 4,
-            Opacity = 0.35,
+            Opacity = isSelected ? 0.75 : 0.35,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
             IsHitTestVisible = false,
@@ -734,6 +962,8 @@ public partial class SceneCanvas
         Focus();
 
         _draggedSegment = null;
+        _selectedSegment = null;
+        _grabbedNodeKey = null;
         if (tag.IsHandle)
         {
             _draggedHandle = (tag.Subpath, tag.Node, tag.IsOutHandle);
@@ -744,6 +974,7 @@ public partial class SceneCanvas
         {
             _draggedHandle = null;
             var key = (tag.Subpath, tag.Node);
+            _grabbedNodeKey = key;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             {
                 if (!_selectedNodeKeys.Add(key)) _selectedNodeKeys.Remove(key);
@@ -771,11 +1002,11 @@ public partial class SceneCanvas
         // Object/path snap candidates (node/endpoint/midpoint/intersection) only make sense for a
         // plain node drag — snapping a Bezier HANDLE onto an unrelated node/midpoint is not a
         // meaningful gesture in any mainstream vector editor (handles only ever snap to the grid,
-        // applied directly in UpdateNodeEditDrag). Only built for a single selected node: a
-        // multi-node drag has no one point to snap "onto" a candidate without the rest of the
-        // selection landing off-grid relative to each other.
+        // applied directly in UpdateNodeEditDrag). A multi-node drag snaps the GRABBED node and moves
+        // the rest of the selection by the same delta, so the selection keeps its own shape; every
+        // selected node is excluded from the candidates (they all move).
         _nodeDragSnapCandidates = [];
-        if (!tag.IsHandle && _selectedNodeKeys.Count == 1 && _preferences.SnapToObjects)
+        if (!tag.IsHandle && _selectedNodeKeys.Contains((tag.Subpath, tag.Node)) && _preferences.SnapToObjects)
         {
             _nodeDragSnapCandidates = SnapCandidateBuilder.FromVectorPath(
                 _nodeDragOriginalPath, WorldOf, _selectedNodeKeys);
@@ -895,26 +1126,25 @@ public partial class SceneCanvas
             // OnNodeOrHandleMouseLeftButtonDown for why.
             currentLocal = obj.Transform.Inverse(ApplyGridSnap(currentWorld), obj.LocalPivot);
             var subpath = _nodeDragOriginalPath.Subpaths[handle.Subpath];
-            var node = subpath.Nodes[handle.Node];
+            // Alt breaks the tangency (the node becomes a cusp); a Smooth node beside a straight
+            // segment slides its handle along the line (see VectorPathEditor.MoveHandle).
             var breakSymmetry = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
-            var nodes = subpath.Nodes.ToList();
-            nodes[handle.Node] = VectorPathEditor.MoveHandle(node, handle.IsOutHandle, currentLocal, breakSymmetry);
-            updated = _nodeDragOriginalPath.ReplaceSubpath(handle.Subpath, subpath with { Nodes = nodes });
+            var moved = VectorPathEditor.MoveHandle(subpath, handle.Node, handle.IsOutHandle, currentLocal, breakSymmetry);
+            updated = _nodeDragOriginalPath.ReplaceSubpath(handle.Subpath, moved);
         }
         else
         {
             var shiftHeld = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
             // Object/path snapping only applies to the default (unconstrained) drag — combining it
             // with Shift's angle-lock would be ambiguous about which one wins, so Shift always means
-            // "constrain angle", never "and also snap". Grid snap still solves for the whole delta
-            // (not decomposed per selected node), so it only engages for a single selected node —
-            // see _nodeDragSnapCandidates' own build-time restriction.
-            if (!shiftHeld && _selectedNodeKeys.Count == 1)
+            // "constrain angle", never "and also snap". The GRABBED node is the one that snaps; the
+            // rest of a multi-node selection follows with the same delta.
+            if (!shiftHeld && _grabbedNodeKey is { } grabbed && _selectedNodeKeys.Contains(grabbed))
             {
                 // Preserve the pointer-to-anchor offset from mouse-down. Snapping the pointer itself
                 // would leave the actual node a few pixels away from the reported target whenever
                 // the user grabbed inside its hit circle rather than at its exact centre.
-                var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
+                var (subpathIndex, nodeIndex) = grabbed;
                 var originalAnchor = _nodeDragOriginalPath.Subpaths[subpathIndex].Nodes[nodeIndex].Anchor;
                 var anchorWorld = obj.Transform.Apply(originalAnchor, obj.LocalPivot);
                 var proposedAnchor = new Position(
@@ -944,26 +1174,35 @@ public partial class SceneCanvas
                 dx = constrainedLocal.X - startLocal.X;
                 dy = constrainedLocal.Y - startLocal.Y;
             }
-            var subpaths = _nodeDragOriginalPath.Subpaths.ToList();
-            for (var s = 0; s < subpaths.Count; s++)
-            {
-                var nodes = subpaths[s].Nodes.ToList();
-                var changed = false;
-                for (var n = 0; n < nodes.Count; n++)
-                {
-                    if (!_selectedNodeKeys.Contains((s, n))) continue;
-                    nodes[n] = nodes[n].Translated(dx, dy);
-                    changed = true;
-                }
-                if (changed) subpaths[s] = subpaths[s] with { Nodes = nodes };
-            }
-            updated = _nodeDragOriginalPath with { Subpaths = subpaths };
+            updated = TranslateSelectedNodes(_nodeDragOriginalPath, dx, dy);
             Cursor = IsDraggingEndpointOntoJoinTarget(updated) ? Cursors.UpArrow : Cursors.Hand;
         }
 
         _nodeEditWorkingPath = updated;
         RenderVectorPathLive(obj, updated);
         RedrawSelectionOverlay();
+    }
+
+    /// <summary>Moves the selected nodes (anchor and handles together) by a local delta, then lets
+    /// each Smooth neighbour that sits beside a straight segment keep that line as its tangent
+    /// (VectorPathEditor.ReconcileSmoothNeighbours), so a moved node never leaves a lying Smooth flag.</summary>
+    private VectorPath TranslateSelectedNodes(VectorPath source, double dx, double dy)
+    {
+        var subpaths = source.Subpaths.ToList();
+        for (var s = 0; s < subpaths.Count; s++)
+        {
+            var nodes = subpaths[s].Nodes.ToList();
+            var moved = new List<int>();
+            for (var n = 0; n < nodes.Count; n++)
+            {
+                if (!_selectedNodeKeys.Contains((s, n))) continue;
+                nodes[n] = nodes[n].Translated(dx, dy);
+                moved.Add(n);
+            }
+            if (moved.Count > 0)
+                subpaths[s] = VectorPathEditor.ReconcileSmoothNeighbours(subpaths[s] with { Nodes = nodes }, moved);
+        }
+        return source with { Subpaths = subpaths };
     }
 
     /// <summary>Priority 3 cursor feedback for TryCloseByEndpointJoin's own gesture (dragging an open
@@ -1114,9 +1353,16 @@ public partial class SceneCanvas
         {
             if (_nodeDragSession is not null) _nodeEditObject.LocalShapes = _nodeDragSession.OriginalShapes;
 
-            if (TryCloseByEndpointJoin(out var closedPath))
+            if (TryCloseByEndpointJoin(out var closedPath, out var refused))
             {
                 CommitNodeEdit(closedPath);
+            }
+            else if (refused)
+            {
+                // Dropping an end on the other end of a contour too short to close would leave a
+                // line traced twice: the drag is rolled back and the reason shown.
+                _nodeEditWorkingPath = _nodeDragOriginalPath;
+                ShowCanvasNotice(CloseNeedsThreeNodesMessage);
             }
             // §59: neither a plain click (reference-equal, UpdateNodeEditDrag never ran) nor a drag
             // that ends up back exactly where it started (structurally equal despite being rebuilt
@@ -1146,14 +1392,16 @@ public partial class SceneCanvas
     }
 
     /// <summary>LIGHTBURN_VECTOR_PARITY.md §23, same-path case: dragging an open subpath's endpoint
-    /// onto its OTHER endpoint closes the path instead of leaving the node sitting on top of it.
-    /// Closing always connects the subpath's last node back to its first regardless of which endpoint
-    /// was physically dragged, so the ORIGINAL (pre-drag) subpath is closed as-is — the gesture snaps
-    /// exactly onto the existing far endpoint, it does not keep the dragged one's slightly-off
-    /// position. Screen-space tolerance, matching the path tool's own close-hover threshold.</summary>
-    private bool TryCloseByEndpointJoin(out VectorPath closedPath)
+    /// onto its OTHER endpoint closes the path instead of leaving the node sitting on top of it. The
+    /// dragged end lands exactly on the far end and the two MERGE into one node (VectorPathEditor.Close
+    /// drops the coincident duplicate), so the shape the operator dragged is what gets closed — no
+    /// return to the pre-drag position, no extra closing segment. A contour that would close with
+    /// fewer than three distinct nodes is refused (<paramref name="refused"/>). Screen-space
+    /// tolerance, matching the path tool's own close-hover threshold.</summary>
+    private bool TryCloseByEndpointJoin(out VectorPath closedPath, out bool refused)
     {
         closedPath = VectorPath.Empty;
+        refused = false;
         if (_nodeEditObject is null || _nodeDragOriginalPath is null || _nodeEditWorkingPath is null) return false;
         if (_draggedHandle is not null || _draggedSegment is not null || _selectedNodeKeys.Count != 1) return false;
 
@@ -1172,7 +1420,14 @@ public partial class SceneCanvas
         var otherScreen = new Point(ToCanvasX(otherWorld.X), ToCanvasY(otherWorld.Y));
         if (Distance(draggedScreen, otherScreen) <= CloseHoverThresholdPx)
         {
-            closedPath = _nodeDragOriginalPath.ReplaceSubpath(subpathIndex, VectorPathEditor.Close(originalSubpath));
+            var landed = PlaceNodeOn(draggedWorkingSubpath, nodeIndex, originalSubpath.Nodes[otherIndex].Anchor);
+            if (!VectorPathEditor.CanClose(landed))
+            {
+                refused = true;
+                return false;
+            }
+            closedPath = _nodeEditWorkingPath.ReplaceSubpath(subpathIndex, VectorPathEditor.Close(landed));
+            _selectedNodeKeys.Clear(); // merging the two ends shifts the node indices
             return true;
         }
 
@@ -1200,10 +1455,23 @@ public partial class SceneCanvas
         }
         if (best is not { } target) return false;
 
+        // The dragged end lands exactly on the target end and the two merge there: the shape the
+        // operator dragged is kept, and the target contour does not move at all.
+        var targetSubpath = _nodeEditWorkingPath.Subpaths[target.Index];
+        var targetAnchor = targetSubpath.Nodes[target.AtStart ? 0 : targetSubpath.Nodes.Count - 1].Anchor;
+        var landedPath = _nodeEditWorkingPath.ReplaceSubpath(subpathIndex, PlaceNodeOn(draggedWorkingSubpath, nodeIndex, targetAnchor));
         closedPath = VectorPathEditor.JoinSubpathsAtEndpoints(
-            _nodeDragOriginalPath, target.Index, target.AtStart, subpathIndex, nodeIndex == 0);
+            landedPath, target.Index, target.AtStart, subpathIndex, nodeIndex == 0, EndpointJoinMode.Merge);
         _selectedNodeKeys.Clear(); // subpath indices shift when two contours merge
         return true;
+    }
+
+    private static VectorSubpath PlaceNodeOn(VectorSubpath subpath, int nodeIndex, Position anchor)
+    {
+        var nodes = subpath.Nodes.ToList();
+        var node = nodes[nodeIndex];
+        nodes[nodeIndex] = node.Translated(anchor.X - node.Anchor.X, anchor.Y - node.Anchor.Y);
+        return subpath with { Nodes = nodes };
     }
 
     /// <summary>Escape/right-click-cancel: restores both the working path and the object's LocalShapes
@@ -1246,6 +1514,8 @@ public partial class SceneCanvas
         _nodeEditObject = replacement;
         _nodeEditWorkingPath = replacement.VectorPath;
         _selectedNodeKeys.Clear();
+        _selectedSegment = null;
+        _grabbedNodeKey = null;
         _draggedHandle = null;
         _draggedSegment = null;
         _nodeDragOriginalPath = null;
@@ -1269,17 +1539,34 @@ public partial class SceneCanvas
             ? ViewModel.SelectedObjects[0]
             : null;
         _nodeEditWorkingPath = _nodeEditObject?.VectorPath;
+        RevalidateSegmentSelection();
+        DropStaleNodeSelection();
         if (_nodeEditObject is null) ExitNodeEditMode();
         else RedrawSelectionOverlay();
+    }
+
+    /// <summary>Node keys are positional; any selected key that no longer points at a node of the
+    /// committed path is dropped rather than left to fault the overlay or a later command.</summary>
+    private void DropStaleNodeSelection()
+    {
+        if (_nodeEditWorkingPath is null) { _selectedNodeKeys.Clear(); return; }
+        var path = _nodeEditWorkingPath;
+        _selectedNodeKeys.RemoveWhere(key => key.Subpath >= path.Subpaths.Count || key.Node >= path.Subpaths[key.Subpath].Nodes.Count);
     }
 
     /// <summary>Public — the node-edit context toolbar (NodeEditToolbar.xaml) calls this directly,
     /// the same way CanvasViewControls calls SceneCanvas.ZoomIn/SetZoomPercent: this is view state
     /// with no ViewModel equivalent, not a command that belongs on SceneViewModel.</summary>
-    public void DeleteSelectedNodes()
+    public void DeleteSelectedNodes() => DeleteSelectedNodes(refit: true);
+
+    /// <summary>Delete (refit on) / Ctrl+Delete (refit off, Inkscape): removes the selected nodes.
+    /// With refit, the node is kept if one cubic cannot approximate the old curve within
+    /// VectorPathEditor.RefitToleranceMm. Ctrl+Delete explicitly skips refitting.</summary>
+    public void DeleteSelectedNodes(bool refit)
     {
         if (_nodeEditObject is null || _nodeEditWorkingPath is null || ViewModel is null || _selectedNodeKeys.Count == 0) return;
 
+        var worstDeviation = 0.0;
         var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
         // Remove higher subpath indexes first so deleting one contour cannot shift the indexes of
         // other selected contours. A path must never retain a 0/1-node open contour or a 0/1/2-node
@@ -1300,7 +1587,8 @@ public partial class SceneCanvas
             foreach (var nodeIndex in selectedIndexes.OrderByDescending(i => i))
             {
                 if (subpath.Nodes.Count <= minimum) break;
-                subpath = VectorPathEditor.RemoveNode(subpath, nodeIndex);
+                subpath = VectorPathEditor.RemoveNode(subpath, nodeIndex, refit, out var deviation);
+                worstDeviation = Math.Max(worstDeviation, deviation);
             }
             subpaths[group.Key] = subpath;
         }
@@ -1319,7 +1607,10 @@ public partial class SceneCanvas
         var remaining = _nodeEditWorkingPath with { Subpaths = subpaths };
         if (VectorPathsStructurallyEqual(remaining, _nodeEditWorkingPath))
         {
-            ViewModel.ReportVectorOperationRejected("Cesta musí zůstat alespoň se dvěma (otevřená) nebo třemi (uzavřená) uzly.");
+            if (refit && worstDeviation > VectorPathEditor.RefitToleranceMm)
+                ShowCanvasNotice($"Uzel zůstal zachován: refit by odchýlil cestu o {worstDeviation.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("cs-CZ"))} mm. Ctrl+Delete odstraní uzel bez refitu.");
+            else
+                ViewModel.ReportVectorOperationRejected("Cesta musí zůstat alespoň se dvěma (otevřená) nebo třemi (uzavřená) uzly.");
             RedrawSelectionOverlay();
             return;
         }
@@ -1348,50 +1639,61 @@ public partial class SceneCanvas
         var dx = localStep.X - localOrigin.X;
         var dy = localStep.Y - localOrigin.Y;
 
-        var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
-        foreach (var group in _selectedNodeKeys.GroupBy(nodeKey => nodeKey.Subpath))
-        {
-            var subpath = subpaths[group.Key];
-            var nodes = subpath.Nodes.ToList();
-            foreach (var nodeKey in group)
-                nodes[nodeKey.Node] = nodes[nodeKey.Node].Translated(dx, dy);
-            subpaths[group.Key] = subpath with { Nodes = nodes };
-        }
-
-        CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+        var moved = TranslateSelectedNodes(_nodeEditWorkingPath, dx, dy);
+        CommitNodeEdit(moved);
     }
 
-    /// <summary>Sets every selected node to the same Corner/Smooth type in one gesture — the toolbar's
-    /// two-button equivalent of OnNodeRightButtonDown's single-node toggle.</summary>
-    public void ConvertSelectedNodes(VectorNodeType type)
+    /// <summary>Sets every selected node to the same Corner/Smooth type in one gesture (toolbar, menu,
+    /// Shift+S). Smooth is neighbour-aware — see VectorPathEditor.SetNodeType: a node without handles
+    /// gets real tangent handles, a node beside a straight segment keeps that line straight.</summary>
+    public void ConvertSelectedNodes(VectorNodeType type) =>
+        ApplyToSelectedNodes((subpath, index) => VectorPathEditor.SetNodeType(subpath, index, type));
+
+    /// <summary>Shift+Y: both handles collinear and equally long.</summary>
+    public void MakeSelectedNodesSymmetric() => ApplyToSelectedNodes(VectorPathEditor.MakeNodeSymmetric);
+
+    /// <summary>Shift+A: handles regenerated from the neighbours (Inkscape auto-smooth).</summary>
+    public void AutoSmoothSelectedNodes() => ApplyToSelectedNodes(VectorPathEditor.AutoSmoothNode);
+
+    /// <summary>One node-type command over the whole selection as ONE undo step; nothing is committed
+    /// when the command changes nothing (no empty history entries).</summary>
+    private void ApplyToSelectedNodes(Func<VectorSubpath, int, VectorSubpath> edit)
     {
         if (_nodeEditWorkingPath is null || _selectedNodeKeys.Count == 0) return;
 
         var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
         foreach (var group in _selectedNodeKeys.GroupBy(key => key.Subpath))
         {
+            if (group.Key >= subpaths.Count) continue;
             var subpath = subpaths[group.Key];
-            var nodes = subpath.Nodes.ToList();
-            foreach (var key in group)
-                nodes[key.Node] = VectorPathEditor.ConvertNodeType(nodes[key.Node], type);
-            subpaths[group.Key] = subpath with { Nodes = nodes };
+            foreach (var key in group.OrderBy(key => key.Node))
+                if (key.Node < subpath.Nodes.Count) subpath = edit(subpath, key.Node);
+            subpaths[group.Key] = subpath;
         }
 
-        CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+        var updated = _nodeEditWorkingPath with { Subpaths = subpaths };
+        if (VectorPathsStructurallyEqual(updated, _nodeEditWorkingPath)) return;
+        CommitNodeEdit(updated);
     }
 
     /// <summary>Closes or reopens whichever subpath the current node selection belongs to (or, with
     /// nothing selected, the path's only subpath — the common case for a hand-drawn shape). Disabled
     /// from the toolbar (see IsSelectedSubpathClosed) whenever that is ambiguous: a selection spanning
-    /// more than one subpath, or no selection on a multi-subpath path.</summary>
+    /// more than one subpath, or no selection on a multi-subpath path. Closing a contour with fewer
+    /// than three distinct nodes is refused with the reason (CanToggleSelectedSubpathClosed already
+    /// disables the button for it).</summary>
     public void ToggleSelectedSubpathClosed()
     {
         if (_nodeEditWorkingPath is null || ResolveContextSubpathIndex() is not { } index) return;
-        var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
-        var subpath = subpaths[index];
-        if (!subpath.IsClosed && subpath.Nodes.Count < 3) return;
-        subpaths[index] = subpath.IsClosed ? VectorPathEditor.Open(subpath) : VectorPathEditor.Close(subpath);
-        CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+        var subpath = _nodeEditWorkingPath.Subpaths[index];
+        if (!subpath.IsClosed && !VectorPathEditor.CanClose(subpath))
+        {
+            ShowCanvasNotice(CloseNeedsThreeNodesMessage);
+            return;
+        }
+        var toggled = subpath.IsClosed ? VectorPathEditor.Open(subpath) : VectorPathEditor.Close(subpath);
+        if (toggled.Nodes.Count != subpath.Nodes.Count) _selectedNodeKeys.Clear(); // a merged duplicate end shifts indices
+        CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(index, toggled));
     }
 
     /// <summary>Selects every node of every subpath — the toolbar/context-menu's "Select all"
@@ -1487,19 +1789,20 @@ public partial class SceneCanvas
     /// since the scene could have changed (another command, a different selection) in between.
     /// On success, re-enters Node Edit on the merged result ViewModel.JoinObjectEndpoints already
     /// selected, so editing continues on the now-single combined path without an extra click.</summary>
-    public void JoinSelectedEndpointToCandidate()
+    public void JoinSelectedEndpointToCandidate() => JoinSelectedEndpointToCandidate(EndpointJoinMode.Auto);
+
+    private void JoinSelectedEndpointToCandidate(EndpointJoinMode mode)
     {
         if (ViewModel is null || _nodeEditObject is null || _nodeEditWorkingPath is null) return;
         if (_selectedNodeKeys.Count != 1) return;
-        var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
-        var subpath = _nodeEditWorkingPath.Subpaths[subpathIndex];
+        var (_, nodeIndex) = _selectedNodeKeys.Single();
         var draggedAtStart = nodeIndex == 0;
 
         var candidate = FindCrossObjectJoinCandidate();
         if (candidate is not { } join) return;
 
         var draggedObject = _nodeEditObject;
-        if (ViewModel.JoinObjectEndpoints(draggedObject, draggedAtStart, join.Target, join.TargetAtStart))
+        if (ViewModel.JoinObjectEndpoints(draggedObject, draggedAtStart, join.Target, join.TargetAtStart, mode))
         {
             var merged = ViewModel.SelectedObjects.Count == 1 ? ViewModel.SelectedObjects[0] : null;
             if (merged is { IsVectorPath: true }) EnterNodeEditMode(merged);
@@ -1507,13 +1810,81 @@ public partial class SceneCanvas
         }
     }
 
-    /// <summary>Delete-key path when nothing is selected (LIGHTBURN_VECTOR_PARITY.md §21/§64):
-    /// whatever segment the pointer currently sits over is deleted, opening a closed subpath or
-    /// splitting/shrinking an open one (see VectorPathEditor.DeleteSegment). Silently does nothing if
-    /// the pointer is not within tolerance of any segment of the edited path.</summary>
+    /// <summary>The two selected open ends of the edited path, when exactly two are selected and both
+    /// are ends of open contours (of the same contour or of two different ones).</summary>
+    private ((int Subpath, int Node) First, (int Subpath, int Node) Second)? SelectedEndpointPair()
+    {
+        if (_nodeEditWorkingPath is null || _selectedNodeKeys.Count != 2) return null;
+        var keys = _selectedNodeKeys.OrderBy(key => key.Subpath).ThenBy(key => key.Node).ToList();
+        foreach (var (s, n) in keys)
+        {
+            if (s >= _nodeEditWorkingPath.Subpaths.Count) return null;
+            var subpath = _nodeEditWorkingPath.Subpaths[s];
+            if (subpath.IsClosed || subpath.Nodes.Count < 2 || (n != 0 && n != subpath.Nodes.Count - 1)) return null;
+        }
+        if (keys[0].Subpath == keys[1].Subpath && keys[0].Node == keys[1].Node) return null;
+        return (keys[0], keys[1]);
+    }
+
+    /// <summary>Whether Join (Shift+J) / Join with segment can act now: two selected open ends of the
+    /// edited path (two contours, or the two ends of one contour that may close), or one selected end
+    /// with another path's open end in reach.</summary>
+    private bool EvaluateCanJoinSelectedNodes()
+    {
+        if (_nodeEditWorkingPath is null) return false;
+        if (SelectedEndpointPair() is { } pair)
+            return pair.First.Subpath != pair.Second.Subpath
+                || VectorPathEditor.CanClose(_nodeEditWorkingPath.Subpaths[pair.First.Subpath]);
+        return _selectedNodeKeys.Count == 1 && FindCrossObjectJoinCandidate() is not null;
+    }
+
+    /// <summary>Join nodes (Shift+J, mode Auto: ends that touch merge, ends apart get a straight
+    /// segment) and Join with segment (always a segment): two selected open ends of this path become
+    /// one contour (or close their contour), one selected end joins the nearest open end of another
+    /// path. One undo step; never drops an anchor or moves geometry beyond the merge tolerance.</summary>
+    public void JoinSelectedNodes(EndpointJoinMode mode)
+    {
+        if (ViewModel is null || _nodeEditWorkingPath is null) return;
+        if (SelectedEndpointPair() is { } pair)
+        {
+            var path = _nodeEditWorkingPath;
+            VectorPath joined;
+            if (pair.First.Subpath == pair.Second.Subpath)
+            {
+                var subpath = path.Subpaths[pair.First.Subpath];
+                var closed = VectorPathEditor.JoinOwnEnds(subpath, mode);
+                if (!closed.IsClosed)
+                {
+                    ShowCanvasNotice(CloseNeedsThreeNodesMessage);
+                    return;
+                }
+                joined = path.ReplaceSubpath(pair.First.Subpath, closed);
+            }
+            else
+            {
+                joined = VectorPathEditor.JoinSubpathsAtEndpoints(path,
+                    pair.First.Subpath, pair.First.Node == 0, pair.Second.Subpath, pair.Second.Node == 0, mode);
+            }
+            _selectedNodeKeys.Clear();
+            CommitNodeEdit(joined);
+            return;
+        }
+
+        if (_selectedNodeKeys.Count == 1) JoinSelectedEndpointToCandidate(mode);
+    }
+
+    /// <summary>Delete-key path when no node is selected (LIGHTBURN_VECTOR_PARITY.md §21/§64): the
+    /// selected segment, else whatever segment the pointer currently sits over, is deleted, opening a
+    /// closed subpath or splitting/shrinking an open one (see VectorPathEditor.DeleteSegment). Does
+    /// nothing if neither exists.</summary>
     private void DeleteHoveredSegment(Point screen)
     {
         if (_nodeEditObject is null || _nodeEditWorkingPath is null) return;
+        if (_selectedSegment is { } selected && IsValidSegment(_nodeEditWorkingPath, selected))
+        {
+            DeleteSegment(selected);
+            return;
+        }
         var hit = HitTestNearestSegment(_nodeEditObject, _nodeEditWorkingPath, screen, SegmentInsertTolerancePx);
         if (hit is not { } segmentHit) return;
         DeleteSegment(segmentHit);
@@ -1521,39 +1892,111 @@ public partial class SceneCanvas
 
     private void DeleteSegment(VectorPathHitTester.Hit hit)
     {
-        if (_nodeEditWorkingPath is null) return;
+        if (_nodeEditWorkingPath is null || !IsValidSegment(_nodeEditWorkingPath, hit)) return;
         _selectedNodeKeys.Clear();
+        _selectedSegment = null;
+        _hoveredSegment = null;
         CommitNodeEdit(VectorPathEditor.DeleteSegment(_nodeEditWorkingPath, hit.SubpathIndex, hit.SegmentIndex));
     }
 
-    /// <summary>Scissors tool: remove the nearest segment under the pointer from an editable path.
-    /// Plain imported shapes are converted to editable paths only after a segment was hit.</summary>
+    // ------------------------------------------------------------------
+    // Trim / Extend (LIGHTBURN_VECTOR_PARITY.md §31/§32). The Trim tool (scissors) and node edit
+    // (Shift+T / Shift+E, menus) share one model: VectorPathTrim cuts the clicked segment exactly at
+    // its nearest crossings with other visible geometry (this path's other segments included) and
+    // removes only the clicked piece; Extend runs an open end along its tangent to the nearest
+    // crossing. Every click is one undo step.
+    // ------------------------------------------------------------------
+
+    /// <summary>Lengthens any extension search; no laser bed is near this size.</summary>
+    private const double ExtendReachMm = 10000;
+
+    private readonly record struct TrimTarget(SceneObject Object, VectorPath Path, VectorPathHitTester.Hit Hit);
+
+    /// <summary>The nearest trimmable segment under the pointer: an editable path, or a plain outline
+    /// as it WOULD convert (the conversion only happens when a click trims).</summary>
+    private TrimTarget? FindTrimTarget(Point screen)
+    {
+        if (ViewModel is null) return null;
+        TrimTarget? best = null;
+        var pointerWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        var reach = SegmentInsertTolerancePx / _scale;
+        foreach (var item in ViewModel.Objects)
+        {
+            if (item.IsLocked || item.IsRaster || !ViewModel.CanSelectObject(item)) continue;
+            // Cheap bounds rejection first: building a plain outline's candidate path is not free.
+            var bounds = item.WorldBounds();
+            if (pointerWorld.X < bounds.MinX - reach || pointerWorld.X > bounds.MaxX + reach
+                || pointerWorld.Y < bounds.MinY - reach || pointerWorld.Y > bounds.MaxY + reach) continue;
+            var path = item.VectorPath ?? BuildTrimCandidatePath(item);
+            if (path is null) continue;
+            if (HitTestNearestSegment(item, path, screen, SegmentInsertTolerancePx) is not { } hit) continue;
+            if (best is null || hit.Distance < best.Value.Hit.Distance) best = new TrimTarget(item, path, hit);
+        }
+        return best;
+    }
+
+    /// <summary>Every visible segment in the scene except the one being trimmed, in world space:
+    /// that path's own other segments, other editable paths as Bézier segments, plain outlines as
+    /// their polylines. Locked objects still cut (they are only read); hidden ones do not.</summary>
+    private List<Lasero.Core.Scene.BezierSegment> CollectTrimCutters(SceneObject target, VectorPath targetPath, (int Subpath, int Segment)? exclude)
+    {
+        var cutters = new List<Lasero.Core.Scene.BezierSegment>();
+        if (ViewModel is null) return cutters;
+        cutters.AddRange(VectorPathTrim.WorldSegments(targetPath, local => target.Transform.Apply(local, target.LocalPivot), exclude));
+
+        var visibleLayers = ViewModel.Layers.Where(layer => layer.IsVisible).ToList();
+        bool ShapeVisible(ImportedShape shape) =>
+            visibleLayers.Any(layer => layer.Id == shape.LayerId) ||
+            (shape.LayerId == Guid.Empty || ViewModel.Layers.All(layer => layer.Id != shape.LayerId))
+                && visibleLayers.Any(layer => layer.Color.IsApproximately(shape.LayerColor));
+
+        foreach (var item in ViewModel.Objects)
+        {
+            if (ReferenceEquals(item, target) || item.Id == target.Id || !item.IsVisible || item.IsRaster) continue;
+            if (item.VectorPath is not null && item.LocalShapes.All(ShapeVisible) && item.GetWorldVectorPath() is { } world)
+            {
+                cutters.AddRange(VectorPathTrim.WorldSegments(world, point => point));
+                continue;
+            }
+            foreach (var shape in item.GetWorldShapes())
+                if (ShapeVisible(shape)) cutters.AddRange(VectorPathTrim.PolylineSegments(shape.Points, shape.IsClosed));
+        }
+        return cutters;
+    }
+
+    private (double From, double To, IReadOnlyList<double> Cuts) TrimPiece(SceneObject obj, VectorPath path, VectorPathHitTester.Hit hit)
+    {
+        var (a, b) = path.Subpaths[hit.SubpathIndex].Segment(hit.SegmentIndex);
+        var world = Lasero.Core.Scene.BezierSegment.FromNodes(a, b).Map(local => obj.Transform.Apply(local, obj.LocalPivot));
+        var cuts = VectorPathTrim.CutParameters(world, CollectTrimCutters(obj, path, (hit.SubpathIndex, hit.SegmentIndex)));
+        var (from, to) = VectorPathTrim.PieceAround(hit.T, cuts);
+        return (from, to, cuts);
+    }
+
+    /// <summary>Trim tool click: removes the piece of the clicked segment between its nearest
+    /// crossings (or its own nodes). A plain outline is converted to an editable path and trimmed
+    /// in ONE undo step. Shift+click extends the nearest open end instead.</summary>
     private void TrimPathAt(Point screen)
     {
         if (ViewModel is null) return;
-        var nearest = ViewModel.Objects
-            .Where(item => !item.IsLocked && !item.IsRaster)
-            .Select(item =>
-            {
-                var path = item.VectorPath ?? BuildTrimCandidatePath(item);
-                return (Object: item, Path: path,
-                    Hit: path is null ? null : HitTestNearestSegment(item, path, screen, SegmentInsertTolerancePx));
-            })
-            .Where(candidate => candidate.Hit is not null)
-            .OrderBy(candidate => candidate.Hit!.Value.Distance)
-            .FirstOrDefault();
-        if (nearest.Object is null) return;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            ExtendPathAt(screen);
+            return;
+        }
+        if (FindTrimTarget(screen) is not { } target) return;
 
-        var source = nearest.Object;
-        var hit = nearest.Hit!.Value;
+        var source = target.Object;
         ViewModel.SelectedObjects.Clear();
         ViewModel.SelectedObjects.Add(source);
+        ClearTrimHover();
 
         try
         {
             if (source.VectorPath is { } editablePath)
             {
-                var trimmed = VectorPathEditor.DeleteSegment(editablePath, hit.SubpathIndex, hit.SegmentIndex);
+                var (_, _, cuts) = TrimPiece(source, editablePath, target.Hit);
+                var trimmed = VectorPathTrim.TrimSegment(editablePath, target.Hit.SubpathIndex, target.Hit.SegmentIndex, target.Hit.T, cuts);
                 if (trimmed.Subpaths.Count == 0)
                 {
                     if (ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
@@ -1566,10 +2009,9 @@ public partial class SceneCanvas
             // A plain outline: conversion to curves and the cut are ONE undo step.
             ViewModel.ConvertAndEditVectorPath(source, (converted, convertedPath) =>
             {
-                var refreshedHit = HitTestNearestSegment(converted, convertedPath, screen, SegmentInsertTolerancePx);
-                return refreshedHit is { } h
-                    ? VectorPathEditor.DeleteSegment(convertedPath, h.SubpathIndex, h.SegmentIndex)
-                    : null;
+                if (HitTestNearestSegment(converted, convertedPath, screen, SegmentInsertTolerancePx) is not { } h) return null;
+                var (_, _, cuts) = TrimPiece(converted, convertedPath, h);
+                return VectorPathTrim.TrimSegment(convertedPath, h.SubpathIndex, h.SegmentIndex, h.T, cuts);
             }, out var deleteRequested);
             if (deleteRequested && ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
         }
@@ -1577,6 +2019,164 @@ public partial class SceneCanvas
         {
             ViewModel.ReportVectorOperationRejected($"Cestu se nepodařilo oříznout. {exception.Message}");
         }
+    }
+
+    /// <summary>Trim tool Shift+click: the open end nearest the pointer (within the close-hover
+    /// tolerance) of a visible, unlocked path is extended to the nearest crossing along its tangent.</summary>
+    private void ExtendPathAt(Point screen)
+    {
+        if (ViewModel is null) return;
+        (SceneObject Object, VectorPath Path, int Subpath, bool AtStart)? best = null;
+        var bestDistance = double.MaxValue;
+        foreach (var item in ViewModel.Objects)
+        {
+            if (item.IsLocked || item.IsRaster || !ViewModel.CanSelectObject(item)) continue;
+            var path = item.VectorPath ?? BuildTrimCandidatePath(item);
+            if (path is null) continue;
+            for (var s = 0; s < path.Subpaths.Count; s++)
+            {
+                var subpath = path.Subpaths[s];
+                if (subpath.IsClosed || subpath.Nodes.Count < 2) continue;
+                foreach (var atStart in new[] { true, false })
+                {
+                    var world = item.Transform.Apply(subpath.Nodes[atStart ? 0 : subpath.Nodes.Count - 1].Anchor, item.LocalPivot);
+                    var distance = Distance(new Point(ToCanvasX(world.X), ToCanvasY(world.Y)), screen);
+                    if (distance <= CloseHoverThresholdPx && distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        best = (item, path, s, atStart);
+                    }
+                }
+            }
+        }
+        if (best is not { } end)
+        {
+            ShowCanvasNotice(ExtendNeedsOpenEndMessage);
+            return;
+        }
+
+        var source = end.Object;
+        VectorPath? Extend(SceneObject obj, VectorPath path) =>
+            VectorPathTrim.TryExtend(path, end.Subpath, end.AtStart,
+                local => obj.Transform.Apply(local, obj.LocalPivot),
+                world => obj.Transform.Inverse(world, obj.LocalPivot),
+                CollectTrimCutters(obj, path, null), ExtendReachMm, out var extended) ? extended : null;
+
+        if (source.VectorPath is { } editable)
+        {
+            if (Extend(source, editable) is { } extended) ViewModel.CommitVectorPathEdit(source, extended);
+            else ShowCanvasNotice(ExtendNothingAheadMessage);
+            return;
+        }
+        if (ViewModel.ConvertAndEditVectorPath(source, Extend, out _) is null) ShowCanvasNotice(ExtendNothingAheadMessage);
+    }
+
+    private const string ExtendNeedsOpenEndMessage = "Prodloužit lze jen otevřený konec dráhy. Shift+klik je potřeba umístit na koncový uzel.";
+    private const string ExtendNothingAheadMessage = "Ve směru konce dráhy nic neleží, není k čemu ji prodloužit.";
+
+    /// <summary>Node edit Shift+T / menu "Oříznout": trims the active segment (selected, else
+    /// hovered) of the edited path at the clicked/hovered point.</summary>
+    public void TrimActiveSegment()
+    {
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null || ActiveSegment is not { } hit) return;
+        var (_, _, cuts) = TrimPiece(_nodeEditObject, _nodeEditWorkingPath, hit);
+        var trimmed = VectorPathTrim.TrimSegment(_nodeEditWorkingPath, hit.SubpathIndex, hit.SegmentIndex, hit.T, cuts);
+        _selectedNodeKeys.Clear();
+        _selectedSegment = null;
+        _hoveredSegment = null;
+        if (trimmed.Subpaths.Count == 0)
+        {
+            var item = _nodeEditObject;
+            ExitNodeEditMode();
+            ViewModel?.SelectedObjects.ReplaceWith([item]);
+            if (ViewModel?.DeleteCommand.CanExecute(null) == true) ViewModel.DeleteCommand.Execute(null);
+            return;
+        }
+        CommitNodeEdit(trimmed);
+    }
+
+    /// <summary>Node edit Shift+E / menu "Prodloužit": extends the single selected open end.</summary>
+    public void ExtendSelectedEndpoint()
+    {
+        if (_nodeEditObject is null || _nodeEditWorkingPath is null || _selectedNodeKeys.Count != 1) return;
+        var (s, n) = _selectedNodeKeys.Single();
+        var subpath = _nodeEditWorkingPath.Subpaths[s];
+        if (subpath.IsClosed || (n != 0 && n != subpath.Nodes.Count - 1))
+        {
+            ShowCanvasNotice(ExtendNeedsOpenEndMessage);
+            return;
+        }
+        var obj = _nodeEditObject;
+        if (!VectorPathTrim.TryExtend(_nodeEditWorkingPath, s, n == 0,
+                local => obj.Transform.Apply(local, obj.LocalPivot),
+                world => obj.Transform.Inverse(world, obj.LocalPivot),
+                CollectTrimCutters(obj, _nodeEditWorkingPath, null), ExtendReachMm, out var extended))
+        {
+            ShowCanvasNotice(ExtendNothingAheadMessage);
+            return;
+        }
+        if (extended.Subpaths[s].Nodes.Count != subpath.Nodes.Count) _selectedNodeKeys.Clear();
+        CommitNodeEdit(extended);
+    }
+
+    // --- Trim tool hover preview (§31 "highlight affected segment ... preview before destructive
+    // operation"): the piece a click would remove is drawn in the danger colour. Cut parameters are
+    // cached per hovered segment, so a pointer move along one segment costs one hit test.
+    private readonly List<FrameworkElement> _trimPreviewVisuals = [];
+    // Keyed by the scene's command revision too: any edit or undo can move a cutter.
+    private (SceneObject Object, int Subpath, int Segment, int Revision, IReadOnlyList<double> Cuts)? _trimHoverCache;
+
+    private void UpdateTrimHover(Point screen)
+    {
+        ClearTrimHoverVisuals();
+        if (ViewModel?.ActiveTool != DesignerTool.TrimPath || _dragMode != DragMode.None) return;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || FindTrimTarget(screen) is not { } target) return;
+
+        var hit = target.Hit;
+        IReadOnlyList<double> cuts;
+        var revision = ViewModel.CommandRevision;
+        if (_trimHoverCache is { } cache && ReferenceEquals(cache.Object, target.Object) && cache.Revision == revision
+            && cache.Subpath == hit.SubpathIndex && cache.Segment == hit.SegmentIndex)
+        {
+            cuts = cache.Cuts;
+        }
+        else
+        {
+            cuts = TrimPiece(target.Object, target.Path, hit).Cuts;
+            _trimHoverCache = (target.Object, hit.SubpathIndex, hit.SegmentIndex, revision, cuts);
+        }
+
+        var (from, to) = VectorPathTrim.PieceAround(hit.T, cuts);
+        var (a, b) = target.Path.Subpaths[hit.SubpathIndex].Segment(hit.SegmentIndex);
+        var segment = Lasero.Core.Scene.BezierSegment.FromNodes(a, b);
+        var poly = new Polyline
+        {
+            Stroke = (Brush)FindResource("Brush.Danger"),
+            StrokeThickness = 3,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+        };
+        const int steps = 48;
+        for (var i = 0; i <= steps; i++)
+        {
+            var world = target.Object.Transform.Apply(segment.Evaluate(from + (to - from) * i / steps), target.Object.LocalPivot);
+            poly.Points.Add(new Point(ToCanvasX(world.X), ToCanvasY(world.Y)));
+        }
+        DrawCanvas.Children.Add(poly);
+        _trimPreviewVisuals.Add(poly);
+    }
+
+    private void ClearTrimHoverVisuals()
+    {
+        foreach (var visual in _trimPreviewVisuals) DrawCanvas.Children.Remove(visual);
+        _trimPreviewVisuals.Clear();
+    }
+
+    private void ClearTrimHover()
+    {
+        ClearTrimHoverVisuals();
+        _trimHoverCache = null;
     }
 
     private static VectorPath? BuildTrimCandidatePath(SceneObject item)
@@ -1592,37 +2192,35 @@ public partial class SceneCanvas
     // this file previously exposed only implicitly (line→curve via reshaping a segment by hand;
     // curve→line and insert-at-exact-midpoint had NO UI path at all — see
     // docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md, "Curve↔line is not user-reachable"). All
-    // four act on whichever segment the pointer is currently HOVERING, the same targeting convention
-    // DeleteHoveredSegment above already established (there is no separate "click to select a
-    // segment" state in this tool — see HandleNodeEditCanvasMouseDown's own doc comment on why a
-    // plain click on a segment starts reshaping it instead of merely selecting it). Public so
-    // NodeEditToolbar's buttons and OnCanvasKeyDown's Shift+L/Shift+C/Shift+M shortcuts can call them
-    // directly, the same way DeleteSelectedNodes/BreakSelectedNode already are.
+    // act on the ACTIVE segment: the one the operator clicked (selected — it survives the pointer
+    // travelling to the toolbar), else the one currently hovered. Public so NodeEditToolbar's buttons
+    // and OnCanvasKeyDown's Shift+L/Shift+C/Shift+M/Shift+T shortcuts can call them directly, the same
+    // way DeleteSelectedNodes/BreakSelectedNode already are.
     // ------------------------------------------------------------------
 
-    public void ConvertHoveredSegmentToLine()
+    public void ConvertActiveSegmentToLine()
     {
-        if (_nodeEditWorkingPath is null || _hoveredSegment is not { } hit) return;
+        if (_nodeEditWorkingPath is null || ActiveSegment is not { } hit) return;
         var subpath = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex];
         var updated = VectorPathEditor.ConvertSegmentToLine(subpath, hit.SegmentIndex);
         CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(hit.SubpathIndex, updated));
     }
 
-    public void ConvertHoveredSegmentToCurve()
+    public void ConvertActiveSegmentToCurve()
     {
-        if (_nodeEditWorkingPath is null || _hoveredSegment is not { } hit) return;
+        if (_nodeEditWorkingPath is null || ActiveSegment is not { } hit) return;
         var subpath = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex];
         var updated = VectorPathEditor.ConvertSegmentToCurve(subpath, hit.SegmentIndex);
         CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(hit.SubpathIndex, updated));
     }
 
-    /// <summary>Inserts a node at the EXACT curve-parameter midpoint (t = 0.5) of the hovered segment —
+    /// <summary>Inserts a node at the EXACT curve-parameter midpoint (t = 0.5) of the active segment —
     /// unlike the double-click gesture (HandleNodeEditCanvasMouseDown), which inserts at the nearest
     /// approximate point under the pointer, this is deliberately the precise midpoint every time,
     /// matching LightBurn/Inkscape's own "Insert midpoint" command semantics.</summary>
-    public void InsertNodeAtHoveredSegmentMidpoint()
+    public void InsertNodeAtActiveSegmentMidpoint()
     {
-        if (_nodeEditWorkingPath is null || _hoveredSegment is not { } hit) return;
+        if (_nodeEditWorkingPath is null || ActiveSegment is not { } hit) return;
         var subpath = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex];
         var updated = VectorPathEditor.InsertNode(subpath, hit.SegmentIndex, 0.5);
         // Node identity here is purely positional (Subpath, Node) index pairs — inserting a node
@@ -1633,28 +2231,11 @@ public partial class SceneCanvas
         CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(hit.SubpathIndex, updated));
     }
 
-    /// <summary>Inserts a node at the hovered segment's own approximate closest-point parameter (the
-    /// same t HitTestNearestSegment already resolved for that hover) — the context menu's "Vložit
-    /// uzel zde" (Insert Node Here), distinct from InsertNodeAtHoveredSegmentMidpoint's always-exact-
-    /// middle behaviour. Clamped away from the endpoints so this can never degenerate into inserting
-    /// on top of an existing node.</summary>
-    public void InsertNodeAtHoveredSegmentPoint()
+    /// <summary>Toolbar/shortcut delete of the active segment — no pointer coordinate needed, since a
+    /// toolbar click or keyboard shortcut has none of its own over the canvas.</summary>
+    public void DeleteActiveSegment()
     {
-        if (_nodeEditWorkingPath is null || _hoveredSegment is not { } hit) return;
-        var subpath = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex];
-        var t = Math.Clamp(hit.T, 0.02, 0.98);
-        var updated = VectorPathEditor.InsertNode(subpath, hit.SegmentIndex, t);
-        _selectedNodeKeys.Clear(); // see InsertNodeAtHoveredSegmentMidpoint's own comment
-        CommitNodeEdit(_nodeEditWorkingPath.ReplaceSubpath(hit.SubpathIndex, updated));
-    }
-
-    /// <summary>Toolbar/shortcut equivalent of DeleteHoveredSegment(Point) — acts on the already-
-    /// tracked _hoveredSegment directly instead of re-hit-testing from a screen point, since a
-    /// toolbar click or keyboard shortcut has no pointer-over-canvas coordinate of its own to hit-test
-    /// with.</summary>
-    public void DeleteHoveredSegment()
-    {
-        if (_hoveredSegment is { } hit) DeleteSegment(hit);
+        if (ActiveSegment is { } hit) DeleteSegment(hit);
     }
 
     /// <summary>Public — NodeEditToolbar's "Rozdělit v uzlu" button (LIGHTBURN_VECTOR_PARITY.md §22).
@@ -1671,6 +2252,37 @@ public partial class SceneCanvas
 
         _selectedNodeKeys.Clear();
         CommitNodeEdit(VectorPathEditor.BreakAtNode(_nodeEditWorkingPath, subpathIndex, nodeIndex));
+    }
+
+    private const string ConvertToCurvesForNodesMessage =
+        "Pro úpravu uzlů je potřeba tvar nejdřív převést na křivky (Ctrl+Shift+C).";
+
+    private const string NoJoinTargetMessage =
+        "Spojit lze dva vybrané otevřené konce, nebo jeden konec, ke kterému je blízko otevřený konec jiné dráhy.";
+
+    /// <summary>Node-edit Shift+letter commands (see OnCanvasKeyDown). True when the key was one of
+    /// them and had something to act on; false lets the key travel on unchanged.</summary>
+    private bool HandleNodeEditShiftKey(Key key)
+    {
+        var hasNodes = _selectedNodeKeys.Count > 0;
+        var hasSegment = ActiveSegment is not null;
+        switch (key)
+        {
+            case Key.S when hasNodes: ConvertSelectedNodes(VectorNodeType.Smooth); return true;
+            case Key.Y when hasNodes: MakeSelectedNodesSymmetric(); return true;
+            case Key.A when hasNodes: AutoSmoothSelectedNodes(); return true;
+            case Key.B when _selectedNodeKeys.Count == 1: BreakSelectedNode(); return true;
+            case Key.J when hasNodes:
+                if (CanJoinSelectedNodes) JoinSelectedNodes(EndpointJoinMode.Auto);
+                else ShowCanvasNotice(NoJoinTargetMessage);
+                return true;
+            case Key.E when _selectedNodeKeys.Count == 1: ExtendSelectedEndpoint(); return true;
+            case Key.T when hasSegment: TrimActiveSegment(); return true;
+            case Key.L when hasSegment: ConvertActiveSegmentToLine(); return true;
+            case Key.C when hasSegment: ConvertActiveSegmentToCurve(); return true;
+            case Key.M when hasSegment: InsertNodeAtActiveSegmentMidpoint(); return true;
+            default: return false;
+        }
     }
 
     private int? ResolveContextSubpathIndex()
@@ -1717,22 +2329,48 @@ public partial class SceneCanvas
     public static readonly DependencyProperty IsSelectedSubpathClosedProperty = IsSelectedSubpathClosedPropertyKey.DependencyProperty;
     public bool? IsSelectedSubpathClosed => (bool?)GetValue(IsSelectedSubpathClosedProperty);
 
-    private static readonly DependencyPropertyKey CanCloseSelectedSubpathPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(CanCloseSelectedSubpath), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
-    public static readonly DependencyProperty CanCloseSelectedSubpathProperty = CanCloseSelectedSubpathPropertyKey.DependencyProperty;
-    public bool CanCloseSelectedSubpath => (bool)GetValue(CanCloseSelectedSubpathProperty);
-
-    /// <summary>Null when no segment is hovered — NodeEditToolbar's Convert-to-Line/Convert-to-Curve/
-    /// Insert-Midpoint/Delete-Segment buttons all target whichever segment the pointer is currently
-    /// over (see the "Priority 1" block above for why there is no separate segment-selection state),
-    /// so they disable themselves together via this one property rather than each re-deriving hover
-    /// state independently. True when that segment already has no handles on either end (straight);
-    /// the toolbar shows only the applicable one of Convert-to-Line/Convert-to-Curve, matching
+    /// <summary>Null when there is no active segment (none selected by a click, none hovered) —
+    /// NodeEditToolbar's Convert-to-Line/Convert-to-Curve/Insert-Midpoint/Trim/Delete-Segment buttons
+    /// all target that segment (see the "Priority 1" block above), so they show and hide together via
+    /// this one property. True when that segment already has no handles on either end (straight); the
     /// VectorPathEditor.ConvertSegmentToCurve's own "already curved, no-op" note.</summary>
-    private static readonly DependencyPropertyKey IsHoveredSegmentStraightPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(IsHoveredSegmentStraight), typeof(bool?), typeof(SceneCanvas), new PropertyMetadata(null));
-    public static readonly DependencyProperty IsHoveredSegmentStraightProperty = IsHoveredSegmentStraightPropertyKey.DependencyProperty;
-    public bool? IsHoveredSegmentStraight => (bool?)GetValue(IsHoveredSegmentStraightProperty);
+    private static readonly DependencyPropertyKey IsActiveSegmentStraightPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsActiveSegmentStraight), typeof(bool?), typeof(SceneCanvas), new PropertyMetadata(null));
+    public static readonly DependencyProperty IsActiveSegmentStraightProperty = IsActiveSegmentStraightPropertyKey.DependencyProperty;
+    public bool? IsActiveSegmentStraight => (bool?)GetValue(IsActiveSegmentStraightProperty);
+
+    /// <summary>False when the open/close button would be refused: the resolved contour is open but
+    /// has fewer than three distinct nodes (VectorPathEditor.CanClose).</summary>
+    private static readonly DependencyPropertyKey CanToggleSelectedSubpathClosedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(CanToggleSelectedSubpathClosed), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
+    public static readonly DependencyProperty CanToggleSelectedSubpathClosedProperty = CanToggleSelectedSubpathClosedPropertyKey.DependencyProperty;
+    public bool CanToggleSelectedSubpathClosed => (bool)GetValue(CanToggleSelectedSubpathClosedProperty);
+
+    /// <summary>The selection is about joining: one open end, or two open ends of this path. Shows the
+    /// Join buttons; <see cref="CanJoinSelectedNodes"/> says whether they can act right now.</summary>
+    private static readonly DependencyPropertyKey IsJoinContextPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsJoinContext), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsJoinContextProperty = IsJoinContextPropertyKey.DependencyProperty;
+    public bool IsJoinContext => (bool)GetValue(IsJoinContextProperty);
+
+    /// <summary>A short operator-facing sentence about the last canvas action (a refused close, a
+    /// delete that changed the curve more than the refit tolerance, an extend with nothing ahead).
+    /// Shown by CanvasHintOverlay in place of the regular hint until dismissed or the next press.</summary>
+    private static readonly DependencyPropertyKey CanvasNoticePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(CanvasNotice), typeof(string), typeof(SceneCanvas), new PropertyMetadata(null));
+    public static readonly DependencyProperty CanvasNoticeProperty = CanvasNoticePropertyKey.DependencyProperty;
+    public string? CanvasNotice => (string?)GetValue(CanvasNoticeProperty);
+
+    private void ShowCanvasNotice(string message)
+    {
+        Serilog.Log.Information("Canvas notice: {Notice}", message);
+        SetValue(CanvasNoticePropertyKey, message);
+    }
+
+    public void ClearCanvasNotice()
+    {
+        if (CanvasNotice is not null) SetValue(CanvasNoticePropertyKey, null);
+    }
 
     /// <summary>True when the current (single-node) selection is an open subpath's endpoint — drives
     /// the toolbar/context-menu's Join button group and the "open endpoint" context-menu variant.</summary>
@@ -1741,15 +2379,15 @@ public partial class SceneCanvas
     public static readonly DependencyProperty IsSelectedNodeOpenEndpointProperty = IsSelectedNodeOpenEndpointPropertyKey.DependencyProperty;
     public bool IsSelectedNodeOpenEndpoint => (bool)GetValue(IsSelectedNodeOpenEndpointProperty);
 
-    /// <summary>True only when the selected endpoint AND another object's open endpoint are
-    /// currently within join tolerance of each other — see FindCrossObjectJoinCandidate. The Join
-    /// button/menu item is visible whenever IsSelectedNodeOpenEndpoint but only ENABLED when this is
-    /// also true, so its own tooltip can explain why ("move the path near another open endpoint")
-    /// instead of the button simply not existing.</summary>
-    private static readonly DependencyPropertyKey CanJoinSelectedEndpointPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(CanJoinSelectedEndpoint), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
-    public static readonly DependencyProperty CanJoinSelectedEndpointProperty = CanJoinSelectedEndpointPropertyKey.DependencyProperty;
-    public bool CanJoinSelectedEndpoint => (bool)GetValue(CanJoinSelectedEndpointProperty);
+    /// <summary>True when Join / Join with segment can act now — two selected open ends of this path,
+    /// or one selected end with another path's open end within join tolerance (see
+    /// CanJoinSelectedNodes()). The Join buttons/menu rows are visible whenever IsJoinContext but only
+    /// ENABLED when this is also true, so their tooltip can explain why instead of the action
+    /// seeming not to exist.</summary>
+    private static readonly DependencyPropertyKey CanJoinSelectedNodesPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(CanJoinSelectedNodes), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
+    public static readonly DependencyProperty CanJoinSelectedNodesProperty = CanJoinSelectedNodesPropertyKey.DependencyProperty;
+    public bool CanJoinSelectedNodes => (bool)GetValue(CanJoinSelectedNodesProperty);
 
     private void UpdateNodeEditToolbarState()
     {
@@ -1768,31 +2406,37 @@ public partial class SceneCanvas
         SetValue(SelectedNodeTypePropertyKey, type);
 
         bool? closed = null;
-        if (_nodeEditWorkingPath is not null && ResolveContextSubpathIndex() is { } index)
-            closed = _nodeEditWorkingPath.Subpaths[index].IsClosed;
+        var canToggle = false;
+        if (_nodeEditWorkingPath is not null && ResolveContextSubpathIndex() is { } index && index < _nodeEditWorkingPath.Subpaths.Count)
+        {
+            var resolved = _nodeEditWorkingPath.Subpaths[index];
+            closed = resolved.IsClosed;
+            canToggle = resolved.IsClosed || VectorPathEditor.CanClose(resolved);
+        }
         SetValue(IsSelectedSubpathClosedPropertyKey, closed);
-        SetValue(CanCloseSelectedSubpathPropertyKey, _nodeEditWorkingPath is not null
-            && ResolveContextSubpathIndex() is { } closeIndex
-            && (_nodeEditWorkingPath.Subpaths[closeIndex].IsClosed
-                || _nodeEditWorkingPath.Subpaths[closeIndex].Nodes.Count >= 3));
+        SetValue(CanToggleSelectedSubpathClosedPropertyKey, canToggle);
 
         bool? straight = null;
-        if (_nodeEditWorkingPath is not null && _hoveredSegment is { } hit)
+        if (_nodeEditWorkingPath is not null && ActiveSegment is { } hit)
         {
             var (a, b) = _nodeEditWorkingPath.Subpaths[hit.SubpathIndex].Segment(hit.SegmentIndex);
             straight = VectorSubpath.IsStraightSegment(a, b);
         }
-        SetValue(IsHoveredSegmentStraightPropertyKey, straight);
+        SetValue(IsActiveSegmentStraightPropertyKey, straight);
 
         var isOpenEndpoint = false;
         if (_nodeEditWorkingPath is not null && _selectedNodeKeys.Count == 1)
         {
             var (s, n) = _selectedNodeKeys.Single();
-            var subpath = _nodeEditWorkingPath.Subpaths[s];
-            isOpenEndpoint = !subpath.IsClosed && subpath.Nodes.Count > 0 && (n == 0 || n == subpath.Nodes.Count - 1);
+            if (s < _nodeEditWorkingPath.Subpaths.Count)
+            {
+                var subpath = _nodeEditWorkingPath.Subpaths[s];
+                isOpenEndpoint = !subpath.IsClosed && subpath.Nodes.Count > 0 && (n == 0 || n == subpath.Nodes.Count - 1);
+            }
         }
         SetValue(IsSelectedNodeOpenEndpointPropertyKey, isOpenEndpoint);
-        SetValue(CanJoinSelectedEndpointPropertyKey, isOpenEndpoint && FindCrossObjectJoinCandidate() is not null);
+        SetValue(IsJoinContextPropertyKey, isOpenEndpoint || SelectedEndpointPair() is not null);
+        SetValue(CanJoinSelectedNodesPropertyKey, EvaluateCanJoinSelectedNodes());
     }
 
     /// <summary>Minimal ICommand wrapping a parameterless Action — ShowSelectionContextMenu's own

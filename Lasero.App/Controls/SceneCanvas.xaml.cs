@@ -207,7 +207,12 @@ public partial class SceneCanvas : UserControl
         else canvas.RepositionAll();
     }
 
-    public SceneCanvas() => InitializeComponent();
+    public SceneCanvas()
+    {
+        InitializeComponent();
+        // VECTOR PATH TOOL HOOK: segment hover (not the selected segment) ends when the pointer leaves.
+        DrawCanvas.MouseLeave += OnDrawCanvasMouseLeaveForNodeEdit;
+    }
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -317,12 +322,18 @@ public partial class SceneCanvas : UserControl
     {
         if (e.PropertyName != nameof(SceneViewModel.ActiveTool)) return;
         UpdateToolCursor();
+        ClearCanvasNotice();
 
-        // VECTOR PATH TOOL HOOK: switching tools any other way than the layered-Escape/double-click/
-        // Enter paths above (clicking a different toolbar button, a keyboard shortcut, ...) must still
-        // discard an abandoned in-progress path and its dashed preview, and drop out of Node Edit mode,
-        // rather than leaving stale state/visuals behind for the next time either tool is used.
-        if (ViewModel?.ActiveTool != DesignerTool.Line && _pathToolDrawing) ResetVectorPathToolState();
+        // VECTOR PATH TOOL HOOK: switching tools any other way than the Escape/double-click/Enter
+        // paths (clicking a different toolbar button, a keyboard shortcut, ...) FINISHES an in-progress
+        // path (kept when it has two usable nodes, Illustrator-style) instead of throwing the drawing
+        // away, and drops out of Node Edit mode, so no stale state/visuals remain for either tool.
+        if (ViewModel?.ActiveTool != DesignerTool.Line)
+        {
+            if (_pathToolDrawing) CommitPenPathOnToolSwitch();
+            else ClearVectorPathPreviewVisuals();
+        }
+        if (ViewModel?.ActiveTool != DesignerTool.TrimPath) ClearTrimHover();
         if (ViewModel?.ActiveTool != DesignerTool.Select && _nodeEditObject is not null) ExitNodeEditMode();
     }
 
@@ -802,7 +813,7 @@ public partial class SceneCanvas : UserControl
                     continue;
                 }
 
-                figure.Segments.Add(new BezierSegment(
+                figure.Segments.Add(new System.Windows.Media.BezierSegment(
                     ToCanvas(a.HandleOut ?? a.Anchor),
                     ToCanvas(b.HandleIn ?? b.Anchor),
                     ToCanvas(b.Anchor),
@@ -1665,6 +1676,8 @@ public partial class SceneCanvas : UserControl
     {
         if (ViewModel is null) return;
         ViewModel.HideSelectionFrame = false;
+        // A canvas notice explains the previous action; the next press starts a new one.
+        ClearCanvasNotice();
 
         // Selection handles win over everything else on the canvas.
         //
@@ -1757,17 +1770,16 @@ public partial class SceneCanvas : UserControl
             }
 
             // A plain shape (rectangle, ellipse, polygon, imported outline) has no nodes to show yet.
-            // Double-click converts it exactly like the context menu's "Převést na křivky" (one undo
-            // step) and opens node editing on the result, so the points appear.
+            // Double-click does NOT convert it behind the operator's back (a hidden conversion
+            // changes the object for good); it selects it and says how to convert explicitly.
             var doubleClickedShape = HitTestScene(screen)
                 .Select(candidate => candidate.Object)
                 .FirstOrDefault(candidate => !candidate.IsVectorPath && !candidate.IsText && !candidate.IsRaster && !candidate.IsLocked);
             if (doubleClickedShape is not null)
             {
                 Focus();
-                ViewModel.SelectedObjects.Clear();
-                ViewModel.SelectedObjects.Add(doubleClickedShape);
-                if (ViewModel.ConvertSelectedObjectToCurves() is { } converted) EnterNodeEditMode(converted);
+                ViewModel.SelectedObjects.ReplaceWith([doubleClickedShape]);
+                ShowCanvasNotice(ConvertToCurvesForNodesMessage);
                 e.Handled = true;
                 return;
             }
@@ -2323,6 +2335,8 @@ public partial class SceneCanvas : UserControl
         // VECTOR PATH TOOL HOOK: segment hover tracking needs every idle pointer move too (node/handle
         // hover is driven by their own MouseEnter/Leave, not this) -- see UpdateNodeEditHover.
         if (_dragMode == DragMode.None && _nodeEditObject is not null) UpdateNodeEditHover(screen);
+        // VECTOR PATH TOOL HOOK: the Trim tool previews the piece a click would remove.
+        if (_dragMode == DragMode.None && ViewModel?.ActiveTool == DesignerTool.TrimPath) UpdateTrimHover(screen);
 
         switch (_dragMode)
         {
@@ -2771,28 +2785,47 @@ public partial class SceneCanvas : UserControl
         if (e.Key == Key.Delete && _nodeEditObject is not null)
         {
             // LIGHTBURN_VECTOR_PARITY.md §21/§64: context-sensitive Delete -- a node selection deletes
-            // those nodes; with nothing selected, whatever segment the pointer is currently over is
-            // deleted instead (opening/splitting the path), rather than Delete doing nothing.
-            if (_selectedNodeKeys.Count > 0) DeleteSelectedNodes();
-            else DeleteHoveredSegment(Mouse.GetPosition(DrawCanvas));
+            // those nodes (Ctrl+Delete: without refitting the neighbours, Inkscape); with no node
+            // selected, the selected or hovered segment is deleted (opening/splitting the path).
+            if (_dragMode == DragMode.None)
+            {
+                if (_selectedNodeKeys.Count > 0) DeleteSelectedNodes(refit: !Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+                else DeleteHoveredSegment(Mouse.GetPosition(DrawCanvas));
+            }
             e.Handled = true;
             return;
         }
 
-        // VECTOR PATH TOOL HOOK: segment-scoped shortcuts (Priority 1 exposure of already-implemented
-        // VectorPathEditor operations — see docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md).
-        // Shift+<letter>, not a bare letter: bare L/C/... would either collide with MainWindow's own
-        // unmodified-letter tool-switch shortcuts (V/H/R/E/P/T — see MainWindow.xaml.cs
-        // TryActivateDesignerTool, which runs at the PreviewKeyDown/tunnelling stage and would win the
-        // key before it ever reaches here) or invite a future collision as more tools claim letters.
-        // All three are no-ops (falling through, e.Handled stays false) unless node-edit is active
-        // AND a segment is currently hovered, so they never swallow Shift+L/C/M for anything else.
-        if (_nodeEditObject is not null && _hoveredSegment is not null &&
-            Keyboard.Modifiers == ModifierKeys.Shift)
+        // VECTOR PATH TOOL HOOK: node-edit shortcuts. Ctrl+A selects every node of the edited path
+        // (handled here so the window's Ctrl+A, which selects every OBJECT, never sees it). The rest
+        // are Shift+<letter>, not bare letters: bare letters collide with MainWindow's unmodified
+        // tool-switch shortcuts (V/H/R/E/P/T — TryActivateDesignerTool runs at PreviewKeyDown and
+        // would win the key) and invite future collisions. Inkscape's set: Shift+S smooth, Shift+Y
+        // symmetric, Shift+A auto-smooth, Shift+B break, Shift+J join; plus Shift+T trim and Shift+E
+        // extend (LightBurn's T/E); Shift+L/C/M act on the active (selected or hovered) segment.
+        // Every one of them is a no-op that falls through when it has nothing to act on.
+        if (_nodeEditObject is not null && _dragMode == DragMode.None && !typing)
         {
-            if (e.Key == Key.L) { ConvertHoveredSegmentToLine(); e.Handled = true; return; }
-            if (e.Key == Key.C) { ConvertHoveredSegmentToCurve(); e.Handled = true; return; }
-            if (e.Key == Key.M) { InsertNodeAtHoveredSegmentMidpoint(); e.Handled = true; return; }
+            if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                SelectAllNodes();
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == ModifierKeys.Shift && HandleNodeEditShiftKey(e.Key))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // VECTOR PATH TOOL HOOK: Backspace while drawing removes the newest placed node.
+        if (e.Key == Key.Back && _pathToolDrawing && _dragMode == DragMode.None && !typing)
+        {
+            RemoveLastPenNode();
+            e.Handled = true;
+            return;
         }
 
         // VECTOR PATH TOOL HOOK: Enter finishes the in-progress open path, mirroring double-click.
@@ -2930,8 +2963,10 @@ public partial class SceneCanvas : UserControl
             case CanvasEscapeAction.ExitNodeEdit:
                 ExitNodeEditMode();
                 break;
-            case CanvasEscapeAction.CancelPathNode:
-                CancelLastVectorPathNode();
+            case CanvasEscapeAction.FinishPath:
+                // Illustrator/LightBurn: Esc ends the path being drawn and keeps it (when it has two
+                // usable nodes); Backspace is the key that takes the last point back.
+                FinishVectorPath();
                 break;
             case CanvasEscapeAction.ResetTool:
                 ViewModel.ActiveTool = DesignerTool.Select;
@@ -3017,8 +3052,9 @@ public partial class SceneCanvas : UserControl
                 break;
             case DragMode.PathTool:
                 // Cancels only the node currently being pressed/dragged, not the whole in-progress
-                // path -- CancelLastVectorPathNode (wired from OnCanvasKeyDown) owns the "undo the
-                // last committed node, then exit the tool" layering for Escape between clicks.
+                // path -- between clicks Esc finishes the path and Backspace drops its last node.
+                _pathClosingClick = false;
+                _pathCloseRefused = false;
                 break;
             case DragMode.NodeEdit:
             case DragMode.NodeSegmentDrag:

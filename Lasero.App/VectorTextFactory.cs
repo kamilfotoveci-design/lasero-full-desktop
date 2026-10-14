@@ -387,7 +387,7 @@ public static class VectorTextFactory
                     case PolyLineSegment polyLine:
                         foreach (var point in polyLine.Points) Line(point);
                         break;
-                    case BezierSegment bezier: Cubic(bezier.Point1, bezier.Point2, bezier.Point3); break;
+                    case System.Windows.Media.BezierSegment bezier: Cubic(bezier.Point1, bezier.Point2, bezier.Point3); break;
                     case PolyBezierSegment polyBezier:
                         for (var i = 0; i + 2 < polyBezier.Points.Count; i += 3)
                             Cubic(polyBezier.Points[i], polyBezier.Points[i + 1], polyBezier.Points[i + 2]);

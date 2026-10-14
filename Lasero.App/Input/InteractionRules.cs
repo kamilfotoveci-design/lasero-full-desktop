@@ -11,7 +11,8 @@ public enum CanvasEscapeAction
     CancelGesture,
     ExitInlineTextEdit,
     ExitNodeEdit,
-    CancelPathNode,
+    /// <summary>A pen path is being drawn: Esc finishes it (kept when it has two usable nodes).</summary>
+    FinishPath,
     ResetTool,
     /// <summary>Leave the entered group; the whole group becomes the selection again.</summary>
     ExitGroup,
@@ -61,7 +62,7 @@ public static class InteractionRules
         if (state.GestureActive) return CanvasEscapeAction.CancelGesture;
         if (state.InlineTextEditing) return CanvasEscapeAction.ExitInlineTextEdit;
         if (state.NodeEditActive) return CanvasEscapeAction.ExitNodeEdit;
-        if (state.PathInProgress) return CanvasEscapeAction.CancelPathNode;
+        if (state.PathInProgress) return CanvasEscapeAction.FinishPath;
         if (state.NonSelectToolActive) return CanvasEscapeAction.ResetTool;
         if (state.GroupEntered) return CanvasEscapeAction.ExitGroup;
         if (state.HasSelection) return CanvasEscapeAction.ClearSelection;

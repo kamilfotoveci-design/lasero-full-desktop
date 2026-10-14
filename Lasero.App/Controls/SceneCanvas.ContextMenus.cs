@@ -300,8 +300,8 @@ public partial class SceneCanvas
         var canClose = false;
         if (ResolveContextSubpathIndex() is { } resolved)
         {
-            var subpath = path.Subpaths[resolved];
-            canClose = !subpath.IsClosed && subpath.Nodes.Count >= 3;
+            // The same rule as the toolbar, the pen and the endpoint drag: three distinct nodes.
+            canClose = VectorPathEditor.CanClose(path.Subpaths[resolved]);
         }
 
         var state = new NodeContextState
@@ -311,7 +311,8 @@ public partial class SceneCanvas
             CanBreak = canBreak,
             CanClosePath = canClose,
             IsOpenEndpoint = isOpenEndpoint,
-            CanJoin = isOpenEndpoint && FindCrossObjectJoinCandidate() is not null,
+            IsEndpointPair = SelectedEndpointPair() is not null,
+            CanJoin = EvaluateCanJoinSelectedNodes(),
         };
         OpenMenu(CanvasContextMenuBuilder.ForNode(state), at, item => RunObjectAction(item));
     }
@@ -497,10 +498,15 @@ public partial class SceneCanvas
 
             case ContextAction.NodeSmooth: ConvertSelectedNodes(VectorNodeType.Smooth); break;
             case ContextAction.NodeCorner: ConvertSelectedNodes(VectorNodeType.Corner); break;
+            case ContextAction.NodeSymmetric: MakeSelectedNodesSymmetric(); break;
+            case ContextAction.NodeAutoSmooth: AutoSmoothSelectedNodes(); break;
             case ContextAction.NodeBreak: BreakSelectedNode(); break;
-            case ContextAction.NodeJoin: JoinSelectedEndpointToCandidate(); break;
+            case ContextAction.NodeJoin: JoinSelectedNodes(EndpointJoinMode.Auto); break;
+            case ContextAction.NodeJoinSegment: JoinSelectedNodes(EndpointJoinMode.Segment); break;
+            case ContextAction.NodeExtend: ExtendSelectedEndpoint(); break;
             case ContextAction.NodeClosePath: ToggleSelectedSubpathClosed(); break;
             case ContextAction.NodeDelete: DeleteSelectedNodes(); break;
+            case ContextAction.NodeDeleteNoRefit: DeleteSelectedNodes(refit: false); break;
             case ContextAction.SelectAllNodes: SelectAllNodes(); break;
             case ContextAction.DeselectNodes: ClearNodeSelection(); break;
             case ContextAction.ExitNodeEdit: ExitNodeEditMode(); break;
@@ -523,13 +529,20 @@ public partial class SceneCanvas
                 CommitSegmentEdit(path.ReplaceSubpath(hit.SubpathIndex, VectorPathEditor.ConvertSegmentToLine(subpath, hit.SegmentIndex)));
                 break;
             case ContextAction.SegmentInsertHere:
-                CommitSegmentEdit(path.ReplaceSubpath(hit.SubpathIndex, VectorPathEditor.InsertNode(subpath, hit.SegmentIndex, hit.T)));
+                // Hit-test parameters are clamped to (0.025, 0.975) for curves but can reach 0 or 1 on
+                // a zero-length line; never hand InsertNode an end parameter.
+                CommitSegmentEdit(path.ReplaceSubpath(hit.SubpathIndex, VectorPathEditor.InsertNode(subpath, hit.SegmentIndex, Math.Clamp(hit.T, 0.02, 0.98))));
                 break;
             case ContextAction.SegmentInsertMidpoint:
                 CommitSegmentEdit(path.ReplaceSubpath(hit.SubpathIndex, VectorPathEditor.InsertNode(subpath, hit.SegmentIndex, 0.5)));
                 break;
             case ContextAction.SegmentDelete:
                 CommitSegmentEdit(VectorPathEditor.DeleteSegment(path, hit.SubpathIndex, hit.SegmentIndex));
+                break;
+            case ContextAction.SegmentTrim:
+                _selectedSegment = hit;
+                _selectedSegmentNodeCount = subpath.Nodes.Count;
+                TrimActiveSegment();
                 break;
         }
     }
@@ -540,6 +553,7 @@ public partial class SceneCanvas
     {
         _selectedNodeKeys.Clear();
         _hoveredSegment = null;
+        _selectedSegment = null;
         CommitNodeEdit(updated);
     }
 }

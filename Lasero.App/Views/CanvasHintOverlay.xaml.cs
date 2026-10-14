@@ -66,6 +66,8 @@ public partial class CanvasHintOverlay : UserControl
                 .RemoveValueChanged(oldCanvas, OnCanvasStateChanged);
             DependencyPropertyDescriptor.FromProperty(SceneCanvas.SelectedNodeCountProperty, typeof(SceneCanvas))
                 .RemoveValueChanged(oldCanvas, OnCanvasStateChanged);
+            DependencyPropertyDescriptor.FromProperty(SceneCanvas.CanvasNoticeProperty, typeof(SceneCanvas))
+                .RemoveValueChanged(oldCanvas, OnCanvasStateChanged);
         }
 
         if (newCanvas is not null)
@@ -73,6 +75,8 @@ public partial class CanvasHintOverlay : UserControl
             DependencyPropertyDescriptor.FromProperty(SceneCanvas.IsNodeEditActiveProperty, typeof(SceneCanvas))
                 .AddValueChanged(newCanvas, OnCanvasStateChanged);
             DependencyPropertyDescriptor.FromProperty(SceneCanvas.SelectedNodeCountProperty, typeof(SceneCanvas))
+                .AddValueChanged(newCanvas, OnCanvasStateChanged);
+            DependencyPropertyDescriptor.FromProperty(SceneCanvas.CanvasNoticeProperty, typeof(SceneCanvas))
                 .AddValueChanged(newCanvas, OnCanvasStateChanged);
         }
 
@@ -109,15 +113,21 @@ public partial class CanvasHintOverlay : UserControl
 
         var hint = GuidanceText.DesignerHint(context);
         _current = hint is not null && !_dismissed.Contains(hint.Key) ? hint : null;
+        // A notice about the operator's last action (a refused close, a visible refit change, how to
+        // edit a plain shape's nodes) outranks the standing hint until it is dismissed or replaced.
+        if (canvas?.CanvasNotice is { Length: > 0 } notice) _current = new CanvasHint(NoticeKey, notice);
 
         HintText.Text = _current?.Text;
         HintChip.Visibility = _current is null ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private const string NoticeKey = "canvas-notice";
+
     private void OnDismissClick(object sender, RoutedEventArgs e)
     {
         if (_current is null) return;
-        _dismissed.Add(_current.Key);
+        if (_current.Key == NoticeKey) TargetCanvas?.ClearCanvasNotice();
+        else _dismissed.Add(_current.Key);
         Refresh();
     }
 }

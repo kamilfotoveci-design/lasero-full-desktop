@@ -278,6 +278,166 @@ public sealed class VectorPathEditorTopologyTests
         Assert.Equal(new Position(20, 0, 0), survivor.Nodes[1].Anchor);
     }
 
+    [Fact]
+    public void SmoothNodeCreatesTangentHandlesAndKeepsAdjacentStraightSegmentsStraight()
+    {
+        var subpath = new VectorSubpath
+        {
+            Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(10, 0, 0)), VectorNode.CornerAt(new Position(20, 0, 0))],
+            IsClosed = false,
+        };
+
+        var smooth = VectorPathEditor.SetNodeType(subpath, 1, VectorNodeType.Smooth);
+
+        Assert.NotNull(smooth.Nodes[1].HandleIn);
+        Assert.NotNull(smooth.Nodes[1].HandleOut);
+        Assert.Equal(VectorNodeType.Smooth, smooth.Nodes[1].Type);
+        for (var i = 0; i <= 10; i++)
+        {
+            var t = i / 10.0;
+            Assert.Equal(0, CubicBezier.Evaluate(
+                smooth.Nodes[0].Anchor, smooth.Nodes[0].HandleOut ?? smooth.Nodes[0].Anchor,
+                smooth.Nodes[1].HandleIn ?? smooth.Nodes[1].Anchor, smooth.Nodes[1].Anchor, t).Y, 8);
+            Assert.Equal(0, CubicBezier.Evaluate(
+                smooth.Nodes[1].Anchor, smooth.Nodes[1].HandleOut ?? smooth.Nodes[1].Anchor,
+                smooth.Nodes[2].HandleIn ?? smooth.Nodes[2].Anchor, smooth.Nodes[2].Anchor, t).Y, 8);
+        }
+    }
+
+    [Fact]
+    public void AltHandleDragTurnsSmoothNodeIntoCuspBeforeTheNextHandleDrag()
+    {
+        var node = new VectorNode(new Position(0, 0, 0), new Position(-5, 0, 0), new Position(5, 0, 0), VectorNodeType.Smooth);
+
+        var cusp = VectorPathEditor.MoveHandle(node, isOutHandle: true, new Position(0, 5, 0), breakSymmetry: true);
+        var next = VectorPathEditor.MoveHandle(cusp, isOutHandle: false, new Position(-5, 0.01, 0), breakSymmetry: false);
+
+        Assert.Equal(VectorNodeType.Corner, cusp.Type);
+        Assert.Equal(cusp.HandleOut, next.HandleOut);
+    }
+
+    [Fact]
+    public void ClosingWithDragKeepsFirstNodeHandlesCollinear()
+    {
+        var path = VectorSubpath.Empty;
+        path = VectorPathEditor.AppendNode(path, new Position(0, 0, 0), new Position(5, 0, 0));
+        path = VectorPathEditor.AppendNode(path, new Position(20, 0, 0), null);
+        path = VectorPathEditor.AppendNode(path, new Position(10, 15, 0), null);
+
+        var closed = VectorPathEditor.Close(path, new Position(0, 5, 0));
+
+        Assert.True(closed.IsClosed);
+        Assert.True(VectorPathEditor.IsTangentContinuous(closed, 0));
+    }
+
+    [Fact]
+    public void JoiningSeparatedEndpointsKeepsBothAnchorsAndAddsAConnectingSegment()
+    {
+        var a = new VectorSubpath { Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(10, 0, 0))] };
+        var b = new VectorSubpath { Nodes = [VectorNode.CornerAt(new Position(13, 0, 0)), VectorNode.CornerAt(new Position(20, 5, 0))] };
+
+        var joined = VectorPathEditor.JoinAtEndpoints(a, aJoinAtStart: false, b, bJoinAtStart: true);
+
+        Assert.Equal(4, joined.Nodes.Count);
+        Assert.Equal(new Position(10, 0, 0), joined.Nodes[1].Anchor);
+        Assert.Equal(new Position(13, 0, 0), joined.Nodes[2].Anchor);
+    }
+
+    [Fact]
+    public void InsertNodeRejectsNonFiniteParametersWithoutCreatingInvalidGeometry()
+    {
+        var subpath = new VectorSubpath { Nodes = [VectorNode.CornerAt(Position.Zero), VectorNode.CornerAt(new Position(10, 0, 0))] };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => VectorPathEditor.InsertNode(subpath, 0, double.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => VectorPathEditor.InsertNode(subpath, 0, double.PositiveInfinity));
+    }
+
+    [Fact]
+    public void ConvertingASegmentToLineNormalizesASmoothCornerThatWouldBecomeAKink()
+    {
+        var subpath = new VectorSubpath
+        {
+            Nodes =
+            [
+                VectorNode.CornerAt(new Position(0, 0, 0)),
+                new VectorNode(new Position(10, 0, 0), new Position(7, -3, 0), new Position(13, 3, 0), VectorNodeType.Smooth),
+                VectorNode.CornerAt(new Position(20, 0, 0)),
+            ],
+        };
+
+        var result = VectorPathEditor.ConvertSegmentToLine(subpath, 0);
+
+        Assert.Equal(VectorNodeType.Corner, result.Nodes[1].Type);
+        Assert.Null(result.Nodes[1].HandleIn);
+    }
+
+    [Fact]
+    public void TrimRemovesOnlyTheClickedPieceBetweenIntersections()
+    {
+        var target = new VectorSubpath { Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(10, 0, 0))] };
+        var path = new VectorPath { Subpaths = [target] };
+        var cuts = new[] { 0.4, 0.6 };
+
+        var trimmed = VectorPathTrim.TrimSegment(path, 0, 0, 0.5, cuts);
+
+        Assert.Equal(2, trimmed.Subpaths.Count);
+        Assert.Equal(new Position(4, 0, 0), trimmed.Subpaths[0].Nodes[^1].Anchor);
+        Assert.Equal(new Position(6, 0, 0), trimmed.Subpaths[1].Nodes[0].Anchor);
+    }
+
+    [Fact]
+    public void ExtendMovesAStraightOpenEndpointToTheNearestIntersection()
+    {
+        var subpath = new VectorSubpath { Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(5, 0, 0))] };
+        var path = new VectorPath { Subpaths = [subpath] };
+        var cutter = BezierSegment.Line(new Position(10, -5, 0), new Position(10, 5, 0));
+
+        var extended = VectorPathTrim.TryExtend(path, 0, atStart: false, p => p, p => p, [cutter], 20, out var result);
+
+        Assert.True(extended);
+        Assert.Equal(new Position(10, 0, 0), result.Subpaths[0].Nodes[^1].Anchor);
+        Assert.False(VectorPathTrim.TryExtend(result, 0, atStart: false, p => p, p => p, [], 20, out _));
+    }
+
+    [Fact]
+    public void DeleteNodeRefitKeepsAnSCurveWhenOneCubicCannotMeetTheErrorTolerance()
+    {
+        var subpath = new VectorSubpath
+        {
+            Nodes =
+            [
+                new VectorNode(new Position(0, 0, 0), null, new Position(0, 5, 0), VectorNodeType.Corner),
+                new VectorNode(new Position(10, 0, 0), new Position(5, -5, 0), new Position(15, 5, 0), VectorNodeType.Smooth),
+                new VectorNode(new Position(20, 0, 0), new Position(20, -5, 0), null, VectorNodeType.Corner),
+            ],
+        };
+
+        var result = VectorPathEditor.RemoveNode(subpath, 1, refit: true, out var deviation);
+
+        Assert.Equal(subpath.Nodes, result.Nodes);
+        Assert.True(double.IsFinite(deviation));
+        Assert.True(deviation > VectorPathEditor.RefitToleranceMm, $"the S-curve should use the no-refit fallback, measured {deviation:F3} mm");
+    }
+
+    [Fact]
+    public void DeleteWithoutRefitKeepsSurvivingHandlePositions()
+    {
+        var subpath = new VectorSubpath
+        {
+            Nodes =
+            [
+                new VectorNode(new Position(0, 0, 0), null, new Position(0, 5, 0), VectorNodeType.Corner),
+                new VectorNode(new Position(10, 0, 0), new Position(5, -5, 0), new Position(15, 5, 0), VectorNodeType.Smooth),
+                new VectorNode(new Position(20, 0, 0), new Position(20, -5, 0), null, VectorNodeType.Corner),
+            ],
+        };
+
+        var result = VectorPathEditor.RemoveNode(subpath, 1, refit: false, out _);
+
+        Assert.Equal(subpath.Nodes[0].HandleOut, result.Nodes[0].HandleOut);
+        Assert.Equal(subpath.Nodes[2].HandleIn, result.Nodes[1].HandleIn);
+    }
+
     private static double Distance(Position a, Position b) =>
         Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
 }

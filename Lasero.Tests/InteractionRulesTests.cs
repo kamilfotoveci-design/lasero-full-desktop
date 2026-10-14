@@ -28,7 +28,8 @@ public sealed class InteractionRulesTests
             InteractionRules.ForCanvasEscape(everything with { GestureActive = false }));
         Assert.Equal(CanvasEscapeAction.ExitNodeEdit,
             InteractionRules.ForCanvasEscape(everything with { GestureActive = false, InlineTextEditing = false }));
-        Assert.Equal(CanvasEscapeAction.CancelPathNode,
+        // Esc finishes (keeps) a path being drawn, Illustrator-style; Backspace removes its last node.
+        Assert.Equal(CanvasEscapeAction.FinishPath,
             InteractionRules.ForCanvasEscape(new CanvasEscapeState(false, false, false, true, true, true)));
         Assert.Equal(CanvasEscapeAction.ResetTool,
             InteractionRules.ForCanvasEscape(new CanvasEscapeState(false, false, false, false, true, true)));

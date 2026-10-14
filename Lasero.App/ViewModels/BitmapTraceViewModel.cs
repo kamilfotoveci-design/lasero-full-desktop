@@ -238,7 +238,7 @@ public partial class BitmapTraceViewModel : ObservableObject, IDisposable
 
                     var control1 = a.HandleOut ?? a.Anchor;
                     var control2 = b.HandleIn ?? b.Anchor;
-                    figure.Segments.Add(new BezierSegment(
+                    figure.Segments.Add(new System.Windows.Media.BezierSegment(
                         ToPreviewPoint(control1, heightMm),
                         ToPreviewPoint(control2, heightMm),
                         ToPreviewPoint(b.Anchor, heightMm),

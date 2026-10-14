@@ -231,6 +231,23 @@ public sealed class SnapEngineTests
     }
 
     [Fact]
+    public void FromVectorPathFindsASelfIntersectionWithinOneSubpath()
+    {
+        var path = VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(0, 0, 0)),
+            VectorNode.CornerAt(new Position(10, 10, 0)),
+            VectorNode.CornerAt(new Position(0, 10, 0)),
+            VectorNode.CornerAt(new Position(10, 0, 0)),
+        ]);
+
+        var candidates = SnapCandidateBuilder.FromVectorPath(path, Identity);
+
+        Assert.Contains(candidates, c => c.Kind == SnapKind.Intersection
+            && Math.Abs(c.Point.X - 5) < 1e-6 && Math.Abs(c.Point.Y - 5) < 1e-6);
+    }
+
+    [Fact]
     public void FromVectorPathAppliesTheGivenWorldTransformToEveryCandidate()
     {
         var path = SingleClosed(

@@ -3060,7 +3060,7 @@ public partial class SceneViewModel : ObservableObject
                         foreach (var jStart in new[] { true, false })
                         {
                             if (!Near(EndOf(chains[i].Path, iStart), EndOf(chains[j].Path, jStart))) continue;
-                            var joined = VectorPathEditor.JoinAtEndpoints(chains[i].Path, iStart, chains[j].Path, jStart);
+                            var joined = VectorPathEditor.JoinAtEndpoints(chains[i].Path, iStart, chains[j].Path, jStart, EndpointJoinMode.Merge);
                             chains[i].Members.AddRange(chains[j].Members);
                             chains[i] = (joined, chains[i].Members);
                             chains.RemoveAt(j);
@@ -3272,9 +3272,12 @@ public partial class SceneViewModel : ObservableObject
     /// direction TryCloseByEndpointJoin's own same-object case implicitly takes (the object never
     /// becomes "some other object"). IsVisible/IncludeInOutput combine with OR (visible/included if
     /// either source was), matching BuildCombinedWorldVectorPath's sibling operations (Group).</summary>
+    /// <param name="mode">Auto merges ends that touch and connects ends further apart with a straight
+    /// segment; no anchor is dropped and no geometry moves (see VectorPathEditor.JoinAtEndpoints).</param>
     public bool JoinObjectEndpoints(
         SceneObject dragged, bool draggedAtStart,
-        SceneObject target, bool targetAtStart)
+        SceneObject target, bool targetAtStart,
+        EndpointJoinMode mode = EndpointJoinMode.Auto)
     {
         ArgumentNullException.ThrowIfNull(dragged);
         ArgumentNullException.ThrowIfNull(target);
@@ -3295,7 +3298,7 @@ public partial class SceneViewModel : ObservableObject
         VectorSubpath joined;
         try
         {
-            joined = VectorPathEditor.JoinAtEndpoints(draggedWorld, draggedAtStart, targetWorld, targetAtStart);
+            joined = VectorPathEditor.JoinAtEndpoints(draggedWorld, draggedAtStart, targetWorld, targetAtStart, mode);
         }
         catch (ArgumentException)
         {

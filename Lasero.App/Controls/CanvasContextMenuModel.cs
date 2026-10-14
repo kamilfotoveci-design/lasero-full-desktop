@@ -28,9 +28,10 @@ public enum ContextAction
     Import, FitView, ZoomActual, CenterBed,
     // Node edit
     NodeSmooth, NodeCorner, NodeBreak, NodeClosePath, NodeJoin, NodeDelete,
+    NodeSymmetric, NodeAutoSmooth, NodeJoinSegment, NodeExtend, NodeDeleteNoRefit,
     SelectAllNodes, DeselectNodes, ExitNodeEdit,
     // Segment edit
-    SegmentToCurve, SegmentToLine, SegmentInsertHere, SegmentInsertMidpoint, SegmentDelete,
+    SegmentToCurve, SegmentToLine, SegmentInsertHere, SegmentInsertMidpoint, SegmentDelete, SegmentTrim,
 }
 
 public enum ContextMenuItemKind { Command, Separator, Submenu }
@@ -174,8 +175,12 @@ public sealed record NodeContextState
     /// <summary>The single selected node is an open endpoint of a path. Join is then offered, disabled
     /// with a reason while no other open end lies within join tolerance.</summary>
     public bool IsOpenEndpoint { get; init; }
-    /// <summary>Another path's open end is close enough to this endpoint to be joined to it.</summary>
+    /// <summary>Join can act now: two selected open ends of this path, or one selected end with another
+    /// path's open end close enough.</summary>
     public bool CanJoin { get; init; }
+    /// <summary>The selection is two open ends of this path (of one contour or of two). Join is then
+    /// offered too, like for a single open end.</summary>
+    public bool IsEndpointPair { get; init; }
 }
 
 public sealed record SegmentContextState
@@ -438,23 +443,39 @@ public static class CanvasContextMenuBuilder
         {
             new()
             {
-                ContextMenuItemModel.Command(ContextAction.NodeSmooth, many ? "Hladké uzly" : "Hladký uzel", isChecked: s.AllSmooth == true),
+                ContextMenuItemModel.Command(ContextAction.NodeSmooth, many ? "Hladké uzly" : "Hladký uzel", "Shift+S", isChecked: s.AllSmooth == true),
+                ContextMenuItemModel.Command(ContextAction.NodeSymmetric, many ? "Souměrné uzly" : "Souměrný uzel", "Shift+Y",
+                    reason: "Raménka v jedné ose a stejně dlouhá"),
+                ContextMenuItemModel.Command(ContextAction.NodeAutoSmooth, "Automaticky vyhladit", "Shift+A",
+                    reason: "Raménka se dopočítají podle sousedních uzlů"),
                 ContextMenuItemModel.Command(ContextAction.NodeCorner, many ? "Ostré rohy" : "Ostrý roh", isChecked: s.AllSmooth == false),
             },
         };
 
         var path = new List<ContextMenuItemModel>();
         if (s.CanBreak)
-            path.Add(ContextMenuItemModel.Command(ContextAction.NodeBreak, "Rozdělit dráhu zde"));
+            path.Add(ContextMenuItemModel.Command(ContextAction.NodeBreak, "Rozdělit dráhu zde", "Shift+B"));
+        var joinOffered = (s.IsOpenEndpoint && s.SelectedNodeCount == 1) || s.IsEndpointPair;
+        if (joinOffered)
+        {
+            const string noTarget = "V dosahu není žádný volný konec jiné dráhy.";
+            var header = s.IsEndpointPair ? "Spojit uzly" : "Spojit s nejbližší dráhou";
+            path.Add(ContextMenuItemModel.Command(ContextAction.NodeJoin, header, "Shift+J", enabled: s.CanJoin,
+                reason: s.CanJoin ? "Dotýkající se konce se sloučí, vzdálené spojí úsečka" : noTarget));
+            path.Add(ContextMenuItemModel.Command(ContextAction.NodeJoinSegment, "Spojit úsečkou", enabled: s.CanJoin,
+                reason: s.CanJoin ? null : noTarget));
+        }
         if (s.IsOpenEndpoint && s.SelectedNodeCount == 1)
-            path.Add(s.CanJoin
-                ? ContextMenuItemModel.Command(ContextAction.NodeJoin, "Spojit s nejbližší dráhou")
-                : ContextMenuItemModel.Command(ContextAction.NodeJoin, "Spojit s nejbližší dráhou", enabled: false, reason: "V dosahu není žádný volný konec jiné dráhy."));
+            path.Add(ContextMenuItemModel.Command(ContextAction.NodeExtend, "Prodloužit k průsečíku", "Shift+E"));
         if (s.CanClosePath)
             path.Add(ContextMenuItemModel.Command(ContextAction.NodeClosePath, "Uzavřít dráhu"));
         groups.Add(path);
 
-        groups.Add([ContextMenuItemModel.Command(ContextAction.NodeDelete, many ? "Odstranit uzly" : "Odstranit uzel", "Del", "Glyph.Delete")]);
+        groups.Add(
+        [
+            ContextMenuItemModel.Command(ContextAction.NodeDelete, many ? "Odstranit uzly" : "Odstranit uzel", "Del", "Glyph.Delete"),
+            ContextMenuItemModel.Command(ContextAction.NodeDeleteNoRefit, "Odstranit bez dopasování křivky", "Ctrl+Del"),
+        ]);
         return Assemble(groups);
     }
 
@@ -469,11 +490,15 @@ public static class CanvasContextMenuBuilder
             ],
             [
                 ContextMenuItemModel.Command(ContextAction.SegmentInsertHere, "Vložit uzel zde"),
-                ContextMenuItemModel.Command(ContextAction.SegmentInsertMidpoint, "Vložit uzel doprostřed"),
+                ContextMenuItemModel.Command(ContextAction.SegmentInsertMidpoint, "Vložit uzel doprostřed", "Shift+M"),
             ],
             // No "Del" hint: with no node selected Delete acts on the segment under the pointer, which
             // is not necessarily this one once the menu is open.
-            [ContextMenuItemModel.Command(ContextAction.SegmentDelete, "Odstranit segment", icon: "Glyph.Delete")],
+            [
+                ContextMenuItemModel.Command(ContextAction.SegmentTrim, "Oříznout k průsečíkům", "Shift+T",
+                    reason: "Odstraní jen část segmentu mezi nejbližšími průsečíky s jinými křivkami"),
+                ContextMenuItemModel.Command(ContextAction.SegmentDelete, "Odstranit segment", icon: "Glyph.Delete"),
+            ],
         ]);
     }
 
