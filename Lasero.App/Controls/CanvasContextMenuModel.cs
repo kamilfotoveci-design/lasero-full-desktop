@@ -8,7 +8,7 @@ public enum ContextAction
     // Clipboard and selection
     Cut, Copy, Paste, Duplicate, Delete, SelectAll, DeselectAll,
     // Object structure
-    EditNodes, EditText, ConvertToCurves, ConvertTextToPath, ConvertToBitmap, Group, Ungroup, ToggleLock,
+    EditNodes, EditText, ConvertToCurves, ConvertTextToPath, ConvertToBitmap, Group, Ungroup, BreakApart, ToggleLock,
     // Inspection: the job preview (no machine involved) and the selection's property fields
     Preview, ShowProperties,
     // Boolean and path operations
@@ -95,6 +95,8 @@ public sealed record ObjectContextState
     public bool CanEditText { get; init; }
     public bool CanGroup { get; init; }
     public bool CanUngroup { get; init; }
+    /// <summary>One vector object made of several separate contours that can become objects of their own.</summary>
+    public bool CanBreakApart { get; init; }
     public bool CanAlign { get; init; }
     public bool CanTransform { get; init; }
     public bool CanTrace { get; init; }
@@ -229,6 +231,8 @@ public static class CanvasContextMenuBuilder
             structure.Add(ContextMenuItemModel.Command(ContextAction.Group, "Seskupit", "Ctrl+G", "Glyph.Group"));
         if (s.CanUngroup)
             structure.Add(ContextMenuItemModel.Command(ContextAction.Ungroup, "Rozdělit skupinu", "Ctrl+Shift+G", "Glyph.Ungroup"));
+        if (s.CanBreakApart)
+            structure.Add(ContextMenuItemModel.Command(ContextAction.BreakApart, "Oddělit obrysy", icon: "Glyph.Ungroup"));
         if (s.SelectionCount >= 2 && s.Kind is SelectionKind.Vector or SelectionKind.Text)
             structure.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s.BooleanReason), "Glyph.Union"));
         if (s.Kind is SelectionKind.Vector or SelectionKind.Text)
@@ -290,6 +294,8 @@ public static class CanvasContextMenuBuilder
                 enabled: s.CanGroup, reason: s.CanGroup ? null : GroupReason(s)),
             ContextMenuItemModel.Command(ContextAction.Ungroup, "Odebrat ze skupiny", "Ctrl+U", "Glyph.Ungroup",
                 enabled: s.CanUngroup, reason: s.CanUngroup ? null : NotInGroupReason(s)),
+            ContextMenuItemModel.Command(ContextAction.BreakApart, "Oddělit obrysy", icon: "Glyph.Ungroup",
+                enabled: s.CanBreakApart, reason: s.CanBreakApart ? null : BreakApartReason(s)),
             LockRow(s, "Zamknout vybrané tvary", "Odemknout vybrané tvary"),
         };
 
@@ -461,7 +467,14 @@ public static class CanvasContextMenuBuilder
     private static string NotInGroupReason(ObjectContextState s) =>
         s.SelectionCount > 1 ? "Vybrané objekty nejsou součástí skupiny."
         : s.Kind == SelectionKind.Text ? "Vybraný text není součástí skupiny."
+        : s.CanBreakApart ? "Vybraný objekt není skupina, ale skládá se z více obrysů. Rozdělit je lze příkazem „Oddělit obrysy“."
         : "Vybraný objekt není skupina.";
+
+    private static string BreakApartReason(ObjectContextState s) =>
+        s.SelectionCount != 1 ? "Obrysy lze oddělit u jednoho vybraného objektu."
+        : s.Kind is SelectionKind.Text ? "U textu nejdřív použij „Převést na dráhu“, potom lze obrysy oddělit."
+        : s.Kind is SelectionKind.Raster ? "Bitmapa nemá obrysy k oddělení."
+        : "Objekt je zamčený, tvoří ho jediný obrys nebo nemá oddělitelné části.";
 
     private static string GroupReason(ObjectContextState s) =>
         s.SelectionCount < 2 ? "Seskupit lze nejméně dva objekty. Vybraný je jen jeden."

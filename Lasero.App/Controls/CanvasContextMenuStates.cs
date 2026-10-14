@@ -47,6 +47,7 @@ public static class CanvasContextMenuStates
             // Ungroup only releases GroupId membership, so it applies to a whole selected group
             // (several members) and to text inside a group; an ungrouped object is never offered it.
             CanUngroup = scene.CanUngroupSelection,
+            CanBreakApart = scene.CanBreakApartSelection,
             CanSelectAll = scene.SelectAllCommand.CanExecute(null) && scene.Objects.Count > selection.Count,
             CanConvertTextToPath = scene.CanConvertSelectedTextToPath,
             ShowPreview = reach.HasPreview,

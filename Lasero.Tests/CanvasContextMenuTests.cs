@@ -299,7 +299,8 @@ public class CanvasContextMenuTests
         var rows = CanvasContextMenuBuilder.ForObject(VectorState());
         var order = rows.Where(row => !row.IsSeparator).Select(row => row.Action).ToList();
         Assert.Equal(1, order.Count(action => action == ContextAction.ToggleLock));
-        Assert.Equal(order.IndexOf(ContextAction.Ungroup) + 1, order.IndexOf(ContextAction.ToggleLock));
+        Assert.Equal(order.IndexOf(ContextAction.BreakApart) + 1, order.IndexOf(ContextAction.ToggleLock));
+        Assert.Equal(order.IndexOf(ContextAction.Ungroup) + 1, order.IndexOf(ContextAction.BreakApart));
         Assert.Equal("Zamknout vybrané tvary", Find(rows, ContextAction.ToggleLock)!.Header);
     }
 

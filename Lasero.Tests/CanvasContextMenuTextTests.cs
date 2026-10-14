@@ -73,7 +73,7 @@ public class CanvasContextMenuTextTests
             "-",
             "Odstranit|Del",
             "-",
-            "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G (off)", "Odebrat ze skupiny|Ctrl+U (off)", "Zamknout vybrané tvary|",
+            "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G (off)", "Odebrat ze skupiny|Ctrl+U (off)", "Oddělit obrysy| (off)", "Zamknout vybrané tvary|",
             "-",
             "Převést na dráhu|Ctrl+Shift+C", "Převést na bitmapu|Ctrl+Shift+B",
             "-",

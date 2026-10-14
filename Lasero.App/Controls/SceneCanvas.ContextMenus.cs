@@ -416,6 +416,7 @@ public partial class SceneCanvas
             case ContextAction.ShowProperties: PropertiesRequested?.Invoke(); break;
             case ContextAction.Group: Run(scene.GroupSelectionCommand); break;
             case ContextAction.Ungroup: Run(scene.UngroupSelectionCommand); break;
+            case ContextAction.BreakApart: Run(scene.BreakApartSelectionCommand); break;
             case ContextAction.ToggleLock: Run(scene.ToggleLockCommand); break;
 
             case ContextAction.Unite: Run(scene.UniteSelectionCommand); break;

@@ -51,7 +51,7 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         "-",
         "Odstranit|Del",
         "-",
-        "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G", "Odebrat ze skupiny|Ctrl+U", "Zamknout vybrané tvary|",
+        "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G", "Odebrat ze skupiny|Ctrl+U", "Oddělit obrysy|", "Zamknout vybrané tvary|",
         "-",
         "Převést na dráhu|Ctrl+Shift+C", "Převést na bitmapu|Ctrl+Shift+B",
         "-",
