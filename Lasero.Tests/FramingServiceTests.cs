@@ -13,8 +13,10 @@ public class FramingServiceTests
         var lines = FramingService.BuildFrameGCode(box, new FramingOptions { Mode = FramingMode.FullOutline });
 
         Assert.Equal("G90", lines[0]);
-        Assert.Equal("M5", lines[1]);
-        Assert.Equal("G0 X0 Y0", lines[2]);
+        Assert.Equal("G21", lines[1]); // preamble pins mm units
+        Assert.Equal("G94", lines[2]);
+        Assert.Equal("M5", lines[3]);
+        Assert.Equal("G0 X0 Y0", lines[4]);
         Assert.Contains("M5", lines[^1]); // ends with laser off
     }
 
