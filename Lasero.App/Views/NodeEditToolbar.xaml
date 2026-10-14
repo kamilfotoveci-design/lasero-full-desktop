@@ -172,6 +172,7 @@
                         Visibility="{Binding TargetCanvas.IsSelectedSubpathClosed, ElementName=Root, Converter={StaticResource NotNullToVisibility}}">
                 <Button Style="{StaticResource Button.Ghost}" Padding="12,0" Height="{StaticResource Size.Control.Compact}"
                         Click="OnToggleClosedClick"
+                        IsEnabled="{Binding TargetCanvas.CanCloseSelectedSubpath, ElementName=Root}"
                         AutomationProperties.Name="Otevřít nebo uzavřít dráhu">
                     <!-- No dedicated open/closed-path icon exists in this app's icon set, and inventing
                          one purely for this one button risked looking like a mismatched one-off. A

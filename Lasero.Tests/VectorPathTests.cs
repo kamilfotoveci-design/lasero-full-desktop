@@ -242,6 +242,22 @@ public sealed class VectorPathTests
     }
 
     [Fact]
+    public void CloseLeavesTwoNodePathOpenToPreventDuplicateBurnSegment()
+    {
+        var subpath = new VectorSubpath
+        {
+            Nodes = [VectorNode.CornerAt(new Position(0, 0, 0)), VectorNode.CornerAt(new Position(10, 0, 0))],
+            IsClosed = false,
+        };
+
+        var closed = VectorPathEditor.Close(subpath);
+
+        Assert.False(closed.IsClosed);
+        Assert.Equal(2, closed.Nodes.Count);
+        Assert.Equal(1, closed.SegmentCount);
+    }
+
+    [Fact]
     public void OpenClearsIsClosedWithoutTouchingNodesOrHandles()
     {
         var subpath = new VectorSubpath

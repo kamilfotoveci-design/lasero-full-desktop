@@ -976,7 +976,7 @@ public partial class SceneCanvas
         if (_nodeEditObject is null || _nodeDragOriginalPath is null || _selectedNodeKeys.Count != 1) return false;
         var (subpathIndex, nodeIndex) = _selectedNodeKeys.Single();
         var originalSubpath = _nodeDragOriginalPath.Subpaths[subpathIndex];
-        if (originalSubpath.IsClosed || originalSubpath.Nodes.Count < 2) return false;
+        if (originalSubpath.IsClosed || originalSubpath.Nodes.Count < 3) return false;
         var lastIndex = originalSubpath.Nodes.Count - 1;
         if (nodeIndex != 0 && nodeIndex != lastIndex) return false;
         var otherIndex = nodeIndex == 0 ? lastIndex : 0;
@@ -1389,6 +1389,7 @@ public partial class SceneCanvas
         if (_nodeEditWorkingPath is null || ResolveContextSubpathIndex() is not { } index) return;
         var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
         var subpath = subpaths[index];
+        if (!subpath.IsClosed && subpath.Nodes.Count < 3) return;
         subpaths[index] = subpath.IsClosed ? VectorPathEditor.Open(subpath) : VectorPathEditor.Close(subpath);
         CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
     }
@@ -1716,6 +1717,11 @@ public partial class SceneCanvas
     public static readonly DependencyProperty IsSelectedSubpathClosedProperty = IsSelectedSubpathClosedPropertyKey.DependencyProperty;
     public bool? IsSelectedSubpathClosed => (bool?)GetValue(IsSelectedSubpathClosedProperty);
 
+    private static readonly DependencyPropertyKey CanCloseSelectedSubpathPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(CanCloseSelectedSubpath), typeof(bool), typeof(SceneCanvas), new PropertyMetadata(false));
+    public static readonly DependencyProperty CanCloseSelectedSubpathProperty = CanCloseSelectedSubpathPropertyKey.DependencyProperty;
+    public bool CanCloseSelectedSubpath => (bool)GetValue(CanCloseSelectedSubpathProperty);
+
     /// <summary>Null when no segment is hovered — NodeEditToolbar's Convert-to-Line/Convert-to-Curve/
     /// Insert-Midpoint/Delete-Segment buttons all target whichever segment the pointer is currently
     /// over (see the "Priority 1" block above for why there is no separate segment-selection state),
@@ -1765,6 +1771,10 @@ public partial class SceneCanvas
         if (_nodeEditWorkingPath is not null && ResolveContextSubpathIndex() is { } index)
             closed = _nodeEditWorkingPath.Subpaths[index].IsClosed;
         SetValue(IsSelectedSubpathClosedPropertyKey, closed);
+        SetValue(CanCloseSelectedSubpathPropertyKey, _nodeEditWorkingPath is not null
+            && ResolveContextSubpathIndex() is { } closeIndex
+            && (_nodeEditWorkingPath.Subpaths[closeIndex].IsClosed
+                || _nodeEditWorkingPath.Subpaths[closeIndex].Nodes.Count >= 3));
 
         bool? straight = null;
         if (_nodeEditWorkingPath is not null && _hoveredSegment is { } hit)

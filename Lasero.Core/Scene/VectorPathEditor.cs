@@ -31,7 +31,9 @@ public static class VectorPathEditor
     public static VectorSubpath Close(VectorSubpath subpath, Position? dragOffset = null)
     {
         ArgumentNullException.ThrowIfNull(subpath);
-        if (subpath.Nodes.Count < 2) return subpath with { IsClosed = false };
+        // A two-node contour would add the same segment in reverse as its closing edge,
+        // causing duplicate cutting/burning. Keep the model boundary safe for every caller.
+        if (subpath.Nodes.Count < 3) return subpath with { IsClosed = false };
 
         var nodes = subpath.Nodes.ToList();
         if (HasMagnitude(dragOffset, out var offset))
