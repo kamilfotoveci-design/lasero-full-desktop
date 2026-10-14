@@ -39,6 +39,45 @@ public static class VectorPathSceneFactory
         };
     }
 
+    /// <summary>Turns a plain curve object into an editable path whose contours were converted 1:1 to
+    /// <paramref name="path"/> subpaths. LocalShapes are re-derived from the path (so they always agree
+    /// with the nodes) and take their layer/mode metadata from <paramref name="metadata"/>, one entry per
+    /// subpath. Identity, placement, flags and group membership carry over; the pivot follows the new
+    /// bounds without moving anything on the canvas.</summary>
+    public static SceneObject FromConversion(SceneObject source, VectorPath path, IReadOnlyList<ImportedShape> metadata)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(metadata);
+        var (shapes, bounds) = BuildShapes(path, RgbColor.Black, Guid.NewGuid());
+        if (shapes.Count != metadata.Count || path.Subpaths.Count != metadata.Count)
+            throw new InvalidOperationException("Obrysy a uzly cesty si neodpovídají.");
+
+        var mapped = shapes.Select((shape, index) => shape with
+        {
+            GeometrySetId = metadata[index].GeometrySetId,
+            LayerId = metadata[index].LayerId,
+            LayerColor = metadata[index].LayerColor,
+            PreferredMode = metadata[index].PreferredMode,
+        }).ToList();
+        var pivot = CenterOf(bounds);
+        return new SceneObject
+        {
+            Id = source.Id,
+            GroupId = source.GroupId,
+            NestedGroupIds = source.NestedGroupIds.ToArray(),
+            Name = source.Name,
+            LocalShapes = mapped,
+            LocalBounds = bounds,
+            LocalPivot = pivot,
+            VectorPath = path,
+            Transform = source.Transform.WithPivotMoved(source.LocalPivot, pivot),
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
+            IncludeInOutput = source.IncludeInOutput,
+        };
+    }
+
     /// <summary>Re-flattens an existing vector-path object after a node edit (move/add/delete/convert
     /// node, drag handle, close path). Identity, transform, layer assignment and flags all carry
     /// over — only the geometry changes, the same contract VectorTextFactory.Rebuild uses for text.

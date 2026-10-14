@@ -1093,6 +1093,13 @@ public partial class SceneCanvas : UserControl
             if (IsObjectVisibleOnCanvas(obj) && !ReferenceEquals(obj, _editingTextObject) && !obj.IsText)
                 DrawObjectAnts(obj);
         }
+
+        // Live resize: mark what the dragged edge(s) snapped to (cleared when the gesture ends).
+        if (_dragMode == DragMode.Resize)
+        {
+            if (_activeSnapTarget is { } edgeSnap) DrawActiveSnapIndicator(edgeSnap);
+            if (_resizeSnapTargetY is { } edgeSnapY) DrawActiveSnapIndicator(edgeSnapY);
+        }
     }
 
     /// <summary>
@@ -1514,6 +1521,52 @@ public partial class SceneCanvas : UserControl
         }
 
         return (rawDx, rawDy);
+    }
+
+    // Second indicator for a corner drag that snaps both edges (the first is _activeSnapTarget).
+    private SnapCandidate? _resizeSnapTargetY;
+
+    /// <summary>True when the rotation is a multiple of 90 degrees, so the object's local axes lie on
+    /// the world axes; <paramref name="axesSwapped"/> is true for 90/270 (local X runs along world Y).</summary>
+    internal static bool IsQuarterTurn(double rotationDeg, out bool axesSwapped)
+    {
+        var turns = rotationDeg / 90.0;
+        var rounded = Math.Round(turns);
+        axesSwapped = ((long)rounded % 2) != 0;
+        return Math.Abs(turns - rounded) < 1e-4;
+    }
+
+    /// <summary>
+    /// Resize snapping for the dragged edge(s) in world space, screen-pixel tolerance, same toggles as the
+    /// other gestures: Ctrl bypasses it, SnapToObjects/SnapToGrid enable the two sources independently.
+    /// Returns the pointer position to hand to the resize solve; records the targets for the indicator.
+    /// </summary>
+    private Position ApplyResizeEdgeSnap(Position mouse, ResizeHandle handle, bool axesSwapped, bool lockAspect,
+        Position anchor, Func<Position, Position> draggedHandleAt)
+    {
+        _activeSnapTarget = null;
+        _resizeSnapTargetY = null;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return mouse;
+
+        IReadOnlyList<SnapCandidate> candidates = _preferences.SnapToObjects ? _gestureSnapCandidates : [];
+        double? gridStep = _preferences.SnapToGrid ? _preferences.ResolveGridStepMm(_scale) : null;
+        if (candidates.Count == 0 && gridStep is null) return mouse;
+
+        var movesLocalX = handle is not (ResizeHandle.Top or ResizeHandle.Bottom);
+        var movesLocalY = handle is not (ResizeHandle.Left or ResizeHandle.Right);
+        var result = ResizeEdgeSnap.Resolve(mouse, anchor, draggedHandleAt,
+            affectsX: axesSwapped ? movesLocalY : movesLocalX,
+            affectsY: axesSwapped ? movesLocalX : movesLocalY,
+            lockAspect, candidates, SnapToleranceScreenPx / _scale, gridStep);
+        _activeSnapTarget = result.TargetX ?? result.TargetY;
+        _resizeSnapTargetY = result.TargetX is not null ? result.TargetY : null;
+        return result.Mouse;
+    }
+
+    private void ClearResizeSnap()
+    {
+        _activeSnapTarget = null;
+        _resizeSnapTargetY = null;
     }
 
     /// <summary>
@@ -2362,17 +2415,41 @@ public partial class SceneCanvas : UserControl
         {
             case DragMode.Resize when _activeSingleObject is not null:
             {
-                var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
-                _activeSingleObject.Transform = _resizeStartTransform.ComputeResize(
-                    _activeSingleObject.LocalPivot,
-                    _activeSingleObject.LocalBounds,
+                var resized = _activeSingleObject;
+                // Shift is the transient, predictable desktop-editor override; the persistent
+                // inspector toggle remains supported, while a resize gesture can still opt in
+                // without changing global state.
+                var lockAspect = ViewModel?.LockAspectRatio == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+                var allowFlip = !resized.IsRaster;
+                var rawWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+
+                Position world;
+                if (IsQuarterTurn(_resizeStartTransform.RotationDeg, out var axesSwapped))
+                {
+                    // The dragged edge runs along a world axis, so snap the edge itself rather than
+                    // the pointer: the grab offset inside the handle must not decide where it lands.
+                    var pivot = resized.LocalPivot;
+                    var dragged = ObjectTransform.HandleLocalPoint(resized.LocalBounds, pivot, _activeResizeHandle);
+                    var anchor = _resizeStartTransform.Apply(
+                        new Position(2 * pivot.X - dragged.X, 2 * pivot.Y - dragged.Y, pivot.Z), pivot);
+                    world = ApplyResizeEdgeSnap(rawWorld, _activeResizeHandle, axesSwapped, lockAspect, anchor,
+                        mouse => _resizeStartTransform.ComputeResize(
+                            pivot, resized.LocalBounds, _activeResizeHandle, mouse, lockAspect, allowFlip)
+                            .Apply(dragged, pivot));
+                }
+                else
+                {
+                    // A free rotation has no world-axis edge to align; keep snapping the pointer.
+                    world = ApplyGestureSnap(rawWorld);
+                }
+
+                resized.Transform = _resizeStartTransform.ComputeResize(
+                    resized.LocalPivot,
+                    resized.LocalBounds,
                     _activeResizeHandle,
                     world,
-                    // Shift is the transient, predictable desktop-editor override; the persistent
-                    // inspector toggle remains supported, while a resize gesture can still opt in
-                    // without changing global state.
-                    lockAspectRatio: ViewModel?.LockAspectRatio == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift),
-                    allowFlip: !_activeSingleObject.IsRaster);
+                    lockAspectRatio: lockAspect,
+                    allowFlip: allowFlip);
                 break;
             }
             case DragMode.Rotate when _activeSingleObject is not null:
@@ -2412,6 +2489,7 @@ public partial class SceneCanvas : UserControl
 
     private void FinishResize()
     {
+        ClearResizeSnap();
         if (_groupGesture is not null) { FinishGroupTransform(); return; }
         var obj = _activeSingleObject;
         _activeSingleObject = null;
@@ -2768,6 +2846,7 @@ public partial class SceneCanvas : UserControl
                 _pendingMoveDy = 0;
                 break;
             case DragMode.Resize when _activeSingleObject is not null:
+                ClearResizeSnap();
                 _activeSingleObject.Transform = _resizeStartTransform;
                 _activeSingleObject = null;
                 break;

@@ -266,13 +266,27 @@ public partial class SceneCanvas
     private void UpdateGroupResize(Point screen)
     {
         if (_groupGesture is not { } gesture) return;
-        var world = ApplyGestureSnap(new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0));
+        // Same rule as the single resize: the persistent inspector toggle, or Shift for this drag.
+        var lockAspect = ViewModel?.LockAspectRatio == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        // The group box is world-axis aligned: snap the edge(s) being dragged, not the pointer.
+        var centre = GroupTransform.CentreOf(gesture.StartBox);
+        var dragged = ObjectTransform.HandleLocalPoint(gesture.StartBox, centre, gesture.Handle);
+        var anchor = new Position(2 * centre.X - dragged.X, 2 * centre.Y - dragged.Y, centre.Z);
+        var world = ApplyResizeEdgeSnap(
+            new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0), gesture.Handle, axesSwapped: false,
+            lockAspect, anchor,
+            mouse =>
+            {
+                var s = GroupTransform.ComputeScale(gesture.StartBox, gesture.Handle, mouse, lockAspect, gesture.AllowFlip);
+                return new Position(
+                    anchor.X + (dragged.X - anchor.X) * s.Gx,
+                    anchor.Y + (dragged.Y - anchor.Y) * s.Gy, 0);
+            });
         var solution = GroupTransform.ComputeScale(
             gesture.StartBox,
             gesture.Handle,
             world,
-            // Same rule as the single resize: the persistent inspector toggle, or Shift for this drag.
-            lockAspectRatio: ViewModel?.LockAspectRatio == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift),
+            lockAspectRatio: lockAspect,
             allowFlip: gesture.AllowFlip);
 
         gesture.OverlayBox = GroupTransform.ScaleBox(gesture.StartBox, solution.Anchor, solution.Gx, solution.Gy);
@@ -318,6 +332,7 @@ public partial class SceneCanvas
     {
         var gesture = _groupGesture;
         _groupGesture = null;
+        ClearResizeSnap();
         if (gesture is null || ViewModel is null) return;
 
         var commands = new List<ISceneCommand>();
@@ -339,6 +354,7 @@ public partial class SceneCanvas
     {
         var gesture = _groupGesture;
         _groupGesture = null;
+        ClearResizeSnap();
         if (gesture is null || ViewModel is null) return;
 
         ViewModel.ApplyGesturePreview(() =>
