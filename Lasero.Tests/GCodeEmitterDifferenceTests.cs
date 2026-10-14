@@ -51,7 +51,7 @@ public sealed class GCodeEmitterDifferenceTests
     /// one-line, behaviour-additive change. Flagged to the user rather than applied in Phase 1.
     /// </summary>
     [Fact]
-    public void D1_FramingPreambleOmitsG21WhileTheOtherTwoEmittersSetIt()
+    public void D1_FramingPreambleSetsG21LikeTheOtherTwoEmitters()
     {
         var toolpath = ToolpathBuilder.BuildGCode(CutDocument(), ControllerMaximumS);
         var raster = GrblRasterGenerator.Generate(RasterJob(), ControllerMaximumS);
@@ -60,9 +60,8 @@ public sealed class GCodeEmitterDifferenceTests
         Assert.Equal(["G90", "G21", "M5"], toolpath.Take(3));
         Assert.Equal(["G90", "G21", "M5"], raster.Take(3));
 
-        // The difference, asserted so it cannot disappear unnoticed in either direction.
-        Assert.Equal(["G90", "M5"], framing.Take(2));
-        Assert.DoesNotContain("G21", framing);
+        // D1 was fixed: framing now pins G21 (and G94) too, so inch mode can never leak in.
+        Assert.Equal(["G90", "G21", "G94", "M5"], framing.Take(4));
     }
 
     /// <summary>
