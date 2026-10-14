@@ -24,7 +24,7 @@ Používa sa pri reálnom stroji, často v tmavšej dielni, s potrebou rýchlo s
 
 ## Capabilities and Constraints
 
-Existujúca funkcionalita zahŕňa GRBL sériové pripojenie, jogging, homing, odomknutie, nastavenie nuly, reset, import SVG/rastrov, vektorový canvas, vrstvy, undo/redo, náhľad dráhy, framing, streamovanie G-code, pauzu, zastavenie a konzolu. Projekt používa .NET 8, WPF, MVVM a CommunityToolkit.Mvvm. Ukladanie projektov, textový nástroj, skupiny a pokročilé geometrické operácie sú zatiaľ otvorené alebo nedokončené.
+Existujúca funkcionalita zahŕňa GRBL sériové pripojenie, jogging, homing, odomknutie, nastavenie nuly, reset, import SVG/rastrov, vektorový canvas, vrstvy, undo/redo, náhľad dráhy, framing, streamovanie G-code, pauzu, zastavenie a konzolu. Projekt používa .NET 8, WPF, MVVM a CommunityToolkit.Mvvm. Ukladanie projektov (`.lasero`), textový nástroj, skupiny, Bézierove uzly, booleovské operácie a offset sú hotové. Chýba overenie na reálnom hardvéri a priamy import `.lbrn`/`.lbrn2`.
 
 ## Brand Commitments
 

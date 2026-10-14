@@ -49,7 +49,7 @@ Optimise for quality improvement per credit, not for number of agents, skills or
 
 - Reuse existing project understanding; do not re-scan the repository or regenerate architecture maps.
 - Skills are tools, not a checklist. 1–3 per task.
-- Targeted tests first. `dotnet test` from the repo root is fast (~2 s, 245 tests) — run it after any
+- Targeted tests first. `dotnet test` from the repo root takes ~3 min (~2 190 tests; a few timing tests in `JobCancellationSafetyTests` can flake under load) — run it after any
   code change. Full Release build and multi-resolution QA only for a meaningful batch or an RC.
 - Search narrowly: start at the smallest likely code surface and widen only on evidence.
 - Fix the root cause, then stop. No speculative refactors.

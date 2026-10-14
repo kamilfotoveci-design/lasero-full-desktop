@@ -12,7 +12,9 @@ Profesionální Windows pracovní editor a ovládací panel pro GRBL laserové g
 - ukládání a otevírání projektu `.lasero`;
 - dirty stav, autosave recovery snapshot každých 30 sekund a potvrzení při ukončení;
 - ergonomické rozdělení: nástroje, zařízení/jog, plátno, vlastnosti, vrstvy a úloha;
-- build bez varování a 54 automatických testů.
+- vektorový editor: Bézierovy uzly, booleovské operace, offset (i propojený), výplň mezi cestami, skupiny a text;
+- bitmapy s úpravou, ditheringem a náhledem; rámování, bezpečnostní preflight a import SVG/PNG/JPG/G-code přetažením;
+- zhruba 2 190 automatických testů (`dotnet test` trvá kolem 3 minut).
 
 ## Spuštění
 
@@ -36,5 +38,10 @@ Při přechodu z LightBurnu zůstává původní instalace beze změny. Lasero p
 
 - skutečný offline vzorník s katalogem materiálů, mřížkou testů a aplikací doporučených parametrů;
 - Lasero Chat s backendem, sdílenou historií a explicitním potvrzením změn projektu;
-- automatická GRBL identifikace, bezpečnostní preflight a blokace běhu při kritických chybách;
+- ověření na reálném hardwaru: tok výkonu, pauza delší než 8 s, rámování a rastrový výstup (zatím jen simulátor a testy);
+- výběr počátku úlohy a směru osy Y, překročení a obousměrný rastr, výstup oblouků G2/G3;
 - plný instalační balíček, aktualizace a testování na různých DPI/rozlišeních Windows.
+
+## Poznámka k repozitáři
+
+Experimentální migrace na Avalonia (`Lasero.Avalonia`, `Lasero.Avalonia.Tests`) byla z hlavní větve odstraněna a zůstává ve větvi `archive/avalonia-experiment`. WPF je jediný produkční základ.
