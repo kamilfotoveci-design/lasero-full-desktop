@@ -71,9 +71,9 @@
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True" />
                         </Border>
-                        <!-- The selected tab's 2px graphite indicator. -->
+                        <!-- The selected tab's 2px tint indicator. -->
                         <Border x:Name="TabIndicator" Height="2" VerticalAlignment="Bottom" Margin="16,0,24,0"
-                                Background="Transparent" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                                Background="{DynamicResource Brush.SelectedIndicator}" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform><ScaleTransform x:Name="IndicatorScale" /></Border.RenderTransform>
                         </Border>
                         </Grid>

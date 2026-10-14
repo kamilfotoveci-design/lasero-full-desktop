@@ -117,7 +117,8 @@ public sealed class InlineTextEditorRenderTests
         Assert.True(result.Highlight.HasInk, "select-all must paint a highlight");
         // Italic and bold faces overhang the line box a little (an italic capital leans past its own
         // advance), and the highlight can only cover the advance box, so the slack scales with the text.
-        var slack = 2.0 + 0.006 * Math.Max(result.Object.Width, result.Object.Height);
+        // Italic overhang is a fraction of the em (the slanted foot of a capital), not of the wording's width.
+        var slack = 2.0 + 0.006 * Math.Max(result.Object.Width, result.Object.Height) + (italic ? 0.06 * result.Object.Height : 0);
         Assert.True(result.Highlight.Left <= result.Object.Left + slack, "highlight starts right of the first letter");
         Assert.True(result.Highlight.Right >= result.Object.Right - slack, "highlight ends left of the last letter");
         Assert.True(result.Highlight.Top <= result.Object.Top + slack, "highlight starts below the top of the letters");

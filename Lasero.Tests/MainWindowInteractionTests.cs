@@ -14,7 +14,7 @@ public sealed class MainWindowInteractionTests
         string[] deferredFields =
         [
             "SelectedX", "SelectedY", "SelectedWidth", "SelectedHeight", "SelectedRotation",
-            "SelectedTextValue", "SelectedTextHeight",
+            "SelectedTextHeight", // the text itself is typed on the canvas (inline editor), not in the bar
         ];
 
         // Enter, Esc and click-to-select are one app-wide behaviour now (InteractionBehaviors), so the

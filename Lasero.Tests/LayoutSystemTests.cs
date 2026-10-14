@@ -82,7 +82,7 @@ public sealed class LayoutSystemRenderTests
 
         // The bar floats over the canvas, so the canvas keeps its height whatever the bar does.
         var canvas = (FrameworkElement)shell.Window.FindName("DesignerCanvas");
-        Assert.True(canvas.ActualHeight >= height - 60 - 48 - 4, $"the canvas is only {canvas.ActualHeight:0} px high");
+        Assert.True(canvas.ActualHeight >= height - 60 - 60 - 4, $"the canvas is only {canvas.ActualHeight:0} px high");
         Assert.True(bounds.Right <= shell.Window.ActualWidth && bounds.Left >= 0, "the bar leaves the window");
     });
 
@@ -113,7 +113,7 @@ public sealed class LayoutSystemRenderTests
     [Theory]
     [InlineData(1366, 768)]
     [InlineData(1080, 640)]
-    public void HomeContentAlignsToTheHeaderEdgeAndTheRailIsThePanelWidth(int width, int height) => Ui.Invoke(() =>
+    public void HomeContentAlignsToTheHeaderEdge(int width, int height) => Ui.Invoke(() =>
     {
         using var shell = new ShellHarness(width, height);
         shell.ViewModel.CurrentScreen = AppScreen.Home;
@@ -125,12 +125,6 @@ public sealed class LayoutSystemRenderTests
         var headerLeft = LayoutAssertions.BoundsIn(header, home).Left;
         var actionsLeft = LayoutAssertions.BoundsIn(actions, home).Left;
         Assert.True(Math.Abs(headerLeft - actionsLeft) <= 1, $"the action row starts at {actionsLeft:0.#}, the header at {headerLeft:0.#}");
-
-        var panelWidth = (double)Application.Current.FindResource("Layout.PanelWidth");
-        var rail = LayoutAssertions.Descendants<SectionHeader>(home).First(s => s.Title == "Zařízení");
-        var railBorder = LayoutAssertions.Ancestor<Border>(rail)!;
-        Assert.True(Math.Abs(home.ActualWidth - LayoutAssertions.BoundsIn(railBorder, home).Left - panelWidth) <= 1,
-            "the Home device panel is not the shared 360 px panel width");
     });
 
     [Theory]

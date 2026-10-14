@@ -46,6 +46,7 @@ internal static class ContourSmoother
     private const double SnapMaxResidualPx = 0.6;
     private const double SnapMinSine = 0.342; // sin 20 degrees
     private const double SnapDropPx = 0.9;
+    private const double HeavyStraightTolerancePx = 0.35;
     private const double GuardMinDistancePx = 3.5; // an acute apex may sit 3 px past the blunt contour
     private const double GuardAreaFraction = 0.03;
     private const double GuardAreaBandPx = 0.4;
@@ -235,7 +236,9 @@ internal static class ContourSmoother
     private static List<int> DetectCorners(ContourPoint[] ring, double step, SmootherSettings settings)
     {
         var m = ring.Length;
-        var window = Math.Max(2, (int)Math.Round(settings.CornerWindowPx / step));
+        // The window must stay well inside the loop: on a loop barely longer than a few windows (a small or thin
+        // shape) a full-size window spans a whole side, the turn smears into a plateau and no vertex is a peak.
+        var window = Math.Max(2, Math.Min((int)Math.Round(settings.CornerWindowPx / step), m / 8));
         var corners = new List<int>();
         if (m < 4 * window + 4) return corners;
 
@@ -269,7 +272,65 @@ internal static class ContourSmoother
             if (isPeak) corners.Add(i);
         }
 
-        return corners;
+        return SplitBluntTips(corners, ring, turns, window, settings);
+    }
+
+    private const double BluntTipTurnRad = 100 * Math.PI / 180;
+    private const double BluntSplitMinTurnRad = 45 * Math.PI / 180;
+
+    /// <summary>A corner whose turn is far past a right angle is either a sharp point or the blunt end of a
+    /// stroke narrower than the detection window, where two right-angle corners merged into one rounded
+    /// peak. A shorter window tells them apart: the blunt end shows two corners, a point still shows one.</summary>
+    private static List<int> SplitBluntTips(
+        List<int> corners, ContourPoint[] raw, double[] turns, int window, SmootherSettings settings)
+    {
+        var result = new List<int>(corners.Count + 2);
+        foreach (var corner in corners)
+        {
+            var replacement = turns[corner] >= BluntTipTurnRad ? TwoCornersNear(raw, corner, window, settings) : null;
+            if (replacement is null) result.Add(corner);
+            else result.AddRange(replacement);
+        }
+
+        result.Sort();
+        for (var i = result.Count - 1; i > 0; i--)
+            if (result[i] == result[i - 1]) result.RemoveAt(i);
+        return result;
+    }
+
+    private static int[]? TwoCornersNear(ContourPoint[] raw, int corner, int window, SmootherSettings settings)
+    {
+        var m = raw.Length;
+        for (var shortWindow = window / 2; shortWindow >= 2; shortWindow /= 2)
+        {
+            var half = Math.Max(1, shortWindow / 2);
+            var peaks = new List<(int Index, double Turn)>();
+            for (var offset = -window; offset <= window; offset++)
+            {
+                var i = ((corner + offset) % m + m) % m;
+                var turn = TurnAt(raw, i, shortWindow);
+                if (turn < Math.Max(settings.CornerAngleRad, BluntSplitMinTurnRad)) continue;
+
+                var isPeak = true;
+                for (var k = 1; k <= half && isPeak; k++)
+                {
+                    if (TurnAt(raw, (i - k + m) % m, shortWindow) >= turn || TurnAt(raw, (i + k) % m, shortWindow) > turn) isPeak = false;
+                }
+                if (isPeak) peaks.Add((offset, turn));
+            }
+
+            // The two strongest peaks that are a window's fraction apart.
+            var strongest = peaks.OrderByDescending(p => p.Turn).ToList();
+            foreach (var first in strongest)
+            {
+                foreach (var second in strongest)
+                {
+                    if (Math.Abs(second.Index - first.Index) <= shortWindow) continue;
+                    return [((corner + first.Index) % m + m) % m, ((corner + second.Index) % m + m) % m];
+                }
+            }
+        }
+        return null;
     }
 
     private static double TurnAt(ContourPoint[] ring, int index, int window)
@@ -388,7 +449,9 @@ internal static class ContourSmoother
         if (heavyPx > sigmaPx * 1.2)
         {
             var heavy = SmoothWithin(resampled, heavyPx / spacing, closed: false, settings.MaxShiftPx);
-            if (IsWithinChord(heavy, tolerance)) return Ends(heavy);
+            // What is left after the long kernel is the average of the notches, a fraction of a pixel; that is
+            // pixel noise on a straight edge, not a curve, so it gets a pixel-scale tolerance of its own.
+            if (IsWithinChord(heavy, Math.Max(tolerance, HeavyStraightTolerancePx))) return Ends(heavy);
         }
 
         return Thin(smooth, spacing, closed: false);
