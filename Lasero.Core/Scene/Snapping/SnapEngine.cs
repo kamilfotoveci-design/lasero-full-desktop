@@ -29,6 +29,15 @@ public readonly record struct SnapResult(Position Point, SnapCandidate? Target)
     public bool Snapped => Target is not null;
 }
 
+public enum SnapAxis { X, Y }
+
+/// <summary>Outcome of <see cref="SnapEngine.ResolveAxis"/>: the (possibly snapped) coordinate and
+/// what it snapped to, null when nothing was within tolerance.</summary>
+public readonly record struct AxisSnapResult(double Value, SnapCandidate? Target)
+{
+    public bool Snapped => Target is not null;
+}
+
 /// <summary>
 /// Pure, WPF-free "closest candidate within tolerance" resolver — deliberately knows nothing about
 /// pointer events, screen pixels, WPF, or SceneCanvas. A caller converts its own screen-space
@@ -86,6 +95,51 @@ public static class SnapEngine
 
         return new SnapResult(point, null);
     }
+
+    /// <summary>
+    /// One-axis variant of <see cref="Resolve"/> for gestures that move an edge rather than a point
+    /// (resizing a box drags one edge along one axis). A geometry candidate matches when its coordinate
+    /// on <paramref name="axis"/> is within tolerance, whatever its other coordinate — aligning an edge
+    /// with another object's node line — and still wins over the grid. <paramref name="crossValue"/> is
+    /// the edge's coordinate on the other axis; it only places the returned Grid candidate for display.
+    /// </summary>
+    public static AxisSnapResult ResolveAxis(
+        double value,
+        SnapAxis axis,
+        IReadOnlyList<SnapCandidate> candidates,
+        double toleranceWorld,
+        double? gridStepMm = null,
+        double crossValue = 0)
+    {
+        SnapCandidate? best = null;
+        var bestDistance = double.MaxValue;
+        foreach (var candidate in candidates)
+        {
+            var distance = Math.Abs(CoordinateOf(candidate.Point, axis) - value);
+            if (distance > toleranceWorld) continue;
+            if (best is null || distance < bestDistance - 1e-6
+                || distance < bestDistance + 1e-6 && PriorityOf(candidate.Kind) < PriorityOf(best.Value.Kind))
+            {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        if (best is { } hit) return new AxisSnapResult(CoordinateOf(hit.Point, axis), hit);
+
+        if (gridStepMm is { } step && step > 1e-9)
+        {
+            var snapped = Math.Round(value / step) * step;
+            if (Math.Abs(snapped - value) <= toleranceWorld)
+            {
+                var point = axis == SnapAxis.X ? new Position(snapped, crossValue, 0) : new Position(crossValue, snapped, 0);
+                return new AxisSnapResult(snapped, new SnapCandidate(point, SnapKind.Grid));
+            }
+        }
+
+        return new AxisSnapResult(value, null);
+    }
+
+    private static double CoordinateOf(Position point, SnapAxis axis) => axis == SnapAxis.X ? point.X : point.Y;
 
     private static SnapCandidate? ResolveGeometry(
         Position point, IReadOnlyList<SnapCandidate> candidates, double toleranceWorld)

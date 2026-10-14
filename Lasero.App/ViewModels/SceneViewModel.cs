@@ -1014,6 +1014,11 @@ public partial class SceneViewModel : ObservableObject
                 subpaths.Add(ellipse);
                 hasTrueCurves = true;
             }
+            else if (shape.IsClosed && RectangleCurveFit.TryFit(points, uniqueCount, out var rectangle))
+            {
+                subpaths.Add(rectangle);
+                hasTrueCurves |= rectangle.Nodes.Any(node => node.HasAnyHandle);
+            }
             else
             {
                 subpaths.Add(new VectorSubpath
@@ -1030,6 +1035,8 @@ public partial class SceneViewModel : ObservableObject
         SceneObject replacement;
         if (!hasTrueCurves && keptShapes.Count == source.LocalShapes.Count)
         {
+            // Corner-only nodes flatten to the very same ring (a plain rectangle's four corners
+            // included), so the existing geometry is kept untouched.
             replacement = new SceneObject
             {
                 Id = source.Id,
@@ -1975,9 +1982,30 @@ public partial class SceneViewModel : ObservableObject
         Execute(new SetObjectGroupCommand(Objects.Where(item => item.GroupId is { } id && groupIds.Contains(id)), null));
     }
 
-    private void PreviewBooleanChange(string title, IReadOnlyList<SceneObject> sources,
-        IReadOnlyList<SceneObject> results, bool approximatesCurves = false)
+    /// <summary>How a boolean result picks its layer when the operands sit on different ones.</summary>
+    private enum BooleanLayerRule
     {
+        /// <summary>Single shared layer: the topmost operand's (Unite, Fill between paths).</summary>
+        Topmost,
+        /// <summary>Every region takes the layer of the operand it comes from.</summary>
+        PerRegion,
+    }
+
+    private void PreviewBooleanChange(string title, IReadOnlyList<SceneObject> sources,
+        IReadOnlyList<SceneObject> results, bool approximatesCurves = false,
+        BooleanLayerRule layerRule = BooleanLayerRule.Topmost)
+    {
+        // Sources that all belong to one group produce results that stay in that group.
+        if (sources.Count > 0 && sources[0].GroupId is { } sharedGroup
+            && sources.All(item => item.GroupId == sharedGroup))
+        {
+            foreach (var result in results)
+            {
+                result.GroupId = sharedGroup;
+                result.NestedGroupIds = sources[0].NestedGroupIds.ToArray();
+            }
+        }
+
         var resultLayers = results.SelectMany(item => item.LocalShapes)
             .Select(shape => Layers.FirstOrDefault(layer => layer.Id == shape.LayerId)?.Name ?? "Původní vrstva")
             .Distinct().ToList();
@@ -1993,17 +2021,13 @@ public partial class SceneViewModel : ObservableObject
             item.LocalShapes.Any(shape => shape.IsClosed && shape.Points.Count > 8))
             ? "Část vstupů už nemá Bézierovy uzly. Pro tyto obrysy se použijí jejich uložené úsečky."
             : null;
-        var sourceLayerCount = sources.SelectMany(item => item.LocalShapes)
-            .Select(shape => shape.LayerId != Guid.Empty ? shape.LayerId.ToString() : shape.LayerColor.ToString())
-            .Distinct().Count();
-        if (sourceLayerCount > 1)
-        {
-            const string layerNotice = "Vstupy leží na různých vrstvách. Výsledné části dostanou vrstvu vrchního původního tvaru, "
-                + "u Rozdělit a Fracture si část zachová vrstvu svého zdroje.";
-            geometryNotice = geometryNotice is null ? layerNotice : geometryNotice + " " + layerNotice;
-        }
+        var sourceShapes = sources.SelectMany(item => item.LocalShapes).Where(shape => shape.IsClosed).ToList();
+        var mixedLayers = sourceShapes.Count > 0 && sourceShapes.Any(shape => !SameLayer(shape, sourceShapes[0]));
+        var layerNotice = !mixedLayers ? null : layerRule == BooleanLayerRule.PerRegion
+            ? $"Vstupy jsou na různých vrstvách. Každá část převezme vrstvu tvaru, ze kterého vznikla (průnik vrstvu horního tvaru): {resultLayer}."
+            : $"Vstupy jsou na různých vrstvách. Výsledek převezme vrstvu horního tvaru: {resultLayer}.";
         var preview = new VectorOperationPreview(title, orderedSources, results, resultLayer,
-            approximatesCurves, Commit, geometryNotice);
+            approximatesCurves, Commit, geometryNotice, layerNotice);
         if (BooleanPreviewRequested is { } showPreview) showPreview(preview);
         else Commit();
     }
@@ -2018,12 +2042,78 @@ public partial class SceneViewModel : ObservableObject
         subpath.IsClosed && subpath.Nodes.Count >= 2 &&
         Math.Abs(SignedArea(subpath.Flatten())) > MinimumUnitedAreaSquareMm);
 
+    /// <summary>One boolean operand (an ungrouped object or a whole group), back-to-front in z-order,
+    /// with the layer metadata its result regions inherit.</summary>
+    private sealed record BooleanOperandInfo(VectorPath Path, ImportedShape Shape);
+
+    private static List<BooleanOperandInfo> BuildOperandInfos(IReadOnlyList<IReadOnlyList<SceneObject>> operands)
+    {
+        var infos = new List<BooleanOperandInfo>(operands.Count);
+        foreach (var operand in operands)
+        {
+            var shape = operand[^1].GetWorldShapes().FirstOrDefault(item => item.IsClosed)
+                ?? operand.SelectMany(item => item.GetWorldShapes()).FirstOrDefault();
+            if (shape is null) continue;
+            infos.Add(new BooleanOperandInfo(CurveBooleanService.FromObjects(operand), shape));
+        }
+        return infos;
+    }
+
+    private static bool SameLayer(ImportedShape first, ImportedShape second) =>
+        first.LayerId == second.LayerId && first.LayerColor == second.LayerColor;
+
+    /// <summary>Which operand a result region belongs to: the one it overlaps most (A\B lies wholly in
+    /// A, B\A in B), and on a tie, so for A∩B, the topmost operand. Null when every operand is on the
+    /// same layer, so the caller keeps the single shared target and pays for no extra boolean work.</summary>
+    private static Func<VectorPath, ImportedShape>? RegionTargetResolver(IReadOnlyList<BooleanOperandInfo> infos)
+    {
+        if (infos.Count < 2 || infos.All(info => SameLayer(info.Shape, infos[0].Shape))) return null;
+        return region =>
+        {
+            var best = infos[^1];
+            var bestArea = -1.0;
+            // Topmost first, so an equal overlap keeps the topmost operand.
+            for (var index = infos.Count - 1; index >= 0; index--)
+            {
+                var area = OverlapArea(region, infos[index].Path);
+                if (area > bestArea * (1 + 1e-6) + 1e-9)
+                {
+                    best = infos[index];
+                    bestArea = area;
+                }
+            }
+            return best.Shape;
+        };
+    }
+
+    private static double OverlapArea(VectorPath region, VectorPath operand)
+    {
+        try
+        {
+            var common = CurveBooleanService.Apply(region, operand, CurveBooleanService.Operation.Intersection);
+            double total = 0;
+            foreach (var piece in CurveBooleanService.SplitRegions(common))
+            {
+                // SplitRegions lists the outer contour first, then its holes.
+                var areas = piece.Subpaths.Select(subpath => Math.Abs(SignedArea(subpath.Flatten()))).ToList();
+                total += areas[0] - areas.Skip(1).Sum();
+            }
+            return total;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            return 0;
+        }
+    }
+
     private static IReadOnlyList<SceneObject> CreateCurveResults(VectorPath path,
-        ImportedShape target, string name, bool visible, bool includeInOutput)
+        ImportedShape fallbackTarget, string name, bool visible, bool includeInOutput,
+        Func<VectorPath, ImportedShape>? targetFor = null)
     {
         var results = new List<SceneObject>();
         foreach (var component in CurveBooleanService.SplitRegions(path))
         {
+            var target = targetFor?.Invoke(component) ?? fallbackTarget;
             var item = VectorPathSceneFactory.Create(component, target.LayerColor, name);
             item.LocalShapes = item.LocalShapes.Select(shape => shape with
             {
@@ -2113,7 +2203,7 @@ public partial class SceneViewModel : ObservableObject
                 RejectVectorUnion("Výsledná geometrie by byla prázdná nebo poškozená.");
                 return;
             }
-            PreviewBooleanChange("Sjednotit", sources, results);
+            PreviewBooleanChange("Sjednotit", sources, results, layerRule: BooleanLayerRule.Topmost);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
@@ -2156,15 +2246,18 @@ public partial class SceneViewModel : ObservableObject
                 return;
             }
 
+            // Each region takes the layer of the operand it comes from (A\B -> A, B\A -> B,
+            // A∩B -> topmost) instead of the whole result landing on the topmost layer.
             var results = CreateCurveResults(combined, targetShape, resultName,
-                sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput));
+                sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput),
+                RegionTargetResolver(BuildOperandInfos(operands)));
             if (results.Count == 0 || results.Any(item => !IsSafeBooleanResult(sourceShapes, item.GetWorldShapes())))
             {
                 RejectVectorUnion("Výsledná geometrie by byla prázdná nebo poškozená.");
                 return;
             }
 
-            PreviewBooleanChange(resultName, sources, results);
+            PreviewBooleanChange(resultName, sources, results, layerRule: BooleanLayerRule.PerRegion);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
@@ -2245,7 +2338,7 @@ public partial class SceneViewModel : ObservableObject
                 RejectVectorUnion("Vybrané tvary nevytvářejí žádné oblasti pro Fracture.");
                 return;
             }
-            PreviewBooleanChange("Fracture", sources, pieces);
+            PreviewBooleanChange("Fracture", sources, pieces, layerRule: BooleanLayerRule.PerRegion);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
@@ -2289,7 +2382,7 @@ public partial class SceneViewModel : ObservableObject
                 RejectVectorUnion("Vybrané tvary nevytvářejí žádné rozdělené plochy.");
                 return;
             }
-            PreviewBooleanChange("Rozdělit překryv", sources, pieces);
+            PreviewBooleanChange("Rozdělit překryv", sources, pieces, layerRule: BooleanLayerRule.PerRegion);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {

@@ -51,6 +51,12 @@ public sealed class BooleanPreviewWindow : Window
                 Margin = new Thickness(0, 8, 0, 0), Foreground = ThemeBrush("Brush.Danger", Brushes.DarkRed),
                 TextWrapping = TextWrapping.Wrap,
             });
+        if (preview.LayerNotice is { } layerNotice)
+            intro.Children.Add(new TextBlock
+            {
+                Text = layerNotice, Margin = new Thickness(0, 8, 0, 0),
+                Foreground = Brushes.DimGray, TextWrapping = TextWrapping.Wrap,
+            });
         if (preview.GeometryNotice is { } notice)
             intro.Children.Add(new TextBlock
             {

@@ -10,4 +10,5 @@ public sealed record VectorOperationPreview(
     string ResultLayer,
     bool ApproximatesCurves,
     Action Commit,
-    string? GeometryNotice = null);
+    string? GeometryNotice = null,
+    string? LayerNotice = null);
