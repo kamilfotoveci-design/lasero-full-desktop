@@ -111,7 +111,25 @@ public partial class LaseroDialogWindow : Window
     public static LaseroDialogChoice Show(Window? owner, LaseroDialogOptions options)
     {
         var dialog = new LaseroDialogWindow(options);
-        if (owner is not null) dialog.Owner = owner;
+        if (owner is not null)
+        {
+            dialog.Owner = owner;
+            // A prompt opened while the app is still starting (the recovery prompt) must not hide
+            // behind the window that was in front when it was launched: the operator would not know
+            // the app is running. Restore and raise the owner first.
+            if (owner.WindowState == WindowState.Minimized) owner.WindowState = WindowState.Normal;
+            owner.Activate();
+        }
+
+        // Topmost for the instant of the first activation is the reliable way to take the foreground
+        // without staying above other applications afterwards.
+        dialog.Loaded += (_, _) =>
+        {
+            dialog.Topmost = true;
+            dialog.Activate();
+            dialog.Topmost = false;
+            dialog.Focus();
+        };
         dialog.ShowDialog();
         return dialog.Choice;
     }
