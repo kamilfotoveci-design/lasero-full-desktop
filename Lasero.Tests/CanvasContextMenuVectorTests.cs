@@ -253,7 +253,8 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         var rows = MenuFor(scene);
 
         Assert.True(Find(rows, ContextAction.Ungroup)!.IsEnabled);
-        Assert.False(Find(rows, ContextAction.Group)!.IsEnabled);
+        // Groups nest (regrouping keeps the earlier membership for Ungroup), so Group stays on.
+        Assert.True(Find(rows, ContextAction.Group)!.IsEnabled);
     }
 
     [Fact]
@@ -283,8 +284,8 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         Assert.NotNull(scene.ConvertSelectionToBitmapDisabledReason);
         Assert.False(scene.ConvertSelectionToBitmapCommand.CanExecute(null));
 
-        a.IsLocked = true;
         Select(scene, a, b);
+        a.IsLocked = true; // a locked object cannot be added to a selection, so lock it once selected
         Assert.Contains("Zamčené", scene.ConvertSelectionToBitmapDisabledReason);
         Assert.False(scene.ConvertSelectionToBitmapCommand.CanExecute(null));
         Assert.Null(scene.TryConvertSelectionToBitmap());

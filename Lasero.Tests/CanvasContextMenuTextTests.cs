@@ -433,9 +433,12 @@ public class CanvasContextMenuTextTests
         var text = AddText(scene, "I", 10);
         var inkCentre = text.Transform.Apply(text.LocalBoundsCenter, text.LocalPivot);
 
-        var hit = Assert.Single(SceneHitTester.HitTest([text], inkCentre, 8, (_, _) => true));
+        var hits = SceneHitTester.HitTest([text], inkCentre, 8, (_, _) => true);
 
-        Assert.Equal(SceneHitKind.Fill, hit.Kind);
+        // A narrow stem puts the centre within stroke tolerance of an edge too, so Stroke may come
+        // first; the interior must still be reported as a Fill hit on this text.
+        Assert.Contains(hits, hit => hit.Kind == SceneHitKind.Fill && ReferenceEquals(hit.Object, text));
+        Assert.All(hits, hit => Assert.Same(text, hit.Object));
     }
 
     [Fact]

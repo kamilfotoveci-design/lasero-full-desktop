@@ -65,11 +65,10 @@ public sealed class SceneHitTesterEquivalenceTests
                 if (!near && shape.IsClosed &&
                     (Math.Abs(shape.Points[0].X - shape.Points[^1].X) >= 1e-9 || Math.Abs(shape.Points[0].Y - shape.Points[^1].Y) >= 1e-9))
                     near = Distance2(pointer, shape.Points[^1], shape.Points[0]) <= toleranceSquared;
+                // A shape whose outline and interior are both under the pointer is offered twice, as a
+                // Stroke and as a Fill; the tester orders Stroke first.
                 if (near)
-                {
                     matches.Add(new SceneHitCandidate(obj, shapeIndex, SceneHitKind.Stroke, objectIndex));
-                    continue;
-                }
 
                 if (shape.IsClosed && isFilled(obj, shape) && Inside(shape.Points, pointer))
                     matches.Add(new SceneHitCandidate(obj, shapeIndex, SceneHitKind.Fill, objectIndex));

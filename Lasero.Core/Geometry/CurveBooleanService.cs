@@ -1,4 +1,5 @@
 using Lasero.Core.Grbl;
+using Lasero.Core.Import;
 using Lasero.Core.Scene;
 using SkiaSharp;
 
@@ -20,9 +21,10 @@ public static class CurveBooleanService
             var vector = source.GetWorldVectorPath();
             if (vector is not null && vector.Subpaths.Count != shapes.Count)
                 throw new InvalidOperationException("Obrysy a uzly cesty si neodpovídají.");
+            var setIds = RepairedGeometrySetIds(shapes);
             foreach (var set in shapes.Select((shape, index) => (shape, index))
                          .Where(entry => entry.shape.IsClosed)
-                         .GroupBy(entry => (entry.shape.GeometrySetId, entry.shape.LayerId, entry.shape.LayerColor)))
+                         .GroupBy(entry => (GeometrySetId: setIds[entry.index], entry.shape.LayerId, entry.shape.LayerColor)))
             {
                 using var compound = new SKPath { FillType = SKPathFillType.Winding };
                 foreach (var (shape, index) in set)
@@ -47,6 +49,59 @@ public static class CurveBooleanService
         using var normalized = result.Op(empty, SKPathOp.Union)
             ?? throw new InvalidOperationException("Vyplněná cesta se nepodařila vyhodnotit.");
         return Read(normalized);
+    }
+
+    /// <summary>Repair fallback for legacy geometry (old text) whose hole and parent carry separate
+    /// GeometrySetIds: an opposite-wound contour lying inside a larger contour of another set is linked
+    /// to that set, so the boolean keeps the hole instead of unioning it away. Same-wound nesting is two
+    /// solid regions and is left alone (docs/fill-winding-contract.md). Never touches shapes already in
+    /// one set; returns the effective set id per shape, in shape order.</summary>
+    private static Guid[] RepairedGeometrySetIds(IReadOnlyList<ImportedShape> shapes)
+    {
+        const double minimumArea = 1e-8;
+        var ids = shapes.Select(shape => shape.GeometrySetId).ToArray();
+        if (shapes.Count < 2) return ids;
+        var areas = shapes.Select(shape => SignedArea(shape.Points)).ToArray();
+        var bounds = shapes.Select(shape => shape.Points.Count == 0 ? (MinX: 0.0, MinY: 0.0, MaxX: 0.0, MaxY: 0.0) : (
+            MinX: shape.Points.Min(p => p.X), MinY: shape.Points.Min(p => p.Y),
+            MaxX: shape.Points.Max(p => p.X), MaxY: shape.Points.Max(p => p.Y))).ToArray();
+        const double margin = 0.004;
+        for (var child = 0; child < shapes.Count; child++)
+        {
+            if (!shapes[child].IsClosed || shapes[child].Points.Count < 3 ||
+                !double.IsFinite(areas[child]) || Math.Abs(areas[child]) <= minimumArea) continue;
+            var parent = -1;
+            for (var candidate = 0; candidate < shapes.Count; candidate++)
+            {
+                if (ids[candidate] == ids[child] || !shapes[candidate].IsClosed || shapes[candidate].Points.Count < 3 ||
+                    !double.IsFinite(areas[candidate]) ||
+                    Math.Sign(areas[candidate]) == Math.Sign(areas[child]) ||
+                    Math.Abs(areas[candidate]) <= Math.Abs(areas[child])) continue;
+                var outer = bounds[candidate]; var inner = bounds[child];
+                if (inner.MinX < outer.MinX - margin || inner.MinY < outer.MinY - margin ||
+                    inner.MaxX > outer.MaxX + margin || inner.MaxY > outer.MaxY + margin) continue;
+                if (!PointInPolygon(shapes[child].Points[0], shapes[candidate].Points)) continue;
+                if (parent < 0 || Math.Abs(areas[candidate]) < Math.Abs(areas[parent])) parent = candidate;
+            }
+            if (parent < 0) continue;
+            var previous = ids[child];
+            var target = ids[parent];
+            for (var index = 0; index < ids.Length; index++)
+                if (ids[index] == previous) ids[index] = target;
+        }
+        return ids;
+    }
+
+    private static bool PointInPolygon(Position point, IReadOnlyList<Position> polygon)
+    {
+        var inside = false;
+        for (int current = 0, previous = polygon.Count - 1; current < polygon.Count; previous = current++)
+        {
+            var c = polygon[current]; var p = polygon[previous];
+            if ((c.Y > point.Y) == (p.Y > point.Y)) continue;
+            if (point.X < (p.X - c.X) * (point.Y - c.Y) / (p.Y - c.Y) + c.X) inside = !inside;
+        }
+        return inside;
     }
 
     public static VectorPath Apply(VectorPath first, VectorPath second, Operation operation)
@@ -166,6 +221,37 @@ public static class CurveBooleanService
     private static Position PositionOf(SKPoint point) => new(point.X, point.Y, 0);
 
     private static VectorPath Read(SKPath path)
+    {
+        var read = ReadContours(path);
+        return path.FillType is SKPathFillType.EvenOdd or SKPathFillType.InverseEvenOdd
+            ? WindNestedContoursAlternately(read)
+            : read;
+    }
+
+    /// <summary>Skia can return a boolean result as an even-odd path whose holes are wound the same way
+    /// as their parent. The rest of Lasero (SplitRegions, toolpath fill, the fill contract) defines a hole
+    /// as an opposite-wound nested contour, so rewind contours by nesting depth: even depth keeps the
+    /// first outer contour's direction, odd depth gets the opposite one. Geometry is unchanged.</summary>
+    private static VectorPath WindNestedContoursAlternately(VectorPath path)
+    {
+        if (path.Subpaths.Count < 2 || path.Subpaths.Any(subpath => !subpath.IsClosed)) return path;
+        var rings = path.Subpaths.Select(subpath => subpath.Flatten(0.01).ToList()).ToList();
+        var signs = rings.Select(ring => Math.Sign(SignedArea(ring))).ToArray();
+        if (signs.Any(sign => sign == 0)) return path;
+        var depth = new int[rings.Count];
+        for (var child = 0; child < rings.Count; child++)
+            for (var candidate = 0; candidate < rings.Count; candidate++)
+                if (candidate != child && Math.Abs(SignedArea(rings[candidate])) > Math.Abs(SignedArea(rings[child])) &&
+                    ContainsContour(rings[candidate], rings[child]))
+                    depth[child]++;
+        var outerSign = Enumerable.Range(0, rings.Count).Where(i => depth[i] == 0).Select(i => signs[i]).FirstOrDefault();
+        if (outerSign == 0) return path;
+        var subpaths = path.Subpaths.Select((subpath, i) =>
+            signs[i] == (depth[i] % 2 == 0 ? outerSign : -outerSign) ? subpath : VectorPathEditor.ReverseSubpath(subpath)).ToList();
+        return new VectorPath { Subpaths = subpaths };
+    }
+
+    private static VectorPath ReadContours(SKPath path)
     {
         using var iterator = path.CreateRawIterator();
         var points = new SKPoint[4];
