@@ -141,6 +141,7 @@ public partial class GCodeViewModel
             MachineMaxTravelXmm = profile?.MaxTravelXmm,
             MachineMaxTravelYmm = profile?.MaxTravelYmm,
             Layers = isRaw ? null : Layers.ToList(),
+            HiddenOutputLayerNames = isRaw ? null : HiddenOutputLayerNames(),
             RasterOptions = isRaw ? null : BuildEffectiveRasterOptionsForPreflight(),
             MaxSpindleSpeed = maximumS,
             LaserModeEnabled = true,
@@ -150,7 +151,8 @@ public partial class GCodeViewModel
 
     private static IReadOnlyList<string> PreviewNotes(JobPreflightResult preflight) =>
         preflight.Issues
-            .Where(issue => issue.Code is "job.outside-work-area" or "job.exceeds-reported-machine-travel" or "job.invalid-bounds")
+            .Where(issue => issue.Code is "job.outside-work-area" or "job.exceeds-reported-machine-travel" or "job.invalid-bounds"
+                or JobPreflight.HiddenOutputLayerCode)
             .Select(issue => issue.Message)
             .ToList();
 }

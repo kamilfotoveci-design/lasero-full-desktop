@@ -110,8 +110,10 @@ public sealed class LayerAndHistoryReliabilityTests : IDisposable
         Assert.Equal(2, scene.Layers.Count);
     }
 
+    // Colour + mode identify an operation. A same-colour import in another mode used to be absorbed by
+    // the re-moded layer, which scan-filled an outline; it now gets its own layer.
     [Fact]
-    public void ARemodedLayerStillAbsorbsAnImportOfTheSameColour()
+    public void ASameColourImportInAnotherModeGetsItsOwnLayer()
     {
         var scene = new SceneDocument();
         var red = LayerSettings.CreateDefault(RgbColor.Red, LayerMode.Cut, "Rez");
@@ -120,8 +122,8 @@ public sealed class LayerAndHistoryReliabilityTests : IDisposable
 
         var added = scene.EnsureLayers([LayerSettings.CreateDefault(RgbColor.Red, LayerMode.Cut, "Rez")]);
 
-        Assert.Empty(added);
-        Assert.Single(scene.Layers);
+        Assert.Equal(LayerMode.Cut, Assert.Single(added).Mode);
+        Assert.Equal(2, scene.Layers.Count);
     }
 
     // ---- Deleting objects with linked offsets ------------------------------------------------

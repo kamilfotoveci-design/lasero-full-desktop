@@ -6,41 +6,49 @@ namespace Lasero.App.Converters;
 
 /// <summary>
 /// Names a palette swatch so an icon-free colour square still has something to say in a tooltip and
-/// to a screen reader. Falls back to the hex value for anything outside the standard palette rather
-/// than inventing a name for it.
+/// to a screen reader. The swatch is a colour, not a layer (a layer of that colour may not exist yet),
+/// so the text is the colour's name alone. Falls back to the hex value for anything outside the
+/// standard palette rather than inventing a name for it.
 /// </summary>
 public sealed class RgbColorToNameConverter : IValueConverter
 {
+    // Exactly the SceneViewModel.LayerPalette values, in the same order.
     private static readonly (byte R, byte G, byte B, string Name)[] Known =
     [
-        (0x00, 0x00, 0x00, "Černá"),
-        (0xE0, 0x1B, 0x24, "Červená"),
-        (0x39, 0x4E, 0x3B, "Tmavě zelená"),
-        (0xF5, 0xC2, 0x11, "Žlutá"),
-        (0x2E, 0xA0, 0x43, "Zelená"),
-        (0x12, 0xB5, 0xCB, "Tyrkysová"),
-        (0x25, 0x63, 0xEB, "Modrá"),
-        (0x7C, 0x3A, 0xED, "Fialová"),
-        (0xDB, 0x27, 0x77, "Růžová"),
-        (0x8B, 0x4A, 0x1F, "Hnědá"),
-        (0x6B, 0x70, 0x6D, "Šedá"),
-        (0xB6, 0xBB, 0xB8, "Světle šedá"),
+        (18, 18, 18, "Černá"),
+        (214, 42, 42, "Červená"),
+        (57, 78, 59, "Tmavě zelená"),
+        (232, 180, 0, "Žlutá"),
+        (42, 157, 82, "Zelená"),
+        (0, 151, 167, "Tyrkysová"),
+        (31, 95, 204, "Modrá"),
+        (92, 76, 196, "Fialová"),
+        (179, 62, 153, "Purpurová"),
+        (117, 72, 42, "Hnědá"),
+        (98, 105, 113, "Šedá"),
+        (173, 181, 189, "Světle šedá"),
     ];
 
-    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+    /// <summary>The Czech name of a palette colour, or null for a colour outside the palette.
+    /// Palette entries drift by a shade or two between the editor and imported artwork, so the match
+    /// is by proximity (closest entry within a small tolerance) rather than an exact triple.</summary>
+    public static string? KnownName(RgbColor color)
     {
-        if (value is not RgbColor color) return "Barva vrstvy";
-
+        string? best = null;
+        var bestDistance = int.MaxValue;
         foreach (var (r, g, b, name) in Known)
         {
-            // Palette entries drift by a shade or two between the editor and imported artwork, so
-            // match on proximity rather than requiring an exact triple.
-            if (Math.Abs(color.R - r) <= 12 && Math.Abs(color.G - g) <= 12 && Math.Abs(color.B - b) <= 12)
-                return $"Vrstva: {name}";
+            if (Math.Abs(color.R - r) > 12 || Math.Abs(color.G - g) > 12 || Math.Abs(color.B - b) > 12) continue;
+            var distance = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
+            if (distance >= bestDistance) continue;
+            best = name;
+            bestDistance = distance;
         }
-
-        return $"Vrstva: {color.ToHex()}";
+        return best;
     }
+
+    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture) =>
+        value is RgbColor color ? KnownName(color) ?? color.ToHex() : "Barva";
 
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();

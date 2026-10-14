@@ -650,8 +650,8 @@ public class CanvasContextMenuTests
         var a = Rectangle(scene, 0);
         var same = scene.Layers.First(layer => a.LocalShapes.All(shape => shape.LayerId == layer.Id));
 
-        Assert.False(new AssignObjectsToLayerCommand([a], same).ChangesAnything);
+        Assert.False(new AssignObjectsToLayerCommand(scene.Scene, [a], same).ChangesAnything);
         var other = LayerSettings.CreateDefault(new RgbColor(1, 2, 3), LayerMode.Cut, "Jiná");
-        Assert.True(new AssignObjectsToLayerCommand([a], other).ChangesAnything);
+        Assert.True(new AssignObjectsToLayerCommand(scene.Scene, [a], other).ChangesAnything);
     }
 }

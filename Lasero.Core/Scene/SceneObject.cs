@@ -181,7 +181,9 @@ public sealed partial class SceneObject : ObservableObject
             if (shape.LayerId != Guid.Empty)
                 candidatesById.TryGetValue(shape.LayerId, out target);
             else
-                target = candidatesByColor.FirstOrDefault(item => item.Color.IsApproximately(shape.LayerColor)).Layer;
+                target = candidatesByColor.FirstOrDefault(item =>
+                             item.Layer.Mode == shape.PreferredMode && item.Color.IsApproximately(shape.LayerColor)).Layer
+                         ?? candidatesByColor.FirstOrDefault(item => item.Color.IsApproximately(shape.LayerColor)).Layer;
 
             if (target is null || (shape.LayerId == target.Id && shape.LayerColor.Equals(target.Color)))
                 return shape;

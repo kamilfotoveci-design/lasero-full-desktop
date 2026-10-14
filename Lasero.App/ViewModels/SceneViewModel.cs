@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lasero.App.Converters;
 using Lasero.Core.GCode;
 using Lasero.Core.Geometry;
 using Lasero.Core.Grbl;
@@ -197,12 +198,14 @@ public partial class SceneViewModel : ObservableObject
         {
             if (SelectedLayer is null) return "Nejprve vyber vrstvu.";
             if (Layers.Count <= 1) return "Poslední vrstvu nelze odstranit.";
-            if (Objects.Any(item => !DeleteLayerCommand.CanKeepOtherContours(item, SelectedLayer)))
+            if (Objects.Any(item => !DeleteLayerCommand.CanKeepOtherContours(item, SelectedLayer, Layers)))
                 return "Tato vrstva sdílí editovatelný text nebo cestu, kterou nelze bezpečně rozdělit po obrysech.";
             return null;
         }
     }
     public bool CanDeleteSelectedLayer => DeleteSelectedLayerDisabledReason is null;
+    /// <summary>The bitmap operation is one fixed layer (every bitmap uses it), so it has no copy.</summary>
+    public bool CanDuplicateSelectedLayer => SelectedLayer is { IsRaster: false } layer && Layers.Contains(layer);
     public bool CanMoveSelectedLayerUp => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) > 0;
     public bool CanMoveSelectedLayerDown => SelectedLayer is not null && Layers.IndexOf(SelectedLayer) is var index && index >= 0 && index < Layers.Count - 1;
 
@@ -282,12 +285,7 @@ public partial class SceneViewModel : ObservableObject
         foreach (var item in SelectedObjects.Where(item => _observedSelection.Add(item)))
             item.PropertyChanged += OnSelectedObjectPropertyChanged;
         Selected = SelectedObjects.Count == 1 ? SelectedObjects[0] : null;
-        var selectedColors = SelectedObjects
-            .SelectMany(item => item.LocalShapes)
-            .Select(shape => shape.LayerColor)
-            .ToList();
-        if (selectedColors.Count > 0 && selectedColors.All(color => color.IsApproximately(selectedColors[0])))
-            SelectedLayer = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(selectedColors[0]));
+        SyncSelectedLayerWithSelection();
         if (!IsRemovingBackground)
         {
             BackgroundRemovalError = null;
@@ -297,6 +295,45 @@ public partial class SceneViewModel : ObservableObject
         NotifyLayerStateChanged();
         RefreshCommands();
     }
+
+    /// <summary>The layers the selected objects' contours belong to, resolved by LayerId (LayerResolver),
+    /// never by colour: two layers may share a colour (a black fill and a black outline).</summary>
+    private List<LayerSettings> SelectionLayers()
+    {
+        var result = new List<LayerSettings>();
+        foreach (var item in SelectedObjects)
+            foreach (var shape in item.LocalShapes)
+                if (LayerResolver.Resolve(item, shape, Layers) is { } layer && !result.Contains(layer))
+                    result.Add(layer);
+        return result;
+    }
+
+    /// <summary>The inspector edits SelectedLayer, so it follows the selection: one layer selects it,
+    /// several leave no layer selected and say "Více vrstev" rather than silently editing one of them.
+    /// An empty selection keeps the current layer (it is where the next drawing goes).</summary>
+    private void SyncSelectedLayerWithSelection()
+    {
+        if (SelectedObjects.Count == 0)
+        {
+            IsMixedLayerSelection = false;
+            return;
+        }
+        var layers = SelectionLayers();
+        if (layers.Count == 1)
+        {
+            SelectedLayer = layers[0];
+            IsMixedLayerSelection = false;
+        }
+        else if (layers.Count > 1)
+        {
+            SelectedLayer = null;
+            IsMixedLayerSelection = true;
+        }
+    }
+
+    /// <summary>True while the selection spans several layers; the inspector then shows "Více vrstev"
+    /// and no layer settings, since any single layer it showed would be the wrong one for part of it.</summary>
+    [ObservableProperty] private bool _isMixedLayerSelection;
 
     /// <summary>Bumped by every execute, undo, redo and clear of the undo stack. A gesture that wants to
     /// extend its own newest step (keyboard nudge) trusts that step only while this is unchanged.</summary>
@@ -373,7 +410,7 @@ public partial class SceneViewModel : ObservableObject
             _pendingLayerEdits.Remove(layer);
         }
         if (e.NewItems is not null) foreach (Lasero.Core.Layers.LayerSettings layer in e.NewItems) HookLayer(layer);
-        if (SelectedLayer is null || !Layers.Contains(SelectedLayer))
+        if (SelectedLayer is not null && !Layers.Contains(SelectedLayer) || SelectedLayer is null && !IsMixedLayerSelection)
             SelectedLayer = Layers.FirstOrDefault();
         if (e.Action != NotifyCollectionChangedAction.Reset) Changed?.Invoke();
     }
@@ -454,19 +491,12 @@ public partial class SceneViewModel : ObservableObject
 
     private int CountObjectsUsingLayer(LayerSettings layer) => Objects.Count(item => UsesLayer(item, layer));
 
-    private static bool ShapeUsesLayer(ImportedShape shape, LayerSettings layer) => shape.LayerId != Guid.Empty
-        ? shape.LayerId == layer.Id
-        : shape.LayerColor.IsApproximately(layer.Color);
+    // One rule for which layer owns a contour (LayerResolver): the canvas, selection, layer deletion,
+    // pruning and the job all agree, including for legacy colour-only and orphaned contours.
+    private bool UsesLayer(SceneObject item, LayerSettings layer) => Scene.UsesLayer(item, layer);
 
-    // Shapes reference a layer by id, but projects saved before layer ids existed only carry a colour,
-    // so both routes have to count. Raster objects belong to the raster layer by kind rather than by
-    // reference. Deleting a layer and selecting its shapes have to agree on this, or "Odstranit lze
-    // pouze vrstvu, kterou nepoužívá žádný objekt" would refuse a layer whose shapes cannot be found.
-    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
-        (layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty)) ||
-        item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
-            ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color));
+    private LayerSettings? ResolveLayer(Guid layerId, RgbColor legacyColor) =>
+        LayerResolver.Resolve(layerId, legacyColor, null, Layers);
 
     private void NotifyLayerStateChanged()
     {
@@ -474,7 +504,9 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanEditSelectedLayerColor));
         OnPropertyChanged(nameof(CanAssignSelectionToLayer));
         OnPropertyChanged(nameof(CanDeleteSelectedLayer));
+        OnPropertyChanged(nameof(CanDuplicateSelectedLayer));
         OnPropertyChanged(nameof(DeleteSelectedLayerDisabledReason));
+        DuplicateSelectedLayerCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanMoveSelectedLayerUp));
         OnPropertyChanged(nameof(CanMoveSelectedLayerDown));
         OnPropertyChanged(nameof(CanReorderLayers));
@@ -487,25 +519,22 @@ public partial class SceneViewModel : ObservableObject
         MergeSelectedLayerIntoWithSourceSettingsCommand.NotifyCanExecuteChanged();
     }
 
-    public bool IsLayerVisible(Lasero.Core.Layers.RgbColor color) =>
-        Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color))?.IsVisible ?? true;
+    public bool IsLayerVisible(Lasero.Core.Layers.RgbColor color) => ResolveLayer(Guid.Empty, color)?.IsVisible ?? true;
 
     public bool IsLayerVisible(Guid layerId, Lasero.Core.Layers.RgbColor legacyColor) =>
-        (layerId != Guid.Empty
-            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
-            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.IsVisible ?? true;
+        ResolveLayer(layerId, legacyColor)?.IsVisible ?? true;
 
     public bool IsLayerLocked(Guid layerId, Lasero.Core.Layers.RgbColor legacyColor) =>
-        (layerId != Guid.Empty
-            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
-            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.IsLocked ?? false;
+        ResolveLayer(layerId, legacyColor)?.IsLocked ?? false;
 
     /// <summary>Central gate for ordinary canvas selection. If one scene object spans multiple
     /// layers, every contour must be editable before the whole object can be transformed.</summary>
-    public bool CanSelectObject(SceneObject item) =>
-        Objects.Contains(item) && item.IsVisible && !item.IsLocked &&
-        (item.LocalShapes.Count == 0 || item.LocalShapes.All(shape =>
-            IsLayerVisible(shape.LayerId, shape.LayerColor) && !IsLayerLocked(shape.LayerId, shape.LayerColor)));
+    public bool CanSelectObject(SceneObject item)
+    {
+        if (!Objects.Contains(item) || !item.IsVisible || item.IsLocked) return false;
+        return item.LocalShapes.All(shape =>
+            LayerResolver.Resolve(item, shape, Layers) is not { } layer || layer.IsVisible && !layer.IsLocked);
+    }
 
     private void ReconcileSelectionEligibility()
     {
@@ -513,13 +542,10 @@ public partial class SceneViewModel : ObservableObject
         foreach (var item in ineligible) SelectedObjects.Remove(item);
     }
 
-    public LayerMode LayerModeFor(RgbColor color) =>
-        Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color))?.Mode ?? LayerMode.Cut;
+    public LayerMode LayerModeFor(RgbColor color) => ResolveLayer(Guid.Empty, color)?.Mode ?? LayerMode.Cut;
 
     public LayerMode LayerModeFor(Guid layerId, RgbColor legacyColor) =>
-        (layerId != Guid.Empty
-            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
-            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor)))?.Mode ?? LayerMode.Cut;
+        ResolveLayer(layerId, legacyColor)?.Mode ?? LayerMode.Cut;
 
     /// <summary>Executed by every mutating gesture the canvas performs (drag-move/rotate/resize on
     /// MouseUp, keyboard nudge) — kept public so SceneCanvas doesn't need its own reference to the stack.</summary>
@@ -634,18 +660,27 @@ public partial class SceneViewModel : ObservableObject
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void ImportRasterFile(string path, RasterImportOptions options)
     {
-        if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
-        {
-            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku je potřeba ji zobrazit a odemknout.");
-            return;
-        }
+        if (RasterLayerForImport(options) is not { } layer) return;
 
         path = RasterImportSource.NormalizeWebp(path);
-        var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && candidate.IsVisible && !candidate.IsLocked)
-            ?? SceneObjectFactory.CreateRasterLayer(options);
         var obj = SceneObjectFactory.FromRaster(path, options, Path.GetFileName(path), layer);
         PlaceAndAdd(obj, [layer]);
         FileImported?.Invoke();
+    }
+
+    /// <summary>The layer a newly imported bitmap goes on. Bitmaps always share the raster layer, whatever
+    /// layer row is highlighted, so it is the raster layer's own state that matters: when it is hidden or
+    /// locked the bitmap would arrive invisible and unselectable, so the import is refused with the reason.
+    /// No raster layer yet: a new one, visible and unlocked.</summary>
+    private LayerSettings? RasterLayerForImport(RasterImportOptions options)
+    {
+        var rasterLayers = Layers.Where(candidate => candidate.IsRaster).ToList();
+        if (rasterLayers.Count == 0) return SceneObjectFactory.CreateRasterLayer(options);
+        if (rasterLayers.FirstOrDefault(candidate => candidate.IsVisible && !candidate.IsLocked) is { } usable) return usable;
+
+        var name = string.IsNullOrWhiteSpace(rasterLayers[0].Name) ? "Bitmapa" : rasterLayers[0].Name;
+        RasterOperationRejected?.Invoke($"Vrstva „{name}“ je skrytá nebo zamčená, vložený obrázek by nebyl vidět. Před vložením je potřeba ji zobrazit a odemknout.");
+        return null;
     }
 
     public void ImportRasterFiles(IEnumerable<string> paths, RasterImportOptions options)
@@ -653,14 +688,8 @@ public partial class SceneViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(paths);
         var inputPaths = paths.Where(File.Exists).ToList();
         if (inputPaths.Count == 0) return;
-        if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
-        {
-            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku je potřeba ji zobrazit a odemknout.");
-            return;
-        }
+        if (RasterLayerForImport(options) is not { } layer) return;
 
-        var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && candidate.IsVisible && !candidate.IsLocked)
-            ?? SceneObjectFactory.CreateRasterLayer(options);
         var objects = new List<SceneObject>();
         var commands = new List<ISceneCommand>();
         foreach (var sourcePath in inputPaths)
@@ -796,7 +825,10 @@ public partial class SceneViewModel : ObservableObject
             var worldPath = ToWorldSpace(traced.Path, source.Transform, source.LocalPivot);
             var name = multipleObjects ? $"Trasování · {source.Name} ({index + 1})" : $"Trasování · {source.Name}";
             var tracedObject = VectorPathSceneFactory.Create(worldPath, traced.Color, name);
-            var layer = result.Document.Layers.FirstOrDefault(candidate => candidate.Color == traced.Color);
+            // The tracer names its own layers, so an exact colour is the identity; the tolerant match
+            // is only a fallback and never crosses into another colour's layer when an exact one exists.
+            var layer = result.Document.Layers.FirstOrDefault(candidate => candidate.Color == traced.Color)
+                ?? LayerResolver.Resolve(Guid.Empty, traced.Color, null, result.Document.Layers);
             if (layer is not null) tracedObject.AssignToLayer(layer);
             tracedObject.IsVisible = source.IsVisible;
             tracedObject.IncludeInOutput = source.IncludeInOutput;
@@ -804,12 +836,9 @@ public partial class SceneViewModel : ObservableObject
         }
 
         // Deleting the bitmap must not leave its "Bitmapa" operation behind: when it was the last
-        // bitmap in the scene, its raster operation goes with it (undo brings both back).
-        var orphanedLayers = deleteSource && !Objects.Any(item => item.IsRaster && !ReferenceEquals(item, source))
-            ? Layers.Where(layer => layer.IsRaster).ToList()
-            : [];
+        // bitmap in the scene, the command's emptied-layer rule removes it too (undo brings both back).
         Execute(new ReplaceObjectsCommand(
-            Scene, deleteSource ? new[] { source } : Array.Empty<SceneObject>(), tracedObjects, result.Document.Layers, orphanedLayers));
+            Scene, deleteSource ? new[] { source } : Array.Empty<SceneObject>(), tracedObjects, result.Document.Layers));
         SelectedObjects.ReplaceWith(tracedObjects);
         ActiveTool = DesignerTool.Select;
     }
@@ -832,12 +861,50 @@ public partial class SceneViewModel : ObservableObject
 
     public void DrawPrimitive(DesignerTool tool, Position start, Position end)
     {
-        var color = new Lasero.Core.Layers.RgbColor(18, 18, 18);
-        var obj = DesignerPrimitiveFactory.Create(tool, start, end, color);
+        var defaultColor = new Lasero.Core.Layers.RgbColor(18, 18, 18);
+        var obj = DesignerPrimitiveFactory.Create(tool, start, end, defaultColor);
+        if (DrawingTargetLayer(obj, defaultColor, LayerMode.Cut, "Vektor") is not { } layer) return;
+        AddDrawingObject(obj, layer);
+    }
 
-        AddDrawingObject(
-            obj,
-            [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Cut, "Vektor")]);
+    /// <summary>
+    /// Where a newly drawn shape goes (LightBurn: the current layer). The selected layer when it is a
+    /// visible, unlocked vector layer; an open contour on a pure Fill layer would never burn, so it goes
+    /// to the Cut layer of that colour instead (existing or new). Otherwise the tool's default layer.
+    /// Null, with the reason reported, when the chosen layer exists but is hidden or locked: the new
+    /// shape would arrive invisible and unselectable.
+    /// </summary>
+    private LayerSettings? DrawingTargetLayer(SceneObject drawn, RgbColor defaultColor, LayerMode defaultMode, string defaultName)
+    {
+        var hasOpenContour = drawn.LocalShapes.Any(shape => !shape.IsClosed);
+        if (SelectedLayer is { IsRaster: false, IsVisible: true, IsLocked: false } current && Layers.Contains(current))
+        {
+            if (!hasOpenContour || current.Mode != LayerMode.Fill) return current;
+            return LayerForDrawing(current.Color, LayerMode.Cut, $"{current.Name} · čára");
+        }
+        return LayerForDrawing(defaultColor, hasOpenContour && defaultMode == LayerMode.Fill ? LayerMode.Cut : defaultMode, defaultName);
+    }
+
+    /// <summary>The existing layer for colour + mode (the same match EnsureLayers makes), or a new one.</summary>
+    private LayerSettings? LayerForDrawing(RgbColor color, LayerMode mode, string name)
+    {
+        var existing = Layers.FirstOrDefault(layer => !layer.IsRaster && layer.Mode == mode && layer.Color.IsApproximately(color));
+        if (existing is null) return LayerSettings.CreateDefault(color, mode, UniqueLayerName(name));
+        if (existing.IsVisible && !existing.IsLocked) return existing;
+        VectorOperationRejected?.Invoke(
+            $"Vrstva „{existing.Name}“ je skrytá nebo zamčená, nový tvar by nebyl vidět. Nejprve je potřeba ji zobrazit a odemknout, nebo vybrat jinou vrstvu.");
+        return null;
+    }
+
+    private string UniqueLayerName(string name)
+    {
+        static bool Same(string left, string right) => string.Equals(left.Trim(), right.Trim(), StringComparison.CurrentCultureIgnoreCase);
+        if (Layers.All(layer => !Same(layer.Name, name))) return name;
+        for (var suffix = 2; ; suffix++)
+        {
+            var candidate = $"{name} {suffix}";
+            if (Layers.All(layer => !Same(layer.Name, candidate))) return candidate;
+        }
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -863,14 +930,12 @@ public partial class SceneViewModel : ObservableObject
 
     public void AddText(TextSource source, Position origin)
     {
-        // Text stays visually near-black while going onto its own processing layer, so filled text is
-        // not merged with the default black cut layer.
-        var color = VectorTextFactory.DefaultColor;
-        var obj = VectorTextFactory.Create(source, origin, color);
-        AddDrawingObject(
-            obj,
-            [Lasero.Core.Layers.LayerSettings.CreateDefault(
-                color, Lasero.Core.Layers.LayerMode.Fill, "Text", removeWhenEmpty: true)]);
+        // Without a usable current layer, text stays visually near-black while going onto its own
+        // processing layer, so filled text is not merged with the default black cut layer.
+        var defaultColor = VectorTextFactory.DefaultColor;
+        var obj = VectorTextFactory.Create(source, origin, defaultColor);
+        if (DrawingTargetLayer(obj, defaultColor, LayerMode.Fill, "Text") is not { } layer) return;
+        AddDrawingObject(obj, layer);
     }
 
     /// <summary>Adds a finished vector path (from the "Čára" multi-click path tool) as one new
@@ -879,11 +944,10 @@ public partial class SceneViewModel : ObservableObject
     public void AddVectorPath(VectorPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var color = new Lasero.Core.Layers.RgbColor(18, 18, 18);
-        var obj = VectorPathSceneFactory.Create(path, color, "Křivka");
-        AddDrawingObject(
-            obj,
-            [Lasero.Core.Layers.LayerSettings.CreateDefault(color, Lasero.Core.Layers.LayerMode.Cut, "Vektor")]);
+        var defaultColor = new Lasero.Core.Layers.RgbColor(18, 18, 18);
+        var obj = VectorPathSceneFactory.Create(path, defaultColor, "Křivka");
+        if (DrawingTargetLayer(obj, defaultColor, LayerMode.Cut, "Vektor") is not { } layer) return;
+        AddDrawingObject(obj, layer);
     }
 
     /// <summary>Commits one Node Edit mode edit (move/add/delete/convert node, drag handle, close path)
@@ -1216,10 +1280,7 @@ public partial class SceneViewModel : ObservableObject
         return raster;
     }
 
-    private LayerSettings? FindLayer(Guid layerId, RgbColor legacyColor) =>
-        layerId != Guid.Empty
-            ? Layers.FirstOrDefault(layer => layer.Id == layerId)
-            : Layers.FirstOrDefault(layer => layer.Color.IsApproximately(legacyColor));
+    private LayerSettings? FindLayer(Guid layerId, RgbColor legacyColor) => ResolveLayer(layerId, legacyColor);
 
     /// <summary>Commits a completed background-removal run as one ReplaceObjectsCommand — the same
     /// "this object's raster content changed" contract CommitTextEdit/CommitVectorPathEdit use for
@@ -1297,9 +1358,12 @@ public partial class SceneViewModel : ObservableObject
         ActiveTool = DesignerTool.Select;
     }
 
-    private void AddDrawingObject(SceneObject obj, IReadOnlyList<Lasero.Core.Layers.LayerSettings> candidateLayers)
+    /// <summary>Puts a drawn object on <paramref name="layer"/> (an existing layer, or a new one this
+    /// command adds) and selects it: one gesture, one undo step.</summary>
+    private void AddDrawingObject(SceneObject obj, LayerSettings layer)
     {
-        Execute(new AddObjectCommand(Scene, obj, candidateLayers));
+        obj.AssignToLayer(layer);
+        Execute(new AddObjectCommand(Scene, obj, [layer]));
         SelectedObjects.Clear();
         SelectedObjects.Add(obj);
     }
@@ -1355,21 +1419,59 @@ public partial class SceneViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SelectObjectsInLayer(LayerSettings? layer)
-    {
-        if (layer is null) return;
-        SelectedLayer = layer;
-        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, layer) && CanSelectObject(item)).ToList());
-    }
+    private void SelectObjectsInLayer(LayerSettings? layer) => SelectLayerContours(layer);
 
-    [RelayCommand]
-    private void ActivateLayer(LayerSettings? layer)
+    /// <summary>
+    /// "Vybrat všechny tvary v této vrstvě" selects exactly that layer's contours, so a following Delete,
+    /// move or recolour cannot touch another layer's art. An object whose contours span several layers is
+    /// first split by layer (Break by layer) in ONE undoable step: its contours on this layer become a
+    /// separate object in place, the rest keeps the original object's identity. A selection that changes
+    /// nothing adds no history. Text and other sources that cannot be divided per contour are left out of
+    /// the selection, and the operator is told why.
+    /// </summary>
+    private void SelectLayerContours(LayerSettings? layer)
     {
-        if (layer is null) return;
-        if (CanAssignSelectionToLayer)
-            AssignSelectionToLayer(layer);
-        else
-            SelectedLayer = layer;
+        if (layer is null || !Layers.Contains(layer)) return;
+        SelectedLayer = layer;
+        if (!layer.IsVisible || layer.IsLocked)
+        {
+            SelectedObjects.Clear();
+            return;
+        }
+
+        var selection = new List<SceneObject>();
+        var splits = new List<ISceneCommand>();
+        var skipped = 0;
+        // Topmost first: each split inserts one extra object at its own position, which must not shift
+        // the recorded position of a split still to run below it.
+        foreach (var item in Objects.Where(item => item.IsVisible && !item.IsLocked && UsesLayer(item, layer)).Reverse().ToList())
+        {
+            var onLayer = LayerContourSplit.Indices(item, layer, Layers, onLayer: true);
+            if (onLayer.Count == item.LocalShapes.Count)
+            {
+                if (CanSelectObject(item)) selection.Add(item);
+                continue;
+            }
+            if (!LayerContourSplit.IsDivisible(item))
+            {
+                skipped++;
+                continue;
+            }
+
+            var offLayer = LayerContourSplit.Indices(item, layer, Layers, onLayer: false);
+            var rest = LayerContourSplit.Keep(item, offLayer, item.Id, keepOffsetLink: true)!;
+            var part = LayerContourSplit.Keep(item, onLayer, Guid.NewGuid(), keepOffsetLink: false)!;
+            splits.Add(new ReplaceObjectsCommand(Scene, [item], [rest, part]));
+            selection.Add(part);
+        }
+
+        if (splits.Count > 0) Execute(splits.Count == 1 ? splits[0] : new CompositeSceneCommand(splits));
+        SelectedObjects.ReplaceWith(selection.Where(CanSelectObject).OrderBy(Objects.IndexOf).ToList());
+        SelectedLayer = layer;
+        if (skipped > 0)
+            VectorOperationRejected?.Invoke(skipped == 1
+                ? "Jeden objekt kombinuje tuto vrstvu s jinou a nelze jej rozdělit po obrysech (například text), proto nebyl vybrán."
+                : $"{skipped} objekty kombinují tuto vrstvu s jinou a nelze je rozdělit po obrysech (například text), proto nebyly vybrány.");
     }
 
     /// <summary>Drag and drop in the layer list: the layer takes the given place. The list order is the
@@ -1400,15 +1502,14 @@ public partial class SceneViewModel : ObservableObject
         ExecuteLayerChange(() => Layers.Move(index, index + 1));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanDuplicateSelectedLayer))]
     private void DuplicateSelectedLayer()
     {
-        if (SelectedLayer is null) return;
-        var source = SelectedLayer;
+        if (!CanDuplicateSelectedLayer || SelectedLayer is not { } source) return;
         var copy = new LayerSettings
         {
             Color = FindAvailableLayerColor(),
-            Name = $"{source.Name} – kopie",
+            Name = UniqueLayerName($"{source.Name} – kopie"),
             Mode = source.Mode,
             Speed = source.Speed,
             Power = source.Power,
@@ -1418,7 +1519,6 @@ public partial class SceneViewModel : ObservableObject
             IsEnabled = source.IsEnabled,
             IsVisible = source.IsVisible,
             IsLocked = source.IsLocked,
-            IsRaster = source.IsRaster,
         };
         ExecuteLayerChange(() =>
         {
@@ -1474,65 +1574,83 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand]
     private void ChangeSelectedLayerColor(RgbColor color)
     {
-        var source = SelectedLayer;
-
         // Color is an object-facing action in an editor: when vectors are selected, applying a
         // swatch must recolor them immediately (Ctrl+A, then a swatch, puts everything on that one
-        // colour's layer). Bitmaps in the selection keep their own fixed layer. This also fixes the
-        // confusing case where a newly created empty layer stayed selected while the artwork visibly
-        // remained in another layer.
+        // colour's layer). Bitmaps in the selection keep their own fixed layer.
         var vectors = SelectedObjects.Where(item => !item.IsRaster).ToList();
         if (vectors.Count > 0)
         {
-            // A swatch close to an existing layer's colour puts the selection on that layer.
-            var destination = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
-            if (destination is not null && vectors.SelectMany(item => item.LocalShapes).All(shape =>
-                    shape.LayerId == destination.Id && shape.LayerColor.Equals(destination.Color)))
+            // Nothing to do when every selected contour already belongs (by LayerId) to a layer of
+            // this colour - including a selection spread over a same-colour fill and outline.
+            if (vectors.All(item => item.LocalShapes.All(shape =>
+                    LayerResolver.Resolve(item, shape, Layers) is { } current && current.Color.IsApproximately(color))))
                 return;
 
-            var template = source is { IsRaster: true } ? null : source;
+            var template = SelectedLayer is { IsRaster: false } selected ? selected : null;
             Execute(new SceneLayerMutationCommand(Scene, () => ApplyColorToSelection(color, template, vectors),
                 () => SelectedLayer, layer => SelectedLayer = layer));
             return;
         }
 
-        if (IsSelectedLayerRaster) return;
+        // Only bitmaps selected: they keep the fixed raster layer.
+        if (SelectedObjects.Count > 0) return;
 
-        if (source is null || source.Color.IsApproximately(color)) return;
+        // Nothing selected (LightBurn): the swatch picks the current layer for the next drawing and
+        // changes no object and no existing layer.
+        PickDrawingLayer(color);
+    }
 
-        var occupied = Layers.FirstOrDefault(layer => layer != source && layer.Color.IsApproximately(color));
-        if (occupied is not null)
+    /// <summary>The empty layer the last no-selection swatch click created, so picking another colour
+    /// straight away replaces it instead of piling up empty layers.</summary>
+    private LayerSettings? _paletteDraftLayer;
+
+    private void PickDrawingLayer(RgbColor color)
+    {
+        if (LayerResolver.Resolve(Guid.Empty, color, SelectedLayer?.Mode, Layers) is { } existing)
         {
-            VectorOperationRejected?.Invoke("Barvu už používá jiná vrstva. Použij „Sloučit do vrstvy“ a zvol, která nastavení zachovat.");
+            SelectedLayer = existing;
             return;
         }
 
-        Execute(new SceneLayerMutationCommand(Scene, () =>
+        var draft = _paletteDraftLayer is { } previous && Layers.Contains(previous) &&
+                    ReferenceEquals(SelectedLayer, previous) && CountObjectsUsingLayer(previous) == 0
+            ? previous
+            : null;
+        var created = LayerSettings.CreateDefault(color, LayerMode.Cut, string.Empty);
+        ExecuteLayerChange(() =>
         {
-            var sourceColor = source.Color;
-            source.Color = color;
-            foreach (var item in Objects)
-                item.ReplaceLayer(source.Id, sourceColor, source);
+            var index = draft is null ? Layers.Count : Layers.IndexOf(draft);
+            if (draft is not null) Layers.Remove(draft);
+            created.Name = UniqueLayerName(RgbColorToNameConverter.KnownName(color) ?? NextNumberedLayerName());
+            Layers.Insert(Math.Min(index, Layers.Count), created);
+            SelectedLayer = created;
+        });
+        _paletteDraftLayer = created;
+    }
 
-            NotifyLayerStateChanged();
-        }, () => SelectedLayer, layer => SelectedLayer = layer));
+    private string NextNumberedLayerName()
+    {
+        for (var number = Layers.Count + 1; ; number++)
+        {
+            var candidate = $"Vrstva {number:00}";
+            if (Layers.All(layer => layer.Name != candidate)) return candidate;
+        }
     }
 
     private void ApplyColorToSelection(RgbColor color, LayerSettings? template, IReadOnlyList<SceneObject> targets)
     {
-        var previousLayers = new List<(Guid Id, RgbColor Color)>();
-        foreach (var shape in targets.SelectMany(item => item.LocalShapes))
-        {
-            if (previousLayers.All(existing => existing.Id != shape.LayerId || shape.LayerId == Guid.Empty && !existing.Color.IsApproximately(shape.LayerColor)))
-                previousLayers.Add((shape.LayerId, shape.LayerColor));
-        }
+        var pruner = new EmptiedLayerPruner(Scene);
+        pruner.CaptureBefore();
 
-        var destination = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
+        // A swatch close to an existing layer's colour puts the selection on that layer (the nearest
+        // one, the inspector's mode deciding between a same-colour fill and outline).
+        var destination = LayerResolver.Resolve(Guid.Empty, color, template?.Mode, Layers);
         if (destination is null)
         {
-            // Reuse an intentionally created empty layer; otherwise create a sibling that inherits
-            // the processing settings currently visible in the inspector.
-            if (template is not null && CountObjectsUsingLayer(template) == 0)
+            // Reuse the inspector's layer when it is empty, or when the selection holds every one of
+            // its users (the operator is recolouring that whole operation: name and settings stay).
+            // Otherwise create a sibling that inherits its processing settings under a name of its own.
+            if (template is not null && Objects.Where(item => UsesLayer(item, template)).All(targets.Contains))
             {
                 template.Color = color;
                 destination = template;
@@ -1542,7 +1660,7 @@ public partial class SceneViewModel : ObservableObject
                 destination = new LayerSettings
                 {
                     Color = color,
-                    Name = template?.Name is { Length: > 0 } name ? name : $"Vrstva {Layers.Count + 1:00}",
+                    Name = UniqueLayerName(RgbColorToNameConverter.KnownName(color) ?? NextNumberedLayerName()),
                     Mode = template?.Mode ?? LayerMode.Cut,
                     Speed = template?.Speed ?? 350,
                     Power = template?.Power ?? 95,
@@ -1559,19 +1677,9 @@ public partial class SceneViewModel : ObservableObject
         foreach (var item in targets)
             item.AssignToLayer(destination);
 
-        // Remove the source layers this reassignment left empty. Layers that were already empty
-        // stay, and the fixed raster layer can never be removed here.
-        foreach (var previous in previousLayers)
-        {
-            var previousLayer = Layers.FirstOrDefault(layer =>
-                layer != destination && (previous.Id != Guid.Empty
-                    ? layer.Id == previous.Id
-                    : layer.Color.IsApproximately(previous.Color)));
-            if (previousLayer is not null &&
-                !previousLayer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) &&
-                CountObjectsUsingLayer(previousLayer) == 0)
-                Layers.Remove(previousLayer);
-        }
+        // The same emptied-layer rule as every other object-moving command; the snapshot this
+        // mutation runs in restores the whole layer list on Undo.
+        pruner.PruneAfter();
 
         SelectedLayer = destination;
         NotifyLayerStateChanged();
@@ -1580,13 +1688,13 @@ public partial class SceneViewModel : ObservableObject
     [RelayCommand]
     private void AssignSelectionToLayer(LayerSettings? layer)
     {
-        if (layer is null || !SelectedObjects.Any() ||
-            layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) ||
+        if (layer is null || !SelectedObjects.Any() || layer.IsRaster ||
             SelectedObjects.Any(item => item.IsRaster)) return;
 
         // One undo step for the whole selection: the right-click "Přiřadit do vrstvy" menu made this
         // a mouse-quick action, and a mis-click there has to be as cheap to take back as any other edit.
-        var command = new AssignObjectsToLayerCommand(SelectedObjects.ToList(), layer);
+        // Source layers the move leaves empty go in the same step.
+        var command = new AssignObjectsToLayerCommand(Scene, SelectedObjects.ToList(), layer);
         if (!command.ChangesAnything) return;
 
         Execute(command);
@@ -1701,7 +1809,6 @@ public partial class SceneViewModel : ObservableObject
     private static LayerSettings SnapshotClipboardLayer(LayerSettings layer) => new()
     {
         Id = layer.Id,
-        RemoveWhenEmpty = layer.RemoveWhenEmpty,
         Color = layer.Color,
         Name = layer.Name,
         Mode = layer.Mode,
@@ -1782,11 +1889,7 @@ public partial class SceneViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanSelectActiveLayer))]
-    private void SelectAllInActiveLayer()
-    {
-        if (SelectedLayer is null) return;
-        SelectedObjects.ReplaceWith(Objects.Where(item => UsesLayer(item, SelectedLayer) && CanSelectObject(item)).ToList());
-    }
+    private void SelectAllInActiveLayer() => SelectLayerContours(SelectedLayer);
 
     private bool CanSelectActiveLayer() => SelectedLayer is { IsVisible: true, IsLocked: false };
 
@@ -2058,8 +2161,13 @@ public partial class SceneViewModel : ObservableObject
         return infos;
     }
 
+    // LayerId first (LayerResolver's rule): two contours with ids are on the same layer exactly when the
+    // ids agree, whatever their stored colour; only legacy colour-only contours compare by colour, with
+    // the same tolerance every layer lookup uses.
     private static bool SameLayer(ImportedShape first, ImportedShape second) =>
-        first.LayerId == second.LayerId && first.LayerColor == second.LayerColor;
+        first.LayerId != Guid.Empty || second.LayerId != Guid.Empty
+            ? first.LayerId == second.LayerId
+            : first.LayerColor.IsApproximately(second.LayerColor);
 
     /// <summary>Which operand a result region belongs to: the one it overlaps most (A\B lies wholly in
     /// A, B\A in B), and on a tie, so for A∩B, the topmost operand. Null when every operand is on the
@@ -3413,7 +3521,6 @@ public partial class SceneViewModel : ObservableObject
                 IsVisible = layer.IsVisible,
                 IsLocked = layer.IsLocked,
                 IsRaster = layer.IsRaster,
-                RemoveWhenEmpty = layer.RemoveWhenEmpty,
             }).ToList(),
         };
     }
@@ -3436,7 +3543,24 @@ public partial class SceneViewModel : ObservableObject
         EndTextFontPreview();
         // Materialize and validate the complete replacement before touching the live document.
         // A damaged project must never clear the user's current unsaved scene halfway through load.
-        var loadedLayers = (project.Layers ?? throw new InvalidDataException("Projekt neobsahuje seznam vrstev."))
+        var projectLayers = project.Layers ?? throw new InvalidDataException("Projekt neobsahuje seznam vrstev.");
+        var projectObjects = project.Objects ?? throw new InvalidDataException("Projekt neobsahuje seznam objektů.");
+
+        // The persisted IsRaster flag is the raster identity. Colour is not: a grey vector layer (SVG
+        // "gray" is within tolerance of the raster colour) must stay a vector layer, or its contours
+        // vanish from the job. Only a file that predates the flag has it inferred, and then only for a
+        // layer that bitmaps actually use and no vector contour does.
+        static bool References(ProjectObject item, ProjectLayer layer) =>
+            item.Shapes?.Any(shape => shape is not null &&
+                (shape.LayerId != Guid.Empty
+                    ? shape.LayerId == layer.Id
+                    : shape.LayerColor.IsApproximately(layer.Color))) == true;
+        bool IsLegacyRasterLayer(ProjectLayer layer) =>
+            layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) &&
+            projectObjects.Any(item => item?.RasterFilePath is not null && References(item, layer)) &&
+            !projectObjects.Any(item => item is not null && item.RasterFilePath is null && References(item, layer));
+
+        var loadedLayers = projectLayers
             .Select(layer => layer is null
                 ? throw new InvalidDataException("Projekt obsahuje neplatnou vrstvu.")
                 : new Lasero.Core.Layers.LayerSettings
@@ -3453,12 +3577,11 @@ public partial class SceneViewModel : ObservableObject
                 IsEnabled = layer.IsEnabled,
                 IsVisible = layer.IsVisible,
                 IsLocked = layer.IsLocked,
-                IsRaster = layer.IsRaster || layer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor),
-                RemoveWhenEmpty = layer.RemoveWhenEmpty,
+                IsRaster = layer.IsRaster || IsLegacyRasterLayer(layer),
             })
             .ToList();
 
-        var loadedObjects = (project.Objects ?? throw new InvalidDataException("Projekt neobsahuje seznam objektů."))
+        var loadedObjects = projectObjects
             .Select(item =>
             {
                 if (item is null) throw new InvalidDataException("Projekt obsahuje neplatný objekt.");
@@ -3471,7 +3594,7 @@ public partial class SceneViewModel : ObservableObject
                         {
                             GeometrySetId = shape.GeometrySetId,
                             LayerId = ResolveLayerId(shape.LayerId, shape.LayerColor, shape.PreferredMode, loadedLayers,
-                                createWhenOrphaned: item.RasterFilePath is null),
+                                isRaster: item.RasterFilePath is not null),
                             Points = shape.Points,
                             IsClosed = shape.IsClosed,
                             LayerColor = shape.LayerColor,
@@ -3510,18 +3633,18 @@ public partial class SceneViewModel : ObservableObject
             })
             .ToList();
 
-        static Guid ResolveLayerId(Guid persistedId, RgbColor color, LayerMode mode, List<LayerSettings> layers, bool createWhenOrphaned)
+        static Guid ResolveLayerId(Guid persistedId, RgbColor color, LayerMode mode, List<LayerSettings> layers, bool isRaster)
         {
             if (persistedId != Guid.Empty && layers.Any(layer => layer.Id == persistedId))
                 return persistedId;
-            var match = layers.FirstOrDefault(layer => layer.Mode == mode && layer.Color.IsApproximately(color))
-                ?? layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
-            if (match is not null) return match.Id;
-            if (!createWhenOrphaned) return Guid.Empty;
+            // A bitmap's outline belongs to the raster layer, never to a vector layer of a similar grey.
+            if (isRaster) return layers.FirstOrDefault(layer => layer.IsRaster)?.Id ?? Guid.Empty;
+            // Same rule as everywhere else (LayerResolver): nearest colour, own mode on a tie.
+            if (LayerResolver.Resolve(Guid.Empty, color, mode, layers) is { } match) return match.Id;
 
             // Geometry that points at a layer the project no longer contains would still be drawn but
             // never cut or engraved. Give it a real layer so what is on the canvas is what the job does.
-            var created = LayerSettings.CreateDefault(color, mode, color.ToHex(), removeWhenEmpty: true);
+            var created = LayerSettings.CreateDefault(color, mode, color.ToHex());
             layers.Add(created);
             return created.Id;
         }
@@ -3613,7 +3736,12 @@ public partial class SceneViewModel : ObservableObject
         RemoveSelectedBackgroundCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnSelectedLayerChanged(LayerSettings? value) => NotifyLayerStateChanged();
+    partial void OnSelectedLayerChanged(LayerSettings? value)
+    {
+        // Picking a layer row while a mixed selection is active ends the "Více vrstev" state.
+        if (value is not null) IsMixedLayerSelection = false;
+        NotifyLayerStateChanged();
+    }
 
     // --- Property-panel wrapper properties: ObjectTransform is a readonly struct, so binding a TextBox
     // straight to "Selected.Transform.X" has no settable path. Position and size describe the whole

@@ -431,16 +431,32 @@ public partial class GCodeViewModel : ObservableObject
     {
         var maxS = maximumS ?? _controllerMaximumS!.Value;
         var lines = new List<string>();
-        var document = _scene.Scene.ToImportedDocument(offsetX, offsetY);
+        var layers = Layers.ToList();
+        var output = _scene.Scene.GetOutputShapes(offsetX, offsetY).ToList();
+        var bounds = BoundingBox2D.Empty;
+        foreach (var (_, shape) in output)
+            foreach (var point in shape.Points)
+                bounds = bounds.Include(point.X, point.Y);
+
+        // One resolution per contour (LayerResolver, the rule the canvas uses too): legacy and orphaned
+        // contours reach exactly one layer instead of being dropped or emitted under several. A bitmap's
+        // outline is never vector output.
+        var shapesByLayer = new Dictionary<LayerSettings, List<ImportedShape>>();
+        foreach (var (owner, shape) in output)
+        {
+            if (owner.IsRaster || LayerResolver.Resolve(shape, layers) is not { } owning) continue;
+            if (!shapesByLayer.TryGetValue(owning, out var list)) shapesByLayer[owning] = list = [];
+            list.Add(shape);
+        }
 
         // The layer list is the manufacturing order for both vectors and bitmaps. Raster jobs used
         // to be appended after every vector regardless of the order shown in the UI.
-        foreach (var layer in Layers.Where(item => item.IsEnabled))
+        foreach (var layer in layers.Where(item => item.IsEnabled))
         {
             if (layer.IsRaster)
             {
                 foreach (var obj in _scene.Objects.Where(item =>
-                             item.IsVisible && item.IncludeInOutput && item.IsRaster && UsesLayer(item, layer)))
+                             item.IsVisible && item.IncludeInOutput && item.IsRaster && LayerResolver.UsesLayer(item, layer, layers)))
                 {
                     // A rotated/mirrored bitmap cannot be engraved as placed; withhold it and say why
                     // rather than burn it upright and unflipped.
@@ -458,18 +474,16 @@ public partial class GCodeViewModel : ObservableObject
                 continue;
             }
 
-            var shapes = document.Shapes.Where(shape => shape.LayerId != Guid.Empty
-                ? shape.LayerId == layer.Id
-                : shape.LayerColor.IsApproximately(layer.Color)).ToList();
-            if (shapes.Count == 0) continue;
+            if (!shapesByLayer.TryGetValue(layer, out var shapes)) continue;
 
+            // Every shape here already belongs to this layer; they are re-keyed to it so the
+            // per-layer builder cannot re-resolve them against a list that holds only this layer.
             var firstLine = lines.Count;
             lines.AddRange(ToolpathBuilder.BuildGCode(new ImportedDocument
             {
-                Shapes = shapes,
+                Shapes = shapes.Select(shape => shape.LayerId == layer.Id ? shape : shape with { LayerId = layer.Id }).ToList(),
                 Layers = [layer],
-                BoundingBox = document.BoundingBox,
-                SourceFileName = document.SourceFileName,
+                BoundingBox = bounds,
             }, maxS));
             spans?.Add((layer, firstLine, lines.Count - firstLine));
         }
@@ -477,11 +491,17 @@ public partial class GCodeViewModel : ObservableObject
         return lines;
     }
 
-    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
-        item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
-            ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color)) ||
-        layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty);
+    /// <summary>Names of layers that are hidden on the canvas but switched on for output and have
+    /// something to burn. Show and Output are independent (LightBurn), so this feeds a preflight
+    /// warning instead of silently dropping or silently burning the layer.</summary>
+    private IReadOnlyList<string> HiddenOutputLayerNames()
+    {
+        var layers = Layers.ToList();
+        var hidden = layers.Where(layer => layer.IsEnabled && !layer.IsVisible).ToList();
+        if (hidden.Count == 0) return [];
+        var used = LayerResolver.UsedLayers(_scene.Objects.Where(item => item.IsVisible && item.IncludeInOutput), layers);
+        return hidden.Where(used.Contains).Select(layer => layer.Name).ToList();
+    }
 
     private void OnSceneChanged()
     {
@@ -709,6 +729,7 @@ public partial class GCodeViewModel : ObservableObject
         MachineMaxTravelXmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelXmm,
         MachineMaxTravelYmm = (_connection as IGrblDeviceProfileSource)?.DeviceProfile?.MaxTravelYmm,
         Layers = ImportKind == ImportKind.GCode ? null : Layers.ToList(),
+        HiddenOutputLayerNames = ImportKind == ImportKind.GCode ? null : HiddenOutputLayerNames(),
         RasterOptions = ImportKind == ImportKind.GCode ? null : BuildEffectiveRasterOptionsForPreflight(),
         MaxSpindleSpeed = ReadControllerMaximumS(),
         LaserModeEnabled = ReadControllerLaserModeEnabled(),
@@ -718,11 +739,12 @@ public partial class GCodeViewModel : ObservableObject
     private IReadOnlyList<RasterImportOptions>? BuildEffectiveRasterOptionsForPreflight()
     {
         if (ImportKind == ImportKind.GCode) return null;
+        var layers = Layers.ToList();
         return _scene.Objects
             .Where(item => item.IsVisible && item.IncludeInOutput && item.RasterOptions is not null)
             .Select(item =>
             {
-                var layer = Layers.FirstOrDefault(candidate => candidate.IsRaster && UsesLayer(item, candidate));
+                var layer = layers.FirstOrDefault(candidate => candidate.IsRaster && LayerResolver.UsesLayer(item, candidate, layers));
                 return layer is { IsEnabled: true } ? item.BuildRasterOutputOptions(layer) : null;
             })
             .Where(item => item is not null)
@@ -996,7 +1018,9 @@ public partial class GCodeViewModel : ObservableObject
                 IsCurrentDocumentFramed,
                 enabledLayers.Any(layer => !layer.IsRaster &&
                                            (layer.Mode is LayerMode.Cut or LayerMode.FillAndCut) &&
-                                           string.IsNullOrWhiteSpace(layer.MaterialLabel)))),
+                                           string.IsNullOrWhiteSpace(layer.MaterialLabel)),
+                preflight.Issues.Where(issue => issue.Severity == PreflightSeverity.Warning)
+                    .Select(issue => issue.Message).ToList())),
             "Spustit úlohu",
             CancelText: "Ještě zkontrolovat",
             Tone: LaseroDialogTone.Warning)) == LaseroDialogChoice.Primary;
@@ -1135,14 +1159,12 @@ public partial class GCodeViewModel : ObservableObject
 
     private BoundingBox2D GetSceneFramingBounds()
     {
-        var enabledLayers = _scene.Scene.Layers.Where(layer => layer.IsEnabled).ToList();
+        var layers = _scene.Scene.Layers.ToList();
         var bounds = BoundingBox2D.Empty;
-        foreach (var shape in _scene.Scene.ToImportedDocument().Shapes)
+        // Same resolution as the job itself (LayerResolver), so the frame outlines what will burn.
+        foreach (var (owner, shape) in _scene.Scene.GetOutputShapes())
         {
-            var layerIsEnabled = enabledLayers.Any(layer => shape.LayerId != Guid.Empty
-                ? shape.LayerId == layer.Id
-                : shape.LayerColor.IsApproximately(layer.Color));
-            if (!layerIsEnabled) continue;
+            if (LayerResolver.Resolve(owner, shape, layers) is not { IsEnabled: true }) continue;
 
             foreach (var point in shape.Points)
                 bounds = bounds.Include(point.X + _scenePlacementOffsetX, point.Y + _scenePlacementOffsetY);

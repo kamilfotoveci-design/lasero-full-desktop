@@ -4,8 +4,12 @@ namespace Lasero.Core.Layers;
 
 /// <summary>
 /// One stable processing layer, mirroring LightBurn's "Cuts/Layers" list. Geometry references
-/// the layer by ID; color remains its visual label and an import compatibility hint. Defaults mirror lasero-app's own
+/// the layer by ID; colour + mode identify the operation when imported or legacy geometry has no
+/// ID yet (see LayerResolver, SceneDocument.EnsureLayers). Defaults mirror lasero-app's own
 /// lightburn-export.js DEFAULTS so numbers feel familiar to existing users.
+/// <para>Lifetime: a layer leaves the list when an edit that moves or removes objects takes away its
+/// last user (Scene.Commands.EmptiedLayerPruner), in the same undo step. A layer that was already
+/// empty, such as one the operator duplicated or picked from the palette, stays until deleted.</para>
 /// </summary>
 public sealed partial class LayerSettings : ObservableObject
 {
@@ -47,11 +51,6 @@ public sealed partial class LayerSettings : ObservableObject
     [ObservableProperty] private bool _isVisible = true;
     [ObservableProperty] private bool _isLocked;
     [ObservableProperty] private bool _isRaster;
-
-    /// <summary>True only for an operation layer created implicitly by a tool and owned by its
-    /// geometry. Once its last object is removed, the layer may leave with it. User-created and
-    /// imported layers remain valid even when empty. Persisted so save/reopen keeps the contract.</summary>
-    public bool RemoveWhenEmpty { get; init; }
 
     public string ColorHex => Color.ToHex();
     public string ModeLabel => IsRaster ? "Obrázek" : Mode switch
@@ -172,7 +171,7 @@ public sealed partial class LayerSettings : ObservableObject
 
     public override string ToString() => Name;
 
-    public static LayerSettings CreateDefault(RgbColor color, LayerMode mode, string name, bool removeWhenEmpty = false) => mode == LayerMode.Cut
-        ? new LayerSettings { Color = color, Name = name, Mode = LayerMode.Cut, Speed = 350, Power = 95, Passes = 1, RemoveWhenEmpty = removeWhenEmpty }
-        : new LayerSettings { Color = color, Name = name, Mode = mode, Speed = 3000, Power = 30, Passes = 1, FillLineIntervalMm = 25.4 / 254, RemoveWhenEmpty = removeWhenEmpty };
+    public static LayerSettings CreateDefault(RgbColor color, LayerMode mode, string name) => mode == LayerMode.Cut
+        ? new LayerSettings { Color = color, Name = name, Mode = LayerMode.Cut, Speed = 350, Power = 95, Passes = 1 }
+        : new LayerSettings { Color = color, Name = name, Mode = mode, Speed = 3000, Power = 30, Passes = 1, FillLineIntervalMm = 25.4 / 254 };
 }

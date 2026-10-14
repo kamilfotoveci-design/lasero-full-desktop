@@ -28,6 +28,9 @@ public sealed record JobPreflightContext
     public double? MachineMaxTravelXmm { get; init; }
     public double? MachineMaxTravelYmm { get; init; }
     public IReadOnlyList<LayerSettings>? Layers { get; init; }
+    /// <summary>Names of layers that are hidden on the canvas but still produce output. Show and
+    /// Output are independent (LightBurn semantics), so this is a warning, never a block.</summary>
+    public IReadOnlyList<string>? HiddenOutputLayerNames { get; init; }
     public IReadOnlyList<RasterImportOptions>? RasterOptions { get; init; }
     public double? MaxSpindleSpeed { get; init; }
     public bool? LaserModeEnabled { get; init; }
@@ -45,6 +48,11 @@ public static class JobPreflight
     /// <summary>The reason Start is unavailable while no laser is connected. Public so the UI can show
     /// the very same sentence in its own surfaces instead of a second, drifting copy.</summary>
     public const string DisconnectedMessage = "K přípravě a odeslání úlohy je potřeba připojit laser.";
+
+    public const string HiddenOutputLayerCode = "layer.hidden-output";
+
+    public static string HiddenOutputLayerMessage(string layerName) =>
+        $"Skrytá vrstva „{(string.IsNullOrWhiteSpace(layerName) ? "bez názvu" : layerName)}“ se vypálí. Pokud nemá, je potřeba jí vypnout výstup.";
 
     private static readonly Regex GCodeWordPattern = new(@"([A-Za-z])\s*(-?\d+\.?\d*)", RegexOptions.Compiled);
     private static readonly Regex RawGCodeTokenPattern = new(@"[A-Za-z]\s*-?\d+\.?\d*", RegexOptions.Compiled);
@@ -65,6 +73,8 @@ public static class JobPreflight
             ValidateBounds(context, issues);
 
         ValidateEngravingSettings(context.Layers, issues);
+        foreach (var name in context.HiddenOutputLayerNames ?? [])
+            issues.Add(new PreflightIssue(HiddenOutputLayerCode, HiddenOutputLayerMessage(name), PreflightSeverity.Warning));
         ValidateRasterSettings(context.RasterOptions, issues);
         if ((context.Layers?.Any(layer => layer.IsEnabled) == true || context.RasterOptions?.Count > 0)
             && (context.MaxSpindleSpeed is not { } maxS || !double.IsFinite(maxS) || maxS <= 0))

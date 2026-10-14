@@ -89,7 +89,7 @@ public static class BitmapTracer
         var vectorObjects = CompoundPathBuilder.Build(tree, options, TraceColor,
             scale / tree.SubpixelScale, cancellationToken);
 
-        var layer = LayerSettings.CreateDefault(TraceColor, LayerMode.Cut, "Trasovaný vektor", removeWhenEmpty: true);
+        var layer = LayerSettings.CreateDefault(TraceColor, LayerMode.Cut, "Trasovaný vektor");
         var shapes = new List<ImportedShape>();
         foreach (var traced in vectorObjects)
         {

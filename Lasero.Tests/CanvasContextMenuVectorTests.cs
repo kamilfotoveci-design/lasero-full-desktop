@@ -342,10 +342,16 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         Assert.True(Pixel(raster.RasterFilePath!, 700, 50).R < 32, "inside the second rectangle");
         Assert.True(Pixel(raster.RasterFilePath!, 400, 50).R > 224, "the gap between them stays white");
 
-        // On the bitmap layer, which is created once and is the one the outline refers to.
+        // On the bitmap layer, which is created once and is the one the outline refers to. The vector
+        // layer the conversion emptied leaves in the same step (one emptied-layer rule for every
+        // object-replacing command), and Undo brings it back.
         var rasterLayer = Assert.Single(scene.Layers, layer => layer.IsRaster);
-        Assert.Equal(layersBefore + 1, scene.Layers.Count);
+        Assert.Same(rasterLayer, Assert.Single(scene.Layers));
         Assert.All(raster.LocalShapes, shape => Assert.Equal(rasterLayer.Id, shape.LayerId));
+
+        scene.UndoCommand.Execute(null);
+        Assert.Equal(layersBefore, scene.Layers.Count);
+        Assert.DoesNotContain(scene.Layers, layer => layer.IsRaster);
     }
 
     [Fact]

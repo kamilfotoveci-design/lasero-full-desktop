@@ -14,7 +14,8 @@ public sealed record StartSummaryInput(
     string SettingsSummary,
     string EstimatedTime,
     bool IsFramed,
-    bool HasCutLayerWithoutRecipe = false);
+    bool HasCutLayerWithoutRecipe = false,
+    IReadOnlyList<string>? Warnings = null);
 
 /// <summary>
 /// The wording of the Start confirmation. Start must never be ambiguous, so the dialog answers the
@@ -50,7 +51,8 @@ public static class StartSummary
             $"Rámování: {framing}",
             input.SettingsSummary + (input.HasCutLayerWithoutRecipe
                 ? "\nPozor: řezací vrstva nemá přiřazený materiálový recept. Výkon a rychlost je potřeba ověřit na vzorku."
-                : string.Empty),
+                : string.Empty) +
+            string.Concat((input.Warnings ?? []).Select(warning => $"\nPozor: {warning}")),
             $"Odhadovaný čas: {input.EstimatedTime}",
             string.Empty,
             input.IsSimulator

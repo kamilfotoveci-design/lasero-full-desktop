@@ -1,18 +1,18 @@
-using Lasero.Core.GCode;
-using Lasero.Core.Grbl;
-using Lasero.Core.Import;
 using Lasero.Core.Layers;
 
 namespace Lasero.Core.Scene.Commands;
 
-/// <summary>Removes only contours assigned to the deleted layer. Mixed-layer objects keep their
-/// other contours, placement and editable subpaths; Undo restores the original object instances.</summary>
+/// <summary>Removes the layer and only the contours assigned to it. Mixed-layer objects keep their
+/// other contours, placement and editable subpaths; Undo restores the original object instances.
+/// Like <see cref="DeleteObjectsCommand"/>, an object that disappears completely does not leave its
+/// linked offset outputs as zombies: a live output is detached, a stale suspended one goes with it.</summary>
 public sealed class DeleteLayerCommand : ISceneCommand
 {
     private readonly SceneDocument _scene;
     private readonly LayerSettings _layer;
     private readonly int _layerIndex;
     private readonly List<(SceneObject Original, SceneObject? Remaining, int Index)> _affected;
+    private readonly List<(SceneObject Object, OffsetLink Link)> _detached = [];
 
     public DeleteLayerCommand(SceneDocument scene, LayerSettings layer)
     {
@@ -22,15 +22,31 @@ public sealed class DeleteLayerCommand : ISceneCommand
         _layer = layer;
         _layerIndex = scene.Layers.IndexOf(layer);
         if (_layerIndex < 0) throw new ArgumentException("Layer is not in the scene.", nameof(layer));
+        var layers = scene.Layers.ToList();
         _affected = scene.Objects.Select((item, index) => (Item: item, Index: index))
-            .Where(entry => UsesLayer(entry.Item, layer))
+            .Where(entry => LayerResolver.UsesLayer(entry.Item, layer, layers))
             .Select(entry =>
             {
-                if (!CanKeepOtherContours(entry.Item, layer))
+                if (!LayerContourSplit.CanSplit(entry.Item, layer, layers))
                     throw new InvalidOperationException("Mixed editable source cannot be split safely by layer.");
-                return (entry.Item, Remaining: KeepOtherContours(entry.Item, layer), entry.Index);
+                var kept = entry.Item.IsRaster ? [] : LayerContourSplit.Indices(entry.Item, layer, layers, onLayer: false);
+                // A linked offset result keeps its recipe: dropping it here would silently turn a live,
+                // source-driven output into a frozen copy just because one of its contours left with a layer.
+                return (entry.Item, Remaining: LayerContourSplit.Keep(entry.Item, kept, entry.Item.Id, keepOffsetLink: true), entry.Index);
             })
             .ToList();
+
+        var deletedIds = _affected.Where(entry => entry.Remaining is null).Select(entry => entry.Original.Id).ToHashSet();
+        var affectedObjects = _affected.Select(entry => entry.Original).ToHashSet();
+        foreach (var (candidate, index) in scene.Objects.Select((item, index) => (item, index)))
+        {
+            if (affectedObjects.Contains(candidate) || candidate.OffsetLink is not { } link) continue;
+            if (!link.SourceIds.Any(deletedIds.Contains)) continue;
+            if (link.IsSuspended) _affected.Add((candidate, null, index));
+            else _detached.Add((candidate, link));
+        }
+        // Ascending index order lets Undo reinsert every removed object at its recorded position.
+        _affected.Sort((left, right) => left.Index.CompareTo(right.Index));
     }
 
     public void Do()
@@ -40,8 +56,10 @@ public sealed class DeleteLayerCommand : ISceneCommand
             var index = _scene.Objects.IndexOf(original);
             if (index < 0) continue;
             if (remaining is null) _scene.Objects.RemoveAt(index);
-            else _scene.Objects[index] = remaining;
+            else if (!ReferenceEquals(remaining, original)) _scene.Objects[index] = remaining;
         }
+        foreach (var (item, _) in _detached)
+            item.OffsetLink = null;
         _scene.Layers.Remove(_layer);
     }
 
@@ -54,64 +72,15 @@ public sealed class DeleteLayerCommand : ISceneCommand
             if (remaining is not null)
             {
                 var current = _scene.Objects.IndexOf(remaining);
-                if (current >= 0) _scene.Objects[current] = original;
+                if (current >= 0 && !ReferenceEquals(remaining, original)) _scene.Objects[current] = original;
             }
             else if (!_scene.Objects.Contains(original))
                 _scene.Objects.Insert(Math.Min(index, _scene.Objects.Count), original);
         }
+        foreach (var (item, link) in _detached)
+            item.OffsetLink = link;
     }
 
-    private static SceneObject? KeepOtherContours(SceneObject item, LayerSettings layer)
-    {
-        if (item.IsRaster) return null;
-        var keptIndices = Enumerable.Range(0, item.LocalShapes.Count)
-            .Where(index => !ShapeUsesLayer(item.LocalShapes[index], layer)).ToList();
-        if (keptIndices.Count == 0) return null;
-        if (keptIndices.Count == item.LocalShapes.Count) return item;
-        if (item.Text is not null || item.VectorPath is not null && item.VectorPath.Subpaths.Count != item.LocalShapes.Count)
-            throw new InvalidOperationException("Editable source cannot be split safely by layer.");
-
-        var shapes = keptIndices.Select(index => item.LocalShapes[index]).ToList();
-        var bounds = BoundingBox2D.Empty;
-        foreach (var shape in shapes)
-            foreach (var point in shape.Points)
-                bounds = bounds.Include(point.X, point.Y);
-        if (bounds.IsEmpty) throw new InvalidOperationException("Remaining layer geometry is empty.");
-        var pivot = new Position((bounds.MinX + bounds.MaxX) / 2, (bounds.MinY + bounds.MaxY) / 2, item.LocalPivot.Z);
-        return new SceneObject
-        {
-            Id = item.Id,
-            GroupId = item.GroupId,
-            NestedGroupIds = item.NestedGroupIds.ToArray(),
-            Name = item.Name,
-            LocalShapes = shapes,
-            LocalBounds = bounds,
-            LocalPivot = pivot,
-            Transform = item.Transform.WithPivotMoved(item.LocalPivot, pivot),
-            VectorPath = item.VectorPath is null ? null : new VectorPath
-            {
-                Subpaths = keptIndices.Select(index => item.VectorPath!.Subpaths[index]).ToList(),
-            },
-            IsVisible = item.IsVisible,
-            IsLocked = item.IsLocked,
-            IncludeInOutput = item.IncludeInOutput,
-            // A linked offset result keeps its recipe: dropping it here would silently turn a live,
-            // source-driven output into a frozen copy just because one of its contours left with a layer.
-            OffsetLink = item.OffsetLink,
-        };
-    }
-
-    public static bool CanKeepOtherContours(SceneObject item, LayerSettings layer) =>
-        !UsesLayer(item, layer) ||
-        item.LocalShapes.All(shape => ShapeUsesLayer(shape, layer)) ||
-        !item.IsRaster && item.Text is null &&
-        (item.VectorPath is null || item.VectorPath.Subpaths.Count == item.LocalShapes.Count);
-
-    private static bool ShapeUsesLayer(ImportedShape shape, LayerSettings layer) => shape.LayerId != Guid.Empty
-        ? shape.LayerId == layer.Id
-        : shape.LayerColor.IsApproximately(layer.Color);
-
-    private static bool UsesLayer(SceneObject item, LayerSettings layer) =>
-        layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty) ||
-        item.LocalShapes.Any(shape => ShapeUsesLayer(shape, layer));
+    public static bool CanKeepOtherContours(SceneObject item, LayerSettings layer, IReadOnlyList<LayerSettings> layers) =>
+        LayerContourSplit.CanSplit(item, layer, layers);
 }

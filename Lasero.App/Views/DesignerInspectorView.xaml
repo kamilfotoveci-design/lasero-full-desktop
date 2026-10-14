@@ -348,7 +348,7 @@
                                                 </MenuItem.ItemContainerStyle>
                                             </MenuItem>
                                             <MenuItem Header="Odstranit vrstvu"
-                                                      ToolTip="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerDisabledReason, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Odstraní objekty z této vrstvy. Akci lze vrátit zpět.'}"
+                                                      ToolTip="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerDisabledReason, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Odstraní vrstvu i tvary v ní. Tvary v jiných vrstvách zůstanou. Akci lze vrátit zpět.'}"
                                                       ToolTipService.ShowOnDisabled="True"
                                                       Command="{Binding PlacementTarget.Tag.Scene.DeleteSelectedLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
@@ -469,6 +469,12 @@
                                    Style="{StaticResource Text.Muted}" FontSize="{StaticResource Size.Text.Explain}" TextWrapping="Wrap" />
                     </StackPanel>
                 </StackPanel>
+
+                <!-- A selection spread over several layers has no single layer whose settings would be
+                     right for all of it, so none is shown and nothing is edited silently. -->
+                <TextBlock Margin="24,12,24,16" TextWrapping="Wrap" Style="{StaticResource Text.Muted}"
+                           Text="Více vrstev. Výběr obsahuje tvary z několika vrstev, nastavení lze upravit po výběru vrstvy v seznamu."
+                           Visibility="{Binding Scene.IsMixedLayerSelection, Converter={StaticResource BoolToVisibility}}" />
 
                 <!-- ==================== NASTAVENÍ VYBRANÉ OPERACE ==================== -->
                 <Border Style="{StaticResource InspectorGroupDivider}"
@@ -648,7 +654,7 @@
                             Command="{Binding DataContext.Scene.DeleteSelectedLayerCommand, ElementName=InspectorRoot}"
                             Foreground="{DynamicResource Brush.Danger}"
                             ToolTipService.ShowOnDisabled="True"
-                            ToolTip="{Binding DataContext.Scene.DeleteSelectedLayerDisabledReason, ElementName=InspectorRoot, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Vrstva ani její objekty se neodstraní.'}"
+                            ToolTip="{Binding DataContext.Scene.DeleteSelectedLayerDisabledReason, ElementName=InspectorRoot, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Odstraní vrstvu i tvary v ní. Tvary v jiných vrstvách zůstanou. Akci lze vrátit zpět.'}"
                             automation:AutomationProperties.Name="Odstranit vrstvu">
                         <components:IconLabel IconData="{StaticResource Glyph.Delete}" Text="Odstranit vrstvu"
                                               IconSize="{StaticResource Size.Icon.Sm}" TextMargin="7,0,0,0" />

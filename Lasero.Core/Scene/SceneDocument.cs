@@ -20,19 +20,7 @@ public sealed class SceneDocument
     /// the bridge from scene geometry into the GRBL-range-aware ToolpathBuilder.</summary>
     public ImportedDocument ToImportedDocument(double offsetX = 0, double offsetY = 0)
     {
-        var shapes = Objects
-            .Where(o => o.IsVisible && o.IncludeInOutput)
-            // Guid.Empty means "one compound path per object"; keep that meaning once shapes from
-            // several objects are pooled, so the fill contract never merges unrelated objects.
-            .SelectMany(o => o.GetWorldShapes().Select(shape =>
-                shape.GeometrySetId == Guid.Empty ? shape with { GeometrySetId = o.Id } : shape))
-            .Select(shape => shape with
-            {
-                Points = shape.Points
-                    .Select(point => new Lasero.Core.Grbl.Position(point.X + offsetX, point.Y + offsetY, point.Z))
-                    .ToList()
-            })
-            .ToList();
+        var shapes = GetOutputShapes(offsetX, offsetY).Select(entry => entry.Shape).ToList();
 
         var bbox = BoundingBox2D.Empty;
         foreach (var shape in shapes)
@@ -47,7 +35,27 @@ public sealed class SceneDocument
         };
     }
 
-    /// <summary>Adds each of <paramref name="candidates"/> not already matched (by color) by an existing
+    /// <summary>The world-space contours of every visible, included object together with the object
+    /// that owns them, so callers can resolve layers with <see cref="LayerResolver"/>'s owner-aware
+    /// rule (a bitmap's outline is never vector output).</summary>
+    public IEnumerable<(SceneObject Owner, ImportedShape Shape)> GetOutputShapes(double offsetX = 0, double offsetY = 0) =>
+        Objects
+            .Where(o => o.IsVisible && o.IncludeInOutput)
+            // Guid.Empty means "one compound path per object"; keep that meaning once shapes from
+            // several objects are pooled, so the fill contract never merges unrelated objects.
+            .SelectMany(o => o.GetWorldShapes().Select(shape => (Owner: o, Shape: shape with
+            {
+                GeometrySetId = shape.GeometrySetId == Guid.Empty ? o.Id : shape.GeometrySetId,
+                Points = shape.Points
+                    .Select(point => new Lasero.Core.Grbl.Position(point.X + offsetX, point.Y + offsetY, point.Z))
+                    .ToList(),
+            })));
+
+    /// <summary>Whether any contour of <paramref name="item"/> belongs to <paramref name="layer"/>
+    /// under the one resolution rule (<see cref="LayerResolver"/>).</summary>
+    public bool UsesLayer(SceneObject item, LayerSettings layer) => LayerResolver.UsesLayer(item, layer, Layers);
+
+    /// <summary>Adds each of <paramref name="candidates"/> not already matched (by id, or by colour + mode) by an existing
     /// layer — used when a new object is added, so a second red-stroke import shares the existing "Rez"
     /// layer instead of creating a duplicate. Returns exactly the layers that were newly added, so
     /// AddObjectCommand can remove exactly those on undo.</summary>
@@ -63,17 +71,14 @@ public sealed class SceneDocument
         var added = new List<LayerSettings>();
         var candidatesById = new Dictionary<Guid, LayerSettings>();
         var candidatesByColor = new List<(RgbColor Color, LayerSettings Layer)>();
-        var claimed = new HashSet<LayerSettings>();
         foreach (var candidate in candidates)
         {
-            // A fill and an outline in the same colour are two different operations, so the same
-            // colour only shares a layer when the mode also agrees. A colour-only match (the layer the
-            // operator re-moded) is accepted only for a layer no other candidate of this call took,
-            // otherwise a black fill and a black cut from one import would collapse into one layer.
+            // Colour + mode identify an operation (LightBurn model): a fill and an outline in the same
+            // colour are two different operations, so the same colour only shares a layer when the mode
+            // also agrees. A colour-only match would put a later outline import on a same-colour fill
+            // layer and the outline would be scan-filled.
             var resolved = Layers.FirstOrDefault(layer => layer.Id == candidate.Id)
                 ?? Layers.FirstOrDefault(layer => layer.Mode == candidate.Mode && layer.IsRaster == candidate.IsRaster
-                    && layer.Color.IsApproximately(candidate.Color))
-                ?? Layers.FirstOrDefault(layer => !claimed.Contains(layer) && layer.IsRaster == candidate.IsRaster
                     && layer.Color.IsApproximately(candidate.Color));
             if (resolved is null)
             {
@@ -82,7 +87,6 @@ public sealed class SceneDocument
                 added.Add(resolved);
             }
 
-            claimed.Add(resolved);
             candidatesById[candidate.Id] = resolved;
             candidatesByColor.Add((candidate.Color, resolved));
         }

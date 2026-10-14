@@ -101,10 +101,11 @@ public sealed class ProjectLayer
     public bool IsEnabled { get; set; } = true;
     public bool IsVisible { get; set; } = true;
     public bool IsLocked { get; set; }
+    /// <summary>The bitmap operation. Authoritative on load; only files that predate the flag have it
+    /// inferred, and then only for a layer that bitmaps actually use (see SceneViewModel.LoadProject).
+    /// A former "RemoveWhenEmpty" field in older files is ignored: one lifetime rule now applies to
+    /// every layer (EmptiedLayerPruner).</summary>
     public bool IsRaster { get; set; }
-    /// <summary>Implicit operation layer removed with its last object. Absent in older projects:
-    /// false keeps existing user-created and imported empty layers intact.</summary>
-    public bool RemoveWhenEmpty { get; set; }
 }
 
 public static class ProjectFileSerializer

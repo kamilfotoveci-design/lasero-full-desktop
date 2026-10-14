@@ -5,17 +5,21 @@ namespace Lasero.Core.Scene.Commands;
 
 /// <summary>Moves whole objects onto one processing layer as a single undo step. The previous shape
 /// lists are captured when the command is built, so Undo restores every object exactly - including
-/// objects whose contours used different layers before the assignment.</summary>
+/// objects whose contours used different layers before the assignment. Source layers the move leaves
+/// empty leave with it (see EmptiedLayerPruner).</summary>
 public sealed class AssignObjectsToLayerCommand : ISceneCommand
 {
     private readonly IReadOnlyList<(SceneObject Target, IReadOnlyList<ImportedShape> Before)> _entries;
     private readonly LayerSettings _layer;
+    private readonly EmptiedLayerPruner _layers;
 
-    public AssignObjectsToLayerCommand(IEnumerable<SceneObject> targets, LayerSettings layer)
+    public AssignObjectsToLayerCommand(SceneDocument scene, IEnumerable<SceneObject> targets, LayerSettings layer)
     {
+        ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(targets);
         ArgumentNullException.ThrowIfNull(layer);
         _layer = layer;
+        _layers = new EmptiedLayerPruner(scene);
         _entries = targets.Select(target => (target, target.LocalShapes)).ToList();
     }
 
@@ -25,11 +29,14 @@ public sealed class AssignObjectsToLayerCommand : ISceneCommand
 
     public void Do()
     {
+        _layers.CaptureBefore();
         foreach (var (target, _) in _entries) target.AssignToLayer(_layer);
+        _layers.PruneAfter();
     }
 
     public void Undo()
     {
+        _layers.Restore();
         foreach (var (target, before) in _entries) target.RestoreLocalShapes(before);
     }
 }

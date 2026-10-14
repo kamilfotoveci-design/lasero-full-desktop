@@ -4,17 +4,19 @@ namespace Lasero.Core.Scene.Commands;
 /// Undo reinserts every object at its original z-order position rather than just appending them back.
 /// Linked offset outputs whose source is deleted do not survive as hidden zombies: a live output is
 /// detached (keeps its geometry as an ordinary object), a stale suspended one is deleted with its source.
+/// Layers the deletion leaves empty go too (see EmptiedLayerPruner).
 /// All of it is part of this single command, so one Undo restores everything.</summary>
 public sealed class DeleteObjectsCommand : ISceneCommand
 {
     private readonly SceneDocument _scene;
     private readonly List<(SceneObject Object, int Index)> _targets;
     private readonly List<(SceneObject Object, OffsetLink Link)> _detached = [];
-    private readonly List<(Lasero.Core.Layers.LayerSettings Layer, int Index)> _removedLayers = [];
+    private readonly EmptiedLayerPruner _layers;
 
     public DeleteObjectsCommand(SceneDocument scene, IEnumerable<SceneObject> targets)
     {
         _scene = scene;
+        _layers = new EmptiedLayerPruner(scene);
         var requested = targets
             .Select(o => (Object: o, Index: scene.Objects.IndexOf(o)))
             .Where(t => t.Index >= 0)
@@ -35,26 +37,17 @@ public sealed class DeleteObjectsCommand : ISceneCommand
 
     public void Do()
     {
+        _layers.CaptureBefore();
         foreach (var (obj, _) in _targets)
             _scene.Objects.Remove(obj);
         foreach (var (obj, _) in _detached)
             obj.OffsetLink = null;
-
-        _removedLayers.Clear();
-        foreach (var layer in _scene.Layers.ToList())
-        {
-            if (!_targets.Any(target => UsesLayer(target.Object, layer)) ||
-                _scene.Objects.Any(item => UsesLayer(item, layer))) continue;
-
-            _removedLayers.Add((layer, _scene.Layers.IndexOf(layer)));
-            _scene.Layers.Remove(layer);
-        }
+        _layers.PruneAfter();
     }
 
     public void Undo()
     {
-        foreach (var (layer, index) in _removedLayers.OrderBy(item => item.Index))
-            _scene.Layers.Insert(Math.Min(index, _scene.Layers.Count), layer);
+        _layers.Restore();
 
         // Ascending index order: each insert lands at its recorded position because every
         // earlier (lower-index) reinsertion has already shifted the list back into shape.
@@ -63,10 +56,4 @@ public sealed class DeleteObjectsCommand : ISceneCommand
         foreach (var (obj, link) in _detached)
             obj.OffsetLink = link;
     }
-
-    private static bool UsesLayer(SceneObject item, Lasero.Core.Layers.LayerSettings layer) =>
-        (layer.IsRaster && item.IsRaster && item.LocalShapes.All(shape => shape.LayerId == Guid.Empty)) ||
-        item.LocalShapes.Any(shape => shape.LayerId != Guid.Empty
-            ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color));
 }

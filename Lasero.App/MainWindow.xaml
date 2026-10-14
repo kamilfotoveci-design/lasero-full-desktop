@@ -695,7 +695,7 @@
                      selected layer is ringed. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,20,0"
                             Visibility="{Binding CurrentScreen, Converter={StaticResource EnumEqualsVisibility}, ConverterParameter=Designer}"
-                            ToolTip="Barva určuje, jak laser objekt zpracuje. Po výběru objektu ji lze přiřadit kliknutím na barvu">
+                            ToolTip="Barva určuje, jak laser objekt zpracuje. Kliknutí na barvu přesune vybrané objekty do její vrstvy, bez výběru určí vrstvu pro další kreslení">
                     <ItemsControl ItemsSource="{Binding Scene.LayerPalette}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
