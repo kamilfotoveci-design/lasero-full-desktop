@@ -9,7 +9,7 @@ using Lasero.App.ViewModels;
 namespace Lasero.App.Views.Kamil;
 
 /// <summary>
-/// The occasional speech bubble from Kamil's head ("Nevíš si rady? Zeptej se mě."). It is an offer,
+/// The occasional speech bubble from Kamil's head ("Pomoc je po ruce. Stačí se zeptat."). It is an offer,
 /// never an interruption: only while the assistant is minimized, the window is active and no job is
 /// running, a few minutes apart, at most three times per run, and it leaves by itself after a few
 /// seconds. A click opens Quick Ask; any state change dismisses it.
@@ -68,11 +68,11 @@ public partial class KamilAssistantHost
 
         if (LaseroMotion.AnimationsEnabled)
         {
-            var bounce = new BackEase { Amplitude = 0.5, EasingMode = EasingMode.EaseOut };
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
             var duration = TimeSpan.FromMilliseconds(420);
             NudgeBubble.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
-            NudgeScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, new DoubleAnimation(0.85, 1, duration) { EasingFunction = bounce });
-            NudgeScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, new DoubleAnimation(0.85, 1, duration) { EasingFunction = bounce });
+            NudgeScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, new DoubleAnimation(0.85, 1, duration) { EasingFunction = ease });
+            NudgeScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, new DoubleAnimation(0.85, 1, duration) { EasingFunction = ease });
         }
         else
         {

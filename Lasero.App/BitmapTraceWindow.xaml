@@ -1,4 +1,4 @@
-<Window x:Class="Lasero.App.BitmapTraceWindow"
+﻿<Window x:Class="Lasero.App.BitmapTraceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:components="clr-namespace:Lasero.App.Components"
@@ -76,8 +76,15 @@
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.Signal}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
                             </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -125,7 +132,7 @@
                     </Viewbox>
                     <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="{StaticResource Brush.Panel}"
                             BorderBrush="{StaticResource Brush.PanelBorder}" BorderThickness="1" CornerRadius="{StaticResource Radius.Md}"
-                            Padding="12,6" Panel.ZIndex="1">
+                            Padding="12,8" Panel.ZIndex="1">
                         <TextBlock Text="{Binding StatusMessage}" FontSize="{StaticResource Size.Text.Meta}"
                                    Foreground="{StaticResource Brush.TextSecondary}" TextWrapping="Wrap" MaxWidth="560" />
                     </Border>
@@ -234,7 +241,7 @@
                                           ToolTip="Vynechá obrys, který vede po okraji obrázku."
                                           AutomationProperties.Name="Vymazat ohraničení" Content="Vymazat ohraničení" />
                             <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <CheckBox Style="{StaticResource Toggle.Switch}" Margin="0,0,10,0"
+                                <CheckBox Style="{StaticResource Toggle.Switch}" Margin="0,0,12,0"
                                           AutomationProperties.Name="Odstranit obrázek po trasování"
                                           IsChecked="{Binding DeleteImageAfterTracing, Mode=TwoWay}" />
                                 <TextBlock Text="Odstranit obrázek po trasování" Style="{StaticResource Trace.Label}" />

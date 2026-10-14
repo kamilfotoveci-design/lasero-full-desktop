@@ -684,7 +684,7 @@ public partial class GCodeViewModel : ObservableObject
     private string DescribeBlockedAction(JobPreflightResult preflight)
     {
         if (IsPositioningLaserBusy?.Invoke() == true)
-            return "Nejprve vypněte polohovací paprsek a vyčkejte na potvrzení vypnutí.";
+            return "Nejprve je potřeba vypnout polohovací paprsek a vyčkat na potvrzení vypnutí.";
         if (preflight.FirstBlockingIssue is { } blocking) return blocking.Message;
         return JobState switch
         {

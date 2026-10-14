@@ -611,7 +611,7 @@ public partial class SceneViewModel : ObservableObject
     {
         if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
         {
-            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku ji zobrazte a odemkněte.");
+            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku je potřeba ji zobrazit a odemknout.");
             return;
         }
 
@@ -630,7 +630,7 @@ public partial class SceneViewModel : ObservableObject
         if (inputPaths.Count == 0) return;
         if (SelectedLayer is { IsVisible: false } or { IsLocked: true })
         {
-            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku ji zobrazte a odemkněte.");
+            RasterOperationRejected?.Invoke("Aktivní vrstva je skrytá nebo zamčená. Před vložením obrázku je potřeba ji zobrazit a odemknout.");
             return;
         }
 

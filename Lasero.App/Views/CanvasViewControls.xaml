@@ -1,4 +1,4 @@
-<UserControl x:Class="Lasero.App.Views.CanvasViewControls"
+﻿<UserControl x:Class="Lasero.App.Views.CanvasViewControls"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Lasero.App.Converters"
@@ -87,12 +87,12 @@
             <ToggleButton x:Name="SnapGridToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapGridClick"
                           ToolTip="Přichytávat k mřížce. Přichytávání lze při tažení dočasně vypnout klávesou Ctrl"
                           AutomationProperties.Name="Přichytávat k mřížce">
-                <TextBlock Text="Mřížka" Margin="10,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Text="Mřížka" Margin="12,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
             </ToggleButton>
             <ToggleButton x:Name="SnapObjectsToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapObjectsClick"
                           ToolTip="Přichytávat k okrajům a středům ostatních objektů. Při tažení lze dočasně vypnout klávesou Ctrl"
                           AutomationProperties.Name="Přichytávat k objektům">
-                <TextBlock Text="Objekty" Margin="10,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Text="Objekty" Margin="12,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
             </ToggleButton>
 
             <Border Style="{StaticResource ClusterDivider}" />

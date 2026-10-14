@@ -149,7 +149,7 @@ public partial class JogViewModel : ObservableObject
             }
 
             IsPositioningLaserOn = true;
-            LastActionMessage = "Polohovací paprsek: 1 %. Kliknutím vypnete.";
+            LastActionMessage = "Polohovací paprsek: 1 %. Kliknutím se vypne.";
             if (DateTime.UtcNow - _positioningLaserStartedUtc >= PositioningLaserMaximumDuration ||
                 !CanManualMotion() || JobActive())
                 await StopPositioningLaserAsync();

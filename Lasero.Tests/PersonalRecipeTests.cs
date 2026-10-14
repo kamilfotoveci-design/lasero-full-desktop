@@ -209,7 +209,7 @@ public sealed class PersonalRecipeTests
     {
         var xaml = File.ReadAllText(Path.Combine(AppRoot(), "MaterialsWindow.xaml"));
         foreach (var label in new[] { "Název materiálu", "Rychlost (mm/min)", "Výkon (%)", "Počet průchodů", "Režim",
-                     "Gravírování", "Řezání", "Přidat první recept", "Použít na operaci" })
+                     "Gravírování", "Řezání", "Přidat první recept", "Použít na vrstvu" })
             Assert.Contains(label, xaml);
         Assert.Contains("ToolTip=\"Duplikovat recept\"", xaml);
         Assert.Contains("ToolTip=\"Smazat recept\"", xaml);

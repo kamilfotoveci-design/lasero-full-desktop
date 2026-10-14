@@ -57,7 +57,7 @@ public sealed class NavigationIconSetTests
 
         // Every labelled navigation entry — including Lasero Chat, which used to be a photo — is an
         // IconLabel at that same size.
-        var nav = Regex.Matches(main, @"<components:IconLabel IconData=""\{StaticResource Glyph\.(Home|Design|Materials|Device|Chat|Settings)\}""[^>]*TextMargin=""9,0,0,0""[^>]*>");
+        var nav = Regex.Matches(main, @"<components:IconLabel IconData=""\{StaticResource Glyph\.(Home|Design|Materials|Device|Tools|Chat|Settings)\}""[^>]*TextMargin=""9,0,0,0""[^>]*>");
         Assert.Equal(6, nav.Count);
         foreach (Match entry in nav)
             Assert.Contains("Size.Icon.Lg", entry.Value);

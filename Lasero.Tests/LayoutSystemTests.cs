@@ -125,6 +125,8 @@ public sealed class LayoutSystemRenderTests
         var headerLeft = LayoutAssertions.BoundsIn(header, home).Left;
         var actionsLeft = LayoutAssertions.BoundsIn(actions, home).Left;
         Assert.True(Math.Abs(headerLeft - actionsLeft) <= 1, $"the action row starts at {actionsLeft:0.#}, the header at {headerLeft:0.#}");
+
+        // Home carries no device rail any more (one scrolling column), so only the content alignment is asserted.
     });
 
     [Theory]
@@ -357,7 +359,7 @@ public sealed class LayoutSystemSourceTests
     [Fact]
     public void TheRightPanelsUseTheSharedWidthToken()
     {
-        Assert.Contains("Layout.PanelColumn", App("Views", "HomeView.xaml"));
+        // Home no longer carries a right panel (one scrolling column), so only Zařízení and the designer share the width.
         Assert.Contains("Layout.PanelColumn", App("Views", "DeviceView.xaml"));
         var main = App("MainWindow.xaml");
         Assert.Contains("x:Name=\"InspectorColumn\" Width=\"360\"", main);

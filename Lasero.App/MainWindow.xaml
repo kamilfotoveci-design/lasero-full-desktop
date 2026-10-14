@@ -184,7 +184,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="60" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="60" />
+            <RowDefinition Height="48" />
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
@@ -207,7 +207,7 @@
                      progress that is not happening. Not hit-testable: it must not eat window drags. -->
                 <ProgressBar Grid.ColumnSpan="5" Panel.ZIndex="5" Height="2" VerticalAlignment="Bottom"
                              IsHitTestVisible="False" BorderThickness="0" Background="Transparent"
-                             Foreground="{StaticResource Brush.Signal}"
+                             Foreground="{StaticResource Brush.Tint}"
                              Minimum="0" Maximum="100"
                              Value="{Binding GCode.ProgressPercent, Mode=OneWay}"
                              Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}"
