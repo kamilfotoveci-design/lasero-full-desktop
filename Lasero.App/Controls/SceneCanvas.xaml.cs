@@ -1395,9 +1395,17 @@ public partial class SceneCanvas : UserControl
         if (ViewModel is null || !ViewModel.CanSelectObject(obj)) return;
         Focus();
 
-        var members = obj.GroupId is { } groupId
-            ? ViewModel.Objects.Where(item => item.GroupId == groupId && ViewModel.CanSelectObject(item)).ToList()
-            : [obj];
+        // Ctrl+click on a member of a group that is not entered yet enters it and picks that member
+        // alone (Inkscape); the same press can then drag it.
+        if (Keyboard.Modifiers == ModifierKeys.Control && obj.GroupId is { } clickedGroup &&
+            clickedGroup != ViewModel.EnteredGroupId && ViewModel.EnterGroup(obj))
+        {
+            if (!obj.IsLocked) BeginMove(e);
+            return;
+        }
+
+        // A click selects a whole group, unless the group has been entered.
+        var members = ViewModel.SelectionUnitFor(obj);
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
@@ -1413,8 +1421,7 @@ public partial class SceneCanvas : UserControl
         }
         else if (!ViewModel.SelectedObjects.Contains(obj))
         {
-            ViewModel.SelectedObjects.Clear();
-            foreach (var member in members) ViewModel.SelectedObjects.Add(member);
+            ViewModel.SelectedObjects.ReplaceWith(members);
         }
         // else: clicked an already-selected object with no Shift -> keep the current
         // multi-selection intact and drag the whole group.
@@ -1633,6 +1640,8 @@ public partial class SceneCanvas : UserControl
         var additive = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         _marqueeSubtracts = !additive && Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         _marqueeRestore = null;
+        // A press on empty canvas leaves an entered group; the marquee then picks whole groups again.
+        ViewModel.LeaveGroup();
         if (!additive && !_marqueeSubtracts)
         {
             // Remembered so that Esc, or a lost capture, mid-marquee puts the old selection back
@@ -1723,6 +1732,19 @@ public partial class SceneCanvas : UserControl
         // HandleNodeEditCanvasMouseDown, not the generic move/rubber-band logic below.
         if (e.ClickCount >= 2 && ViewModel.ActiveTool == DesignerTool.Select && _nodeEditObject is null)
         {
+            // Double-click on a group enters it and selects the member under the pointer (Inkscape).
+            // Another double-click on that member then edits it like any other object.
+            var doubleClickedGrouped = HitTestScene(screen)
+                .Select(candidate => candidate.Object)
+                .FirstOrDefault();
+            if (doubleClickedGrouped is { GroupId: { } doubleClickedGroup } &&
+                doubleClickedGroup != ViewModel.EnteredGroupId && ViewModel.EnterGroup(doubleClickedGrouped))
+            {
+                Focus();
+                e.Handled = true;
+                return;
+            }
+
             var doubleClickedPath = HitTestScene(screen)
                 .Select(candidate => candidate.Object)
                 .FirstOrDefault(candidate => candidate.IsVectorPath && !candidate.IsLocked);
@@ -2606,6 +2628,20 @@ public partial class SceneCanvas : UserControl
         Canvas.SetTop(_rubberBandVisual, y);
         _rubberBandVisual.Width = Math.Abs(current.X - _dragStartScreen.X);
         _rubberBandVisual.Height = Math.Abs(current.Y - _dragStartScreen.Y);
+        // The object marquee tells its two modes apart the CAD way: dragged to the right it selects only
+        // what lies wholly inside (solid outline), dragged to the left anything it touches (dashed).
+        _rubberBandVisual.StrokeDashArray = _dragMode == DragMode.Select && current.X >= _dragStartScreen.X
+            ? null
+            : MarqueeDash;
+    }
+
+    private static readonly DoubleCollection MarqueeDash = CreateMarqueeDash();
+
+    private static DoubleCollection CreateMarqueeDash()
+    {
+        var dash = new DoubleCollection { 3, 2 };
+        dash.Freeze();
+        return dash;
     }
 
     private bool _marqueeSubtracts;
@@ -2627,22 +2663,38 @@ public partial class SceneCanvas : UserControl
             var worldMinY = ToWorldY(top + h);
             var worldMaxY = ToWorldY(top);
 
+            // Dragged to the right: window, only what lies wholly inside. Dragged to the left: crossing,
+            // whatever the rectangle touches. Both test the drawn geometry, and a group is taken as a
+            // whole: every member must be inside for a window, any member touching is enough for a crossing.
+            var window = left >= _dragStartScreen.X;
+            var rect = new BoundingBox2D(worldMinX, worldMinY, worldMaxX, worldMaxY);
+            var hits = ViewModel.Objects
+                .Where(obj => ViewModel.CanSelectObject(obj) && SceneHitTester.MarqueeHit(obj, rect, window))
+                .ToHashSet();
+
             // One selection change for the whole marquee, not one per object it touches.
             var selection = ViewModel.SelectedObjects.ToList();
             var inSelection = new HashSet<SceneObject>(selection);
+            var visitedGroups = new HashSet<Guid>();
             foreach (var obj in ViewModel.Objects)
             {
-                if (!ViewModel.CanSelectObject(obj)) continue;
-                var b = obj.WorldBounds();
-                var intersects = b.MinX <= worldMaxX && b.MaxX >= worldMinX && b.MinY <= worldMaxY && b.MaxY >= worldMinY;
-                if (!intersects) continue;
-                if (_marqueeSubtracts)
+                if (!hits.Contains(obj)) continue;
+                var unit = ViewModel.SelectionUnitFor(obj);
+                if (obj.GroupId is { } groupId && unit.Count > 1)
                 {
-                    if (inSelection.Remove(obj)) selection.Remove(obj);
+                    if (!visitedGroups.Add(groupId)) continue;
+                    if (window && !unit.All(hits.Contains)) continue;
                 }
-                else if (inSelection.Add(obj))
+                foreach (var member in unit)
                 {
-                    selection.Add(obj);
+                    if (_marqueeSubtracts)
+                    {
+                        if (inSelection.Remove(member)) selection.Remove(member);
+                    }
+                    else if (inSelection.Add(member))
+                    {
+                        selection.Add(member);
+                    }
                 }
             }
 
@@ -2854,7 +2906,8 @@ public partial class SceneCanvas : UserControl
         NodeEditActive: _nodeEditObject is not null,
         PathInProgress: _pathToolDrawing,
         NonSelectToolActive: ViewModel is { } scene && scene.ActiveTool != DesignerTool.Select,
-        HasSelection: ViewModel is { } current && current.SelectedObjects.Count > 0);
+        HasSelection: ViewModel is { } current && current.SelectedObjects.Count > 0,
+        GroupEntered: ViewModel is { IsGroupEntered: true });
 
     /// <summary>
     /// One Esc press, one layer, innermost first (see <see cref="InteractionRules.ForCanvasEscape"/>).
@@ -2882,6 +2935,9 @@ public partial class SceneCanvas : UserControl
                 break;
             case CanvasEscapeAction.ResetTool:
                 ViewModel.ActiveTool = DesignerTool.Select;
+                break;
+            case CanvasEscapeAction.ExitGroup:
+                ViewModel.ExitGroup();
                 break;
             case CanvasEscapeAction.ClearSelection:
                 ViewModel.SelectedObjects.Clear();

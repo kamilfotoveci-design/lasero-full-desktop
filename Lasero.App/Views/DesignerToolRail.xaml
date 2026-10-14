@@ -533,7 +533,7 @@
                             <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Union}" />
                         </MenuItem.Header>
                         <MenuItem Header="Sjednotit tvary" Command="{Binding Scene.UniteSelectionCommand}"
-                                  ToolTip="Boolean Union: spojit přesně dva uzavřené tvary do jednoho" />
+                                  ToolTip="Boolean Union: spojit dva nebo více uzavřených tvarů do jednoho" />
                         <MenuItem Header="Svařit tvary" Command="{Binding Scene.WeldSelectionCommand}"
                                   ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
                         <MenuItem Header="Odečíst tvary" Command="{Binding Scene.SubtractSelectionCommand}"
@@ -549,7 +549,7 @@
                                   ToolTip="Otevřít náhled offsetu směrem ven" />
                         <MenuItem Header="Zmenšit (offset dovnitř)" Command="{Binding Scene.ShrinkSelectionCommand}"
                                   ToolTip="Otevřít náhled offsetu směrem dovnitř" />
-                        <MenuItem Header="Rozdělit skupinu" Command="{Binding Scene.UngroupSelectionCommand}"
+                        <MenuItem Header="Zrušit skupinu" InputGestureText="Ctrl+Shift+G" Command="{Binding Scene.UngroupSelectionCommand}"
                                   IsEnabled="{Binding Scene.CanUngroupSelection}"
                                   ToolTip="Zachová původní samostatné objekty, vrstvy i editovatelné křivky" />
                         <MenuItem Header="Oddělit obrysy" Command="{Binding Scene.BreakApartSelectionCommand}"

@@ -73,7 +73,7 @@ public class CanvasContextMenuTextTests
             "-",
             "Odstranit|Del",
             "-",
-            "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G (off)", "Odebrat ze skupiny|Ctrl+U (off)", "Oddělit obrysy| (off)", "Zamknout vybrané tvary|",
+            "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G (off)", "Zrušit skupinu|Ctrl+Shift+G (off)", "Oddělit obrysy| (off)", "Zamknout vybrané tvary|",
             "-",
             "Převést na dráhu|Ctrl+Shift+C", "Převést na bitmapu|Ctrl+Shift+B",
             "-",
@@ -239,6 +239,8 @@ public class CanvasContextMenuTextTests
         // Routed in MainWindow's preview key handler.
         Assert.Contains("e.Key == Key.G && modifiers == ModifierKeys.Control", code);
         Assert.Contains("e.Key == Key.U && modifiers == ModifierKeys.Control", code);
+        // Zrušit skupinu advertises Ctrl+Shift+G; Ctrl+U above is bound to the same command.
+        Assert.Matches(@"Key\.G &&\s*modifiers == \(ModifierKeys\.Control \| ModifierKeys\.Shift\) &&\s*_viewModel\.Scene\.UngroupSelectionCommand", code);
         Assert.Contains("e.Key == Key.C && modifiers == (ModifierKeys.Control | ModifierKeys.Shift)", code);
         Assert.Contains("e.Key == Key.B && modifiers == (ModifierKeys.Control | ModifierKeys.Shift)", code);
         Assert.Contains("shortcutKey == Key.P && modifiers == ModifierKeys.Alt", code);
@@ -248,7 +250,7 @@ public class CanvasContextMenuTextTests
         Assert.Equal(
             new HashSet<string?>
             {
-                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Del", "Ctrl+A", "Ctrl+G", "Ctrl+U",
+                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Del", "Ctrl+A", "Ctrl+G", "Ctrl+Shift+G",
                 "Ctrl+Shift+C", "Ctrl+Shift+B", "Alt+P", "Ctrl+Shift+O",
             },
             shown);

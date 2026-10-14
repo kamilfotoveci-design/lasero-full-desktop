@@ -366,7 +366,7 @@
                              see SceneViewModel.UniteSelectionDisabledReason / HANDOFF.md 2026-09-14. -->
                         <MenuItem Header="Sjednotit tvary" InputGestureText="Ctrl+Shift+U"
                                   Command="{Binding Scene.UniteSelectionCommand}"
-                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Spojit přesně dva uzavřené tvary'}" />
+                                  ToolTip="{Binding Scene.UniteOperandsDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Spojit dva nebo více uzavřených tvarů do jednoho'}" />
                         <MenuItem Header="Odečíst tvary"
                                   Command="{Binding Scene.SubtractSelectionCommand}"
                                   ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: přední odečteš od zadního'}" />
@@ -399,14 +399,22 @@
                                   Command="{Binding Scene.SimplifySelectedVectorPathsCommand}"
                                   IsEnabled="{Binding Scene.CanEditSelectedVectorPaths}"
                                   ToolTip="Zploštit a zredukovat body s tolerancí 0,05 mm" />
-                        <MenuItem Header="Rozdělit skupinu" InputGestureText="Ctrl+Shift+G"
+                        <MenuItem Header="Zrušit skupinu" InputGestureText="Ctrl+Shift+G"
                                   Command="{Binding Scene.UngroupSelectionCommand}"
                                   Visibility="{Binding Scene.CanUngroupSelection, Converter={StaticResource BoolToVisibility}}"
                                   ToolTip="Rozdělí skupinu na původní editovatelné objekty." />
+                        <MenuItem Header="Kombinovat"
+                                  Command="{Binding Scene.CombinePathsCommand}"
+                                  Visibility="{Binding Scene.CanCombinePaths, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Spojí vybrané objekty do jedné cesty; křivky, otvory i vrstvy obrysů zůstanou." />
                         <MenuItem Header="Oddělit obrysy"
                                   Command="{Binding Scene.BreakApartSelectionCommand}"
                                   Visibility="{Binding Scene.CanBreakApartSelection, Converter={StaticResource BoolToVisibility}}"
                                   ToolTip="Rozdělí obrysy jednoho objektu na samostatné objekty." />
+                        <MenuItem Header="Rozdělit cestu"
+                                  Command="{Binding Scene.SplitPathCommand}"
+                                  Visibility="{Binding Scene.CanBreakApartSelection, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Oddělí samostatné tvary; otvory zůstanou u svého obrysu." />
                         <MenuItem Header="Trasovat bitmapu" InputGestureText="Alt+T"
                                   Command="{Binding Scene.TraceSelectedRasterCommand}"
                                   Visibility="{Binding Scene.CanTraceSelectedRaster, Converter={StaticResource BoolToVisibility}}" />
@@ -481,6 +489,8 @@
                                 </Style>
                             </MenuItem.Style>
                         </MenuItem>
+                        <MenuItem Header="Odemknout vše" Command="{Binding Scene.UnlockAllCommand}"
+                                  ToolTip="Odemkne všechny zamčené objekty" />
                         <MenuItem Header="Odstranit" InputGestureText="Delete" Command="{Binding Scene.DeleteCommand}" />
 
                         <Separator />

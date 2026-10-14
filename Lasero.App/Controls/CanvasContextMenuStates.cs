@@ -60,6 +60,14 @@ public static class CanvasContextMenuStates
             CanRemoveBackground = scene.CanRemoveSelectedBackground,
             CanRestoreBackground = scene.CanRestoreSelectedBackground,
             BooleanReason = scene.BooleanPairSelectionDisabledReason,
+            UniteReason = scene.UniteOperandsDisabledReason,
+            UniteFollowsBooleanReason = false,
+            GroupReason = scene.CanGroupSelection ? null : scene.GroupSelectionDisabledReason,
+            // Only the case the builder cannot word itself: the selection is in a group that a locked
+            // member keeps together.
+            UngroupReason = selection.Any(item => item.GroupId is not null) ? scene.UngroupSelectionDisabledReason : null,
+            CombineReason = scene.CombinePathsDisabledReason,
+            CanDistribute = scene.DistributeCentersHorizontallyCommand.CanExecute(null),
             OffsetReason = scene.OffsetSelectionDisabledReason,
             CanBringForward = scene.CanBringForward,
             CanSendBackward = scene.CanSendBackward,
@@ -74,6 +82,7 @@ public static class CanvasContextMenuStates
         SelectionCount = scene.SelectedObjects.Count,
         CanImport = canImport,
         HasBed = hasBed,
+        LockedCount = scene.Objects.Count(item => item.IsLocked),
     };
 
     private static IReadOnlyList<LayerChoice> LayerChoices(SceneViewModel scene)

@@ -284,10 +284,13 @@ public partial class SceneCanvas
             lockAspectRatio: lockAspect,
             allowFlip: gesture.AllowFlip);
 
-        gesture.OverlayBox = GroupTransform.ScaleBox(gesture.StartBox, solution.Anchor, solution.Gx, solution.Gy);
         gesture.OverlayRotationDeg = 0;
+        // The frame is set before the repaint inside ApplyGroupPreview, from the very transforms that
+        // preview assigns and mouse-up commits: when a rotated member cannot take the shear a
+        // non-uniform scale would need, the frame shows where the objects really are, not the nominal box.
         ApplyGroupPreview(gesture, (obj, before) =>
-            GroupTransform.ScaleAbout(before, obj.LocalPivot, solution.Anchor, solution.Gx, solution.Gy));
+            GroupTransform.ScaleAbout(before, obj.LocalPivot, solution.Anchor, solution.Gx, solution.Gy),
+            () => gesture.OverlayBox = GroupTransform.ResizeOverlayBox(gesture.StartBox, solution, gesture.Items));
     }
 
     /// <summary>Coalesced pointer update while the group rotate grip is dragged.</summary>
@@ -306,7 +309,8 @@ public partial class SceneCanvas
         ApplyGroupPreview(gesture, (obj, before) => GroupTransform.RotateAbout(before, obj.LocalPivot, centre, delta));
     }
 
-    private void ApplyGroupPreview(GroupGesture gesture, Func<SceneObject, ObjectTransform, ObjectTransform> after)
+    private void ApplyGroupPreview(GroupGesture gesture, Func<SceneObject, ObjectTransform, ObjectTransform> after,
+        Action? afterAssign = null)
     {
         if (ViewModel is null) return;
         ViewModel.ApplyGesturePreview(() =>
@@ -314,6 +318,7 @@ public partial class SceneCanvas
             foreach (var (obj, before) in gesture.Items)
                 obj.Transform = after(obj, before);
         });
+        afterAssign?.Invoke();
 
         // The canvas skips per-object repaints while the preview bracket is open; patch every object
         // (cached geometry + one matrix each) and the overlay once.

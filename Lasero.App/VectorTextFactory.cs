@@ -240,18 +240,7 @@ public static class VectorTextFactory
             source.Bold ? FontWeights.Bold : FontWeights.Normal,
             FontStretches.Normal);
 
-        var formatted = new FormattedText(
-            text,
-            CultureInfo.CurrentUICulture,
-            FlowDirection.LeftToRight,
-            typeface,
-            source.HeightMm * DipsPerMillimetre,
-            Brushes.Black,
-            1);
-
-        var geometry = formatted.BuildGeometry(new Point(0, 0));
-        if (source.Weld) geometry = Weld(geometry);
-
+        var geometry = BuildGlyphGeometry(source, text, typeface);
         var flattened = geometry.GetFlattenedPathGeometry(FlattenToleranceMm, ToleranceType.Absolute);
         var contours = new List<(List<Position> Points, bool IsClosed)>();
         var bounds = BoundingBox2D.Empty;
@@ -325,6 +314,107 @@ public static class VectorTextFactory
                 bounds.MaxY - centerY),
             centerX,
             centerY);
+    }
+
+    private static Geometry BuildGlyphGeometry(TextSource source, string text, Typeface typeface)
+    {
+        var formatted = new FormattedText(
+            text,
+            CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            source.HeightMm * DipsPerMillimetre,
+            Brushes.Black,
+            1);
+
+        var geometry = formatted.BuildGeometry(new Point(0, 0));
+        return source.Weld ? Weld(geometry) : geometry;
+    }
+
+    /// <summary>
+    /// The glyph outlines as true Bézier curves, in the same local frame and contour order as the
+    /// flattened contours <see cref="Create"/> and <see cref="Rebuild"/> store. Boolean operations
+    /// use it so a letter's curves survive instead of becoming hundreds of short segments. Null when
+    /// the text is warped (the warp bends every point and has no exact Bézier form) or the font
+    /// produces a segment kind that cannot be represented; the caller then keeps the contours.
+    /// </summary>
+    public static VectorPath? BuildLocalCurveOutline(TextSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.Distortion.IsIdentity) return null;
+
+        var render = BuildLocalGeometry(source, DefaultColor);
+        var text = source.EffectiveText(CultureInfo.CurrentUICulture);
+        var family = string.IsNullOrWhiteSpace(source.FontFamily)
+            ? new FontFamily(TextSource.DefaultFontFamily)
+            : new FontFamily(source.FontFamily);
+        var typeface = new Typeface(
+            family,
+            source.Italic ? FontStyles.Italic : FontStyles.Normal,
+            source.Bold ? FontWeights.Bold : FontWeights.Normal,
+            FontStretches.Normal);
+        var outline = PathGeometry.CreateFromGeometry(BuildGlyphGeometry(source, text, typeface));
+
+        Position Local(Point point) => new(
+            point.X / DipsPerMillimetre - render.CenterX,
+            -point.Y / DipsPerMillimetre - render.CenterY,
+            0);
+
+        var subpaths = new List<VectorSubpath>();
+        foreach (var figure in outline.Figures)
+        {
+            var nodes = new List<VectorNode> { VectorNode.CornerAt(Local(figure.StartPoint)) };
+            void Line(Point to) => nodes.Add(VectorNode.CornerAt(Local(to)));
+            void Cubic(Point c1, Point c2, Point to)
+            {
+                nodes[^1] = nodes[^1] with { HandleOut = Local(c1) };
+                nodes.Add(new VectorNode(Local(to), Local(c2), null, VectorNodeType.Corner));
+            }
+            void Quadratic(Point control, Point to)
+            {
+                var start = nodes[^1].Anchor;
+                var q = Local(control);
+                var end = Local(to);
+                nodes[^1] = nodes[^1] with { HandleOut = CubicBezier.Lerp(start, q, 2.0 / 3) };
+                nodes.Add(new VectorNode(end, CubicBezier.Lerp(end, q, 2.0 / 3), null, VectorNodeType.Corner));
+            }
+
+            foreach (var segment in figure.Segments)
+            {
+                switch (segment)
+                {
+                    case LineSegment line: Line(line.Point); break;
+                    case PolyLineSegment polyLine:
+                        foreach (var point in polyLine.Points) Line(point);
+                        break;
+                    case BezierSegment bezier: Cubic(bezier.Point1, bezier.Point2, bezier.Point3); break;
+                    case PolyBezierSegment polyBezier:
+                        for (var i = 0; i + 2 < polyBezier.Points.Count; i += 3)
+                            Cubic(polyBezier.Points[i], polyBezier.Points[i + 1], polyBezier.Points[i + 2]);
+                        break;
+                    case QuadraticBezierSegment quadratic: Quadratic(quadratic.Point1, quadratic.Point2); break;
+                    case PolyQuadraticBezierSegment polyQuadratic:
+                        for (var i = 0; i + 1 < polyQuadratic.Points.Count; i += 2)
+                            Quadratic(polyQuadratic.Points[i], polyQuadratic.Points[i + 1]);
+                        break;
+                    default:
+                        return null;
+                }
+            }
+
+            // A closed figure usually repeats its start point; the closing segment is implicit.
+            if (figure.IsClosed && nodes.Count > 1 &&
+                Math.Abs(nodes[0].Anchor.X - nodes[^1].Anchor.X) < 1e-9 &&
+                Math.Abs(nodes[0].Anchor.Y - nodes[^1].Anchor.Y) < 1e-9)
+            {
+                nodes[0] = nodes[0] with { HandleIn = nodes[^1].HandleIn };
+                nodes.RemoveAt(nodes.Count - 1);
+            }
+            if (nodes.Count < 2) continue;
+            subpaths.Add(new VectorSubpath { Nodes = nodes, IsClosed = figure.IsClosed });
+        }
+
+        return subpaths.Count == 0 ? null : new VectorPath { Subpaths = subpaths };
     }
 
     /// <summary>

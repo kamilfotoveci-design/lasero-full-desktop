@@ -171,7 +171,8 @@ public class CanvasContextMenuTests
         AssertWellFormed(rows);
         Assert.True(Has(rows, ContextAction.Group));
         Assert.Equal("Ctrl+G", Find(rows, ContextAction.Group)!.Gesture);
-        Assert.Equal(8, Submenu(rows, "Zarovnat")!.Children.Count(child => !child.IsSeparator));
+        // Eight align rows, then the four distribute rows (disabled with a reason below three units).
+        Assert.Equal(12, Submenu(rows, "Zarovnat")!.Children.Count(child => !child.IsSeparator));
         Assert.Equal(4, Submenu(rows, "Booleovské operace")!.Children.Count);
         Assert.Null(Submenu(rows, "Pořadí"));
         Assert.Null(Submenu(rows, "Otočit a převrátit"));
@@ -228,8 +229,9 @@ public class CanvasContextMenuTests
         var rows = CanvasContextMenuBuilder.ForObject(VectorState() with { CanUngroup = true });
         var ungroup = Find(rows, ContextAction.Ungroup)!;
         Assert.True(ungroup.IsEnabled);
-        Assert.Equal("Odebrat ze skupiny", ungroup.Header);
-        Assert.Equal("Ctrl+U", ungroup.Gesture);
+        // One name and one advertised shortcut everywhere; Ctrl+U stays bound as well.
+        Assert.Equal("Zrušit skupinu", ungroup.Header);
+        Assert.Equal("Ctrl+Shift+G", ungroup.Gesture);
     }
 
     [Fact]
@@ -461,7 +463,8 @@ public class CanvasContextMenuTests
         Assert.Equal(2, state.SelectionCount);
         Assert.True(state.CanGroup);
         Assert.True(state.CanAlign);
-        Assert.False(state.CanTransform);
+        // Flip and the 90° turns act on the whole selection about its common centre.
+        Assert.True(state.CanTransform);
         Assert.Null(state.BooleanReason);
         var rows = CanvasContextMenuBuilder.ForObject(state);
         Assert.True(Has(rows, ContextAction.Group));

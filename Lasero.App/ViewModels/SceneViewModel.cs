@@ -99,11 +99,38 @@ public partial class SceneViewModel : ObservableObject
     public bool CanEditSelectedPosition => HasSelection && SelectedObjects.All(item => !item.IsLocked);
     public bool CanTransformSelectedObject => CanEditSelectedPosition;
     public bool CanRotateSelectedObject => Selected is { IsLocked: false, IsRaster: false };
+    /// <summary>Flip and the 90° turns act on the whole selection about its common centre, so any
+    /// number of unlocked vector or text objects qualifies. A bitmap cannot be rotated or mirrored.</summary>
+    public bool CanTransformSelection => HasSelection && SelectedObjects.All(item => !item.IsLocked && !item.IsRaster);
     public bool IsSelectedLocked => Selected?.IsLocked == true;
-    public bool CanGroupSelection => ExpandedGroupSelection() is { Count: >= 2 } members &&
-        members.All(item => !item.IsLocked);
-    public bool CanUngroupSelection => SelectedObjects.Select(item => item.GroupId)
-        .OfType<Guid>().Any(id => Objects.Where(item => item.GroupId == id).All(item => !item.IsLocked));
+    public bool CanGroupSelection => GroupSelectionDisabledReason is null;
+    /// <summary>Null when Seskupit works; otherwise why not.</summary>
+    public string? GroupSelectionDisabledReason
+    {
+        get
+        {
+            if (IsInsideEnteredGroup(SelectedObjects))
+                return "Uvnitř skupiny nelze vytvořit další skupinu. Skupinu opustíš klávesou Esc.";
+            var members = ExpandedGroupSelection();
+            if (members.Count < 2) return "Seskupit lze nejméně dva objekty. Vybraný je jen jeden.";
+            if (members.Any(item => item.IsLocked)) return "Zamčené objekty nelze seskupit. Nejdřív je potřeba je odemknout.";
+            return null;
+        }
+    }
+    public bool CanUngroupSelection => UngroupSelectionDisabledReason is null;
+    /// <summary>Null when Zrušit skupinu works; otherwise the sentence saying why not.</summary>
+    public string? UngroupSelectionDisabledReason
+    {
+        get
+        {
+            var groupIds = SelectedObjects.Select(item => item.GroupId).OfType<Guid>().Distinct().ToList();
+            if (groupIds.Count == 0)
+                return SelectedObjects.Count > 1 ? "Vybrané objekty nejsou součástí skupiny." : "Vybraný objekt není skupina.";
+            if (groupIds.All(id => Objects.Any(item => item.GroupId == id && item.IsLocked)))
+                return "Skupina obsahuje zamčený objekt. Nejdřív je potřeba ho odemknout (pravým tlačítkem na objekt nebo Odemknout vše).";
+            return null;
+        }
+    }
     public bool CanBreakApartSelection => SelectedObjects.Count == 1 && Selected is
         { IsRaster: false, IsLocked: false, IsText: false, LocalShapes.Count: > 1 } item &&
         (item.VectorPath is null || item.VectorPath.Subpaths.Count == item.LocalShapes.Count);
@@ -122,8 +149,10 @@ public partial class SceneViewModel : ObservableObject
             if (SelectedObjects.Count == 0) return "Nic není vybráno.";
             if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze sjednotit ani kombinovat. Lze vybrat pouze vektory.";
             if (SelectedObjects.Any(item => item.IsLocked)) return "Zamknuté objekty nelze sjednotit ani kombinovat. Nejprve je potřeba je odemknout.";
-            if (ExpandedGroupSelection().Any(item => !SelectedObjects.Contains(item)))
-                return "Vybraná skupina obsahuje skryté nebo zamknuté členy. Zpřístupni všechny členy před booleovskou operací.";
+            if (ExpandedGroupSelection().Where(item => !SelectedObjects.Contains(item)).ToList() is { Count: > 0 } missing)
+                return missing.All(CanSelectObject)
+                    ? "Ve výběru je jen část skupiny. Vyber celou skupinu, nebo do ní vstup dvojklikem a vyber její členy."
+                    : "Vybraná skupina obsahuje skryté nebo zamknuté členy. Zpřístupni všechny členy před booleovskou operací.";
             if (SelectedObjects.SelectMany(item => item.LocalShapes).Count() < 2) return "Je potřeba vybrat alespoň dva tvary.";
             if (SelectedObjects.SelectMany(item => item.LocalShapes).Any(shape => !shape.IsClosed || shape.Points.Count < 3))
                 return "Výběr obsahuje otevřenou dráhu — booleovské operace vyžadují uzavřené tvary.";
@@ -140,8 +169,21 @@ public partial class SceneViewModel : ObservableObject
     };
 
     public string? BooleanPairSelectionDisabledReason => UniteSelectionDisabledReason ??
-        (BooleanOperands().Count == 2 ? null : "Tato operace pracuje přesně se dvěma vybranými objekty nebo skupinami.");
-    public bool CanUniteSelection => BooleanPairSelectionDisabledReason is null;
+        (BooleanOperands().Count == 2 ? null : SingleGroupOperandReason() ??
+            "Tato operace pracuje přesně se dvěma vybranými objekty nebo skupinami.");
+
+    /// <summary>Sjednotit accepts any number of operands (objects or whole groups), at least two.</summary>
+    public string? UniteOperandsDisabledReason => UniteSelectionDisabledReason ??
+        (BooleanOperands().Count >= 2 ? null : SingleGroupOperandReason() ??
+            "Je potřeba vybrat alespoň dva objekty nebo skupiny.");
+
+    /// <summary>A whole group is one operand. When that is all that is selected, say how to reach its members.</summary>
+    private string? SingleGroupOperandReason() =>
+        BooleanOperands() is [{ Count: >= 2 }]
+            ? "Vybraná je jedna skupina, ta se počítá jako jeden tvar. Pro operaci mezi jejími členy do skupiny vstup dvojklikem a vyber členy."
+            : null;
+
+    public bool CanUniteSelection => UniteOperandsDisabledReason is null;
     public bool CanWeldSelection => (BooleanOperands().Count >= 2 && UniteSelectionDisabledReason is null) || CanWeldOpenPaths;
     public bool CanBooleanPairSelection => BooleanPairSelectionDisabledReason is null;
     public bool CanDivideSelection => BooleanOperands().Count == 2 &&
@@ -276,6 +318,10 @@ public partial class SceneViewModel : ObservableObject
                 finally { _reconcilingSelectionEligibility = false; }
             }
         }
+
+        // Selecting anything outside the entered group leaves it.
+        if (EnteredGroupId is { } entered && SelectedObjects.Any(item => item.GroupId != entered))
+            EnteredGroupId = null;
 
         foreach (var item in _observedSelection.Except(SelectedObjects).ToList())
         {
@@ -1712,8 +1758,6 @@ public partial class SceneViewModel : ObservableObject
         NotifyLayerStateChanged();
     }
 
-    private bool CanTransformSingle() => Selected is { IsLocked: false, IsRaster: false };
-
     [RelayCommand]
     private void ActivateTool(DesignerTool tool) => ActiveTool = tool;
 
@@ -1804,6 +1848,7 @@ public partial class SceneViewModel : ObservableObject
                 : SnapshotClipboardLayer(original));
         }
         PasteCommand.NotifyCanExecuteChanged();
+        PasteInPlaceCommand.NotifyCanExecuteChanged();
     }
 
     private static LayerSettings SnapshotClipboardLayer(LayerSettings layer) => new()
@@ -1859,7 +1904,14 @@ public partial class SceneViewModel : ObservableObject
     private bool HasClipboard() => _clipboard.Count > 0;
 
     [RelayCommand(CanExecute = nameof(HasClipboard))]
-    private void Paste()
+    private void Paste() => PasteAt(new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
+
+    /// <summary>"Vložit na původní místo" (Ctrl+Alt+V in Inkscape, Ctrl+Shift+V in Illustrator): the
+    /// copies land exactly where the copied objects were, with no cascade offset. One undo step.</summary>
+    [RelayCommand(CanExecute = nameof(HasClipboard))]
+    private void PasteInPlace() => PasteAt(Position.Zero);
+
+    private void PasteAt(Position offset)
     {
         // Resolve copied layer identities against this document before inserting objects. This
         // also makes cross-project paste safe when the original project has since been replaced.
@@ -1867,7 +1919,7 @@ public partial class SceneViewModel : ObservableObject
         var copiedLayers = _clipboardLayers.Select(SnapshotClipboardLayer).ToList();
         var reconcileLayers = new SceneLayerMutationCommand(Scene,
             () => Scene.EnsureLayers(copiedLayers, sources));
-        var command = new DuplicateObjectsCommand(Scene, sources, new Position(CascadeOffsetMm, -CascadeOffsetMm, 0));
+        var command = new DuplicateObjectsCommand(Scene, sources, offset);
         Execute(new CompositeSceneCommand([reconcileLayers, command]));
 
         SelectedObjects.ReplaceWith(command.Clones);
@@ -1893,41 +1945,119 @@ public partial class SceneViewModel : ObservableObject
 
     private bool CanSelectActiveLayer() => SelectedLayer is { IsVisible: true, IsLocked: false };
 
-    private bool CanAlign() => SelectedObjects.Count >= 2;
+    /// <summary>
+    /// What align and distribute move as one piece: a group (unless the operator has entered it) or a
+    /// single object, with the box of its drawn geometry. Linked-offset outputs whose source is selected
+    /// are left out (they follow their source). A unit with a locked member is a reference only; it is
+    /// never moved, so a group is never pulled apart.
+    /// </summary>
+    private sealed record ArrangeUnit(IReadOnlyList<SceneObject> Members, BoundingBox2D Bounds, bool Movable)
+    {
+        public double CenterX => (Bounds.MinX + Bounds.MaxX) / 2;
+        public double CenterY => (Bounds.MinY + Bounds.MaxY) / 2;
+    }
+
+    private List<ArrangeUnit> ArrangeUnits() => IndependentTransformTargets(SelectedObjects)
+        .GroupBy(UnitKey)
+        .Select(unit =>
+        {
+            var members = unit.ToList();
+            var bounds = BoundingBox2D.Empty;
+            foreach (var member in members)
+            {
+                var box = member.GeometricWorldBounds();
+                if (!box.IsEmpty) bounds = bounds.Include(box.MinX, box.MinY).Include(box.MaxX, box.MaxY);
+            }
+            return new ArrangeUnit(members, bounds, members.All(member => !member.IsLocked));
+        })
+        .Where(unit => !unit.Bounds.IsEmpty)
+        .ToList();
+
+    private bool CanAlign() => ArrangeUnits().Count >= 2;
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignLeft() => Align(objects =>
+    private void AlignLeft() => Align(units =>
     {
-        var target = objects.Min(o => o.WorldBounds().MinX);
-        return objects.Select(o => Move(o, dx: target - o.WorldBounds().MinX, dy: 0));
+        var target = units.Min(u => u.Bounds.MinX);
+        return units.Select(u => (u, target - u.Bounds.MinX, 0.0));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignCenterHorizontal() => Align(objects =>
+    private void AlignCenterHorizontal() => Align(units =>
     {
-        var target = (objects.Min(o => o.WorldBounds().MinX) + objects.Max(o => o.WorldBounds().MaxX)) / 2;
-        return objects.Select(o => Move(o, dx: target - (o.WorldBounds().MinX + o.WorldBounds().MaxX) / 2, dy: 0));
+        var target = (units.Min(u => u.Bounds.MinX) + units.Max(u => u.Bounds.MaxX)) / 2;
+        return units.Select(u => (u, target - u.CenterX, 0.0));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignRight() => Align(objects =>
+    private void AlignRight() => Align(units =>
     {
-        var target = objects.Max(o => o.WorldBounds().MaxX);
-        return objects.Select(o => Move(o, dx: target - o.WorldBounds().MaxX, dy: 0));
+        var target = units.Max(u => u.Bounds.MaxX);
+        return units.Select(u => (u, target - u.Bounds.MaxX, 0.0));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignTop() => Align(objects =>
+    private void AlignTop() => Align(units =>
     {
-        var target = objects.Max(o => o.WorldBounds().MaxY);
-        return objects.Select(o => Move(o, dx: 0, dy: target - o.WorldBounds().MaxY));
+        var target = units.Max(u => u.Bounds.MaxY);
+        return units.Select(u => (u, 0.0, target - u.Bounds.MaxY));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignMiddle() => Align(objects =>
+    private void AlignMiddle() => Align(units =>
     {
-        var target = (objects.Min(o => o.WorldBounds().MinY) + objects.Max(o => o.WorldBounds().MaxY)) / 2;
-        return objects.Select(o => Move(o, dx: 0, dy: target - (o.WorldBounds().MinY + o.WorldBounds().MaxY) / 2));
+        var target = (units.Min(u => u.Bounds.MinY) + units.Max(u => u.Bounds.MaxY)) / 2;
+        return units.Select(u => (u, 0.0, target - u.CenterY));
+    });
+
+    /// <summary>Distribute needs a first and a last unit that stay put and at least one between them.</summary>
+    private bool CanDistribute() => ArrangeUnits().Count >= 3;
+
+    /// <summary>Spaces the centres of the selected objects or groups evenly between the leftmost and the
+    /// rightmost centre (LightBurn "Distribute horizontally", Inkscape "centres equidistantly").</summary>
+    [RelayCommand(CanExecute = nameof(CanDistribute))]
+    private void DistributeCentersHorizontally() => Distribute(horizontal: true, equalGaps: false);
+
+    [RelayCommand(CanExecute = nameof(CanDistribute))]
+    private void DistributeCentersVertically() => Distribute(horizontal: false, equalGaps: false);
+
+    /// <summary>Makes the gaps between neighbouring objects or groups equal, keeping the outermost two
+    /// in place (LightBurn "Distribute horizontal spacing", Inkscape "make horizontal gaps equal").</summary>
+    [RelayCommand(CanExecute = nameof(CanDistribute))]
+    private void DistributeSpacingHorizontally() => Distribute(horizontal: true, equalGaps: true);
+
+    [RelayCommand(CanExecute = nameof(CanDistribute))]
+    private void DistributeSpacingVertically() => Distribute(horizontal: false, equalGaps: true);
+
+    private void Distribute(bool horizontal, bool equalGaps) => Align(units =>
+    {
+        double Min(ArrangeUnit u) => horizontal ? u.Bounds.MinX : u.Bounds.MinY;
+        double Max(ArrangeUnit u) => horizontal ? u.Bounds.MaxX : u.Bounds.MaxY;
+        double Center(ArrangeUnit u) => horizontal ? u.CenterX : u.CenterY;
+        (ArrangeUnit, double, double) Shift(ArrangeUnit u, double delta) => horizontal ? (u, delta, 0.0) : (u, 0.0, delta);
+
+        var ordered = units.OrderBy(Center).ThenBy(Min).ToList();
+        var moves = new List<(ArrangeUnit, double, double)>();
+        if (equalGaps)
+        {
+            var span = Max(ordered[^1]) - Min(ordered[0]);
+            var occupied = ordered.Sum(u => Max(u) - Min(u));
+            var gap = (span - occupied) / (ordered.Count - 1);
+            var cursor = Min(ordered[0]);
+            foreach (var unit in ordered)
+            {
+                moves.Add(Shift(unit, cursor - Min(unit)));
+                cursor += Max(unit) - Min(unit) + gap;
+            }
+        }
+        else
+        {
+            var first = Center(ordered[0]);
+            var step = (Center(ordered[^1]) - first) / (ordered.Count - 1);
+            for (var index = 0; index < ordered.Count; index++)
+                moves.Add(Shift(ordered[index], first + step * index - Center(ordered[index])));
+        }
+        return moves;
     });
 
     /// <summary>Raised by CenterOnWorkAreaCommand. The work-area size lives in the machine settings, so the
@@ -1939,40 +2069,44 @@ public partial class SceneViewModel : ObservableObject
 
     /// <summary>Moves the whole selection, as one group, so its common centre lands on the given point.
     /// One undo step; locked objects stay where they are.</summary>
-    public void CenterSelectionAt(double centerX, double centerY) => Align(objects =>
+    public void CenterSelectionAt(double centerX, double centerY) => Align(units =>
     {
-        var movable = objects.Where(o => !o.IsLocked).ToList();
+        var movable = units.Where(u => u.Movable).ToList();
         if (movable.Count == 0) return [];
-        var cx = (movable.Min(o => o.WorldBounds().MinX) + movable.Max(o => o.WorldBounds().MaxX)) / 2;
-        var cy = (movable.Min(o => o.WorldBounds().MinY) + movable.Max(o => o.WorldBounds().MaxY)) / 2;
-        return movable.Select(o => Move(o, dx: centerX - cx, dy: centerY - cy));
+        var cx = (movable.Min(u => u.Bounds.MinX) + movable.Max(u => u.Bounds.MaxX)) / 2;
+        var cy = (movable.Min(u => u.Bounds.MinY) + movable.Max(u => u.Bounds.MaxY)) / 2;
+        return movable.Select(u => (u, centerX - cx, centerY - cy));
     });
 
     /// <summary>Center both: the common centre of the selection on both axes in one undo step.</summary>
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignCenterBoth() => Align(objects =>
+    private void AlignCenterBoth() => Align(units =>
     {
-        var targetX = (objects.Min(o => o.WorldBounds().MinX) + objects.Max(o => o.WorldBounds().MaxX)) / 2;
-        var targetY = (objects.Min(o => o.WorldBounds().MinY) + objects.Max(o => o.WorldBounds().MaxY)) / 2;
-        return objects.Select(o => Move(o,
-            dx: targetX - (o.WorldBounds().MinX + o.WorldBounds().MaxX) / 2,
-            dy: targetY - (o.WorldBounds().MinY + o.WorldBounds().MaxY) / 2));
+        var targetX = (units.Min(u => u.Bounds.MinX) + units.Max(u => u.Bounds.MaxX)) / 2;
+        var targetY = (units.Min(u => u.Bounds.MinY) + units.Max(u => u.Bounds.MaxY)) / 2;
+        return units.Select(u => (u, targetX - u.CenterX, targetY - u.CenterY));
     });
 
     [RelayCommand(CanExecute = nameof(CanAlign))]
-    private void AlignBottom() => Align(objects =>
+    private void AlignBottom() => Align(units =>
     {
-        var target = objects.Min(o => o.WorldBounds().MinY);
-        return objects.Select(o => Move(o, dx: 0, dy: target - o.WorldBounds().MinY));
+        var target = units.Min(u => u.Bounds.MinY);
+        return units.Select(u => (u, 0.0, target - u.Bounds.MinY));
     });
 
-    /// <summary>Builds one TransformObjectCommand per selected object from the given per-object delta
-    /// and executes them as a single undo step — same pattern as a multi-object drag.</summary>
-    private void Align(Func<IReadOnlyList<SceneObject>, IEnumerable<TransformObjectCommand>> plan)
+    /// <summary>Moves every unit of the plan by its delta (all members of a group by the same amount)
+    /// and executes the moves as a single undo step, the same pattern as a multi-object drag. Locked
+    /// units and moves of zero are skipped, so nothing that would not change lands on the undo stack.</summary>
+    private void Align(Func<IReadOnlyList<ArrangeUnit>, IEnumerable<(ArrangeUnit Unit, double Dx, double Dy)>> plan)
     {
-        var objects = IndependentTransformTargets(SelectedObjects).ToList();
-        if (objects.Count == 0) return;
-        var commands = plan(objects).Cast<ISceneCommand>().ToList();
+        var units = ArrangeUnits();
+        if (units.Count == 0) return;
+        var commands = new List<ISceneCommand>();
+        foreach (var (unit, dx, dy) in plan(units))
+        {
+            if (!unit.Movable || (Math.Abs(dx) < 1e-12 && Math.Abs(dy) < 1e-12)) continue;
+            commands.AddRange(unit.Members.Select(member => Move(member, dx, dy)));
+        }
         if (commands.Count > 0) Execute(new CompositeSceneCommand(commands));
     }
 
@@ -1991,70 +2125,102 @@ public partial class SceneViewModel : ObservableObject
     private static TransformObjectCommand Move(SceneObject obj, double dx, double dy) =>
         new(obj, obj.Transform, obj.Transform with { X = obj.Transform.X + dx, Y = obj.Transform.Y + dy });
 
-    private bool CanReorder() => Selected is not null;
+    // --- Stacking order ----------------------------------------------------------------------------
+    // Objects[0] is the back of the stack and the last item the front. Every move acts on the whole
+    // selection (keeping its relative order) and on groups as blocks; see ZOrderPlanner.
 
-    [RelayCommand(CanExecute = nameof(CanReorder))]
-    private void BringToFront()
-    {
-        if (Selected is null) return;
-        Execute(new ReorderObjectCommand(Scene, Selected, Objects.Count - 1));
-    }
-
-    [RelayCommand(CanExecute = nameof(CanReorder))]
-    private void SendToBack()
-    {
-        if (Selected is null) return;
-        Execute(new ReorderObjectCommand(Scene, Selected, 0));
-    }
-
-    /// <summary>Objects[0] is the back of the stack and the last item the front, the same order
-    /// SendToBack/BringToFront already move to. One-step moves are only meaningful for one object.</summary>
-    public bool CanBringForward => Selected is not null && Objects.IndexOf(Selected) is var index && index >= 0 && index < Objects.Count - 1;
-    public bool CanSendBackward => Selected is not null && Objects.IndexOf(Selected) > 0;
+    /// <summary>Some unselected object lies above the selection, so it can come forward.</summary>
+    public bool CanBringForward => SelectedObjects.Count > 0 &&
+        ZOrderPlanner.CanBringForward(Objects, SelectedObjects.ToHashSet());
+    /// <summary>Some unselected object lies below the selection, so it can go back.</summary>
+    public bool CanSendBackward => SelectedObjects.Count > 0 &&
+        ZOrderPlanner.CanSendBackward(Objects, SelectedObjects.ToHashSet());
 
     [RelayCommand(CanExecute = nameof(CanBringForward))]
-    private void BringForward()
-    {
-        if (Selected is null) return;
-        Execute(new ReorderObjectCommand(Scene, Selected, Objects.IndexOf(Selected) + 1));
-    }
+    private void BringToFront() => Reorder(ZOrderPlanner.BringToFront(Objects, SelectedObjects.ToHashSet()));
 
     [RelayCommand(CanExecute = nameof(CanSendBackward))]
-    private void SendBackward()
+    private void SendToBack() => Reorder(ZOrderPlanner.SendToBack(Objects, SelectedObjects.ToHashSet()));
+
+    [RelayCommand(CanExecute = nameof(CanBringForward))]
+    private void BringForward() => Reorder(ZOrderPlanner.BringForward(Objects, SelectedObjects.ToHashSet(), UnitKey));
+
+    [RelayCommand(CanExecute = nameof(CanSendBackward))]
+    private void SendBackward() => Reorder(ZOrderPlanner.SendBackward(Objects, SelectedObjects.ToHashSet(), UnitKey));
+
+    private void Reorder(IReadOnlyList<SceneObject> order)
     {
-        if (Selected is null) return;
-        Execute(new ReorderObjectCommand(Scene, Selected, Objects.IndexOf(Selected) - 1));
+        var command = new ReorderObjectsCommand(Scene, order);
+        if (command.ChangesAnything) Execute(command);
     }
 
-    [RelayCommand(CanExecute = nameof(CanTransformSingle))]
-    private void RotateLeft() => RotateSelected(-90);
+    // --- Rotate 90° and flip ------------------------------------------------------------------------
+    // The world is Y-up and the canvas draws it Y-up, so a positive angle turns counter-clockwise on
+    // screen: "vlevo" is +90°, "vpravo" is -90°. A selection of several objects (or a group) turns or
+    // mirrors as one piece about its common centre.
 
-    [RelayCommand(CanExecute = nameof(CanTransformSingle))]
-    private void RotateRight() => RotateSelected(90);
+    [RelayCommand(CanExecute = nameof(CanTransformSelection))]
+    private void RotateLeft() => RotateSelection(90);
 
-    private void RotateSelected(double delta)
+    [RelayCommand(CanExecute = nameof(CanTransformSelection))]
+    private void RotateRight() => RotateSelection(-90);
+
+    private void RotateSelection(double delta)
     {
-        if (Selected is null) return;
-        var before = Selected.Transform;
-        var rotation = (before.RotationDeg + delta) % 360;
-        Execute(new TransformObjectCommand(Selected, before, before with { RotationDeg = rotation }));
+        if (!CanTransformSelection) return;
+        var targets = IndependentTransformTargets(SelectedObjects);
+        if (targets.Count == 0) return;
+        // A single object turns about its own pivot, like the rotate grip; a selection about its centre.
+        var centre = targets.Count == 1
+            ? targets[0].Transform.Apply(targets[0].LocalPivot, targets[0].LocalPivot)
+            : GroupTransform.CentreOf(GeometricBoundsOf(targets));
+        TransformSelection(targets, (item, before) =>
+        {
+            var after = GroupTransform.RotateAbout(before, item.LocalPivot, centre, delta);
+            return after with { RotationDeg = after.RotationDeg % 360 };
+        });
     }
 
-    [RelayCommand(CanExecute = nameof(CanTransformSingle))]
-    private void FlipHorizontal()
+    [RelayCommand(CanExecute = nameof(CanTransformSelection))]
+    private void FlipHorizontal() => FlipSelection(horizontal: true);
+
+    [RelayCommand(CanExecute = nameof(CanTransformSelection))]
+    private void FlipVertical() => FlipSelection(horizontal: false);
+
+    /// <summary>Mirrors the selection about the screen axis through the centre of its drawn geometry,
+    /// so it stays where it is and a rotated object mirrors visually rather than about its own tilt.</summary>
+    private void FlipSelection(bool horizontal)
     {
-        if (Selected is null) return;
-        var before = Selected.Transform;
-        Execute(new TransformObjectCommand(Selected, before, before with { ScaleX = -before.ScaleX }));
+        if (!CanTransformSelection) return;
+        var targets = IndependentTransformTargets(SelectedObjects);
+        if (targets.Count == 0) return;
+        var centre = GroupTransform.CentreOf(GeometricBoundsOf(targets));
+        TransformSelection(targets, (item, before) => GroupTransform.MirrorAbout(before, item.LocalPivot, centre, horizontal));
     }
 
-    [RelayCommand(CanExecute = nameof(CanTransformSingle))]
-    private void FlipVertical()
+    private void TransformSelection(IReadOnlyList<SceneObject> targets, Func<SceneObject, ObjectTransform, ObjectTransform> map)
     {
-        if (Selected is null) return;
-        var before = Selected.Transform;
-        Execute(new TransformObjectCommand(Selected, before, before with { ScaleY = -before.ScaleY }));
+        var commands = targets
+            .Select(item => (Item: item, Before: item.Transform, After: map(item, item.Transform)))
+            .Where(change => !change.Before.Equals(change.After))
+            .Select(change => (ISceneCommand)new TransformObjectCommand(change.Item, change.Before, change.After))
+            .ToList();
+        if (commands.Count == 1) Execute(commands[0]);
+        else if (commands.Count > 1) Execute(new CompositeSceneCommand(commands));
     }
+
+    private static BoundingBox2D GeometricBoundsOf(IEnumerable<SceneObject> objects)
+    {
+        var box = BoundingBox2D.Empty;
+        foreach (var item in objects)
+        {
+            var bounds = item.GeometricWorldBounds();
+            if (!bounds.IsEmpty) box = box.Include(bounds.MinX, bounds.MinY).Include(bounds.MaxX, bounds.MaxY);
+        }
+        return box;
+    }
+
+    // --- Groups -------------------------------------------------------------------------------------
 
     [RelayCommand(CanExecute = nameof(CanGroupSelection))]
     private void GroupSelection()
@@ -2066,10 +2232,13 @@ public partial class SceneViewModel : ObservableObject
         SelectedObjects.ReplaceWith(members.Where(CanSelectObject));
     }
 
+    /// <summary>The selection with every group it touches completed, except the group the operator
+    /// has entered, whose members are worked on one by one.</summary>
     private IReadOnlyList<SceneObject> ExpandedGroupSelection()
     {
         var selected = SelectedObjects.ToHashSet();
-        var groupIds = SelectedObjects.Select(item => item.GroupId).OfType<Guid>().ToHashSet();
+        var groupIds = SelectedObjects.Select(item => item.GroupId).OfType<Guid>()
+            .Where(id => id != EnteredGroupId).ToHashSet();
         return Objects.Where(item => selected.Contains(item) ||
             item.GroupId is { } id && groupIds.Contains(id)).ToList();
     }
@@ -2082,6 +2251,126 @@ public partial class SceneViewModel : ObservableObject
                 .All(item => !item.IsLocked)).ToHashSet();
         if (groupIds.Count == 0) return;
         Execute(new SetObjectGroupCommand(Objects.Where(item => item.GroupId is { } id && groupIds.Contains(id)), null));
+    }
+
+    // --- Entering a group ---------------------------------------------------------------------------
+    // A click selects a whole group. Entering it (double-click or Ctrl+click on a member, Inkscape style)
+    // makes its members selectable one by one, so a single member can be moved, edited or used in a
+    // boolean operation. Esc, or selecting anything outside the group, leaves it again.
+
+    private Guid? _enteredGroupId;
+
+    /// <summary>The group whose members are currently selected one by one, or null.</summary>
+    public Guid? EnteredGroupId
+    {
+        get => _enteredGroupId;
+        private set
+        {
+            if (_enteredGroupId == value) return;
+            _enteredGroupId = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsGroupEntered));
+        }
+    }
+
+    /// <summary>A group is entered and still exists.</summary>
+    public bool IsGroupEntered => EnteredGroupId is { } id && Objects.Any(item => item.GroupId == id);
+
+    private bool IsInsideEnteredGroup(IEnumerable<SceneObject> items) =>
+        EnteredGroupId is { } id && items.Any(item => item.GroupId == id);
+
+    /// <summary>What moves, aligns and combines as one piece: a group, unless it has been entered, or
+    /// the object itself.</summary>
+    private Guid UnitKey(SceneObject item) =>
+        item.GroupId is { } id && id != EnteredGroupId ? id : item.Id;
+
+    /// <summary>What a click on <paramref name="item"/> selects: every selectable member of its group,
+    /// or only the object when it is not grouped or its group has been entered.</summary>
+    public IReadOnlyList<SceneObject> SelectionUnitFor(SceneObject item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return item.GroupId is { } id && id != EnteredGroupId
+            ? Objects.Where(member => member.GroupId == id && CanSelectObject(member)).ToList()
+            : [item];
+    }
+
+    /// <summary>Enters the group of <paramref name="member"/> and selects that member alone. False when
+    /// it is not in a group or cannot be selected.</summary>
+    public bool EnterGroup(SceneObject member)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+        if (member.GroupId is not { } id || !CanSelectObject(member)) return false;
+        EnteredGroupId = id;
+        SelectedObjects.ReplaceWith([member]);
+        RefreshCommands();
+        return true;
+    }
+
+    /// <summary>Leaves the entered group and selects it as a whole again (Esc). False when no group is entered.</summary>
+    public bool ExitGroup()
+    {
+        if (EnteredGroupId is not { } id) return false;
+        EnteredGroupId = null;
+        SelectedObjects.ReplaceWith(Objects.Where(item => item.GroupId == id && CanSelectObject(item)).ToList());
+        RefreshCommands();
+        return true;
+    }
+
+    /// <summary>Leaves the entered group without touching the selection (a click on empty canvas).</summary>
+    public void LeaveGroup()
+    {
+        if (EnteredGroupId is null) return;
+        EnteredGroupId = null;
+        RefreshCommands();
+    }
+
+    // --- Lock ---------------------------------------------------------------------------------------
+    // A locked object cannot be selected, moved or edited, but it is never out of reach: a right-click on
+    // it offers "Odemknout", and "Odemknout vše" releases every locked object. Both are undoable.
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void ToggleLock()
+    {
+        var shouldLock = SelectedObjects.Any(item => !item.IsLocked);
+        var command = new SetObjectsLockedCommand(SelectedObjects.ToList(), shouldLock);
+        if (!command.ChangesAnything) return;
+        Execute(command);
+        NotifySelectionStateChanged();
+    }
+
+    public bool HasLockedObjects => Objects.Any(item => item.IsLocked);
+
+    /// <summary>"Odemknout vše": unlocks every locked object in one undo step and selects them.</summary>
+    [RelayCommand(CanExecute = nameof(HasLockedObjects))]
+    private void UnlockAll()
+    {
+        var locked = Objects.Where(item => item.IsLocked).ToList();
+        if (locked.Count == 0) return;
+        Execute(new SetObjectsLockedCommand(locked, false));
+        SelectedObjects.ReplaceWith(locked.Where(CanSelectObject).ToList());
+    }
+
+    /// <summary>A locked object under the pointer that only its lock keeps out of reach: visible, on a
+    /// visible and unlocked layer. Right-click offers to unlock it.</summary>
+    public bool IsUnlockableObject(SceneObject item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return Objects.Contains(item) && item.IsLocked && item.IsVisible &&
+            item.LocalShapes.All(shape => IsLayerVisible(shape.LayerId, shape.LayerColor) && !IsLayerLocked(shape.LayerId, shape.LayerColor));
+    }
+
+    /// <summary>Unlocks <paramref name="item"/> (with the locked members of its group, so the group can be
+    /// picked up again) as one undo step and selects what a click on it would select.</summary>
+    public void UnlockObject(SceneObject item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (!Objects.Contains(item)) return;
+        var targets = item.GroupId is { } id
+            ? Objects.Where(member => member.GroupId == id && member.IsLocked).ToList()
+            : item.IsLocked ? [item] : [];
+        if (targets.Count == 0) return;
+        Execute(new SetObjectsLockedCommand(targets, false));
+        SelectedObjects.ReplaceWith(SelectionUnitFor(item));
     }
 
     /// <summary>How a boolean result picks its layer when the operands sit on different ones.</summary>
@@ -2120,7 +2409,8 @@ public partial class SceneViewModel : ObservableObject
         }
         var orderedSources = sources.OrderBy(item => Objects.IndexOf(item)).ToList();
         var geometryNotice = sources.Any(item => item.VectorPath is null &&
-            item.LocalShapes.Any(shape => shape.IsClosed && shape.Points.Count > 8))
+            item.LocalShapes.Any(shape => shape.IsClosed && shape.Points.Count > 8) &&
+            CurveOperand(item).VectorPath?.Subpaths.Any(subpath => subpath.Nodes.Any(node => node.HasAnyHandle)) != true)
             ? "Část vstupů už nemá Bézierovy uzly. Pro tyto obrysy se použijí jejich uložené úsečky."
             : null;
         var sourceShapes = sources.SelectMany(item => item.LocalShapes).Where(shape => shape.IsClosed).ToList();
@@ -2134,11 +2424,44 @@ public partial class SceneViewModel : ObservableObject
         else Commit();
     }
 
+    /// <summary>One operand per selected object or whole group; inside an entered group every selected
+    /// member is an operand of its own.</summary>
     private IReadOnlyList<IReadOnlyList<SceneObject>> BooleanOperands() => SelectedObjects
-        .GroupBy(item => item.GroupId ?? item.Id)
+        .GroupBy(UnitKey)
         .Select(group => (IReadOnlyList<SceneObject>)group.OrderBy(item => Objects.IndexOf(item)).ToList())
         .OrderBy(group => group.Max(item => Objects.IndexOf(item)))
         .ToList();
+
+    /// <summary>
+    /// The form of a boolean operand that keeps its curves. A drawn ellipse is stored as a 65-point
+    /// polygon and text as flattened glyph contours; fed to the boolean as they are, the result would be
+    /// hundreds of straight segments. They are converted first (the ellipse refits to four exact Bézier
+    /// arcs, the text takes its glyph outlines from the font), in memory only: the operation still
+    /// replaces the original objects in one undo step. Anything that cannot be converted is used as is.
+    /// </summary>
+    private static SceneObject CurveOperand(SceneObject item)
+    {
+        if (item.IsVectorPath || item.IsRaster) return item;
+        try
+        {
+            if (item.Text is { } text)
+            {
+                var outline = VectorTextFactory.BuildLocalCurveOutline(text);
+                return outline is not null && outline.Subpaths.Count == item.LocalShapes.Count
+                    ? VectorPathSceneFactory.FromConversion(item, outline, item.LocalShapes)
+                    : item;
+            }
+            return BuildCurveConversion(item) ?? item;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            Serilog.Log.Warning(exception, "Boolean operand {Name} kept as contours; curve conversion failed", item.Name);
+            return item;
+        }
+    }
+
+    private static VectorPath OperandPath(IReadOnlyList<SceneObject> operand) =>
+        CurveBooleanService.FromObjects(operand.Select(CurveOperand).ToList());
 
     private static bool HasCurveArea(VectorPath path) => path.Subpaths.Any(subpath =>
         subpath.IsClosed && subpath.Nodes.Count >= 2 &&
@@ -2156,7 +2479,7 @@ public partial class SceneViewModel : ObservableObject
             var shape = operand[^1].GetWorldShapes().FirstOrDefault(item => item.IsClosed)
                 ?? operand.SelectMany(item => item.GetWorldShapes()).FirstOrDefault();
             if (shape is null) continue;
-            infos.Add(new BooleanOperandInfo(CurveBooleanService.FromObjects(operand), shape));
+            infos.Add(new BooleanOperandInfo(OperandPath(operand), shape));
         }
         return infos;
     }
@@ -2251,7 +2574,15 @@ public partial class SceneViewModel : ObservableObject
     /// <summary>Turns one compound object into independent contour objects. Unlike Ungroup this
     /// intentionally changes the contour structure; editable subpaths and layer metadata are kept.</summary>
     [RelayCommand(CanExecute = nameof(CanBreakApartSelection))]
-    private void BreakApartSelection()
+    private void BreakApartSelection() => SplitSelectedObject(keepHoles: false);
+
+    /// <summary>"Rozdělit cestu" (Inkscape Split Path): like Oddělit obrysy, but a hole stays with the
+    /// outline it is cut into, so a ring or a letter with a counter remains one object while separate
+    /// shapes come apart. Open contours become objects of their own. One undo step.</summary>
+    [RelayCommand(CanExecute = nameof(CanBreakApartSelection))]
+    private void SplitPath() => SplitSelectedObject(keepHoles: true);
+
+    private void SplitSelectedObject(bool keepHoles)
     {
         if (!CanBreakApartSelection || Selected is not { } source) return;
         var worldPath = source.GetWorldVectorPath();
@@ -2260,19 +2591,152 @@ public partial class SceneViewModel : ObservableObject
             RejectVectorUnion("Obrysy a uzly cesty si neodpovídají. Rozdělení by poškodilo křivku.");
             return;
         }
-        var parts = source.GetWorldShapes().Select((shape, index) =>
+        var shapes = source.GetWorldShapes();
+        var pieces = keepHoles
+            ? ContourPieces(shapes)
+            : Enumerable.Range(0, shapes.Count).Select(index => (IReadOnlyList<int>)[index]).ToList();
+        if (pieces.Count < 2)
         {
+            VectorOperationRejected?.Invoke(
+                "Objekt tvoří jediný tvar se svými otvory, není co rozdělit. Každý obrys zvlášť oddělí příkaz „Oddělit obrysy“.");
+            return;
+        }
+
+        var parts = pieces.Select((piece, index) =>
+        {
+            // Each piece keeps its own compound identity, so a hole still cuts the outline it belongs to.
+            var setIds = new Dictionary<Guid, Guid>();
+            var pieceShapes = piece.Select(contour =>
+            {
+                var original = shapes[contour].GeometrySetId;
+                if (!setIds.TryGetValue(original, out var renamed)) setIds[original] = renamed = Guid.NewGuid();
+                return shapes[contour] with { GeometrySetId = renamed };
+            }).ToList();
             var part = CreateVectorObject(
-                [shape with { GeometrySetId = Guid.NewGuid() }],
-                $"{source.Name} · obrys {index + 1}",
+                pieceShapes,
+                $"{source.Name} · {(keepHoles ? "část" : "obrys")} {index + 1}",
                 source.IsVisible, source.IncludeInOutput,
-                worldPath is null ? null : new VectorPath { Subpaths = [worldPath.Subpaths[index]] });
+                worldPath is null ? null : new VectorPath { Subpaths = piece.Select(contour => worldPath.Subpaths[contour]).ToList() });
             part.GroupId = source.GroupId;
             part.NestedGroupIds = source.NestedGroupIds.ToArray();
             return part;
         }).ToList();
         Execute(new ReplaceObjectsCommand(Scene, [source], parts));
         SelectedObjects.ReplaceWith(parts);
+    }
+
+    /// <summary>Contours grouped into outlines with the holes cut into them: a closed contour lying
+    /// inside an odd number of other closed contours of the same layer is a hole and joins the
+    /// smallest contour around it; an even nesting depth starts a new piece (an island inside a hole
+    /// is a shape of its own). Open contours are pieces of their own. Indices, in contour order.</summary>
+    internal static IReadOnlyList<IReadOnlyList<int>> ContourPieces(IReadOnlyList<ImportedShape> shapes)
+    {
+        ArgumentNullException.ThrowIfNull(shapes);
+        bool IsRing(int index) => shapes[index].IsClosed && shapes[index].Points.Count >= 3;
+        var areas = shapes.Select(shape => Math.Abs(SignedArea(shape.Points))).ToArray();
+        var parent = Enumerable.Repeat(-1, shapes.Count).ToArray();
+        var depth = new int[shapes.Count];
+        for (var child = 0; child < shapes.Count; child++)
+        {
+            if (!IsRing(child)) continue;
+            for (var candidate = 0; candidate < shapes.Count; candidate++)
+            {
+                if (candidate == child || !IsRing(candidate) || areas[candidate] <= areas[child] ||
+                    !SameLayer(shapes[candidate], shapes[child]) ||
+                    !RingContains(shapes[candidate].Points, shapes[child].Points[0])) continue;
+                depth[child]++;
+                if (parent[child] < 0 || areas[candidate] < areas[parent[child]]) parent[child] = candidate;
+            }
+        }
+
+        var pieceOf = new int[shapes.Count];
+        var pieces = new List<List<int>>();
+        // Outlines first so every hole finds the piece of its parent, whatever the contour order.
+        foreach (var index in Enumerable.Range(0, shapes.Count).OrderBy(index => depth[index]))
+        {
+            if (IsRing(index) && depth[index] % 2 == 1 && parent[index] >= 0)
+            {
+                pieceOf[index] = pieceOf[parent[index]];
+                pieces[pieceOf[index]].Add(index);
+                continue;
+            }
+            pieceOf[index] = pieces.Count;
+            pieces.Add([index]);
+        }
+        return pieces
+            .Select(piece => (IReadOnlyList<int>)piece.OrderBy(index => index).ToList())
+            .OrderBy(piece => piece[0])
+            .ToList();
+    }
+
+    private static bool RingContains(IReadOnlyList<Position> ring, Position point)
+    {
+        var inside = false;
+        for (int current = 0, previous = ring.Count - 1; current < ring.Count; previous = current++)
+        {
+            var c = ring[current];
+            var p = ring[previous];
+            if ((c.Y > point.Y) == (p.Y > point.Y)) continue;
+            if (point.X < (p.X - c.X) * (point.Y - c.Y) / (p.Y - c.Y) + c.X) inside = !inside;
+        }
+        return inside;
+    }
+
+    /// <summary>Null when Kombinovat can run; otherwise the sentence saying why not.</summary>
+    public string? CombinePathsDisabledReason
+    {
+        get
+        {
+            if (SelectedObjects.Count < 2) return "Kombinovat lze nejméně dva objekty.";
+            if (SelectedObjects.Any(item => item.IsRaster)) return "Bitmapu nelze kombinovat. Lze vybrat pouze vektory a text.";
+            if (SelectedObjects.Any(item => item.IsLocked)) return "Zamčené objekty nelze kombinovat. Nejdřív je potřeba je odemknout.";
+            if (SelectedObjects.Any(item => item.LocalShapes.Count == 0)) return "Vybraný objekt neobsahuje žádnou dráhu.";
+            return null;
+        }
+    }
+
+    public bool CanCombinePaths => CombinePathsDisabledReason is null;
+
+    /// <summary>
+    /// "Kombinovat" (Inkscape Combine, Illustrator compound path): the selected objects become ONE
+    /// object holding every contour as a subpath of one path. Nothing is merged geometrically: curves
+    /// keep their Bézier nodes (a drawn ellipse and text are converted to curves first), each contour
+    /// keeps its layer, and all contours share one compound identity, so a contour wound against the one
+    /// around it (a hole) keeps cutting it. Text stops being editable text, as when converting it to a
+    /// path. The result takes the stacking position of the topmost source. One undo step.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanCombinePaths))]
+    private void CombinePaths()
+    {
+        if (!CanCombinePaths) return;
+        var sources = SelectedObjects.OrderBy(item => Objects.IndexOf(item)).ToList();
+        var compoundId = Guid.NewGuid();
+        var shapes = new List<ImportedShape>();
+        var subpaths = new List<VectorSubpath>();
+        foreach (var source in sources)
+        {
+            var curves = CurveOperand(source);
+            var worldShapes = curves.GetWorldShapes();
+            var worldPath = curves.GetWorldVectorPath() ?? BuildStraightVectorPath(worldShapes);
+            if (worldPath.Subpaths.Count != worldShapes.Count)
+            {
+                RejectVectorUnion($"Obrysy a uzly cesty objektu „{source.Name}“ si neodpovídají. Kombinace by poškodila křivku.");
+                return;
+            }
+            shapes.AddRange(worldShapes.Select(shape => shape with { GeometrySetId = compoundId }));
+            subpaths.AddRange(worldPath.Subpaths);
+        }
+
+        var result = CreateVectorObject(shapes, "Kombinovaná cesta",
+            sources.Any(item => item.IsVisible), sources.Any(item => item.IncludeInOutput),
+            new VectorPath { Subpaths = subpaths });
+        if (sources[0].GroupId is { } sharedGroup && sources.All(item => item.GroupId == sharedGroup))
+        {
+            result.GroupId = sharedGroup;
+            result.NestedGroupIds = sources[0].NestedGroupIds.ToArray();
+        }
+        Execute(new ReplaceObjectsCommand(Scene, sources, [result]));
+        SelectedObjects.ReplaceWith([result]);
     }
 
     [RelayCommand(CanExecute = nameof(CanUniteSelection))]
@@ -2290,7 +2754,7 @@ public partial class SceneViewModel : ObservableObject
             VectorPath? united = null;
             foreach (var operand in operands)
             {
-                var path = CurveBooleanService.FromObjects(operand);
+                var path = OperandPath(operand);
                 if (!HasCurveArea(path)) continue;
                 united = united is null ? path :
                     CurveBooleanService.Apply(united, path, CurveBooleanService.Operation.Union);
@@ -2340,7 +2804,7 @@ public partial class SceneViewModel : ObservableObject
             VectorPath? combined = null;
             foreach (var operand in operands)
             {
-                var sourcePath = CurveBooleanService.FromObjects(operand);
+                var sourcePath = OperandPath(operand);
                 if (!HasCurveArea(sourcePath)) continue;
                 combined = combined is null
                     ? sourcePath
@@ -2405,7 +2869,7 @@ public partial class SceneViewModel : ObservableObject
             foreach (var operand in operands)
             {
                 var source = operand[^1];
-                var sourcePath = CurveBooleanService.FromObjects(operand);
+                var sourcePath = OperandPath(operand);
                 if (!HasCurveArea(sourcePath)) return;
 
                 var next = new List<(VectorPath Path, SceneObject Owner)>();
@@ -2460,8 +2924,8 @@ public partial class SceneViewModel : ObservableObject
         var sources = operands.SelectMany(group => group).ToList();
         try
         {
-            var a = CurveBooleanService.FromObjects(operands[0]);
-            var b = CurveBooleanService.FromObjects(operands[1]);
+            var a = OperandPath(operands[0]);
+            var b = OperandPath(operands[1]);
             if (!HasCurveArea(a) || !HasCurveArea(b)) return;
 
             var regions = new[]
@@ -2707,6 +3171,12 @@ public partial class SceneViewModel : ObservableObject
                     });
                 }
 
+                // A path that is already as simple (or as flat) as it gets is left alone: no
+                // replacement, so no undo step that changes nothing.
+                if (subpaths.Count == path.Subpaths.Count && subpaths.Zip(path.Subpaths).All(pair =>
+                        ReferenceEquals(pair.First, pair.Second) ||
+                        (pair.First.IsClosed == pair.Second.IsClosed && pair.First.Nodes.SequenceEqual(pair.Second.Nodes))))
+                    continue;
                 var replacement = VectorPathSceneFactory.Rebuild(source, new VectorPath { Subpaths = subpaths });
                 replacements.Add(new ReplaceObjectsCommand(Scene, [source], [replacement]));
                 updated.Add(replacement);
@@ -2718,9 +3188,12 @@ public partial class SceneViewModel : ObservableObject
             return;
         }
 
+        // Nothing to simplify or flatten: a no-op leaves no history entry (UNDO_REDO_CONTRACT 3).
         if (replacements.Count == 0) return;
         Execute(new CompositeSceneCommand(replacements));
-        SelectedObjects.ReplaceWith(updated);
+        // Paths that did not change stay selected as they are, beside the rewritten ones.
+        SelectedObjects.ReplaceWith(SelectedObjects.Select(item =>
+            updated.FirstOrDefault(replacement => replacement.Id == item.Id) ?? item).ToList());
     }
 
     /// <summary>Curve-preserving simplify: flattens at a quarter of the tolerance, refits with
@@ -3464,16 +3937,6 @@ public partial class SceneViewModel : ObservableObject
         return new VectorPath { Subpaths = subpaths };
     }
 
-    [RelayCommand(CanExecute = nameof(HasSelection))]
-    private void ToggleLock()
-    {
-        var shouldLock = SelectedObjects.Any(item => !item.IsLocked);
-        foreach (var item in SelectedObjects)
-            item.IsLocked = shouldLock;
-        NotifySelectionStateChanged();
-        Changed?.Invoke();
-    }
-
     public LaseroProjectFile CreateProject()
     {
         return new LaseroProjectFile
@@ -3687,6 +4150,7 @@ public partial class SceneViewModel : ObservableObject
         CopyCommand.NotifyCanExecuteChanged();
         CutCommand.NotifyCanExecuteChanged();
         PasteCommand.NotifyCanExecuteChanged();
+        PasteInPlaceCommand.NotifyCanExecuteChanged();
         SelectAllCommand.NotifyCanExecuteChanged();
         AlignLeftCommand.NotifyCanExecuteChanged();
         AlignCenterHorizontalCommand.NotifyCanExecuteChanged();
@@ -3695,14 +4159,21 @@ public partial class SceneViewModel : ObservableObject
         AlignTopCommand.NotifyCanExecuteChanged();
         AlignMiddleCommand.NotifyCanExecuteChanged();
         AlignBottomCommand.NotifyCanExecuteChanged();
+        DistributeCentersHorizontallyCommand.NotifyCanExecuteChanged();
+        DistributeCentersVerticallyCommand.NotifyCanExecuteChanged();
+        DistributeSpacingHorizontallyCommand.NotifyCanExecuteChanged();
+        DistributeSpacingVerticallyCommand.NotifyCanExecuteChanged();
         RotateLeftCommand.NotifyCanExecuteChanged();
         RotateRightCommand.NotifyCanExecuteChanged();
         FlipHorizontalCommand.NotifyCanExecuteChanged();
         FlipVerticalCommand.NotifyCanExecuteChanged();
         ToggleLockCommand.NotifyCanExecuteChanged();
+        UnlockAllCommand.NotifyCanExecuteChanged();
         GroupSelectionCommand.NotifyCanExecuteChanged();
         UngroupSelectionCommand.NotifyCanExecuteChanged();
         BreakApartSelectionCommand.NotifyCanExecuteChanged();
+        SplitPathCommand.NotifyCanExecuteChanged();
+        CombinePathsCommand.NotifyCanExecuteChanged();
         UniteSelectionCommand.NotifyCanExecuteChanged();
         SubtractSelectionCommand.NotifyCanExecuteChanged();
         IntersectSelectionCommand.NotifyCanExecuteChanged();
@@ -4152,8 +4623,16 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanTransformSelectedObject));
         OnPropertyChanged(nameof(CanRotateSelectedObject));
         OnPropertyChanged(nameof(IsSelectedLocked));
+        OnPropertyChanged(nameof(CanTransformSelection));
         OnPropertyChanged(nameof(CanGroupSelection));
+        OnPropertyChanged(nameof(GroupSelectionDisabledReason));
         OnPropertyChanged(nameof(CanUngroupSelection));
+        OnPropertyChanged(nameof(UngroupSelectionDisabledReason));
+        OnPropertyChanged(nameof(CanCombinePaths));
+        OnPropertyChanged(nameof(CombinePathsDisabledReason));
+        OnPropertyChanged(nameof(UniteOperandsDisabledReason));
+        OnPropertyChanged(nameof(CanBringForward));
+        OnPropertyChanged(nameof(CanSendBackward));
         OnPropertyChanged(nameof(CanBreakApartSelection));
         OnPropertyChanged(nameof(CanUniteSelection));
         OnPropertyChanged(nameof(CanWeldSelection));

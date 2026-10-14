@@ -32,12 +32,23 @@ public sealed class DuplicateObjectsCommand : ISceneCommand
                     groupCopies[id] = replacement = Guid.NewGuid();
                 return replacement;
             }
+            // A whole group duplicates into a new group. A member duplicated on its own from inside its
+            // group (the operator entered the group) stays in that group, like a copy made inside an
+            // Inkscape group; a clipboard source is never a live member, so it always gets a new group.
+            var partialGroups = _sources
+                .Where(source => source.GroupId is not null && _scene.Objects.Contains(source))
+                .Select(source => source.GroupId!.Value)
+                .Distinct()
+                .Where(id => _scene.Objects.Any(item => item.GroupId == id && !_sources.Contains(item)))
+                .ToHashSet();
             _clones = _sources.Select(source =>
             {
                 var clone = source.Clone();
-                if (source.GroupId is { } groupId)
+                if (source.GroupId is { } groupId && !partialGroups.Contains(groupId))
                     clone.GroupId = RemapGroup(groupId);
-                clone.NestedGroupIds = source.NestedGroupIds.Select(RemapGroup).ToArray();
+                clone.NestedGroupIds = source.GroupId is { } kept && partialGroups.Contains(kept)
+                    ? source.NestedGroupIds.ToArray()
+                    : source.NestedGroupIds.Select(RemapGroup).ToArray();
                 clone.Transform = clone.Transform with
                 {
                     X = clone.Transform.X + _cascadeOffset.X,
@@ -74,15 +85,28 @@ public sealed class DuplicateObjectsCommand : ISceneCommand
             return;
         }
 
-        // Each clone goes directly above its source (later in the list = higher in z-order). A source that is
-        // not in the scene (pasted from the clipboard) has nothing to sit above, so its clone is appended.
-        for (var i = 0; i < _clones.Count; i++)
+        // A single object's clone goes directly above its source (later in the list = higher in z-order).
+        // The clones of a duplicated group go together, in their sources' stacking order, directly above
+        // the group's topmost member, so the copy of A,B,C is a contiguous A',B',C' over the original
+        // rather than A,A',B,B',C,C' threaded through it. A source that is not in the scene (pasted from
+        // the clipboard) has nothing to sit above, so its clone is appended.
+        var blocks = Enumerable.Range(0, _clones.Count)
+            .Where(i => !_scene.Objects.Contains(_clones[i]))
+            .GroupBy(i => _scene.Objects.Contains(_sources[i]) && _clones[i].GroupId is { } copyGroup
+                ? (object)copyGroup
+                : i)
+            .Select(block => block.OrderBy(i => _scene.Objects.IndexOf(_sources[i])).ToList())
+            .ToList();
+        foreach (var block in blocks)
         {
-            var clone = _clones[i];
-            if (_scene.Objects.Contains(clone)) continue;
-            var sourceIndex = _scene.Objects.IndexOf(_sources[i]);
-            if (sourceIndex < 0) _scene.Objects.Add(clone);
-            else _scene.Objects.Insert(sourceIndex + 1, clone);
+            var anchorIndex = block.Max(i => _scene.Objects.IndexOf(_sources[i]));
+            if (anchorIndex < 0)
+            {
+                foreach (var i in block) _scene.Objects.Add(_clones[i]);
+                continue;
+            }
+            var insertAt = anchorIndex + 1;
+            foreach (var i in block) _scene.Objects.Insert(insertAt++, _clones[i]);
         }
         _insertIndices = _clones.Select(clone => _scene.Objects.IndexOf(clone)).ToArray();
     }

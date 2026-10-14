@@ -13,7 +13,10 @@ namespace Lasero.Core.Scene;
 /// frame, which cannot express the shear that a non-uniform world scale produces on an object rotated
 /// by anything other than a multiple of 90 degrees. Those objects keep their rotation and take the
 /// world scale projected onto their own axes (see <see cref="ScaleAbout"/>); uniform scale and
-/// axis-aligned objects are exact.
+/// axis-aligned objects are exact. Known limitation: a non-uniform group resize of an object rotated
+/// by some other angle is an approximation, not a true affine scale. The live preview applies this
+/// same function, and the preview frame follows the objects' real bounds in that case
+/// (<see cref="ResizeOverlayBox"/>), so the drawn result is always the committed and cut result.
 /// </summary>
 public static class GroupTransform
 {
@@ -147,6 +150,58 @@ public static class GroupTransform
             X = centre.X + rx - pivot.X,
             Y = centre.Y + ry - pivot.Y,
         };
+    }
+
+    /// <summary>
+    /// <paramref name="t"/> after mirroring the world about the vertical (<paramref name="horizontal"/>)
+    /// or horizontal line through <paramref name="centre"/>. Exact for any rotation and scale: a world
+    /// mirror M applied to R(a) * diag(Sx, Sy) equals R(-a) * diag(-Sx, Sy) for a horizontal flip and
+    /// R(-a) * diag(Sx, -Sy) for a vertical one, so the rotation changes sign, one scale flips and the
+    /// pivot is mirrored. Flipping only the local scale would mirror a rotated object about its own
+    /// tilted axis instead of the screen axis.
+    /// </summary>
+    public static ObjectTransform MirrorAbout(ObjectTransform t, Position pivot, Position centre, bool horizontal)
+    {
+        var pivotWorldX = pivot.X + t.X;
+        var pivotWorldY = pivot.Y + t.Y;
+        var newPivotX = horizontal ? 2 * centre.X - pivotWorldX : pivotWorldX;
+        var newPivotY = horizontal ? pivotWorldY : 2 * centre.Y - pivotWorldY;
+        return t with
+        {
+            X = newPivotX - pivot.X,
+            Y = newPivotY - pivot.Y,
+            // 0 - a rather than -a, so an unrotated object keeps +0 and compares equal to before.
+            RotationDeg = 0 - t.RotationDeg,
+            ScaleX = horizontal ? -t.ScaleX : t.ScaleX,
+            ScaleY = horizontal ? t.ScaleY : -t.ScaleY,
+        };
+    }
+
+    /// <summary>Whether <see cref="ScaleAbout"/> reproduces the world scale (gx, gy) exactly for an object
+    /// with transform <paramref name="t"/>: uniform scale, or a rotation that is a multiple of 90 degrees.
+    /// Otherwise the object keeps its rotation and the result only approximates the scaled box.</summary>
+    public static bool IsExactScale(ObjectTransform t, double gx, double gy)
+    {
+        if (Math.Abs(Math.Abs(gx) - Math.Abs(gy)) <= Epsilon) return true;
+        var turns = t.RotationDeg / 90.0;
+        return Math.Abs(turns - Math.Round(turns)) < 1e-6;
+    }
+
+    /// <summary>
+    /// The frame a group resize preview should draw. When every object scales exactly it is the
+    /// nominal scaled box, which stays under the pointer. When a rotated object would need a shear
+    /// that ObjectTransform cannot express, the objects do not fill that box, so the frame is the
+    /// actual bounds of the scaled objects instead: what is drawn is what will be committed and cut.
+    /// </summary>
+    public static BoundingBox2D ResizeOverlayBox(
+        BoundingBox2D startBox, ScaleSolution solution,
+        IEnumerable<(SceneObject Object, ObjectTransform Before)> scaled)
+    {
+        ArgumentNullException.ThrowIfNull(scaled);
+        var items = scaled.ToList();
+        return items.All(item => IsExactScale(item.Before, solution.Gx, solution.Gy))
+            ? ScaleBox(startBox, solution.Anchor, solution.Gx, solution.Gy)
+            : BoundsOf(items.Select(item => item.Object));
     }
 
     /// <summary>World bounding box of the objects, ignoring empty ones. <see cref="BoundingBox2D.Empty"/> when none.</summary>

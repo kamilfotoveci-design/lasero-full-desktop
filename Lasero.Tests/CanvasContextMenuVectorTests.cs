@@ -51,7 +51,7 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         "-",
         "Odstranit|Del",
         "-",
-        "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G", "Odebrat ze skupiny|Ctrl+U", "Oddělit obrysy|", "Zamknout vybrané tvary|",
+        "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G", "Zrušit skupinu|Ctrl+Shift+G", "Oddělit obrysy|", "Zamknout vybrané tvary|",
         "-",
         "Převést na dráhu|Ctrl+Shift+C", "Převést na bitmapu|Ctrl+Shift+B",
         "-",
@@ -515,7 +515,7 @@ public sealed class CanvasContextMenuVectorTests : IDisposable
         Assert.Equal(
             new HashSet<string?>
             {
-                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Del", "Ctrl+A", "Ctrl+G", "Ctrl+U",
+                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Del", "Ctrl+A", "Ctrl+G", "Ctrl+Shift+G",
                 "Ctrl+Shift+C", "Ctrl+Shift+B", "Alt+P", "Ctrl+Shift+U", "Ctrl+Shift+O",
             },
             gestures);

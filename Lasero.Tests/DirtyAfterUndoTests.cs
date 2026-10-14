@@ -92,9 +92,11 @@ public sealed class DirtyAfterUndoTests
 
         vm.Scene.SelectedObjects.Clear();
         vm.Scene.SelectedObjects.Add(vm.Scene.Objects[0]);
-        vm.Scene.ToggleLockCommand.Execute(null); // not an undoable command
+        // A direct property edit on the selected object bypasses the history. (Lock used to be the
+        // example here; it is an undoable command now.)
+        vm.Scene.Objects[0].Name = "Přejmenováno mimo historii";
 
         vm.Scene.UndoCommand.Execute(null);
-        Assert.True(vm.IsDirty, "a lock toggle is not covered by the history, so the document differs from the saved one");
+        Assert.True(vm.IsDirty, "an edit outside the history is not undone, so the document differs from the saved one");
     });
 }

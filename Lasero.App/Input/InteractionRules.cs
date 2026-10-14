@@ -13,6 +13,8 @@ public enum CanvasEscapeAction
     ExitNodeEdit,
     CancelPathNode,
     ResetTool,
+    /// <summary>Leave the entered group; the whole group becomes the selection again.</summary>
+    ExitGroup,
     ClearSelection,
 }
 
@@ -23,7 +25,8 @@ public readonly record struct CanvasEscapeState(
     bool NodeEditActive,
     bool PathInProgress,
     bool NonSelectToolActive,
-    bool HasSelection);
+    bool HasSelection,
+    bool GroupEntered = false);
 
 /// <summary>What an unhandled Esc does once it has bubbled up to the main window.</summary>
 public enum WindowEscapeAction
@@ -60,6 +63,7 @@ public static class InteractionRules
         if (state.NodeEditActive) return CanvasEscapeAction.ExitNodeEdit;
         if (state.PathInProgress) return CanvasEscapeAction.CancelPathNode;
         if (state.NonSelectToolActive) return CanvasEscapeAction.ResetTool;
+        if (state.GroupEntered) return CanvasEscapeAction.ExitGroup;
         if (state.HasSelection) return CanvasEscapeAction.ClearSelection;
         return CanvasEscapeAction.None;
     }

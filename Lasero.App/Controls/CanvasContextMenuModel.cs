@@ -9,6 +9,8 @@ public enum ContextAction
     Cut, Copy, Paste, Duplicate, Delete, SelectAll, DeselectAll,
     // Object structure
     EditNodes, EditText, ConvertToCurves, ConvertTextToPath, ConvertToBitmap, Group, Ungroup, BreakApart, ToggleLock,
+    /// <summary>Unlocks the locked object that was right-clicked (it cannot be selected first).</summary>
+    UnlockObject, UnlockAll, Combine, SplitPath,
     // Inspection: the job preview (no machine involved) and the selection's property fields
     Preview, ShowProperties,
     // Boolean and path operations
@@ -18,6 +20,7 @@ public enum ContextAction
     // Arrange
     BringToFront, BringForward, SendBackward, SendToBack,
     AlignLeft, AlignCenterHorizontal, AlignRight, AlignTop, AlignMiddle, AlignBottom, AlignCenterBoth, AlignCenterWorkArea,
+    DistributeCentersHorizontally, DistributeCentersVertically, DistributeSpacingHorizontally, DistributeSpacingVertically,
     RotateLeft, RotateRight, FlipHorizontal, FlipVertical,
     /// <summary>Argument is the index into SceneViewModel.Layers.</summary>
     AssignToLayer,
@@ -121,15 +124,28 @@ public sealed record ObjectContextState
     /// <summary>Something is listening for "Zobrazit vlastnosti"; without it the row is left out.</summary>
     public bool ShowProperties { get; init; }
 
-    /// <summary>Null when Unite/Subtract/Intersect/Exclude work; otherwise the sentence saying why not.</summary>
+    /// <summary>Null when Subtract/Intersect/Exclude work (exactly two operands); otherwise why not.</summary>
     public string? BooleanReason { get; init; }
+    /// <summary>Null when Unite works (two or more operands); otherwise why not. Only read when
+    /// <see cref="UniteFollowsBooleanReason"/> is false; otherwise Unite shares BooleanReason.</summary>
+    public string? UniteReason { get; init; }
+    public bool UniteFollowsBooleanReason { get; init; } = true;
+    /// <summary>Why Seskupit is unavailable when the scene knows better than the generic sentence
+    /// (the operator is inside a group), or null.</summary>
+    public string? GroupReason { get; init; }
+    /// <summary>Why Zrušit skupinu is unavailable for a selection that IS in a group (a locked
+    /// member), or null to use the generic "not a group" sentence.</summary>
+    public string? UngroupReason { get; init; }
+    /// <summary>Null when Kombinovat works; otherwise why not.</summary>
+    public string? CombineReason { get; init; } = "Kombinovat lze nejméně dva objekty.";
+    /// <summary>Three or more objects or groups, so Rozmístit has something between the outer two.</summary>
+    public bool CanDistribute { get; init; }
     /// <summary>Null when Offset works; otherwise the sentence saying why not.</summary>
     public string? OffsetReason { get; init; }
 
+    /// <summary>Z-order moves act on the whole selection; groups move as blocks.</summary>
     public bool CanBringForward { get; init; }
     public bool CanSendBackward { get; init; }
-    /// <summary>Z-order moves act on a single object (SceneViewModel.Selected).</summary>
-    public bool IsSingle => SelectionCount == 1;
 
     public IReadOnlyList<LayerChoice> Layers { get; init; } = [];
 }
@@ -141,6 +157,8 @@ public sealed record EmptyCanvasContextState
     public int SelectionCount { get; init; }
     public bool CanImport { get; init; }
     public bool HasBed { get; init; }
+    /// <summary>Locked objects in the document; "Odemknout vše" is offered while there are any.</summary>
+    public int LockedCount { get; init; }
 }
 
 public sealed record NodeContextState
@@ -230,11 +248,11 @@ public static class CanvasContextMenuBuilder
         if (s.CanGroup)
             structure.Add(ContextMenuItemModel.Command(ContextAction.Group, "Seskupit", "Ctrl+G", "Glyph.Group"));
         if (s.CanUngroup)
-            structure.Add(ContextMenuItemModel.Command(ContextAction.Ungroup, "Rozdělit skupinu", "Ctrl+Shift+G", "Glyph.Ungroup"));
+            structure.Add(ContextMenuItemModel.Command(ContextAction.Ungroup, UngroupHeader, UngroupGesture, "Glyph.Ungroup"));
         if (s.CanBreakApart)
             structure.Add(ContextMenuItemModel.Command(ContextAction.BreakApart, "Oddělit obrysy", icon: "Glyph.Ungroup"));
         if (s.SelectionCount >= 2 && s.Kind is SelectionKind.Vector or SelectionKind.Text)
-            structure.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s.BooleanReason), "Glyph.Union"));
+            structure.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s), "Glyph.Union"));
         if (s.Kind is SelectionKind.Vector or SelectionKind.Text)
         {
             var offsetEnabled = s.OffsetReason is null;
@@ -244,10 +262,10 @@ public static class CanvasContextMenuBuilder
         groups.Add(structure);
 
         var arrange = new List<ContextMenuItemModel>();
-        if (s.IsSingle && (s.CanBringForward || s.CanSendBackward))
+        if (s.CanBringForward || s.CanSendBackward)
             arrange.Add(ContextMenuItemModel.Submenu("Pořadí", OrderRows(s)));
         if (s.CanAlign)
-            arrange.Add(ContextMenuItemModel.Submenu("Zarovnat", AlignRows()));
+            arrange.Add(ContextMenuItemModel.Submenu("Zarovnat", AlignRows(s)));
         if (s.CanTransform)
             arrange.Add(ContextMenuItemModel.Submenu("Otočit a převrátit", TransformRows()));
         var layerRows = LayerRows(s);
@@ -291,9 +309,9 @@ public static class CanvasContextMenuBuilder
             ContextMenuItemModel.Command(ContextAction.SelectAll, "Vybrat vše", "Ctrl+A",
                 enabled: s.CanSelectAll, reason: s.CanSelectAll ? null : AllSelectedReason),
             ContextMenuItemModel.Command(ContextAction.Group, "Seskupit", "Ctrl+G", "Glyph.Group",
-                enabled: s.CanGroup, reason: s.CanGroup ? null : GroupReason(s)),
-            ContextMenuItemModel.Command(ContextAction.Ungroup, "Odebrat ze skupiny", "Ctrl+U", "Glyph.Ungroup",
-                enabled: s.CanUngroup, reason: s.CanUngroup ? null : NotInGroupReason(s)),
+                enabled: s.CanGroup, reason: s.CanGroup ? null : s.GroupReason ?? GroupReason(s)),
+            ContextMenuItemModel.Command(ContextAction.Ungroup, UngroupHeader, UngroupGesture, "Glyph.Ungroup",
+                enabled: s.CanUngroup, reason: s.CanUngroup ? null : s.UngroupReason ?? NotInGroupReason(s)),
             ContextMenuItemModel.Command(ContextAction.BreakApart, "Oddělit obrysy", icon: "Glyph.Ungroup",
                 enabled: s.CanBreakApart, reason: s.CanBreakApart ? null : BreakApartReason(s)),
             LockRow(s, "Zamknout vybrané tvary", "Odemknout vybrané tvary"),
@@ -322,16 +340,24 @@ public static class CanvasContextMenuBuilder
 
         var operations = new List<ContextMenuItemModel>();
         if (s.SelectionCount >= 2 && s.Kind is SelectionKind.Vector or SelectionKind.Text)
-            operations.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s.BooleanReason), "Glyph.Union"));
+        {
+            operations.Add(ContextMenuItemModel.Submenu("Booleovské operace", BooleanRows(s), "Glyph.Union"));
+            operations.Add(ContextMenuItemModel.Command(ContextAction.Combine, "Kombinovat", icon: "Glyph.Group",
+                enabled: s.CombineReason is null,
+                reason: s.CombineReason ?? "Spojí vybrané objekty do jedné cesty; křivky, otvory i vrstvy obrysů zůstanou"));
+        }
+        if (s.CanBreakApart)
+            operations.Add(ContextMenuItemModel.Command(ContextAction.SplitPath, "Rozdělit cestu", icon: "Glyph.Ungroup",
+                reason: "Oddělí samostatné tvary, otvory zůstanou u svého obrysu"));
         if (s.Kind is SelectionKind.Vector or SelectionKind.Text)
             operations.Add(ContextMenuItemModel.Command(ContextAction.Offset, "Offset křivky…", "Ctrl+Shift+O",
                 enabled: s.OffsetReason is null, reason: s.OffsetReason, icon: "Glyph.Offset"));
 
         var arrange = new List<ContextMenuItemModel>();
-        if (s.IsSingle && (s.CanBringForward || s.CanSendBackward))
+        if (s.CanBringForward || s.CanSendBackward)
             arrange.Add(ContextMenuItemModel.Submenu("Pořadí", OrderRows(s)));
         if (s.CanAlign)
-            arrange.Add(ContextMenuItemModel.Submenu("Zarovnat", AlignRows()));
+            arrange.Add(ContextMenuItemModel.Submenu("Zarovnat", AlignRows(s)));
         if (s.CanTransform)
             arrange.Add(ContextMenuItemModel.Submenu("Otočit a převrátit", TransformRows()));
         var layerRows = LayerRows(s);
@@ -375,6 +401,11 @@ public static class CanvasContextMenuBuilder
             edit.Add(ContextMenuItemModel.Command(ContextAction.DeselectAll, "Zrušit výběr", "Esc"));
         groups.Add(edit);
 
+        // A locked object cannot be selected, so this is where it is released again.
+        if (s.LockedCount > 0)
+            groups.Add([ContextMenuItemModel.Command(ContextAction.UnlockAll, "Odemknout vše", icon: "Glyph.Lock",
+                reason: s.LockedCount == 1 ? "Odemkne 1 zamčený objekt" : $"Odemkne všechny zamčené objekty ({s.LockedCount})")]);
+
         if (s.CanImport)
             groups.Add([ContextMenuItemModel.Command(ContextAction.Import, "Importovat grafiku…", icon: "Glyph.Import")]);
 
@@ -389,6 +420,16 @@ public static class CanvasContextMenuBuilder
 
         return Assemble(groups);
     }
+
+    /// <summary>Right-click on a locked object. It cannot be selected, so the menu leads with unlocking
+    /// it (LightBurn/Inkscape: locked means it cannot move, not that it is out of reach), followed by
+    /// the empty-canvas rows, since nothing has been selected.</summary>
+    public static IReadOnlyList<ContextMenuItemModel> ForLockedObject(EmptyCanvasContextState s) =>
+        Assemble([
+            [ContextMenuItemModel.Command(ContextAction.UnlockObject, "Odemknout", icon: "Glyph.Lock",
+                reason: "Objekt bude znovu možné vybrat, přesunout a upravit")],
+            ForEmptyCanvas(s),
+        ]);
 
     public static IReadOnlyList<ContextMenuItemModel> ForNode(NodeContextState s)
     {
@@ -460,6 +501,10 @@ public static class CanvasContextMenuBuilder
     private static ContextMenuItemModel LockRow(ObjectContextState s, string lockHeader, string unlockHeader) =>
         ContextMenuItemModel.Command(ContextAction.ToggleLock, s.AnyUnlocked ? lockHeader : unlockHeader, icon: "Glyph.Lock");
 
+    /// <summary>One name and one advertised shortcut for ungrouping everywhere (Ctrl+U is bound too).</summary>
+    public const string UngroupHeader = "Zrušit skupinu";
+    public const string UngroupGesture = "Ctrl+Shift+G";
+
     private const string AllSelectedReason = "Všechny objekty jsou už vybrané.";
     private const string AlreadyPathReason = "Vybraný objekt již je dráha.";
     private const string ConvertTextReason = "Zamčený text nelze převést na dráhu. Nejdřív je potřeba ho odemknout.";
@@ -481,15 +526,18 @@ public static class CanvasContextMenuBuilder
         : s.Kind == SelectionKind.Mixed ? "Bitmapu nelze seskupit. Seskupit lze jen vektory a text."
         : "Zamčené objekty nelze seskupit. Nejdřív je potřeba je odemknout.";
 
-    private static List<ContextMenuItemModel> BooleanRows(string? reason)
+    private static List<ContextMenuItemModel> BooleanRows(ObjectContextState s)
     {
+        var reason = s.BooleanReason;
         var enabled = reason is null;
+        var uniteReason = s.UniteFollowsBooleanReason ? reason : s.UniteReason;
         return
         [
-            ContextMenuItemModel.Command(ContextAction.Unite, "Sjednotit", "Ctrl+Shift+U", enabled: enabled,
-                reason: reason ?? "Spojí vybrané tvary do jednoho"),
+            ContextMenuItemModel.Command(ContextAction.Unite, "Sjednotit", "Ctrl+Shift+U", enabled: uniteReason is null,
+                reason: uniteReason ?? "Spojí vybrané tvary do jednoho"),
+            // Inkscape order: the shape behind keeps its area minus the shape in front of it.
             ContextMenuItemModel.Command(ContextAction.Subtract, "Odečíst", enabled: enabled,
-                reason: reason ?? "Tvary vpředu odečtou plochu od tvaru vzadu"),
+                reason: reason ?? "Tvar vpředu odečte svou plochu od tvaru vzadu"),
             ContextMenuItemModel.Command(ContextAction.Intersect, "Průnik", enabled: enabled,
                 reason: reason ?? "Zůstane jen plocha, kde se všechny tvary překrývají"),
             ContextMenuItemModel.Command(ContextAction.Exclude, "Vyloučit", enabled: enabled,
@@ -515,7 +563,9 @@ public static class CanvasContextMenuBuilder
         return rows;
     }
 
-    private static List<ContextMenuItemModel> AlignRows() =>
+    private const string DistributeReason = "Rozmístit lze nejméně tři objekty nebo skupiny.";
+
+    private static List<ContextMenuItemModel> AlignRows(ObjectContextState s) =>
     [
         ContextMenuItemModel.Command(ContextAction.AlignLeft, "Vlevo"),
         ContextMenuItemModel.Command(ContextAction.AlignCenterHorizontal, "Na střed vodorovně"),
@@ -527,6 +577,15 @@ public static class CanvasContextMenuBuilder
         ContextMenuItemModel.Separator,
         ContextMenuItemModel.Command(ContextAction.AlignCenterBoth, "Na střed vodorovně i svisle"),
         ContextMenuItemModel.Command(ContextAction.AlignCenterWorkArea, "Na střed pracovní plochy"),
+        ContextMenuItemModel.Separator,
+        ContextMenuItemModel.Command(ContextAction.DistributeCentersHorizontally, "Rozmístit středy vodorovně",
+            enabled: s.CanDistribute, reason: s.CanDistribute ? null : DistributeReason),
+        ContextMenuItemModel.Command(ContextAction.DistributeCentersVertically, "Rozmístit středy svisle",
+            enabled: s.CanDistribute, reason: s.CanDistribute ? null : DistributeReason),
+        ContextMenuItemModel.Command(ContextAction.DistributeSpacingHorizontally, "Stejné mezery vodorovně",
+            enabled: s.CanDistribute, reason: s.CanDistribute ? null : DistributeReason),
+        ContextMenuItemModel.Command(ContextAction.DistributeSpacingVertically, "Stejné mezery svisle",
+            enabled: s.CanDistribute, reason: s.CanDistribute ? null : DistributeReason),
     ];
 
     private static List<ContextMenuItemModel> TransformRows() =>

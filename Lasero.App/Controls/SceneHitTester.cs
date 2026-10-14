@@ -114,6 +114,62 @@ internal static class SceneHitTester
             .ToList();
     }
 
+    /// <summary>
+    /// Marquee selection against the drawn geometry, not the object's frame. A window marquee (dragged
+    /// to the right) takes an object only when every contour point lies inside the rectangle; a
+    /// crossing marquee (dragged to the left) takes it when any contour touches the rectangle. A
+    /// rotated object's frame corners or a curve's empty bounding-box corner never count.
+    /// </summary>
+    public static bool MarqueeHit(SceneObject obj, Lasero.Core.GCode.BoundingBox2D rect, bool window)
+    {
+        ArgumentNullException.ThrowIfNull(obj);
+        if (rect.IsEmpty) return false;
+        var bounds = obj.GeometricWorldBounds();
+        if (bounds.IsEmpty ||
+            bounds.MinX > rect.MaxX || bounds.MaxX < rect.MinX || bounds.MinY > rect.MaxY || bounds.MaxY < rect.MinY)
+            return false;
+        if (bounds.MinX >= rect.MinX && bounds.MaxX <= rect.MaxX && bounds.MinY >= rect.MinY && bounds.MaxY <= rect.MaxY)
+            return true;
+        if (window) return false;
+
+        foreach (var shape in obj.GetWorldShapes())
+        {
+            var points = shape.Points;
+            if (points.Count == 0) continue;
+            if (points.Any(point => Contains(rect, point))) return true;
+            for (var index = 1; index < points.Count; index++)
+                if (SegmentCrossesRect(points[index - 1], points[index], rect)) return true;
+            if (shape.IsClosed && points.Count > 2 && SegmentCrossesRect(points[^1], points[0], rect)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Whether a segment whose ends both lie outside the rectangle passes through it.</summary>
+    private static bool SegmentCrossesRect(Position a, Position b, Lasero.Core.GCode.BoundingBox2D rect)
+    {
+        if (Math.Max(a.X, b.X) < rect.MinX || Math.Min(a.X, b.X) > rect.MaxX ||
+            Math.Max(a.Y, b.Y) < rect.MinY || Math.Min(a.Y, b.Y) > rect.MaxY) return false;
+        var corners = new[]
+        {
+            new Position(rect.MinX, rect.MinY, 0), new Position(rect.MaxX, rect.MinY, 0),
+            new Position(rect.MaxX, rect.MaxY, 0), new Position(rect.MinX, rect.MaxY, 0),
+        };
+        for (var index = 0; index < 4; index++)
+            if (SegmentsIntersect(a, b, corners[index], corners[(index + 1) % 4])) return true;
+        return false;
+    }
+
+    private static bool SegmentsIntersect(Position p1, Position p2, Position q1, Position q2)
+    {
+        static double Cross(Position o, Position a, Position b) => (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
+        var d1 = Cross(q1, q2, p1);
+        var d2 = Cross(q1, q2, p2);
+        var d3 = Cross(p1, p2, q1);
+        var d4 = Cross(p1, p2, q2);
+        return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0) || d1 == 0 || d2 == 0) &&
+               ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0) || d3 == 0 || d4 == 0);
+    }
+
     // Bounds of the points actually stored in a shape list (not SceneObject.LocalBounds, which is a
     // separately persisted value). Keyed by the immutable list, so replacing the shapes naturally
     // invalidates it.

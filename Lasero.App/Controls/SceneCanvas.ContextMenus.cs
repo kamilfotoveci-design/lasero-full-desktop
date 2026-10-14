@@ -80,6 +80,7 @@ public partial class SceneCanvas
     private void ShowContextMenuAt(Point screen, SceneObject? directHit)
     {
         if (ViewModel is not { } scene) return;
+        var lockedHit = directHit is not null && scene.IsUnlockableObject(directHit) ? directHit : null;
         if (directHit is not null && !scene.CanSelectObject(directHit)) directHit = null;
 
         if (_nodeEditObject is not null && _nodeEditWorkingPath is not null)
@@ -95,9 +96,10 @@ public partial class SceneCanvas
         if (target is not null)
         {
             // Right-click inside the current selection keeps it (so the menu acts on all of it); a
-            // click on anything else selects that object first, like every editor does.
+            // click on anything else selects it first, like every editor does, and a member of a group
+            // selects its whole group, exactly as a left click would.
             if (!scene.SelectedObjects.Contains(target))
-                SelectOnly(target);
+                scene.SelectedObjects.ReplaceWith(scene.SelectionUnitFor(target));
             OpenObjectMenu(screen);
             return;
         }
@@ -110,7 +112,44 @@ public partial class SceneCanvas
             return;
         }
 
+        // A locked object cannot be selected, but it must never be out of reach: offer to unlock it.
+        lockedHit ??= HitTestLockedObject(screen);
+        if (lockedHit is not null)
+        {
+            OpenLockedObjectMenu(screen, lockedHit);
+            return;
+        }
+
         OpenEmptyCanvasMenu(screen);
+    }
+
+    /// <summary>The topmost locked object under the pointer that unlocking would make selectable again.</summary>
+    private SceneObject? HitTestLockedObject(Point screen)
+    {
+        if (ViewModel is not { } scene) return null;
+        var pointer = new Lasero.Core.Grbl.Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        return SceneHitTester.HitTest(
+                scene.Objects,
+                pointer,
+                _scale,
+                (obj, shape) => obj.IsRaster ||
+                    scene.LayerModeFor(shape.LayerId, shape.LayerColor) is Lasero.Core.Layers.LayerMode.Fill or Lasero.Core.Layers.LayerMode.FillAndCut,
+                (obj, _) => scene.IsUnlockableObject(obj),
+                _preferences.ClickTolerancePx)
+            .Select(candidate => candidate.Object)
+            .FirstOrDefault();
+    }
+
+    private void OpenLockedObjectMenu(Point at, SceneObject locked)
+    {
+        if (ViewModel is not { } scene) return;
+        var state = CanvasContextMenuStates.ForEmptyCanvas(
+            scene, ImportCommand?.CanExecute(null) == true, WorkAreaWidthMm > 0 && WorkAreaHeightMm > 0);
+        OpenMenu(CanvasContextMenuBuilder.ForLockedObject(state), at, row =>
+        {
+            if (row.Action == ContextAction.UnlockObject) scene.UnlockObject(locked);
+            else RunObjectAction(row);
+        });
     }
 
     private void ShowKeyboardContextMenu()
@@ -159,13 +198,6 @@ public partial class SceneCanvas
     private Point ClampToCanvas(Point point) => new(
         Math.Max(0, Math.Min(point.X, DrawCanvas.ActualWidth)),
         Math.Max(0, Math.Min(point.Y, DrawCanvas.ActualHeight)));
-
-    private void SelectOnly(SceneObject obj)
-    {
-        if (ViewModel is null) return;
-        ViewModel.SelectedObjects.Clear();
-        ViewModel.SelectedObjects.Add(obj);
-    }
 
     private Rect? SelectionScreenBounds()
     {
@@ -418,6 +450,9 @@ public partial class SceneCanvas
             case ContextAction.Ungroup: Run(scene.UngroupSelectionCommand); break;
             case ContextAction.BreakApart: Run(scene.BreakApartSelectionCommand); break;
             case ContextAction.ToggleLock: Run(scene.ToggleLockCommand); break;
+            case ContextAction.UnlockAll: Run(scene.UnlockAllCommand); break;
+            case ContextAction.Combine: Run(scene.CombinePathsCommand); break;
+            case ContextAction.SplitPath: Run(scene.SplitPathCommand); break;
 
             case ContextAction.Unite: Run(scene.UniteSelectionCommand); break;
             case ContextAction.Subtract: Run(scene.SubtractSelectionCommand); break;
@@ -442,6 +477,10 @@ public partial class SceneCanvas
             case ContextAction.AlignTop: Run(scene.AlignTopCommand); break;
             case ContextAction.AlignMiddle: Run(scene.AlignMiddleCommand); break;
             case ContextAction.AlignBottom: Run(scene.AlignBottomCommand); break;
+            case ContextAction.DistributeCentersHorizontally: Run(scene.DistributeCentersHorizontallyCommand); break;
+            case ContextAction.DistributeCentersVertically: Run(scene.DistributeCentersVerticallyCommand); break;
+            case ContextAction.DistributeSpacingHorizontally: Run(scene.DistributeSpacingHorizontallyCommand); break;
+            case ContextAction.DistributeSpacingVertically: Run(scene.DistributeSpacingVerticallyCommand); break;
             case ContextAction.RotateLeft: Run(scene.RotateLeftCommand); break;
             case ContextAction.RotateRight: Run(scene.RotateRightCommand); break;
             case ContextAction.FlipHorizontal: Run(scene.FlipHorizontalCommand); break;

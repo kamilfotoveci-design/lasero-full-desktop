@@ -323,6 +323,35 @@ public sealed partial class SceneObject : ObservableObject
         return box;
     }
 
+    private ObjectTransform _geometricBoundsTransform;
+    private IReadOnlyList<ImportedShape>? _geometricBoundsShapes;
+    private VectorPath? _geometricBoundsPath;
+    private BoundingBox2D _geometricBounds;
+
+    /// <summary>Axis-aligned world box of the drawn geometry itself (every transformed contour point),
+    /// which is what align, distribute and flip need: <see cref="WorldBounds"/> rotates the local box's
+    /// corners, so a rotated circle reports a box larger than the circle. Cached until the transform,
+    /// the contours or the path change. Falls back to <see cref="WorldBounds"/> for an object with no
+    /// contour points.</summary>
+    public BoundingBox2D GeometricWorldBounds()
+    {
+        if (_geometricBoundsShapes is not null && ReferenceEquals(_geometricBoundsShapes, LocalShapes) &&
+            ReferenceEquals(_geometricBoundsPath, VectorPath) && _geometricBoundsTransform.Equals(Transform))
+            return _geometricBounds;
+
+        var box = BoundingBox2D.Empty;
+        foreach (var shape in GetWorldShapes())
+            foreach (var point in shape.Points)
+                box = box.Include(point.X, point.Y);
+        if (box.IsEmpty) box = WorldBounds();
+
+        _geometricBoundsShapes = LocalShapes;
+        _geometricBoundsPath = VectorPath;
+        _geometricBoundsTransform = Transform;
+        _geometricBounds = box;
+        return box;
+    }
+
     /// <summary>Builds raster planner options matching the current canvas placement. The canvas keeps
     /// raster rotation and mirroring disabled, so its transformed world bounds map directly to the
     /// planner's axis-aligned width, height and lower-left offset.</summary>
