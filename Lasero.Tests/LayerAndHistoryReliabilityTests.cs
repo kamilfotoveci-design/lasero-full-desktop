@@ -179,6 +179,32 @@ public sealed class LayerAndHistoryReliabilityTests : IDisposable
     }
 
     [Fact]
+    public void DeletingTheLastObjectOfALayerRemovesTheLayerEvenWhenItWasNotCreatedByATool()
+    {
+        var scene = new SceneDocument();
+        var red = MakeObject("Červený", RgbColor.Red);
+        var blue = MakeObject("Modrý", new RgbColor(0, 0, 255));
+        scene.Objects.Add(red);
+        scene.Objects.Add(blue);
+        scene.EnsureLayers([LayerSettings.CreateDefault(RgbColor.Red, LayerMode.Cut, "Červená"),
+            LayerSettings.CreateDefault(new RgbColor(0, 0, 255), LayerMode.Cut, "Modrá")], [red, blue]);
+        var untouched = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Nepoužitá");
+        scene.Layers.Add(untouched);
+        var stack = new SceneCommandStack();
+
+        stack.Execute(new DeleteObjectsCommand(scene, [red]));
+
+        Assert.DoesNotContain(scene.Layers, layer => layer.Name == "Červená");
+        Assert.Contains(scene.Layers, layer => layer.Name == "Modrá");
+        Assert.Contains(untouched, scene.Layers);
+
+        stack.Undo();
+
+        Assert.Contains(scene.Layers, layer => layer.Name == "Červená");
+        Assert.Equal(3, scene.Layers.Count);
+    }
+
+    [Fact]
     public void DeletingBothSourceAndOutputDoesNotTouchTheLinkOfADeletedObject()
     {
         var scene = new SceneDocument();

@@ -80,25 +80,21 @@
                                              AutomationProperties.AutomationId="HomeTipOfDay"
                                              AutomationProperties.Name="Tip dne" />
 
-                    <!-- Pokračovat v práci. The newest project gets the full-width feature; older entries stay in a
-                         horizontally scrolling shelf so none are hidden. -->
+                    <!-- Pokračovat v práci. Every recent project is one square tile, newest first, wrapping onto
+                         further rows so none are hidden. -->
                     <StackPanel Margin="0,0,0,32"
                                 Visibility="{Binding Home.HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
                         <components:SectionHeader Title="Pokračovat v práci" Level="Page" />
-                        <components:ProjectThumbCard DataContext="{Binding Home.FeaturedProject}" Height="220" Margin="0,0,0,16"
-                            OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            Visibility="{Binding DataContext.Home.FeaturedProject, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NotNullToVisibility}}" />
-                        <ItemsControl ItemsSource="{Binding Home.OtherRecentProjectRows}" Margin="0,0,-16,0">
+                        <ItemsControl ItemsSource="{Binding Home.RecentProjectRows}" Margin="0,0,-16,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
+                                    <WrapPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <components:ProjectThumbCard
-                                        Width="260" Margin="0,0,16,8"
+                                        Width="240" Height="240" Margin="0,0,16,16"
                                         OpenCommand="{Binding DataContext.Home.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         RemoveCommand="{Binding DataContext.Home.RemoveRecentProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </DataTemplate>
