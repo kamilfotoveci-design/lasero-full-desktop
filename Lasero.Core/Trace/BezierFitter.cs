@@ -179,11 +179,21 @@ public static class BezierFitter
 
         if (worstIndex < 0 || maxError <= options.ToleranceMm)
         {
-            return
-            [
-                new VectorNode(chain[0], null, c1, startType),
-                new VectorNode(chain[^1], c2, null, endType),
-            ];
+            // Within tolerance, but a handle that pokes out of the shape's own bounding box (an arc whose
+            // anchors are not at its extremes) makes the curve's control polygon lie about where the shape
+            // is. Split at the extreme point instead: both halves then run extreme to extreme.
+            var bulge = depth < MaxRecursionDepth
+                ? ControlOvershootIndex(chain, c1, c2, options.ToleranceMm * MaxControlOvershootTolerances)
+                : -1;
+            if (bulge < 0)
+            {
+                return
+                [
+                    new VectorNode(chain[0], null, c1, startType),
+                    new VectorNode(chain[^1], c2, null, endType),
+                ];
+            }
+            worstIndex = bulge;
         }
 
         if (depth >= MaxRecursionDepth)
@@ -207,6 +217,43 @@ public static class BezierFitter
         var rightNodes = FitChain(right, options, false, forceEndCorner, depth + 1, splitTangent, endTangent);
         AppendChain(leftNodes, rightNodes);
         return leftNodes;
+    }
+
+    /// <summary>How far, in fit tolerances, a control point may lie outside the bounding box of the points the
+    /// cubic was fitted to.</summary>
+    private const double MaxControlOvershootTolerances = 4;
+
+    /// <summary>The chain index to split at when a control point lies further than <paramref name="limit"/> outside
+    /// the chain's bounding box: the chain's extreme point on that side. -1 when the controls stay inside, or
+    /// when the extreme point is an end of the chain (nothing to split at).</summary>
+    private static int ControlOvershootIndex(IReadOnlyList<Position> chain, Position c1, Position c2, double limit)
+    {
+        int minX = 0, maxX = 0, minY = 0, maxY = 0;
+        for (var i = 1; i < chain.Count; i++)
+        {
+            if (chain[i].X < chain[minX].X) minX = i;
+            if (chain[i].X > chain[maxX].X) maxX = i;
+            if (chain[i].Y < chain[minY].Y) minY = i;
+            if (chain[i].Y > chain[maxY].Y) maxY = i;
+        }
+
+        var worst = limit;
+        var index = -1;
+        void Consider(double overshoot, int extreme)
+        {
+            if (overshoot <= worst) return;
+            worst = overshoot;
+            index = extreme;
+        }
+
+        foreach (var c in new[] { c1, c2 })
+        {
+            Consider(chain[minX].X - c.X, minX);
+            Consider(c.X - chain[maxX].X, maxX);
+            Consider(chain[minY].Y - c.Y, minY);
+            Consider(c.Y - chain[maxY].Y, maxY);
+        }
+        return index >= 1 && index <= chain.Count - 2 ? index : -1;
     }
 
     /// <summary>Least-squares control points along the given tangents, falling back to chord/3 handles when the
