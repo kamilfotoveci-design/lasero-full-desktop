@@ -25,6 +25,38 @@ public partial class CanvasViewControls : UserControl
     public CanvasViewControls()
     {
         InitializeComponent();
+        // Settings can change the snap switches while this control is alive, and TargetCanvas arrives
+        // by binding after construction, so read them whenever the cluster appears.
+        Loaded += (_, _) => RefreshSnapState();
+        IsVisibleChanged += (_, _) => RefreshSnapState();
+    }
+
+    /// <summary>Re-reads the snap switches from the editor preferences the canvas is using.</summary>
+    public void RefreshSnapState()
+    {
+        if (TargetCanvas?.Preferences is not { } preferences) return;
+        SnapGridToggle.IsChecked = preferences.SnapToGrid;
+        SnapObjectsToggle.IsChecked = preferences.SnapToObjects;
+    }
+
+    private void OnSnapGridClick(object sender, RoutedEventArgs e)
+    {
+        if (TargetCanvas?.Preferences is { } preferences)
+            preferences.SnapToGrid = SnapGridToggle.IsChecked == true;
+    }
+
+    private void OnSnapObjectsClick(object sender, RoutedEventArgs e)
+    {
+        if (TargetCanvas?.Preferences is { } preferences)
+            preferences.SnapToObjects = SnapObjectsToggle.IsChecked == true;
+    }
+
+    /// <summary>The two-way binding turns the tool on; turning it off has no value to write back, so the
+    /// click puts the operator back on the selection tool.</summary>
+    private void OnPanToggleClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton { IsChecked: not true } && DataContext is ViewModels.MainViewModel main)
+            main.Scene.ActiveTool = ViewModels.DesignerTool.Select;
     }
 
     private void OnZoomInClick(object sender, RoutedEventArgs e) => TargetCanvas?.ZoomIn();

@@ -41,14 +41,30 @@ public sealed class RasterPreviewFidelityTests : IDisposable
     }
 
     [Fact]
-    public void PreviewKeepsTheSourceResolution()
+    public void PreviewKeepsTheSourceResolutionWhenItMatchesTheLineInterval()
     {
         var path = WriteGradient(64, 48, withAlpha: false);
 
-        var preview = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions());
+        // 6.35 mm at 254 dpi (0.1 mm interval) is exactly 64 pixels wide.
+        var preview = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions { TargetWidthMm = 6.35 });
 
         Assert.Equal(64, preview.Width);
         Assert.Equal(48, preview.Height);
+    }
+
+    /// <summary>A bitmap coarser than the requested line interval is resampled up, so the scan-line
+    /// pitch follows the interval instead of the source pixel size.</summary>
+    [Fact]
+    public void SourceCoarserThanTheLineIntervalIsUpsampled()
+    {
+        var path = WriteGradient(64, 48, withAlpha: false);
+
+        // 25.4 dpi = 1 mm interval; 128 mm wide asks for 128 pixels from a 64 pixel source.
+        var preview = RasterImporter.LoadProcessedPreview(path,
+            new RasterImportOptions { TargetWidthMm = 128, Dpi = 25.4, UseDithering = false });
+
+        Assert.Equal(128, preview.Width);
+        Assert.Equal(96, preview.Height);
     }
 
     /// <summary>
@@ -63,7 +79,7 @@ public sealed class RasterPreviewFidelityTests : IDisposable
     {
         var path = WriteGradient(64, 48, withAlpha: false);
 
-        var dithered = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions { UseDithering = true });
+        var dithered = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions { TargetWidthMm = 6.35, UseDithering = true });
 
         var distinct = dithered.PowerFraction.Select(value => Math.Round(value, 2)).Distinct().Count();
         Assert.Equal(2, distinct);
@@ -75,7 +91,7 @@ public sealed class RasterPreviewFidelityTests : IDisposable
         var path = WriteGradient(64, 48, withAlpha: false);
 
         var preview = RasterImporter.LoadProcessedPreview(
-            path, new RasterImportOptions { UseDithering = false, UseThreshold = false });
+            path, new RasterImportOptions { TargetWidthMm = 6.35, UseDithering = false, UseThreshold = false });
 
         var distinct = preview.PowerFraction.Select(value => Math.Round(value, 2)).Distinct().Count();
         Assert.True(distinct > 16,
@@ -99,7 +115,7 @@ public sealed class RasterPreviewFidelityTests : IDisposable
             bitmap.Save(path, ImageFormat.Png);
         }
 
-        var preview = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions());
+        var preview = RasterImporter.LoadProcessedPreview(path, new RasterImportOptions { TargetWidthMm = 3.2 });
 
         var burnt = preview.PowerFraction.Count(value => value > 0.5);
         Assert.True(burnt == 0,

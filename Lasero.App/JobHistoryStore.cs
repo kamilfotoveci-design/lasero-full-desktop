@@ -61,8 +61,24 @@ public sealed class JobHistoryStore
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            // The history is a record of physical jobs: keep the unreadable file aside so the next
+            // Append() cannot overwrite it with a one-entry log.
             Log.Warning(ex, "Job-history file is invalid; starting with an empty log");
+            PreserveCorruptFile();
             return [];
+        }
+    }
+
+    private void PreserveCorruptFile()
+    {
+        if (_path is null) return;
+        try
+        {
+            File.Move(_path, _path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), overwrite: false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Invalid job-history file could not be preserved");
         }
     }
 

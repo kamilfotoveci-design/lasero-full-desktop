@@ -80,8 +80,23 @@ public sealed class RecentProjectsStore
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            // Keep the unreadable file aside so the next Save() cannot overwrite it with an empty list.
             Log.Warning(ex, "Recent-projects file is invalid; starting with an empty list");
+            PreserveCorruptFile();
             return [];
+        }
+    }
+
+    private void PreserveCorruptFile()
+    {
+        if (_path is null) return;
+        try
+        {
+            File.Move(_path, _path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), overwrite: false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Invalid recent-projects file could not be preserved");
         }
     }
 

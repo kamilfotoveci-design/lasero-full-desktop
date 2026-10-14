@@ -77,6 +77,8 @@ public partial class GCodeViewModel : ObservableObject
     // Shared import sizing (SVG has no physical units — this is the target
     // output width; raster images reuse the same field plus their own DPI/power knobs).
     [ObservableProperty] private double _importWidthMm = 100;
+    private bool _importWidthExplicit;
+    partial void OnImportWidthMmChanged(double value) => _importWidthExplicit = true;
     [ObservableProperty] private double _rasterDpi = 254;
     [ObservableProperty] private double _rasterMaxPower = 100;
 
@@ -202,26 +204,46 @@ public partial class GCodeViewModel : ObservableObject
     [RelayCommand]
     private void LoadFile()
     {
+        if (IsJobActive)
+        {
+            LastMessage = "Během úlohy nelze importovat soubor. Je potřeba počkat na dokončení nebo úlohu zastavit.";
+            return;
+        }
         var dialog = new OpenFileDialog
         {
             Filter = "Podporované soubory (*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp;*.webp)|*.gcode;*.nc;*.tap;*.svg;*.png;*.jpg;*.jpeg;*.bmp;*.webp|" +
-                     "G-code (*.gcode;*.nc;*.tap)|*.gcode;*.nc;*.tap|" +
+                     "G-code (*.gcode;*.nc;*.tap;*.ngc;*.txt)|*.gcode;*.nc;*.tap;*.ngc;*.txt|" +
                      "Vektor SVG (*.svg)|*.svg|" +
                      "Obrázek (*.png;*.jpg;*.jpeg;*.bmp;*.webp)|*.png;*.jpg;*.jpeg;*.bmp;*.webp|" +
                      "Všechny soubory (*.*)|*.*",
         };
         if (dialog.ShowDialog() != true) return;
+        ImportFile(dialog.FileName);
+    }
+
+    /// <summary>Imports one design or G-code file by path: the same routing the open dialog uses,
+    /// reused by drag-and-drop onto the window. Refused while a job is active.</summary>
+    public void ImportFile(string fileName)
+    {
+        if (IsJobActive)
+        {
+            LastMessage = "Během úlohy nelze importovat soubor. Je potřeba počkat na dokončení nebo úlohu zastavit.";
+            return;
+        }
 
         try
         {
-            var ext = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
             switch (ext)
             {
                 case ".svg":
-                    _scene.ImportSvgFile(dialog.FileName, ImportWidthMm);
+                    // The file's own physical size (width/height with units) wins unless the operator
+                    // has explicitly chosen an import width.
+                    var svgWarnings = _scene.ImportSvgFile(fileName, ImportWidthMm, useDocumentSize: !_importWidthExplicit);
                     ImportKind = ImportKind.Svg;
-                    FileLabel = Path.GetFileName(dialog.FileName);
-                    LastMessage = "SVG bylo přidáno do návrhu. Objekt lze přesunout, otočit nebo změnit jeho velikost.";
+                    FileLabel = Path.GetFileName(fileName);
+                    LastMessage = "SVG bylo přidáno do návrhu. Objekt lze přesunout, otočit nebo změnit jeho velikost."
+                        + (svgWarnings.Count > 0 ? " Upozornění: " + string.Join(" ", svgWarnings) : string.Empty);
                     RegenerateFromScene();
                     break;
                 case ".png" or ".jpg" or ".jpeg" or ".bmp" or ".webp":
@@ -234,14 +256,24 @@ public partial class GCodeViewModel : ObservableObject
                         FeedRatePerMinute = 3000,
                         MaxPower = RasterMaxPower,
                     };
-                    _scene.ImportRasterFile(dialog.FileName, rasterOptions);
+                    _scene.ImportRasterFile(fileName, rasterOptions);
                     ImportKind = ImportKind.Raster;
-                    FileLabel = Path.GetFileName(dialog.FileName);
+                    FileLabel = Path.GetFileName(fileName);
                     LastMessage = "Obrázek byl přidán na plátno. Velikost lze upravit přímo na plátně; nastavení obrázku se otevře pravým kliknutím.";
                     RegenerateFromScene();
                     break;
+                case var gcodeExt when IsGCodeExtension(gcodeExt):
+                    ImportGCodeFile(fileName);
+                    break;
                 default:
-                    ImportGCodeFile(dialog.FileName);
+                    // The "all files" filter must not feed an arbitrary file (a PDF, a ZIP) to the G-code parser.
+                    Log.Warning("Import refused: unsupported extension {Extension}", ext);
+                    LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
+                        "Formát není podporován",
+                        $"Soubor „{Path.GetFileName(fileName)}“ nelze otevřít. Podporované jsou G-code (.gcode, .nc, .tap, .ngc, .txt), vektor SVG a obrázky PNG, JPG, BMP a WEBP.",
+                        "Rozumím",
+                        CancelText: null,
+                        Tone: LaseroDialogTone.Warning));
                     break;
             }
         }
@@ -270,15 +302,26 @@ public partial class GCodeViewModel : ObservableObject
         if (dialog.ShowDialog() != true) return;
         try
         {
-            File.WriteAllText(dialog.FileName, SvgExporter.Export(_scene.Objects, _scene.Layers));
+            SvgExporter.ExportToFile(_scene.Objects, _scene.Layers, dialog.FileName);
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to export scene as SVG");
+            var message = ex switch
+            {
+                _ when UserFacingErrors.IsOurs(ex.Message) => ex.Message,
+                UnauthorizedAccessException => "Do zvolené složky nelze zapisovat. Soubor lze uložit jinam, například do složky Dokumenty.",
+                IOException => "Soubor se nepodařilo zapsat. Je potřeba ověřit volné místo na disku a zda soubor není otevřený jinde.",
+                _ => "Export SVG se nepodařilo dokončit. Lze zkusit jiné umístění souboru.",
+            };
             LaseroDialogWindow.Show(Application.Current.MainWindow, new LaseroDialogOptions(
-                "Export SVG se nezdařil", ex.Message, "Zavřít", CancelText: null, Tone: LaseroDialogTone.Danger));
+                "Export SVG se nezdařil", message, "Zavřít", CancelText: null, Tone: LaseroDialogTone.Danger));
         }
     }
+
+    /// <summary>Extensions that may go to the raw G-code parser. Everything else is refused with a dialog.</summary>
+    public static bool IsGCodeExtension(string? extension) =>
+        extension is not null && extension.ToLowerInvariant() is ".gcode" or ".nc" or ".tap" or ".txt" or ".ngc";
 
     private void ImportGCodeFile(string path)
     {
@@ -296,7 +339,11 @@ public partial class GCodeViewModel : ObservableObject
             PlacementMode = JobPlacementMode.AbsoluteCoordinates;
     }
 
-    private bool CanRegenerate() => _scene.Objects.Count > 0;
+    private bool CanRegenerate() => _scene.Objects.Count > 0 && !IsJobActive;
+
+    /// <summary>True while lines are going to the machine (not merely being prepared). The document,
+    /// state and placement must not be rebuilt under a running, paused or framing job.</summary>
+    private bool IsStreaming => JobState is JobRunState.Running or JobRunState.Paused or JobRunState.Framing;
 
     private double? ReadControllerMaximumS() => _connection is IGrblDeviceProfileSource profileSource
         ? profileSource.DeviceProfile?.MaxSpindleSpeed
@@ -329,6 +376,13 @@ public partial class GCodeViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRegenerate))]
     private void RegenerateFromScene()
     {
+        // The profile-changed handler and the canvas call this directly, not only through the command.
+        // Rebuilding mid-run would swap the document and reset JobState under the streaming job.
+        if (IsStreaming)
+        {
+            _sceneDocumentDirty = true;
+            return;
+        }
         _controllerMaximumS = ReadControllerMaximumS();
         if (_controllerMaximumS is not { } maximumS || !double.IsFinite(maximumS) || maximumS <= 0)
         {
@@ -388,6 +442,13 @@ public partial class GCodeViewModel : ObservableObject
                 foreach (var obj in _scene.Objects.Where(item =>
                              item.IsVisible && item.IncludeInOutput && item.IsRaster && UsesLayer(item, layer)))
                 {
+                    // A rotated/mirrored bitmap cannot be engraved as placed; withhold it and say why
+                    // rather than burn it upright and unflipped.
+                    if (obj.RasterOutputBlockReason is { } blockReason)
+                    {
+                        LastMessage = blockReason;
+                        continue;
+                    }
                     var outputOptions = obj.BuildRasterOutputOptions(layer, offsetX, offsetY);
                     if (outputOptions is null) continue;
                     var firstRasterLine = lines.Count;
@@ -429,12 +490,42 @@ public partial class GCodeViewModel : ObservableObject
         IsCurrentDocumentFramed = false;
         if (!IsJobActive && JobState is (JobRunState.Ready or JobRunState.Completed))
             JobState = JobRunState.Idle;
+        if (!IsJobActive) DropStaleSceneDocument();
+    }
+
+    /// <summary>
+    /// A document generated from the scene must not outlive the scene's content. Once every object is
+    /// gone, the old G-code would otherwise stay runnable and frame its stale bounds on the machine.
+    /// A raw G-code document is independent of the scene and is left alone.
+    /// </summary>
+    private void DropStaleSceneDocument()
+    {
+        if (ImportKind == ImportKind.GCode || Document is null || _scene.Objects.Count > 0) return;
+
+        Document = null;
+        FileLabel = "Žádný soubor";
+        CurrentLine = 0;
+        TotalLines = 0;
+        ProgressPercent = 0;
+        JobState = JobRunState.Idle;
+        _timeEstimate = null;
+        EstimatedDuration = TimeSpan.Zero;
+        EstimatedTimeLabel = "Nevypočteno";
+        RemainingTimeLabel = "Nevypočteno";
+        OnPropertyChanged(nameof(CutBreakdownLabel));
+        OnPropertyChanged(nameof(RapidBreakdownLabel));
+        _sceneDocumentDirty = false;
+        StopSimulation(reset: true);
+        RefreshCommands();
     }
 
     private void EnsureSceneDocumentCurrent(bool refreshCurrentPosition = false)
     {
         if (_scene.Objects.Count == 0)
+        {
+            if (!IsStreaming) DropStaleSceneDocument();
             return;
+        }
 
         if (_sceneDocumentDirty ||
             (refreshCurrentPosition && PlacementMode == JobPlacementMode.CurrentPosition))
@@ -448,7 +539,7 @@ public partial class GCodeViewModel : ObservableObject
         TotalLines = document.RawLines.Count;
         CurrentLine = 0;
         ProgressPercent = 0;
-        JobState = document.Segments.Count > 0 ? JobRunState.Ready : JobRunState.Idle;
+        if (!IsStreaming) JobState = document.Segments.Count > 0 ? JobRunState.Ready : JobRunState.Idle;
         _timeEstimate = JobTimeEstimator.Estimate(document);
         OnPropertyChanged(nameof(CutBreakdownLabel));
         OnPropertyChanged(nameof(RapidBreakdownLabel));
@@ -469,7 +560,7 @@ public partial class GCodeViewModel : ObservableObject
         CurrentLine = 0;
         TotalLines = 0;
         ProgressPercent = 0;
-        JobState = JobRunState.Idle;
+        if (!IsStreaming) JobState = JobRunState.Idle;
         LastMessage = null;
         _timeEstimate = null;
         EstimatedDuration = TimeSpan.Zero;
@@ -477,6 +568,13 @@ public partial class GCodeViewModel : ObservableObject
         ClearPlacementOrigin();
         StopSimulation(reset: true);
         RefreshCommands();
+    }
+
+    /// <summary>The work origin (WCO) changed, so a completed frame no longer shows where the job lands.</summary>
+    public void InvalidateFraming()
+    {
+        IsCurrentDocumentFramed = false;
+        if (!IsStreaming && JobState == JobRunState.Ready) RefreshCommands();
     }
 
     public Func<bool>? IsPositioningLaserBusy { get; set; }
@@ -569,6 +667,7 @@ public partial class GCodeViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsJobActive));
         OnPropertyChanged(nameof(JobBadgeLabel));
+        RegenerateFromSceneCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnStartBlockedReasonChanged(string? value) => OnPropertyChanged(nameof(StartActionTooltip));
@@ -983,6 +1082,13 @@ public partial class GCodeViewModel : ObservableObject
         var frameBounds = ImportKind == ImportKind.GCode
             ? Document.BoundingBox
             : GetSceneFramingBounds();
+        if (frameBounds.IsEmpty)
+        {
+            PreflightMessage = "Na plátně není nic k rámování. Je potřeba přidat objekt zahrnutý do výstupu.";
+            LastMessage = PreflightMessage;
+            StartBlocked?.Invoke("Rámování není možné", PreflightMessage);
+            return;
+        }
         var frameLines = FramingService.BuildFrameGCode(frameBounds, options, ReadControllerMaximumS()).ToList();
         if (PlacementMode == JobPlacementMode.CurrentPosition)
         {
@@ -1042,7 +1148,9 @@ public partial class GCodeViewModel : ObservableObject
                 bounds = bounds.Include(point.X + _scenePlacementOffsetX, point.Y + _scenePlacementOffsetY);
         }
 
-        return bounds.IsEmpty ? Document?.BoundingBox ?? BoundingBox2D.Empty : bounds;
+        // No fallback to Document.BoundingBox: that is the last generated job and may describe objects
+        // that are no longer on the canvas.
+        return bounds;
     }
 
     private async Task RunLinesAsync(IReadOnlyList<string> lines, bool abortOnError, int prologueCount = 0, int epilogueCount = 0)
@@ -1055,14 +1163,36 @@ public partial class GCodeViewModel : ObservableObject
             JobState = _isFramingOperation && state == JobRunState.Running ? JobRunState.Framing : state;
             RefreshCommands();
         });
-        runner.ProgressChanged += (current, total) => Application.Current.Dispatcher.Invoke(() =>
+        // Progress fires once per streamed line from the streaming task. A blocking Dispatcher.Invoke per
+        // line makes the sender wait on the UI thread; coalesce to the latest value and post it once.
+        var progressGate = new object();
+        var progressScheduled = false;
+        var progressClosed = false;
+        var latestProgress = (Current: 0, Total: 0);
+        runner.ProgressChanged += (current, total) =>
         {
-            CurrentLine = current;
-            TotalLines = total;
-            ProgressPercent = total == 0 ? 0 : Math.Min(99, 100.0 * current / total);
-            OnPropertyChanged(nameof(VisualProgressPercent));
-            UpdateRunTiming();
-        });
+            lock (progressGate)
+            {
+                latestProgress = (current, total);
+                if (progressScheduled || progressClosed) return;
+                progressScheduled = true;
+            }
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                (int Current, int Total) snapshot;
+                lock (progressGate)
+                {
+                    progressScheduled = false;
+                    if (progressClosed) return;
+                    snapshot = latestProgress;
+                }
+                CurrentLine = snapshot.Current;
+                TotalLines = snapshot.Total;
+                ProgressPercent = snapshot.Total == 0 ? 0 : Math.Min(99, 100.0 * snapshot.Current / snapshot.Total);
+                OnPropertyChanged(nameof(VisualProgressPercent));
+                UpdateRunTiming();
+            });
+        };
         runner.LineFailed += (line, message) => Application.Current.Dispatcher.Invoke(() =>
             LastMessage = line < prologueCount
                 ? $"Laser odmítl úvodní příkaz úlohy: {message}"
@@ -1070,7 +1200,15 @@ public partial class GCodeViewModel : ObservableObject
                     ? $"Laser odmítl závěrečný příkaz úlohy: {message}"
                     : $"Laser odmítl řádek {line - prologueCount + 1} úlohy: {message}");
 
-        await runner.RunAsync(lines, abortOnError);
+        try
+        {
+            await runner.RunAsync(lines, abortOnError);
+        }
+        finally
+        {
+            // Drop any progress post still queued so it cannot overwrite the final state.
+            lock (progressGate) progressClosed = true;
+        }
     }
 
     private bool CanPauseResume() => _activeRunner?.State is JobRunState.Running or JobRunState.Paused;

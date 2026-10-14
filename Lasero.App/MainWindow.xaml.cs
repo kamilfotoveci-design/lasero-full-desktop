@@ -101,6 +101,7 @@ public partial class MainWindow : Window
     {
         var editor = _viewModel.Settings.Editor;
         DesignerCanvas.Preferences = editor;
+        CanvasViewControls.RefreshSnapState();
         if (_autosaveTimer.Interval != editor.AutosaveInterval) _autosaveTimer.Interval = editor.AutosaveInterval;
         if (includeMotion) UiAccessibility.ApplyMotionPreferences(editor.ReduceMotion);
     }
@@ -121,7 +122,13 @@ public partial class MainWindow : Window
         // or Chat changed a design the user could not see. A text field keeps its own editing keys.
         var shortcutKey = e.Key == Key.System ? e.SystemKey : e.Key;
         var onDesigner = _viewModel.CurrentScreen == AppScreen.Designer;
-        if (InteractionRules.SuppressSceneShortcut(onDesigner, shortcutKey, Keyboard.Modifiers, isTextInput))
+        var fieldEditable = Keyboard.FocusedElement switch
+        {
+            TextBox box => !box.IsReadOnly,
+            ComboBox combo => combo.IsEditable,
+            _ => true,
+        };
+        if (InteractionRules.SuppressSceneShortcut(onDesigner, shortcutKey, Keyboard.Modifiers, isTextInput, fieldEditable))
         {
             e.Handled = true;
             return;
@@ -201,12 +208,15 @@ public partial class MainWindow : Window
             DesignerCanvas.FitToView();
             e.Handled = true;
         }
-        else if (modifiers == ModifierKeys.Control && e.Key is Key.OemPlus or Key.Add)
+        // On layouts where "+" needs Shift (Czech among them) Ctrl+Plus arrives as Ctrl+Shift+OemPlus.
+        else if ((modifiers == ModifierKeys.Control && e.Key is Key.OemPlus or Key.Add) ||
+                 (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key is Key.OemPlus or Key.Add))
         {
             DesignerCanvas.ZoomIn();
             e.Handled = true;
         }
-        else if (modifiers == ModifierKeys.Control && e.Key is Key.OemMinus or Key.Subtract)
+        else if ((modifiers == ModifierKeys.Control && e.Key is Key.OemMinus or Key.Subtract) ||
+                 (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key is Key.OemMinus or Key.Subtract))
         {
             DesignerCanvas.ZoomOut();
             e.Handled = true;
@@ -523,9 +533,19 @@ public partial class MainWindow : Window
         if (source.RasterFilePath is not { } path) return;
         var layer = _viewModel.Scene.Layers.FirstOrDefault(candidate =>
             source.LocalShapes.Any(shape => shape.LayerId == candidate.Id));
-        var options = source.RasterOptions ?? new RasterImportOptions
+        RasterImportOptions? currentSizeOptions = null;
+        try { currentSizeOptions = source.BuildRasterEditOptions(); }
+        catch (Exception ex)
         {
-            TargetWidthMm = source.LocalBounds.Width,
+            Log.Warning(ex, "Could not read raster size for edit {RasterPath}", path);
+            OnRasterOperationRejected("Obrázek nelze upravit. Ověřte, že soubor není poškozený a je dostupný.");
+            return;
+        }
+
+        // Open with the bitmap's CURRENT canvas size, not the size stored at import time.
+        var options = currentSizeOptions ?? new RasterImportOptions
+        {
+            TargetWidthMm = source.LocalBounds.Width * Math.Abs(source.Transform.ScaleX),
             Dpi = layer?.FillLineIntervalMm > 0 ? 25.4 / layer.FillLineIntervalMm : 254,
             FeedRatePerMinute = layer?.Speed ?? 3000,
             MaxPower = layer?.Power ?? 30,
@@ -544,12 +564,13 @@ public partial class MainWindow : Window
         {
             var editor = new RasterImportViewModel(
                 _laserMachine, _viewModel.SettingsStore, path,
-                source.LocalBounds.Width, options.FeedRatePerMinute, options.MaxPower, options.Dpi,
+                options.TargetWidthMm, options.FeedRatePerMinute, options.MaxPower, options.Dpi,
                 options, isEditing: true);
             var window = new RasterImportWindow(editor) { Owner = this };
             if (window.ShowDialog() != true) return;
             _viewModel.Scene.ApplyRasterEdit(source, editor.BuildOptions());
-            _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
+            if (_viewModel.GCode.RegenerateFromSceneCommand.CanExecute(null))
+                _viewModel.GCode.RegenerateFromSceneCommand.Execute(null);
             _viewModel.GCode.LastMessage = "Obrázek upraven. Změnu lze vrátit pomocí Ctrl+Z.";
         }
         catch (Exception ex)
@@ -566,6 +587,69 @@ public partial class MainWindow : Window
             "Rozumím",
             CancelText: null,
             Tone: LaseroDialogTone.Warning));
+
+    private static readonly string[] DroppableImportExtensions =
+        [".svg", ".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gcode", ".nc", ".tap"];
+
+    /// <summary>Only files are accepted; anything else (the layer list's own drag, text) is left to
+    /// whoever else is listening, so reordering layers keeps working.</summary>
+    private void OnWindowDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Effects = TourHost.IsOpen || _viewModel.GCode.IsJobActive ? DragDropEffects.None : DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private void OnWindowDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetData(DataFormats.FileDrop) is not string[] files)
+            return;
+        e.Handled = true;
+        if (TourHost.IsOpen || files.Length == 0) return;
+
+        if (_viewModel.GCode.IsJobActive)
+        {
+            LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+                "Probíhající úloha",
+                "Během úlohy nelze importovat soubory. Je potřeba počkat na dokončení nebo úlohu zastavit.",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Warning));
+            return;
+        }
+
+        var skipped = new List<string>();
+        var imported = false;
+        foreach (var file in files)
+        {
+            var extension = Path.GetExtension(file).ToLowerInvariant();
+            if (extension == ".lasero")
+            {
+                // A project replaces the whole design, so it is only taken when it is the one file dropped.
+                if (files.Length == 1) _viewModel.OpenProjectDropped(file);
+                else skipped.Add(Path.GetFileName(file));
+                continue;
+            }
+            if (!DroppableImportExtensions.Contains(extension))
+            {
+                skipped.Add(Path.GetFileName(file));
+                continue;
+            }
+            _viewModel.GCode.ImportFile(file);
+            imported = true;
+        }
+
+        if (imported && _viewModel.CurrentScreen != AppScreen.Designer && _viewModel.ShowDesignerCommand.CanExecute(null))
+            _viewModel.ShowDesignerCommand.Execute(null);
+
+        if (skipped.Count > 0)
+            LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+                "Některé soubory nelze otevřít",
+                $"Přeskočeno: {string.Join(", ", skipped)}. Podporované jsou SVG, obrázky PNG, JPG, BMP a WEBP, G-code (.gcode, .nc, .tap) a projekt .lasero (samostatně).",
+                "Rozumím",
+                CancelText: null,
+                Tone: LaseroDialogTone.Warning));
+    }
 
     private bool TryPasteExternalRaster()
     {
@@ -696,7 +780,7 @@ public partial class MainWindow : Window
 
     private void OnVectorOperationRejected(string message) =>
         LaseroDialogWindow.Show(this, new LaseroDialogOptions(
-            "Vektory nelze bezpečně sjednotit",
+            "Operaci nelze provést",
             message,
             "Rozumím",
             CancelText: null,
@@ -715,7 +799,16 @@ public partial class MainWindow : Window
             var linkedSources = selectedLink.SourceIds
                 .Select(id => _viewModel.Scene.Objects.FirstOrDefault(item => item.Id == id))
                 .ToList();
-            if (linkedSources.Any(item => item is null)) return;
+            if (linkedSources.Any(item => item is null))
+            {
+                LaseroDialogWindow.Show(this, new LaseroDialogOptions(
+                    "Offset nelze upravit",
+                    "Původní objekt, ze kterého offset vznikl, už v návrhu není. Offset lze vytvořit znovu z vybraného tvaru.",
+                    "Rozumím",
+                    CancelText: null,
+                    Tone: LaseroDialogTone.Warning));
+                return;
+            }
             sources = linkedSources.Select(item => item!).ToList();
         }
 

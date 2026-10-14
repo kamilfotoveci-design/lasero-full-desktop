@@ -17,4 +17,9 @@ public sealed class ImportedDocument
     /// import can't safely enter Node Edit mode, and SceneObjectFactory.FromImportedDocument leaves
     /// the resulting SceneObject.VectorPath null too, same as any other non-editable object.</summary>
     public VectorPath? VectorPath { get; init; }
+
+    /// <summary>Operator-facing notes about artwork the importer could not carry over faithfully
+    /// (unparseable colours, unsupported transforms, flattened curves, ...). Empty when nothing was
+    /// lost. Non-blocking: the import still succeeded.</summary>
+    public IReadOnlyList<string> ImportWarnings { get; init; } = [];
 }

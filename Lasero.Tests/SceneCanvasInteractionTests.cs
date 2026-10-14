@@ -19,9 +19,79 @@ public sealed class SceneCanvasInteractionTests
 
         // Neither event may commit the live preview: both route active node/segment drags through
         // CancelActiveInteraction, whose node-edit branch restores the immutable drag snapshot.
-        Assert.Contains("private void OnDrawCanvasLostMouseCapture", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private void OnOwnerWindowDeactivated", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("if (_dragMode is DragMode.NodeEdit or DragMode.NodeSegmentDrag)\n            CancelActiveInteraction();", codeBehind, StringComparison.Ordinal);
+        // The handlers must not name the node modes themselves: any live gesture (move, resize, draw,
+        // marquee, node drag) has to be rolled back, so each one simply asks for the cancel.
+        var lostCapture = codeBehind[
+            codeBehind.IndexOf("private void OnDrawCanvasLostMouseCapture", StringComparison.Ordinal)..
+            codeBehind.IndexOf("private void CancelActiveInteraction", StringComparison.Ordinal)];
+        var deactivated = codeBehind[
+            codeBehind.IndexOf("private void OnOwnerWindowDeactivated", StringComparison.Ordinal)..
+            codeBehind.IndexOf("private void OnDrawCanvasLostMouseCapture", StringComparison.Ordinal)];
+        Assert.Contains("CancelActiveInteraction();", lostCapture, StringComparison.Ordinal);
+        Assert.Contains("CancelActiveInteraction();", deactivated, StringComparison.Ordinal);
+        Assert.Contains("_dragMode != DragMode.None", lostCapture, StringComparison.Ordinal);
+        Assert.Contains("_dragMode != DragMode.None", deactivated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PanToolKeepsPanningWithTheLeftButtonHeld()
+    {
+        var root = FindRepositoryRoot();
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
+        var mouseMove = codeBehind[
+            codeBehind.IndexOf("private void OnDrawCanvasMouseMove", StringComparison.Ordinal)..
+            codeBehind.IndexOf("private void OnDrawCanvasMouseLeftButtonUp", StringComparison.Ordinal)];
+
+        // The first move after the press used to end the pan: only Space or the middle button kept it alive.
+        Assert.Contains("ViewModel?.ActiveTool == DesignerTool.Pan", mouseMove, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MiddleClickMidGestureRollsTheGestureBackBeforePanning()
+    {
+        var root = FindRepositoryRoot();
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
+        var middleDown = codeBehind[
+            codeBehind.IndexOf("private void OnDrawCanvasMouseDown", StringComparison.Ordinal)..
+            codeBehind.IndexOf("private void BeginPan", StringComparison.Ordinal)];
+
+        Assert.True(middleDown.IndexOf("CancelActiveInteraction();", StringComparison.Ordinal)
+            < middleDown.IndexOf("BeginPan(", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TextEntryKeepsSpaceFAndArrowsOutOfTheCanvasShortcuts()
+    {
+        var root = FindRepositoryRoot();
+        var codeBehind = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "SceneCanvas.xaml.cs")).Replace("\r\n", "\n");
+        var keyDown = codeBehind[
+            codeBehind.IndexOf("private void OnCanvasKeyDown", StringComparison.Ordinal)..
+            codeBehind.IndexOf("private bool IsTextEntryFocused", StringComparison.Ordinal)];
+
+        Assert.Contains("e.Key == Key.Space && !typing", keyDown, StringComparison.Ordinal);
+        Assert.Contains("if (typing) return;", keyDown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HeldArrowKeyExtendsOneUndoStepAndKeepsTheOriginalBefore()
+    {
+        var a = new Lasero.Core.Scene.SceneObject
+        {
+            LocalShapes = [],
+            LocalPivot = new Lasero.Core.Grbl.Position(0, 0, 0),
+            LocalBounds = new Lasero.Core.GCode.BoundingBox2D(0, 0, 10, 10),
+        };
+        var first = Lasero.App.Input.NudgeCommand.Create([a], 1, 0);
+        a.Transform = a.Transform with { X = a.Transform.X + 1 };
+
+        var merged = first.Extended(1, 0);
+        Assert.True(merged.MovesSameObjects([a]));
+
+        var startX = a.Transform.X - 1;
+        merged.Do();
+        Assert.Equal(startX + 2, a.Transform.X, 6);
+        merged.Undo();
+        Assert.Equal(startX, a.Transform.X, 6);
     }
 
     [Fact]

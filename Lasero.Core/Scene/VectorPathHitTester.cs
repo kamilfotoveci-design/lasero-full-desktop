@@ -8,12 +8,11 @@ public static class VectorPathHitTester
 {
     private const double FirstSampleT = 1.0 / 40;
     private const double LastSampleT = 39.0 / 40;
-    private const int CurveSamples = 39;
 
     public readonly record struct Hit(int SubpathIndex, int SegmentIndex, double T, double Distance);
 
     /// <summary>Finds the closest segment within a screen-space tolerance. Straight segments use an
-    /// exact projection. Cubics keep the existing 39-sample parameter search, with a transformed
+    /// exact projection. Cubics use a zoom-adaptive parameter search plus refinement, with a transformed
     /// control-hull bounds check to skip curves that cannot reach the pointer.</summary>
     public static Hit? FindNearest(
         VectorPath path,
@@ -58,12 +57,39 @@ public static class VectorPathHitTester
                 if (!IsFinite(p1) || !IsFinite(p2) || OutsideExpandedBounds(pointerScreen, toleranceScreenPx, p0, p1, p2, p3))
                     continue;
 
-                for (var sample = 1; sample <= CurveSamples; sample++)
+                // Sample density follows the on-screen length of the curve, so a curve zoomed in to
+                // thousands of pixels has no dead zones between samples; the best sample is then
+                // refined by golden-section search for an accurate t (used to insert a node).
+                var hullLength = Math.Sqrt(DistanceSquared(p0, p1)) + Math.Sqrt(DistanceSquared(p1, p2))
+                    + Math.Sqrt(DistanceSquared(p2, p3));
+                var step = Math.Max(1.0, toleranceScreenPx * 0.5);
+                var samples = (int)Math.Clamp(Math.Ceiling(hullLength / step), 40, 1024);
+                var bestT = FirstSampleT;
+                var bestSampleDistance = double.PositiveInfinity;
+                for (var sample = 1; sample < samples; sample++)
                 {
-                    var t = sample / 40.0;
-                    var point = CubicBezier.Evaluate(p0, p1, p2, p3, t);
-                    Consider(subpathIndex, segmentIndex, t, DistanceSquared(pointerScreen, point));
+                    var t = Math.Clamp(sample / (double)samples, FirstSampleT, LastSampleT);
+                    var d = DistanceSquared(pointerScreen, CubicBezier.Evaluate(p0, p1, p2, p3, t));
+                    if (d < bestSampleDistance) { bestSampleDistance = d; bestT = t; }
                 }
+
+                var low = Math.Max(FirstSampleT, bestT - 1.0 / samples);
+                var high = Math.Min(LastSampleT, bestT + 1.0 / samples);
+                const double inversePhi = 0.6180339887498949;
+                for (var iteration = 0; iteration < 16 && high - low > 1e-6; iteration++)
+                {
+                    var m1 = high - (high - low) * inversePhi;
+                    var m2 = low + (high - low) * inversePhi;
+                    var d1 = DistanceSquared(pointerScreen, CubicBezier.Evaluate(p0, p1, p2, p3, m1));
+                    var d2 = DistanceSquared(pointerScreen, CubicBezier.Evaluate(p0, p1, p2, p3, m2));
+                    if (d1 < d2) high = m2; else low = m1;
+                }
+                var refinedT = (low + high) / 2;
+                var refinedDistance = DistanceSquared(pointerScreen, CubicBezier.Evaluate(p0, p1, p2, p3, refinedT));
+                if (refinedDistance <= bestSampleDistance)
+                    Consider(subpathIndex, segmentIndex, refinedT, refinedDistance);
+                else
+                    Consider(subpathIndex, segmentIndex, bestT, bestSampleDistance);
             }
         }
 

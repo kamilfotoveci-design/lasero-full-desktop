@@ -62,17 +62,38 @@
             <Border Style="{StaticResource ClusterDivider}" />
 
             <!--
-                Centre the bed, at the current zoom. Panning itself is not a button here: it is the
-                middle mouse button, space+drag and H, all of which work without leaving the tool you
-                are in — and a pan *mode* was one more state to get stuck in for something already
-                reachable three ways. What was actually missing was a way back to the work area after
-                panning off it, which is this.
+                Pan tool (H), for the operator with no middle button and no free hand for Space.
+                Middle mouse and Space+drag still pan without leaving the current tool; this is the
+                visible, mouse-only route to the same thing, and it toggles back to Vybrat.
             -->
+            <ToggleButton Style="{StaticResource ClusterToggle}" Click="OnPanToggleClick"
+                          IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pan, Mode=TwoWay}"
+                          ToolTip="Posouvání plátna tažením (H). Posouvat lze i prostředním tlačítkem nebo mezerníkem"
+                          AutomationProperties.Name="Posouvat plátno">
+                <components:IconGlyph Style="{StaticResource ClusterGlyph}" IconData="{StaticResource Glyph.Pan}" />
+            </ToggleButton>
+
+            <!-- Centre the bed, at the current zoom: the way back to the work area after panning off it. -->
             <Button Style="{StaticResource ClusterButton}" Click="OnCenterClick"
                     ToolTip="Vrátí pohled na střed pracovní plochy, přiblížení se nezmění"
                     AutomationProperties.Name="Vycentrovat pracovní plochu">
                 <components:IconGlyph Style="{StaticResource ClusterGlyph}" IconData="{StaticResource Glyph.Origin}" />
             </Button>
+
+            <Border Style="{StaticResource ClusterDivider}" />
+
+            <!-- The same two switches as Nastavení, within reach while dragging: the operator who
+                 wonders why an object will not land where the pointer is finds the answer here. -->
+            <ToggleButton x:Name="SnapGridToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapGridClick"
+                          ToolTip="Přichytávat k mřížce. Přichytávání lze při tažení dočasně vypnout klávesou Ctrl"
+                          AutomationProperties.Name="Přichytávat k mřížce">
+                <TextBlock Text="Mřížka" Margin="10,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+            </ToggleButton>
+            <ToggleButton x:Name="SnapObjectsToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapObjectsClick"
+                          ToolTip="Přichytávat k okrajům a středům ostatních objektů. Při tažení lze dočasně vypnout klávesou Ctrl"
+                          AutomationProperties.Name="Přichytávat k objektům">
+                <TextBlock Text="Objekty" Margin="10,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+            </ToggleButton>
 
             <Border Style="{StaticResource ClusterDivider}" />
 

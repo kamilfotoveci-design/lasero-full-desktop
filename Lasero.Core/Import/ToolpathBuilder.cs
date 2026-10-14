@@ -26,7 +26,7 @@ public static class ToolpathBuilder
 
         foreach (var layer in orderedLayers)
         {
-            var shapes = document.Shapes.Where(shape => BelongsToLayer(shape, layer)).ToList();
+            var shapes = document.Shapes.Where(shape => BelongsToLayer(shape, layer, document.Layers)).ToList();
             if (shapes.Count == 0) continue;
             var powerS = GrblPowerScale.PercentToSValue(layer.Power, controllerMaximumS);
 
@@ -58,10 +58,16 @@ public static class ToolpathBuilder
         return lines;
     }
 
-    private static bool BelongsToLayer(ImportedShape shape, LayerSettings layer) =>
-        shape.LayerId != Guid.Empty
-            ? shape.LayerId == layer.Id
-            : shape.LayerColor.IsApproximately(layer.Color);
+    private static bool BelongsToLayer(ImportedShape shape, LayerSettings layer, IReadOnlyList<LayerSettings> allLayers)
+    {
+        if (shape.LayerId != Guid.Empty && allLayers.Any(candidate => candidate.Id == shape.LayerId))
+            return shape.LayerId == layer.Id;
+
+        // Legacy colour-only geometry, or an orphan whose layer id no longer exists in the document:
+        // it must still be made (never drawn on the canvas but silently skipped by the job), so it
+        // falls back to the FIRST layer of a matching colour, exactly once.
+        return ReferenceEquals(allLayers.FirstOrDefault(candidate => candidate.Color.IsApproximately(shape.LayerColor)), layer);
+    }
 
     private static void AppendCutLayer(List<string> lines, List<ImportedShape> shapes, LayerSettings layer, double powerS)
     {

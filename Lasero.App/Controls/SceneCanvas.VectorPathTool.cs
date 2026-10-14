@@ -77,6 +77,11 @@ public partial class SceneCanvas
     private VectorPath? _nodeDragOriginalPath;
     private VectorPathDragSession? _nodeDragSession;
     private Position _nodeDragStartWorld;
+    // A click that jitters a pixel or two must stay a click: no node move, no straight-to-curve
+    // conversion, no undo entry. The drag only starts once the pointer has travelled this far.
+    private const double NodeDragThresholdPx = 3;
+    private Point _nodeDragStartScreen;
+    private bool _nodeDragMoved;
     private bool _nodeMarqueeHitObject;
 
     // --- node/handle/segment hover state (presentation only — see LIGHTBURN_VECTOR_PARITY.md §63) ---
@@ -754,6 +759,8 @@ public partial class SceneCanvas
 
         var screen = e.GetPosition(DrawCanvas);
         _nodeDragStartWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
+        _nodeDragStartScreen = screen;
+        _nodeDragMoved = false;
         _nodeDragOriginalPath = _nodeEditWorkingPath;
         // Captured BEFORE any live-preview frame runs, so this reference (immutable ImportedShape
         // records) is the true pre-drag state even after RenderVectorPathLive starts reassigning
@@ -808,6 +815,8 @@ public partial class SceneCanvas
         _draggedHandle = null;
         _draggedSegment = hit;
         _selectedNodeKeys.Clear();
+        _nodeDragStartScreen = Mouse.GetPosition(DrawCanvas);
+        _nodeDragMoved = false;
         _nodeDragOriginalPath = _nodeEditWorkingPath;
         _nodeDragSession = new VectorPathDragSession(_nodeEditObject.LocalShapes);
         _dragMode = DragMode.NodeSegmentDrag;
@@ -848,6 +857,11 @@ public partial class SceneCanvas
     private void UpdateNodeSegmentDrag(Point screen)
     {
         if (_nodeEditObject is null || _nodeDragOriginalPath is null || _draggedSegment is not { } segment) return;
+        if (!_nodeDragMoved)
+        {
+            if (Distance(screen, _nodeDragStartScreen) < NodeDragThresholdPx) return;
+            _nodeDragMoved = true;
+        }
         var obj = _nodeEditObject;
         var currentWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
         currentWorld = ApplyGridSnap(currentWorld);
@@ -865,6 +879,11 @@ public partial class SceneCanvas
     private void UpdateNodeEditDrag(Point screen)
     {
         if (_nodeEditObject is null || _nodeDragOriginalPath is null) return;
+        if (!_nodeDragMoved)
+        {
+            if (Distance(screen, _nodeDragStartScreen) < NodeDragThresholdPx) return;
+            _nodeDragMoved = true;
+        }
         var obj = _nodeEditObject;
         var currentWorld = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
         var currentLocal = obj.Transform.Inverse(currentWorld, obj.LocalPivot);
@@ -914,7 +933,17 @@ public partial class SceneCanvas
             var dx = currentLocal.X - startLocal.X;
             var dy = currentLocal.Y - startLocal.Y;
             if (shiftHeld)
-                (dx, dy) = ConstrainToNearestEighthTurn(dx, dy);
+            {
+                // Constrain in WORLD space (the screen's eighth-turns), then map the constrained
+                // point back into the object's local frame. Constraining the local delta would lock
+                // to the wrong angles on a rotated, flipped or non-uniformly scaled object.
+                var (worldDx, worldDy) = ConstrainToNearestEighthTurn(
+                    currentWorld.X - _nodeDragStartWorld.X, currentWorld.Y - _nodeDragStartWorld.Y);
+                var constrainedLocal = obj.Transform.Inverse(
+                    new Position(_nodeDragStartWorld.X + worldDx, _nodeDragStartWorld.Y + worldDy, 0), obj.LocalPivot);
+                dx = constrainedLocal.X - startLocal.X;
+                dy = constrainedLocal.Y - startLocal.Y;
+            }
             var subpaths = _nodeDragOriginalPath.Subpaths.ToList();
             for (var s = 0; s < subpaths.Count; s++)
             {
@@ -1141,9 +1170,39 @@ public partial class SceneCanvas
         var otherWorld = obj.Transform.Apply(originalSubpath.Nodes[otherIndex].Anchor, obj.LocalPivot);
         var draggedScreen = new Point(ToCanvasX(draggedWorld.X), ToCanvasY(draggedWorld.Y));
         var otherScreen = new Point(ToCanvasX(otherWorld.X), ToCanvasY(otherWorld.Y));
-        if (Distance(draggedScreen, otherScreen) > CloseHoverThresholdPx) return false;
+        if (Distance(draggedScreen, otherScreen) <= CloseHoverThresholdPx)
+        {
+            closedPath = _nodeDragOriginalPath.ReplaceSubpath(subpathIndex, VectorPathEditor.Close(originalSubpath));
+            return true;
+        }
 
-        closedPath = _nodeDragOriginalPath.ReplaceSubpath(subpathIndex, VectorPathEditor.Close(originalSubpath));
+        // Not its own far end: another open subpath of the SAME object may have an endpoint here.
+        // The dragged end snaps onto that endpoint (it becomes the join node) and the two contours
+        // become one subpath.
+        var bestScreenDistance = double.MaxValue;
+        (int Index, bool AtStart)? best = null;
+        for (var other = 0; other < _nodeDragOriginalPath.Subpaths.Count; other++)
+        {
+            var candidate = _nodeDragOriginalPath.Subpaths[other];
+            if (other == subpathIndex || candidate.IsClosed || candidate.Nodes.Count < 2) continue;
+            foreach (var atStart in new[] { true, false })
+            {
+                var anchor = candidate.Nodes[atStart ? 0 : candidate.Nodes.Count - 1].Anchor;
+                var world = obj.Transform.Apply(anchor, obj.LocalPivot);
+                var screenPoint = new Point(ToCanvasX(world.X), ToCanvasY(world.Y));
+                var distance = Distance(draggedScreen, screenPoint);
+                if (distance <= CloseHoverThresholdPx && distance < bestScreenDistance)
+                {
+                    bestScreenDistance = distance;
+                    best = (other, atStart);
+                }
+            }
+        }
+        if (best is not { } target) return false;
+
+        closedPath = VectorPathEditor.JoinSubpathsAtEndpoints(
+            _nodeDragOriginalPath, target.Index, target.AtStart, subpathIndex, nodeIndex == 0);
+        _selectedNodeKeys.Clear(); // subpath indices shift when two contours merge
         return true;
     }
 
@@ -1230,14 +1289,19 @@ public partial class SceneCanvas
             var subpath = subpaths[group.Key];
             var selectedIndexes = group.Select(key => key.Node).Distinct().ToList();
             var minimum = subpath.IsClosed ? 3 : 2;
-            if (subpath.Nodes.Count - selectedIndexes.Count < minimum)
+            // Every node selected: the operator asked for the contour to go. Anything less must not
+            // silently take the whole contour with it, so removal stops at the minimum node count.
+            if (selectedIndexes.Count >= subpath.Nodes.Count)
             {
                 subpaths.RemoveAt(group.Key);
                 continue;
             }
             // Highest node index first so removing one does not shift the indices still queued.
             foreach (var nodeIndex in selectedIndexes.OrderByDescending(i => i))
+            {
+                if (subpath.Nodes.Count <= minimum) break;
                 subpath = VectorPathEditor.RemoveNode(subpath, nodeIndex);
+            }
             subpaths[group.Key] = subpath;
         }
 
@@ -1252,7 +1316,14 @@ public partial class SceneCanvas
             ViewModel.DeleteCommand.Execute(null);
             return;
         }
-        CommitNodeEdit(_nodeEditWorkingPath with { Subpaths = subpaths });
+        var remaining = _nodeEditWorkingPath with { Subpaths = subpaths };
+        if (VectorPathsStructurallyEqual(remaining, _nodeEditWorkingPath))
+        {
+            ViewModel.ReportVectorOperationRejected("Cesta musí zůstat alespoň se dvěma (otevřená) nebo třemi (uzavřená) uzly.");
+            RedrawSelectionOverlay();
+            return;
+        }
+        CommitNodeEdit(remaining);
     }
 
     /// <summary>Arrow-key nudge for the current node selection (LIGHTBURN_VECTOR_PARITY.md §9) — moves
@@ -1263,10 +1334,19 @@ public partial class SceneCanvas
     /// explicitly optional per spec and not implemented here).</summary>
     private void NudgeSelectedNodes(Key arrowKey, double stepMm)
     {
-        if (_nodeEditWorkingPath is null || _selectedNodeKeys.Count == 0) return;
-        var dx = arrowKey switch { Key.Left => -stepMm, Key.Right => stepMm, _ => 0 };
-        var dy = arrowKey switch { Key.Up => stepMm, Key.Down => -stepMm, _ => 0 };
-        if (dx == 0 && dy == 0) return;
+        if (_nodeEditWorkingPath is null || _nodeEditObject is null || _selectedNodeKeys.Count == 0) return;
+        var worldDx = arrowKey switch { Key.Left => -stepMm, Key.Right => stepMm, _ => 0 };
+        var worldDy = arrowKey switch { Key.Up => stepMm, Key.Down => -stepMm, _ => 0 };
+        if (worldDx == 0 && worldDy == 0) return;
+
+        // The arrow keys move along the document axes, but the nodes live in the object's local
+        // frame: a rotated, flipped or scaled object would otherwise step in the wrong direction and
+        // by the wrong distance. Map the world step through the inverse of the object's transform.
+        var obj = _nodeEditObject;
+        var localOrigin = obj.Transform.Inverse(new Position(0, 0, 0), obj.LocalPivot);
+        var localStep = obj.Transform.Inverse(new Position(worldDx, worldDy, 0), obj.LocalPivot);
+        var dx = localStep.X - localOrigin.X;
+        var dy = localStep.Y - localOrigin.Y;
 
         var subpaths = _nodeEditWorkingPath.Subpaths.ToList();
         foreach (var group in _selectedNodeKeys.GroupBy(nodeKey => nodeKey.Subpath))
@@ -1379,6 +1459,8 @@ public partial class SceneCanvas
         {
             if (ReferenceEquals(candidate, _nodeEditObject) || candidate.VectorPath is not { Subpaths.Count: 1 } path)
                 continue;
+            // Locked, hidden, layer-locked objects and derived offset outlines are not join targets.
+            if (!ViewModel.CanSelectObject(candidate) || candidate.OffsetLink is not null) continue;
             var candidateSubpath = path.Subpaths[0];
             if (candidateSubpath.IsClosed || candidateSubpath.Nodes.Count == 0) continue;
 
@@ -1462,34 +1544,33 @@ public partial class SceneCanvas
         if (nearest.Object is null) return;
 
         var source = nearest.Object;
-        var pathToEdit = nearest.Path;
         var hit = nearest.Hit!.Value;
-        if (pathToEdit is null)
-        {
-            ViewModel.SelectedObjects.Clear();
-            ViewModel.SelectedObjects.Add(source);
-            source = ViewModel.ConvertSelectedObjectToCurves() ?? source;
-            pathToEdit = source.VectorPath;
-            if (pathToEdit is null) return;
-            var refreshedHit = HitTestNearestSegment(source, pathToEdit, screen, SegmentInsertTolerancePx);
-            if (refreshedHit is null) return;
-            hit = refreshedHit.Value;
-        }
-        else
-        {
-            ViewModel.SelectedObjects.Clear();
-            ViewModel.SelectedObjects.Add(source);
-        }
+        ViewModel.SelectedObjects.Clear();
+        ViewModel.SelectedObjects.Add(source);
 
         try
         {
-            var trimmed = VectorPathEditor.DeleteSegment(pathToEdit, hit.SubpathIndex, hit.SegmentIndex);
-            if (trimmed.Subpaths.Count == 0)
+            if (source.VectorPath is { } editablePath)
             {
-                if (ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
+                var trimmed = VectorPathEditor.DeleteSegment(editablePath, hit.SubpathIndex, hit.SegmentIndex);
+                if (trimmed.Subpaths.Count == 0)
+                {
+                    if (ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
+                    return;
+                }
+                ViewModel.CommitVectorPathEdit(source, trimmed);
                 return;
             }
-            ViewModel.CommitVectorPathEdit(source, trimmed);
+
+            // A plain outline: conversion to curves and the cut are ONE undo step.
+            ViewModel.ConvertAndEditVectorPath(source, (converted, convertedPath) =>
+            {
+                var refreshedHit = HitTestNearestSegment(converted, convertedPath, screen, SegmentInsertTolerancePx);
+                return refreshedHit is { } h
+                    ? VectorPathEditor.DeleteSegment(convertedPath, h.SubpathIndex, h.SegmentIndex)
+                    : null;
+            }, out var deleteRequested);
+            if (deleteRequested && ViewModel.DeleteCommand.CanExecute(null)) ViewModel.DeleteCommand.Execute(null);
         }
         catch (ArgumentException exception)
         {
@@ -1499,22 +1580,10 @@ public partial class SceneCanvas
 
     private static VectorPath? BuildTrimCandidatePath(SceneObject item)
     {
+        // Same conversion the commit uses (ellipses as Bezier nodes, short contours skipped with
+        // their shapes), so the hit-tested path and the committed path cannot disagree.
         if (item.IsText) return null;
-        var subpaths = new List<VectorSubpath>();
-        foreach (var shape in item.LocalShapes)
-        {
-            var points = shape.Points.ToList();
-            if (shape.IsClosed && points.Count > 1 &&
-                Math.Abs(points[0].X - points[^1].X) < 1e-9 && Math.Abs(points[0].Y - points[^1].Y) < 1e-9)
-                points.RemoveAt(points.Count - 1);
-            if (points.Count < (shape.IsClosed ? 3 : 2)) continue;
-            subpaths.Add(new VectorSubpath
-            {
-                Nodes = points.Select(VectorNode.CornerAt).ToList(),
-                IsClosed = shape.IsClosed,
-            });
-        }
-        return subpaths.Count == 0 ? null : new VectorPath { Subpaths = subpaths };
+        return SceneViewModel.BuildCurveConversion(item)?.VectorPath;
     }
 
     // ------------------------------------------------------------------

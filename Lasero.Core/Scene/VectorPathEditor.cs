@@ -1,3 +1,4 @@
+using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
 
 namespace Lasero.Core.Scene;
@@ -73,8 +74,114 @@ public static class VectorPathEditor
             return subpath;
 
         var nodes = subpath.Nodes.ToList();
+        var n = nodes.Count;
+        var hasBothNeighbours = subpath.IsClosed || (index > 0 && index < n - 1);
+        if (hasBothNeighbours)
+        {
+            var previousIndex = (index - 1 + n) % n;
+            var nextIndex = (index + 1) % n;
+            var a = nodes[previousIndex];
+            var removed = nodes[index];
+            var c = nodes[nextIndex];
+            var curved = !VectorSubpath.IsStraightSegment(a, removed) || !VectorSubpath.IsStraightSegment(removed, c);
+            if (curved && TryRefitTwoSegments(a, removed, c, out var handleOut, out var handleIn))
+            {
+                nodes[previousIndex] = a with { HandleOut = handleOut };
+                nodes[nextIndex] = c with { HandleIn = handleIn };
+            }
+        }
+
         nodes.RemoveAt(index);
         return subpath with { Nodes = nodes };
+    }
+
+    /// <summary>Least-squares fit (Schneider) of ONE cubic from <paramref name="a"/> to
+    /// <paramref name="c"/> against the two original segments a-&gt;b and b-&gt;c, keeping the original
+    /// end tangent directions and solving only the two handle lengths. Returns false (callers keep the
+    /// neighbours' existing handles) when the geometry is degenerate.</summary>
+    private static bool TryRefitTwoSegments(VectorNode a, VectorNode b, VectorNode c, out Position handleOut, out Position handleIn)
+    {
+        handleOut = default;
+        handleIn = default;
+        const int samplesPerSegment = 16;
+
+        var samples = new List<Position>(samplesPerSegment * 2 + 1) { a.Anchor };
+        for (var i = 1; i <= samplesPerSegment; i++)
+            samples.Add(SegmentPoint(a, b, i / (double)samplesPerSegment));
+        for (var i = 1; i <= samplesPerSegment; i++)
+            samples.Add(SegmentPoint(b, c, i / (double)samplesPerSegment));
+
+        var chord = Distance(a.Anchor, c.Anchor);
+        if (chord < 1e-9) return false;
+
+        var t1 = Normalize(StartTangentTarget(a, b).X - a.Anchor.X, StartTangentTarget(a, b).Y - a.Anchor.Y);
+        var endTarget = EndTangentSource(b, c);
+        var t2 = Normalize(endTarget.X - c.Anchor.X, endTarget.Y - c.Anchor.Y);
+        if ((t1.X == 0 && t1.Y == 0) || (t2.X == 0 && t2.Y == 0)) return false;
+
+        var u = new double[samples.Count];
+        for (var i = 1; i < samples.Count; i++) u[i] = u[i - 1] + Distance(samples[i - 1], samples[i]);
+        var total = u[^1];
+        if (total < 1e-9) return false;
+        for (var i = 0; i < u.Length; i++) u[i] /= total;
+
+        double c11 = 0, c12 = 0, c22 = 0, x1 = 0, x2 = 0;
+        for (var i = 0; i < samples.Count; i++)
+        {
+            var s = u[i];
+            var m = 1 - s;
+            var b0 = m * m * m;
+            var b1 = 3 * s * m * m;
+            var b2 = 3 * s * s * m;
+            var b3 = s * s * s;
+            var a1x = t1.X * b1; var a1y = t1.Y * b1;
+            var a2x = t2.X * b2; var a2y = t2.Y * b2;
+            c11 += a1x * a1x + a1y * a1y;
+            c12 += a1x * a2x + a1y * a2y;
+            c22 += a2x * a2x + a2y * a2y;
+            var tmpX = samples[i].X - (a.Anchor.X * (b0 + b1) + c.Anchor.X * (b2 + b3));
+            var tmpY = samples[i].Y - (a.Anchor.Y * (b0 + b1) + c.Anchor.Y * (b2 + b3));
+            x1 += a1x * tmpX + a1y * tmpY;
+            x2 += a2x * tmpX + a2y * tmpY;
+        }
+
+        var det = c11 * c22 - c12 * c12;
+        double alpha1 = chord / 3, alpha2 = chord / 3;
+        if (Math.Abs(det) > 1e-12)
+        {
+            var solved1 = (x1 * c22 - x2 * c12) / det;
+            var solved2 = (c11 * x2 - c12 * x1) / det;
+            if (solved1 > chord * 1e-3 && solved2 > chord * 1e-3 && solved1 < total && solved2 < total)
+            {
+                alpha1 = solved1;
+                alpha2 = solved2;
+            }
+        }
+
+        handleOut = new Position(a.Anchor.X + t1.X * alpha1, a.Anchor.Y + t1.Y * alpha1, a.Anchor.Z);
+        handleIn = new Position(c.Anchor.X + t2.X * alpha2, c.Anchor.Y + t2.Y * alpha2, c.Anchor.Z);
+        return true;
+    }
+
+    private static Position SegmentPoint(VectorNode from, VectorNode to, double t) =>
+        VectorSubpath.IsStraightSegment(from, to)
+            ? CubicBezier.Lerp(from.Anchor, to.Anchor, t)
+            : CubicBezier.Evaluate(from.Anchor, from.HandleOut ?? from.Anchor, to.HandleIn ?? to.Anchor, to.Anchor, t);
+
+    /// <summary>Point that defines the direction leaving <paramref name="a"/> along a-&gt;b.</summary>
+    private static Position StartTangentTarget(VectorNode a, VectorNode b)
+    {
+        if (a.HandleOut is { } ho && Distance(a.Anchor, ho) > 1e-9) return ho;
+        if (b.HandleIn is { } hi && Distance(a.Anchor, hi) > 1e-9) return hi;
+        return b.Anchor;
+    }
+
+    /// <summary>Point that defines the direction arriving at <paramref name="c"/> along b-&gt;c, seen from c.</summary>
+    private static Position EndTangentSource(VectorNode b, VectorNode c)
+    {
+        if (c.HandleIn is { } hi && Distance(c.Anchor, hi) > 1e-9) return hi;
+        if (b.HandleOut is { } ho && Distance(c.Anchor, ho) > 1e-9) return ho;
+        return b.Anchor;
     }
 
     /// <summary>Inserts a new node on segment <paramref name="segmentIndex"/> at curve parameter t
@@ -231,8 +338,10 @@ public static class VectorPathEditor
         var newC2 = new Position(c2.X + deltaX * k2, c2.Y + deltaY * k2, c2.Z);
 
         var nodes = baseline.Nodes.ToList();
-        nodes[aIndex] = a with { HandleOut = newC1 };
-        nodes[bIndex] = b with { HandleIn = newC2 };
+        // MoveHandle re-aligns the opposite handle of a Smooth node (keeping its length), so dragging
+        // the segment never leaves a smooth node with a kinked tangent.
+        nodes[aIndex] = VectorSubpathNodeWithHandle(a, isOutHandle: true, newC1);
+        nodes[bIndex] = VectorSubpathNodeWithHandle(b, isOutHandle: false, newC2);
         return baseline with { Nodes = nodes };
     }
 
@@ -366,6 +475,87 @@ public static class VectorPathEditor
 
         return new VectorSubpath { Nodes = nodes, IsClosed = false };
     }
+
+    /// <summary>Joins two different OPEN subpaths of one VectorPath at the given endpoints (the
+    /// same-object counterpart of the cross-object <see cref="JoinAtEndpoints(VectorSubpath,bool,VectorSubpath,bool)"/>).
+    /// The merged subpath takes the position of the lower-indexed one; the other is removed.</summary>
+    public static VectorPath JoinSubpathsAtEndpoints(
+        VectorPath path, int firstIndex, bool firstAtStart, int secondIndex, bool secondAtStart)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        if (firstIndex == secondIndex)
+            throw new ArgumentException("Two different subpaths are required.", nameof(secondIndex));
+        if (firstIndex < 0 || firstIndex >= path.Subpaths.Count) throw new ArgumentOutOfRangeException(nameof(firstIndex));
+        if (secondIndex < 0 || secondIndex >= path.Subpaths.Count) throw new ArgumentOutOfRangeException(nameof(secondIndex));
+
+        var joined = JoinAtEndpoints(path.Subpaths[firstIndex], firstAtStart, path.Subpaths[secondIndex], secondAtStart);
+        var keep = Math.Min(firstIndex, secondIndex);
+        var drop = Math.Max(firstIndex, secondIndex);
+        var subpaths = path.Subpaths.ToList();
+        subpaths[keep] = joined;
+        subpaths.RemoveAt(drop);
+        return path with { Subpaths = subpaths };
+    }
+
+    /// <summary>Recognises a closed ring sampled from an axis-aligned ellipse (what the ellipse tool
+    /// produces: vertices on the ellipse including all four axis extremes) and returns it as four
+    /// smooth Bezier nodes (the standard 4-arc kappa construction) instead of dozens of corner nodes.
+    /// Nodes start at the east extreme and follow the ring's winding. The trailing duplicate of the
+    /// first point must not be included in <paramref name="count"/>.</summary>
+    public static bool TryFitEllipseSubpath(IReadOnlyList<Position> points, int count, out VectorSubpath subpath)
+    {
+        subpath = VectorSubpath.Empty;
+        if (count < 16 || count > points.Count) return false;
+
+        var bounds = BoundingBox2D.Empty;
+        for (var i = 0; i < count; i++) bounds = bounds.Include(points[i].X, points[i].Y);
+        var cx = (bounds.MinX + bounds.MaxX) / 2;
+        var cy = (bounds.MinY + bounds.MaxY) / 2;
+        var rx = (bounds.MaxX - bounds.MinX) / 2;
+        var ry = (bounds.MaxY - bounds.MinY) / 2;
+        if (rx < 1e-6 || ry < 1e-6) return false;
+
+        double area = 0;
+        var hasEast = false;
+        var hasNorth = false;
+        var hasWest = false;
+        var hasSouth = false;
+        for (var i = 0; i < count; i++)
+        {
+            var p = points[i];
+            var nx = (p.X - cx) / rx;
+            var ny = (p.Y - cy) / ry;
+            if (Math.Abs(nx * nx + ny * ny - 1) > 1e-6) return false;
+            if (Math.Abs(ny) < 1e-6) { if (nx > 0) hasEast = true; else hasWest = true; }
+            if (Math.Abs(nx) < 1e-6) { if (ny > 0) hasNorth = true; else hasSouth = true; }
+            var q = points[(i + 1) % count];
+            area += p.X * q.Y - q.X * p.Y;
+        }
+        if (!(hasEast && hasNorth && hasWest && hasSouth) || Math.Abs(area) < 1e-9) return false;
+
+        const double kappa = 0.5522847498307936;
+        var direction = area > 0 ? 1 : -1;
+        var nodes = new List<VectorNode>(4);
+        for (var k = 0; k < 4; k++)
+        {
+            var angle = direction * k * Math.PI / 2;
+            var sin = Math.Sin(angle);
+            var cos = Math.Cos(angle);
+            var anchor = new Position(cx + rx * cos, cy + ry * sin, 0);
+            var tx = -direction * rx * sin * kappa;
+            var ty = direction * ry * cos * kappa;
+            nodes.Add(new VectorNode(anchor,
+                new Position(anchor.X - tx, anchor.Y - ty, 0),
+                new Position(anchor.X + tx, anchor.Y + ty, 0),
+                VectorNodeType.Smooth));
+        }
+
+        subpath = new VectorSubpath { Nodes = nodes, IsClosed = true };
+        return true;
+    }
+
+    private static VectorNode VectorSubpathNodeWithHandle(VectorNode node, bool isOutHandle, Position handle) =>
+        MoveHandle(node, isOutHandle, handle, breakSymmetry: false);
 
     private static VectorNode BuildNode(Position anchor, Position? dragOffset)
     {

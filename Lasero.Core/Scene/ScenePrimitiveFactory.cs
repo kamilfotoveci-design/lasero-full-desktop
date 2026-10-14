@@ -25,12 +25,12 @@ public static class ScenePrimitiveFactory
 
     public static SceneObject CreateEllipse(Position start, Position end, RgbColor color, string name)
     {
-        const int segments = 64;
         var bounds = NormalizeBounds(start, end);
         var centerX = (bounds.MinX + bounds.MaxX) / 2;
         var centerY = (bounds.MinY + bounds.MaxY) / 2;
         var radiusX = bounds.Width / 2;
         var radiusY = bounds.Height / 2;
+        var segments = EllipseSegmentsFor(Math.Max(radiusX, radiusY));
         var points = Enumerable.Range(0, segments + 1)
             .Select(index =>
             {
@@ -40,6 +40,20 @@ public static class ScenePrimitiveFactory
             .ToArray();
 
         return CreateObject(points, isClosed: true, bounds, color, name);
+    }
+
+    /// <summary>Segment count that keeps the chord error of an ellipse of the given radius within
+    /// <see cref="VectorPath.DefaultFlattenToleranceMm"/>; never fewer than the historic 64, rounded
+    /// up to a multiple of 4 so the quadrant points stay on the polygon.</summary>
+    internal static int EllipseSegmentsFor(double radiusMm)
+    {
+        const int minimum = 64;
+        const int maximum = 1440;
+        if (!(radiusMm > VectorPath.DefaultFlattenToleranceMm) || double.IsInfinity(radiusMm)) return minimum;
+        var halfAngle = Math.Acos(1 - VectorPath.DefaultFlattenToleranceMm / radiusMm);
+        var needed = (int)Math.Ceiling(Math.PI / Math.Max(halfAngle, 1e-6));
+        needed = (needed + 3) / 4 * 4;
+        return Math.Clamp(needed, minimum, maximum);
     }
 
     public static SceneObject CreateLine(Position start, Position end, RgbColor color, string name)

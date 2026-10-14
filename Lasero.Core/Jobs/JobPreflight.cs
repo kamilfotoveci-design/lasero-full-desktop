@@ -126,7 +126,7 @@ public static class JobPreflight
             var residue = RawGCodeTokenPattern.Replace(line, string.Empty);
             if (!string.IsNullOrWhiteSpace(residue))
             {
-                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje nepodporovaný zápis. Lze spustit jen příkazy G0–G3, G20–G21, G90–G91, G94, M3–M5 a souřadnice X/Y/Z/I/J/R/S/F."));
+                issues.Add(Block("job.unsupported-gcode-command", "Importovaný G-code obsahuje nepodporovaný zápis. Lze spustit jen příkazy G0–G3, G21, G90–G91, G94, M3–M5 a souřadnice X/Y/Z/I/J/R/S/F."));
                 continue;
             }
             var spindleEnable = false;
@@ -147,7 +147,11 @@ public static class JobPreflight
                 switch (letter)
                 {
                     case 'G':
-                        if (value != Math.Truncate(value) || value is not (0 or 1 or 2 or 3 or 20 or 21 or 90 or 91 or 94))
+                        if (value == 20)
+                            // G20 is modal controller state that outlives the job and would turn the
+                            // next millimetre move or jog into 25.4x motion. Refuse it outright.
+                            issues.Add(Block("job.imperial-units-not-allowed", "Importovaný G-code přepíná řadič na palce (G20). Takový soubor se neodesílá, protože by změnil jednotky stroje. Je potřeba jej převést na milimetry (G21)."));
+                        else if (value != Math.Truncate(value) || value is not (0 or 1 or 2 or 3 or 21 or 90 or 91 or 94))
                             unsupportedCommand = true;
                         else if (value is 0 or 1 or 2 or 3)
                         {
@@ -229,7 +233,45 @@ public static class JobPreflight
             return;
         }
         const double tolerance = 0.001;
-        if (bounds.MinX < -tolerance || bounds.MinY < -tolerance
+
+        // Job extents are in work coordinates; the controller travels in machine coordinates
+        // (MPos = WPos + WCO). When the offset is known the extents are checked against real travel,
+        // in either homing convention ([0, T] or [-T, 0]). A negative work coordinate is then valid
+        // if the offset puts it inside the machine. Without a known offset the strict work-coordinate
+        // check stays and, for a connected machine with reported travel, Start is blocked.
+        var status = context.IsConnected ? context.MachineStatus : null;
+        Position? wco = status is { WorkCoordinateOffsetKnown: true } ? status.WorkCoordinateOffset : null;
+        var travelX = ValidTravel(context.MachineMaxTravelXmm);
+        var travelY = ValidTravel(context.MachineMaxTravelYmm);
+
+        var exceedsReportedTravel = false;
+        var xVerified = false;
+        var yVerified = false;
+        if (wco is { } offset)
+        {
+            if (travelX is { } tx)
+            {
+                if (WithinTravel(bounds.MinX + offset.X, bounds.MaxX + offset.X, tx, tolerance)) xVerified = true;
+                else exceedsReportedTravel = true;
+            }
+            if (travelY is { } ty)
+            {
+                if (WithinTravel(bounds.MinY + offset.Y, bounds.MaxY + offset.Y, ty, tolerance)) yVerified = true;
+                else exceedsReportedTravel = true;
+            }
+        }
+        else
+        {
+            exceedsReportedTravel =
+                travelX is { } maxX && bounds.MaxX > maxX + tolerance ||
+                travelY is { } maxY && bounds.MaxY > maxY + tolerance;
+            if (context.IsConnected && (travelX is not null || travelY is not null))
+                issues.Add(Block(
+                    "machine.wco-unknown",
+                    "Posun pracovních souřadnic zatím není znám, takže nelze ověřit rozsah pohybu stroje. Je potřeba chvíli počkat na další stav laseru."));
+        }
+
+        if ((!xVerified && bounds.MinX < -tolerance) || (!yVerified && bounds.MinY < -tolerance)
             || bounds.MaxX > context.WorkAreaWidthMm + tolerance
             || bounds.MaxY > context.WorkAreaHeightMm + tolerance)
         {
@@ -238,9 +280,6 @@ public static class JobPreflight
                 $"Návrh přesahuje pracovní plochu {context.WorkAreaWidthMm:0.#} × {context.WorkAreaHeightMm:0.#} mm. Je potřeba jej přesunout dovnitř plochy nebo zmenšit."));
         }
 
-        var exceedsReportedTravel =
-            context.MachineMaxTravelXmm is { } maxX && double.IsFinite(maxX) && maxX > 0 && bounds.MaxX > maxX + tolerance ||
-            context.MachineMaxTravelYmm is { } maxY && double.IsFinite(maxY) && maxY > 0 && bounds.MaxY > maxY + tolerance;
         if (exceedsReportedTravel)
         {
             issues.Add(Block(
@@ -248,6 +287,14 @@ public static class JobPreflight
                 "Návrh přesahuje maximální zdvih nahlášený řadičem. Je potřeba upravit pracovní plochu nebo přesunout návrh dovnitř rozsahu stroje."));
         }
     }
+
+    private static double? ValidTravel(double? travel) =>
+        travel is { } value && double.IsFinite(value) && value > 0 ? value : null;
+
+    private static bool WithinTravel(double machineMin, double machineMax, double travel, double tolerance) =>
+        double.IsFinite(machineMin) && double.IsFinite(machineMax) &&
+        (machineMin >= -tolerance && machineMax <= travel + tolerance ||
+         machineMin >= -travel - tolerance && machineMax <= tolerance);
 
     private static void ValidateMachineState(MachineStatus status, ICollection<PreflightIssue> issues)
     {

@@ -13,6 +13,20 @@ public sealed record MachineStatus
     public Position MachinePosition { get; init; }
     public Position WorkPosition { get; init; }
     public Position WorkCoordinateOffset { get; init; }
+
+    /// <summary>
+    /// True when <see cref="WorkCoordinateOffset"/> is a real offset (reported on this line, or
+    /// remembered by GrblConnection from an earlier one). False means the offset is unknown and
+    /// the Zero value must not be trusted.
+    /// </summary>
+    public bool WorkCoordinateOffsetKnown { get; init; }
+
+    /// <summary>True when the wire report carried MPos (as opposed to it being derived).</summary>
+    public bool ReportedMachinePosition { get; init; }
+
+    /// <summary>True when the wire report carried WPos (as opposed to it being derived).</summary>
+    public bool ReportedWorkPosition { get; init; }
+
     public double FeedRate { get; init; }
     public double SpindleSpeed { get; init; }
     public int? FeedOverridePercent { get; init; }

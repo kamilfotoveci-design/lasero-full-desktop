@@ -346,8 +346,15 @@ public partial class JogViewModel : ObservableObject
         if (!CanManualMotionWithLaserOff()) return;
 
         var result = await _connection.SetWorkOriginAsync(1, Position.Zero);
+        // A rejected/unknown outcome may still have moved the origin; only a confirmed ok is reported as set,
+        // but any attempt makes an earlier frame untrustworthy.
+        WorkOriginChanged?.Invoke();
         LastActionMessage = result.IsOk ? "Pracovní nula byla nastavena na aktuální pozici (G54)." : result.Message;
     }
+
+    /// <summary>Raised after a work-origin write was attempted. A frame verified against the old
+    /// work coordinates no longer describes where the job will land.</summary>
+    public event Action? WorkOriginChanged;
 
     [RelayCommand(CanExecute = nameof(CanManualMotionWithLaserOff))]
     private async Task GoToWorkZero()

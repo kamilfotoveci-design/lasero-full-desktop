@@ -30,6 +30,7 @@ public sealed class RasterImporterTests : IDisposable
         var path = CreateGradientBitmap();
         var options = new RasterImportOptions
         {
+            TargetWidthMm = 0.5, // 5 px at the default 254 dpi = the 5 px source, so no resampling
             Gamma = 1.35,
             Exposure = 12,
             Brightness = 4,

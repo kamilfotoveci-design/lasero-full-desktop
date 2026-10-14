@@ -95,6 +95,9 @@ public sealed class DeleteLayerCommand : ISceneCommand
             IsVisible = item.IsVisible,
             IsLocked = item.IsLocked,
             IncludeInOutput = item.IncludeInOutput,
+            // A linked offset result keeps its recipe: dropping it here would silently turn a live,
+            // source-driven output into a frozen copy just because one of its contours left with a layer.
+            OffsetLink = item.OffsetLink,
         };
     }
 

@@ -18,15 +18,37 @@ public static class BitmapLoader
     /// <summary>Decodes directly into the resolution the laser can reproduce. Downsampling before
     /// filters and dithering avoids doing photographic work on millions of pixels that would later
     /// collapse into the same physical dot.</summary>
-    public static GrayscaleImage LoadGrayscale(string filePath, int targetWidth, int? targetHeight = null)
-        => LoadGrayscaleCore(filePath, Math.Max(1, targetWidth), targetHeight is null ? null : Math.Max(1, targetHeight.Value));
+    public static GrayscaleImage LoadGrayscale(string filePath, int targetWidth, int? targetHeight = null, bool allowUpscale = false)
+        => LoadGrayscaleCore(filePath, Math.Max(1, targetWidth), targetHeight is null ? null : Math.Max(1, targetHeight.Value), allowUpscale);
 
-    private static GrayscaleImage LoadGrayscaleCore(string filePath, int? targetWidth, int? targetHeight)
+    /// <summary>Upper bound for an upsampled image so a huge physical size at a fine line interval
+    /// cannot allocate gigabytes; beyond it the pixel pitch simply stays coarser than the interval.</summary>
+    public const long MaxUpscaledPixels = 30_000_000;
+
+    private static GrayscaleImage LoadGrayscaleCore(string filePath, int? targetWidth, int? targetHeight, bool allowUpscale = false)
     {
         using var original = new Bitmap(filePath);
-        var width = Math.Min(original.Width, targetWidth ?? original.Width);
-        var proportionalHeight = (int)Math.Round(original.Height * (width / (double)original.Width));
-        var height = Math.Min(original.Height, targetHeight ?? proportionalHeight);
+        int width, height;
+        if (allowUpscale)
+        {
+            // A source coarser than the requested line interval is resampled UP so the scan-line
+            // pitch honours the interval instead of collapsing to the source pixel size.
+            width = Math.Max(1, targetWidth ?? original.Width);
+            height = Math.Max(1, targetHeight ?? (int)Math.Round(original.Height * (width / (double)original.Width)));
+            var pixels = (long)width * height;
+            if (pixels > MaxUpscaledPixels)
+            {
+                var shrink = Math.Sqrt(MaxUpscaledPixels / (double)pixels);
+                width = Math.Max(1, (int)(width * shrink));
+                height = Math.Max(1, (int)(height * shrink));
+            }
+        }
+        else
+        {
+            width = Math.Min(original.Width, targetWidth ?? original.Width);
+            var proportionalHeight = (int)Math.Round(original.Height * (width / (double)original.Width));
+            height = Math.Min(original.Height, targetHeight ?? proportionalHeight);
+        }
         // Same size: read the pixels directly. Drawing through GDI+ here, whatever the interpolation and
         // pixel-offset mode, is a resampling step that can blur or half-pixel shift every edge, and an
         // edge-exact trace would then sit off the picture the user sees.
@@ -45,7 +67,9 @@ public static class BitmapLoader
             g.PixelOffsetMode = PixelOffsetMode.Half;
             // Downscale in source pixels (not the image's DPI) and mirror at the borders, so the edge
             // rows do not fade into the transparent surface around the image.
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.InterpolationMode = width > original.Width || height > original.Height
+                ? InterpolationMode.HighQualityBilinear
+                : InterpolationMode.HighQualityBicubic;
             using var attributes = new ImageAttributes();
             attributes.SetWrapMode(WrapMode.TileFlipXY);
             g.DrawImage(original, new Rectangle(0, 0, width, height), 0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);

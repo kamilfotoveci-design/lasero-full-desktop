@@ -14,6 +14,7 @@
         <conv:MachineModeToBrushConverter x:Key="ModeToBrush" />
         <conv:MachineAlertKindToBrushConverter x:Key="AlertKindToBrush" />
         <conv:EnumToBooleanConverter x:Key="EnumToBool" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
         <conv:JobRunStateToLabelConverter x:Key="JobStateToLabel" />
 
         <Style x:Key="MachineFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
@@ -211,6 +212,69 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Visibility="{Binding IsChecked, ElementName=JogPanelTab, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                <!--
+                    Where the job starts. Not gated by the connection like the jog controls below: the
+                    mode is a property of the job and can be read and changed with the machine off.
+                    Locked while a job is active, because the placement is baked into the program that
+                    is already streaming; the line under the title says so instead of just greying out.
+                    Only the five anchors the placement supports are drawn, in their real positions on a
+                    3x3 grid, so a corner here is the same corner on the material.
+                -->
+                <StackPanel Margin="0,4,0,12"
+                            Visibility="{Binding GCode.SupportsPlacementMode, Converter={StaticResource BoolToVisibility}}"
+                            IsEnabled="{Binding GCode.IsJobActive, Converter={StaticResource InverseBool}}">
+                    <TextBlock Text="Začátek úlohy" Style="{StaticResource PanelTitle}" Margin="0,0,0,8" />
+                    <Border Style="{StaticResource SegmentedTrack}" Padding="4" Margin="0,0,0,8">
+                        <UniformGrid Columns="2">
+                            <RadioButton Content="Absolutně" Style="{StaticResource Segment.Compact}" GroupName="JobPlacementMode"
+                                         IsChecked="{Binding GCode.PlacementMode, Converter={StaticResource EnumToBool}, ConverterParameter=AbsoluteCoordinates, Mode=TwoWay}"
+                                         ToolTip="Bod 0,0 návrhu odpovídá pracovní nule stroje" AutomationProperties.Name="Začátek úlohy: absolutní souřadnice" />
+                            <RadioButton Content="Od polohy laseru" Style="{StaticResource Segment.Compact}" GroupName="JobPlacementMode"
+                                         IsChecked="{Binding GCode.PlacementMode, Converter={StaticResource EnumToBool}, ConverterParameter=CurrentPosition, Mode=TwoWay}"
+                                         ToolTip="Úloha začne tam, kde laser právě stojí" AutomationProperties.Name="Začátek úlohy: od aktuální polohy laseru" />
+                        </UniformGrid>
+                    </Border>
+                    <Grid Visibility="{Binding GCode.HasPlacementOrigin, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SegmentedTrack}" Padding="4" VerticalAlignment="Top">
+                            <Grid Width="108">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <RadioButton Grid.Row="0" Grid.Column="0" Style="{StaticResource Segment.Compact}" GroupName="JobOriginAnchor"
+                                             IsChecked="{Binding GCode.OriginAnchor, Converter={StaticResource EnumToBool}, ConverterParameter=TopLeft, Mode=TwoWay}"
+                                             ToolTip="Levý horní roh návrhu" AutomationProperties.Name="Bod návrhu: levý horní roh">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </RadioButton>
+                                <RadioButton Grid.Row="0" Grid.Column="2" Style="{StaticResource Segment.Compact}" GroupName="JobOriginAnchor"
+                                             IsChecked="{Binding GCode.OriginAnchor, Converter={StaticResource EnumToBool}, ConverterParameter=TopRight, Mode=TwoWay}"
+                                             ToolTip="Pravý horní roh návrhu" AutomationProperties.Name="Bod návrhu: pravý horní roh">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </RadioButton>
+                                <RadioButton Grid.Row="1" Grid.Column="1" Style="{StaticResource Segment.Compact}" GroupName="JobOriginAnchor"
+                                             IsChecked="{Binding GCode.OriginAnchor, Converter={StaticResource EnumToBool}, ConverterParameter=Center, Mode=TwoWay}"
+                                             ToolTip="Střed návrhu" AutomationProperties.Name="Bod návrhu: střed">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </RadioButton>
+                                <RadioButton Grid.Row="2" Grid.Column="0" Style="{StaticResource Segment.Compact}" GroupName="JobOriginAnchor"
+                                             IsChecked="{Binding GCode.OriginAnchor, Converter={StaticResource EnumToBool}, ConverterParameter=BottomLeft, Mode=TwoWay}"
+                                             ToolTip="Levý dolní roh návrhu" AutomationProperties.Name="Bod návrhu: levý dolní roh">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </RadioButton>
+                                <RadioButton Grid.Row="2" Grid.Column="2" Style="{StaticResource Segment.Compact}" GroupName="JobOriginAnchor"
+                                             IsChecked="{Binding GCode.OriginAnchor, Converter={StaticResource EnumToBool}, ConverterParameter=BottomRight, Mode=TwoWay}"
+                                             ToolTip="Pravý dolní roh návrhu" AutomationProperties.Name="Bod návrhu: pravý dolní roh">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </RadioButton>
+                            </Grid>
+                        </Border>
+                        <TextBlock Grid.Column="2" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                   Text="Vybraný bod návrhu se položí na místo, kde laser právě stojí." />
+                    </Grid>
+                    <TextBlock Text="{Binding GCode.PlacementLabel}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" />
+                    <TextBlock Text="Během úlohy nelze začátek měnit." Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Visibility="{Binding GCode.IsJobActive, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
                 <StackPanel Margin="0,4,0,4" IsEnabled="{Binding Connection.IsConnected}">
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -266,6 +330,7 @@
                         </Button>
                     </Expander>
                     <TextBlock Text="{Binding Jog.LastActionMessage}" Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 

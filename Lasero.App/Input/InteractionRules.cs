@@ -126,15 +126,25 @@ public static class InteractionRules
     {
         (Key.Delete, ModifierKeys.None) => true,
         (Key.A or Key.C or Key.X or Key.V or Key.Z or Key.Y, ModifierKeys.Control) => true,
-        (Key.Z, ModifierKeys.Control | ModifierKeys.Shift) => true,
         _ => false,
     };
 
-    /// <summary>Scene shortcuts must not reach the hidden design from Home, Device or Chat.</summary>
-    public static bool SuppressSceneShortcut(bool designerScreen, Key key, ModifierKeys modifiers, bool focusInTextInput)
+    /// <summary>
+    /// Scene shortcuts must not reach the hidden design from Home, Device or Chat, and must not reach
+    /// the design from inside a field either: Ctrl+D, Ctrl+Shift+Z, Ctrl+Shift+U/O, Alt+T and friends
+    /// mean nothing to a TextBox, so without this they fell through to the window bindings and
+    /// duplicated, redid or traced the selection while the operator was typing a number.
+    /// <paramref name="fieldEditable"/> is false for a read-only box or a plain drop-down, which
+    /// swallow no editing key: Delete there would otherwise delete the selected objects.
+    /// </summary>
+    public static bool SuppressSceneShortcut(
+        bool designerScreen, Key key, ModifierKeys modifiers, bool focusInTextInput, bool fieldEditable = true)
     {
-        if (designerScreen || !IsSceneShortcut(key, modifiers)) return false;
-        return !(focusInTextInput && TextFieldOwnsKey(key, modifiers));
+        if (!IsSceneShortcut(key, modifiers)) return false;
+        if (!focusInTextInput) return !designerScreen;
+        // A read-only box still owns copy and select-all.
+        var readOnlyOwns = key is Key.C or Key.A && modifiers == ModifierKeys.Control;
+        return !((fieldEditable || readOnlyOwns) && TextFieldOwnsKey(key, modifiers));
     }
 
     /// <summary>Shortcuts that change the design. They are refused while a pointer gesture is in

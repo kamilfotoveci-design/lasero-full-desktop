@@ -16,28 +16,28 @@ public static class RasterImporter
 {
     /// <summary>Reads just the bitmap's pixel dimensions to compute its placed mm size — used to build
     /// the placeholder rectangle a raster SceneObject shows on the design canvas, without scanning pixels.</summary>
-    public static (double WidthMm, double HeightMm) GetPlacedSizeMm(string filePath, double targetWidthMm)
+    public static (double WidthMm, double HeightMm) GetPlacedSizeMm(string filePath, double targetWidthMm, double? targetHeightMm = null)
     {
         using var bitmap = new Bitmap(filePath);
         var scale = targetWidthMm / bitmap.Width;
-        return (targetWidthMm, bitmap.Height * scale);
+        return (targetWidthMm, targetHeightMm ?? bitmap.Height * scale);
     }
 
     /// <summary>Loads + processes (brightness/contrast/invert/tone-mapping) a bitmap without planning
     /// machine moves — used for the import window's live preview.</summary>
-    public static ProcessedImage LoadProcessedPreview(string filePath, RasterImportOptions options)
+    public static ProcessedImage LoadProcessedPreview(string filePath, RasterImportOptions options, bool allowUpscale = true)
     {
-        var source = LoadProcessingSource(filePath, options);
+        var source = LoadProcessingSource(filePath, options, allowUpscale);
         return Process(source, options);
     }
 
-    public static GrayscaleImage LoadProcessingSource(string filePath, RasterImportOptions options)
+    public static GrayscaleImage LoadProcessingSource(string filePath, RasterImportOptions options, bool allowUpscale = true)
     {
         var width = Math.Max(1, (int)Math.Ceiling(options.TargetWidthMm / options.LineIntervalMm));
         int? height = options.TargetHeightMm is { } targetHeight
             ? Math.Max(1, (int)Math.Ceiling(targetHeight / options.LineIntervalMm))
             : null;
-        return BitmapLoader.LoadGrayscale(filePath, width, height);
+        return BitmapLoader.LoadGrayscale(filePath, width, height, allowUpscale);
     }
 
     public static ProcessedImage Process(GrayscaleImage source, RasterImportOptions options) =>

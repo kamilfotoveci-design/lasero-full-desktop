@@ -16,9 +16,15 @@ internal readonly record struct SvgTransform(double A, double B, double C, doubl
         A * o.C + C * o.D, B * o.C + D * o.D,
         A * o.E + C * o.F + E, B * o.E + D * o.F + F);
 
-    private static readonly Regex FuncPattern = new(@"(\w+)\s*\(([^)]*)\)", RegexOptions.Compiled);
+    public double Determinant => A * D - B * C;
 
-    public static SvgTransform Parse(string? value)
+    /// <summary>True when the matrix collapses the plane (e.g. scale(0)): nothing under it can be seen.</summary>
+    public bool IsDegenerate => !double.IsFinite(Determinant) || Math.Abs(Determinant) < 1e-12;
+
+    private static readonly Regex FuncPattern = new(@"(\w+)\s*\(([^)]*)\)", RegexOptions.Compiled);
+    private static readonly Regex NumberPattern = new(@"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", RegexOptions.Compiled);
+
+    public static SvgTransform Parse(string? value, Action<string>? warn = null)
     {
         var result = Identity;
         if (string.IsNullOrWhiteSpace(value)) return result;
@@ -26,22 +32,40 @@ internal readonly record struct SvgTransform(double A, double B, double C, doubl
         foreach (Match m in FuncPattern.Matches(value))
         {
             var name = m.Groups[1].Value;
-            var args = m.Groups[2].Value
-                .Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture))
+            var args = NumberPattern.Matches(m.Groups[2].Value)
+                .Select(n => double.Parse(n.Value, NumberStyles.Float, CultureInfo.InvariantCulture))
                 .ToArray();
 
-            var next = name switch
+            SvgTransform next;
+            switch (name)
             {
-                "translate" => new SvgTransform(1, 0, 0, 1, args.ElementAtOrDefault(0), args.ElementAtOrDefault(1)),
-                "scale" => new SvgTransform(args.ElementAtOrDefault(0) is var sx && sx != 0 ? sx : 1,
-                                             0, 0,
-                                             args.Length > 1 ? args[1] : (args.ElementAtOrDefault(0) != 0 ? args[0] : 1),
-                                             0, 0),
-                "rotate" => RotateTransform(args),
-                "matrix" when args.Length == 6 => new SvgTransform(args[0], args[1], args[2], args[3], args[4], args[5]),
-                _ => Identity,
-            };
+                case "translate":
+                    next = new SvgTransform(1, 0, 0, 1, args.ElementAtOrDefault(0), args.ElementAtOrDefault(1));
+                    break;
+                case "scale":
+                {
+                    var sx = args.Length > 0 ? args[0] : 1;
+                    var sy = args.Length > 1 ? args[1] : sx;
+                    next = new SvgTransform(sx, 0, 0, sy, 0, 0);
+                    break;
+                }
+                case "rotate":
+                    next = RotateTransform(args);
+                    break;
+                case "skewX":
+                    next = new SvgTransform(1, 0, Math.Tan(args.ElementAtOrDefault(0) * Math.PI / 180.0), 1, 0, 0);
+                    break;
+                case "skewY":
+                    next = new SvgTransform(1, Math.Tan(args.ElementAtOrDefault(0) * Math.PI / 180.0), 0, 1, 0, 0);
+                    break;
+                case "matrix" when args.Length == 6:
+                    next = new SvgTransform(args[0], args[1], args[2], args[3], args[4], args[5]);
+                    break;
+                default:
+                    warn?.Invoke($"Transformace „{name}“ není podporována a byla ignorována.");
+                    next = Identity;
+                    break;
+            }
             result = result.Multiply(next);
         }
         return result;

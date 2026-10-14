@@ -158,4 +158,34 @@ public class SceneObjectTests
 
         Assert.Null(obj.BuildRasterOutputOptions(layer));
     }
+
+    [Fact]
+    public void UprightBitmapHasNoOutputBlockReason()
+    {
+        var obj = MakeSquareObject(raster: true);
+        obj.Transform = ObjectTransform.Identity with { X = 5, ScaleX = 2, RotationDeg = 360 };
+
+        Assert.Null(obj.RasterOutputBlockReason);
+    }
+
+    [Theory]
+    [InlineData(90, 1, 1)]
+    [InlineData(0, -1, 1)]
+    [InlineData(0, 1, -1)]
+    public void RotatedOrMirroredBitmapIsWithheldFromOutputWithAReason(double rotation, double scaleX, double scaleY)
+    {
+        var obj = MakeSquareObject(raster: true);
+        obj.Transform = ObjectTransform.Identity with { RotationDeg = rotation, ScaleX = scaleX, ScaleY = scaleY };
+
+        Assert.False(string.IsNullOrWhiteSpace(obj.RasterOutputBlockReason));
+    }
+
+    [Fact]
+    public void VectorObjectNeverHasARasterBlockReason()
+    {
+        var obj = MakeSquareObject(raster: false);
+        obj.Transform = ObjectTransform.Identity with { RotationDeg = 45 };
+
+        Assert.Null(obj.RasterOutputBlockReason);
+    }
 }

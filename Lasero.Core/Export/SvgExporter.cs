@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Xml.Linq;
 using Lasero.Core.GCode;
 using Lasero.Core.Grbl;
@@ -8,12 +9,34 @@ using Lasero.Core.Scene;
 
 namespace Lasero.Core.Export;
 
-/// <summary>Exports visible scene artwork in millimetres. Editable Bézier paths remain Bézier paths;
-/// imported flattened geometry keeps its existing vertices. Raster assets are embedded in the SVG.</summary>
+/// <summary>Exports the artwork that would actually be produced, in millimetres: hidden objects and
+/// objects excluded from output are left out, and so are layers that are hidden or disabled.
+/// Editable Bézier paths remain Bézier paths; imported flattened geometry keeps its existing vertices.
+/// Raster assets are embedded in the SVG. Each path carries data-lasero-* attributes naming its layer.</summary>
 public static class SvgExporter
 {
     private static readonly XNamespace Svg = "http://www.w3.org/2000/svg";
     private static readonly XNamespace XLink = "http://www.w3.org/1999/xlink";
+
+    /// <summary>Writes the SVG atomically: a temp file next to the target is completed first, then
+    /// moved over it, so a failed export never leaves a half-written or truncated file behind.</summary>
+    public static void ExportToFile(IEnumerable<SceneObject> objects, IEnumerable<LayerSettings>? layers, string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var svg = Export(objects, layers);
+        var temp = path + ".tmp";
+        var moved = false;
+        try
+        {
+            File.WriteAllText(temp, svg, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(temp, path, overwrite: true);
+            moved = true;
+        }
+        finally
+        {
+            if (!moved && File.Exists(temp)) File.Delete(temp);
+        }
+    }
 
     public static string Export(IEnumerable<SceneObject> objects, IEnumerable<LayerSettings>? layers = null)
     {
@@ -22,14 +45,17 @@ public static class SvgExporter
         LayerSettings? LayerFor(ImportedShape shape) => shape.LayerId != Guid.Empty
             ? layerList.FirstOrDefault(layer => layer.Id == shape.LayerId)
             : layerList.FirstOrDefault(layer => layer.Color.IsApproximately(shape.LayerColor));
-        bool IsVisible(ImportedShape shape) => LayerFor(shape)?.IsVisible ?? true;
+        // A hidden layer is not on the canvas and a disabled layer is not in the job; neither belongs in the file.
+        bool IsExported(ImportedShape shape) => LayerFor(shape) is not { } layer || (layer.IsVisible && layer.IsEnabled);
 
-        var visible = objects.Where(item => item.IsVisible && item.LocalShapes.Any(IsVisible)).ToList();
+        var visible = objects
+            .Where(item => item.IsVisible && item.IncludeInOutput && item.LocalShapes.Any(IsExported))
+            .ToList();
         var bounds = visible.Aggregate(BoundingBox2D.Empty, (box, item) =>
         {
             if (item.IsRaster) return box.Include(item.WorldBounds().MinX, item.WorldBounds().MinY)
                 .Include(item.WorldBounds().MaxX, item.WorldBounds().MaxY);
-            foreach (var shape in item.GetWorldShapes().Where(IsVisible))
+            foreach (var shape in item.GetWorldShapes().Where(IsExported))
                 foreach (var point in shape.Points) box = box.Include(point.X, point.Y);
             return box;
         });
@@ -76,14 +102,7 @@ public static class SvgExporter
                 continue;
             }
 
-            var shapes = item.GetWorldShapes();
-            var vector = item.GetWorldVectorPath();
-            var aligned = vector is not null && vector.Subpaths.Count == shapes.Count;
-            var contours = shapes.Select((shape, index) => new
-            {
-                Shape = shape,
-                Data = aligned ? PathData(vector!.Subpaths[index], flipY) : PathData(shape, flipY),
-            }).Where(contour => IsVisible(contour.Shape) && !string.IsNullOrWhiteSpace(contour.Data));
+            var contours = BuildContours(item, flipY).Where(contour => IsExported(contour.Shape)).ToList();
             foreach (var group in contours.GroupBy(contour => (
                 contour.Shape.GeometrySetId, contour.Shape.LayerId,
                 contour.Shape.LayerColor, contour.Shape.PreferredMode, contour.Shape.IsClosed)))
@@ -93,14 +112,57 @@ public static class SvgExporter
                 var mode = layer?.Mode ?? representative.PreferredMode;
                 var color = (layer?.Color ?? representative.LayerColor).ToHex();
                 var closed = representative.IsClosed;
+                // FillAndCut closed shapes get both a fill and a stroke, which the importer reads back
+                // as one Fill operation plus one Cut operation.
                 var fill = closed && (mode is LayerMode.Fill or LayerMode.FillAndCut) ? color : "none";
                 var stroke = !closed || (mode is LayerMode.Cut or LayerMode.FillAndCut) ? color : "none";
-                root.Add(new XElement(Svg + "path", new XAttribute("d", string.Join(" ", group.Select(part => part.Data))),
+                var pathElement = new XElement(Svg + "path", new XAttribute("d", string.Join(" ", group.Select(part => part.Data))),
                     new XAttribute("fill", fill), new XAttribute("fill-rule", "nonzero"),
-                    new XAttribute("stroke", stroke), new XAttribute("stroke-width", "0.1")));
+                    new XAttribute("stroke", stroke), new XAttribute("stroke-width", "0.1"));
+                if (layer is not null)
+                {
+                    pathElement.Add(new XAttribute("data-lasero-layer", layer.Name),
+                        new XAttribute("data-lasero-layer-id", layer.Id.ToString("D")),
+                        new XAttribute("data-lasero-mode", layer.Mode.ToString()),
+                        new XAttribute("data-lasero-speed", F(layer.Speed)),
+                        new XAttribute("data-lasero-power", F(layer.Power)));
+                }
+                root.Add(pathElement);
             }
         }
         return new XDocument(new XDeclaration("1.0", "utf-8", null), root).ToString();
+    }
+
+    /// <summary>One entry per contour of the object: its layer-carrying shape and the path data. Curves
+    /// stay curves whenever the editable path can be matched to the shapes — one-to-one, or, when the
+    /// counts differ (a split or merged outline), by wholesale use of the editable path as long as every
+    /// shape belongs to the same layer and compound group. Only otherwise are vertices exported.</summary>
+    private static List<(ImportedShape Shape, string Data)> BuildContours(SceneObject item, double flipY)
+    {
+        var shapes = item.GetWorldShapes();
+        var vector = item.GetWorldVectorPath();
+        var contours = new List<(ImportedShape Shape, string Data)>();
+
+        if (vector is not null && vector.Subpaths.Count == shapes.Count)
+        {
+            for (var index = 0; index < shapes.Count; index++)
+                contours.Add((shapes[index], PathData(vector.Subpaths[index], flipY)));
+        }
+        else if (vector is not null && vector.Subpaths.Count > 0 && shapes.Count > 0 && shapes.All(shape =>
+                     shape.LayerId == shapes[0].LayerId && shape.LayerColor == shapes[0].LayerColor
+                     && shape.PreferredMode == shapes[0].PreferredMode && shape.GeometrySetId == shapes[0].GeometrySetId))
+        {
+            foreach (var subpath in vector.Subpaths)
+                contours.Add((shapes[0] with { IsClosed = subpath.IsClosed }, PathData(subpath, flipY)));
+        }
+        else
+        {
+            foreach (var shape in shapes)
+                contours.Add((shape, PathData(shape, flipY)));
+        }
+
+        contours.RemoveAll(contour => string.IsNullOrWhiteSpace(contour.Data));
+        return contours;
     }
 
     private static string PathData(VectorSubpath sub, double flipY)

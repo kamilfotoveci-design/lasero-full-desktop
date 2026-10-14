@@ -192,9 +192,6 @@
                 </ScrollViewer>
 
                 <components:DialogFooter Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2">
-                    <Button components:DialogFooter.IsLeading="True" Command="{Binding FrameThisCommand}" Height="{StaticResource Size.Control.Primary}" Padding="16,0">
-                        <components:IconLabel IconData="{StaticResource Glyph.Frame}" Text="Zkontrolovat oblast" />
-                    </Button>
                     <Button Style="{StaticResource Button.Outline}" Command="{Binding ResetCommand}" Height="{StaticResource Size.Control.Primary}" Padding="14,0">
                         <TextBlock Text="Obnovit" />
                     </Button>

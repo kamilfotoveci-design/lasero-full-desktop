@@ -143,7 +143,7 @@ public class VectorPathLiveDragTests
     {
         var path = closed ? ClosedCurve() : OpenPolyline();
         var obj = VectorPathSceneFactory.Create(path, Color, "Křivka");
-        if (transformed) obj.Transform = new ObjectTransform(10, -5, 25, 1.3, 0.8);
+        if (transformed) obj.Transform = new ObjectTransform(10, -5, 25, 1.0, 0.8); // scale <= 1 keeps the stock flattening; enlarged objects are refined, see VectorEditorRegressionTests
         var session = new VectorPathDragSession(obj.LocalShapes);
         var selected = new[] { (0, 1), (0, 2) }; // several nodes moved together
 

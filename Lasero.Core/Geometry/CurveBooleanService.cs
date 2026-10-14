@@ -80,8 +80,17 @@ public static class CurveBooleanService
         if (contours.Count == 0) return [];
         var polygons = contours.Select(subpath => subpath.Flatten(0.01).ToList()).ToList();
         var signedAreas = polygons.Select(SignedArea).ToArray();
-        if (signedAreas.Any(area => !double.IsFinite(area) || Math.Abs(area) <= 1e-8))
-            throw new InvalidOperationException("Výsledek obsahuje obrys s neplatnou nebo nulovou plochou.");
+        if (signedAreas.Any(area => !double.IsFinite(area)))
+            throw new InvalidOperationException("Výsledek obsahuje obrys s neplatnou plochou.");
+        // Zero-area slivers are rounding debris of the boolean engine, not geometry: drop them.
+        var keep = Enumerable.Range(0, contours.Count).Where(index => Math.Abs(signedAreas[index]) > 1e-8).ToList();
+        if (keep.Count == 0) return [];
+        if (keep.Count != contours.Count)
+        {
+            contours = keep.Select(index => contours[index]).ToList();
+            polygons = keep.Select(index => polygons[index]).ToList();
+            signedAreas = keep.Select(index => signedAreas[index]).ToArray();
+        }
         var areas = signedAreas.Select(Math.Abs).ToArray();
         var bounds = polygons.Select(ring => (
             MinX: ring.Min(point => point.X), MinY: ring.Min(point => point.Y),
@@ -266,8 +275,9 @@ public static class CurveBooleanService
             foreach (var point in new[] { a, CubicBezier.Lerp(a, b, 0.5) })
             {
                 var classification = ClassifyPoint(outer, point);
-                if (classification == 0)
-                    throw new InvalidOperationException("Obrysy výsledku se dotýkají nebo jsou příliš blízko k bezpečnému rozdělení.");
+                // A vertex lying on the outer boundary is a touch, not a verdict: decide from the
+                // points that are clearly inside or outside. Only a real mix is an inconsistency.
+                if (classification == 0) continue;
                 var current = classification > 0;
                 if (inside is not null && inside != current)
                     throw new InvalidOperationException("Obrysy výsledku se kříží; rozdělení by změnilo vyplněnou plochu.");

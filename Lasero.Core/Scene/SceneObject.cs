@@ -71,7 +71,9 @@ public sealed partial class SceneObject : ObservableObject
         LocalBounds = rebuilt.LocalBounds;
         LocalPivot = rebuilt.LocalPivot;
         VectorPath = rebuilt.VectorPath;
-        Transform = rebuilt.Transform;
+        // The refreshed path is already in world millimetres, so any placement the output carried
+        // (a nudge, align or flip applied to the output alone) must not be applied on top of it.
+        Transform = ObjectTransform.Identity;
         OnPropertyChanged(nameof(LocalShapes));
         OnPropertyChanged(nameof(LocalBounds));
         OnPropertyChanged(nameof(LocalPivot));
@@ -192,9 +194,80 @@ public sealed partial class SceneObject : ObservableObject
     public void InvalidateLayerAppearance() => OnPropertyChanged(nameof(LocalShapes));
 
     /// <summary>This object's shapes with Transform applied — absolute mm, ready for ToolpathBuilder.</summary>
-    public IReadOnlyList<ImportedShape> GetWorldShapes() => LocalShapes
+    public IReadOnlyList<ImportedShape> GetWorldShapes() => ShapesForWorldOutput()
         .Select(shape => shape with { Points = shape.Points.Select(p => Transform.Apply(p, LocalPivot)).ToList() })
         .ToList();
+
+    private VectorPath? _refinedFor;
+    private double _refinedTolerance;
+    private IReadOnlyList<ImportedShape>? _refinedSource;
+    private IReadOnlyList<ImportedShape>? _refinedShapes;
+
+    /// <summary>LocalShapes are flattened at 0.05 mm in LOCAL units, so an object enlarged x10 would
+    /// carry 0.5 mm chord error into the toolpath. For editable curves the local flattening tolerance
+    /// is tightened by the object's scale so the error stays 0.05 mm in the world. The result is cached
+    /// per (path, shapes, tolerance); when the cached shapes do not line up with the path, or the
+    /// object is not enlarged, the plain LocalShapes are used.</summary>
+    private IReadOnlyList<ImportedShape> ShapesForWorldOutput()
+    {
+        var path = VectorPath;
+        var scale = Math.Max(Math.Abs(Transform.ScaleX), Math.Abs(Transform.ScaleY));
+        if (path is null || scale <= 1.0001 || double.IsNaN(scale) || double.IsInfinity(scale))
+            return LocalShapes;
+
+        var tolerance = Math.Max(VectorPath.DefaultFlattenToleranceMm / scale, 0.0002);
+        if (ReferenceEquals(_refinedFor, path) && ReferenceEquals(_refinedSource, LocalShapes)
+            && _refinedShapes is not null
+            && _refinedTolerance <= tolerance && _refinedTolerance >= tolerance * 0.25)
+            return _refinedShapes;
+
+        if (!LocalShapesAreFlatteningOf(path)) return LocalShapes;
+
+        var contours = VectorPathSceneFactory.FlattenRetained(path, tolerance);
+        if (contours.Count != LocalShapes.Count) return LocalShapes;
+
+        var refined = LocalShapes.Select((shape, index) => shape with { Points = contours[index] }).ToList();
+        _refinedFor = path;
+        _refinedSource = LocalShapes;
+        _refinedTolerance = tolerance;
+        _refinedShapes = refined;
+        return refined;
+    }
+
+    private VectorPath? _alignedPath;
+    private IReadOnlyList<ImportedShape>? _alignedShapes;
+    private bool _alignedResult;
+
+    /// <summary>True when LocalShapes really are the stock flattening of the path. A live node-drag
+    /// preview swaps in shapes of moved nodes while VectorPath still holds the old nodes; refining
+    /// from the path then would draw the pre-drag geometry.</summary>
+    private bool LocalShapesAreFlatteningOf(VectorPath path)
+    {
+        if (ReferenceEquals(_alignedPath, path) && ReferenceEquals(_alignedShapes, LocalShapes))
+            return _alignedResult;
+
+        var coarse = VectorPathSceneFactory.FlattenRetained(path, VectorPath.DefaultFlattenToleranceMm);
+        var aligned = coarse.Count == LocalShapes.Count;
+        for (var s = 0; aligned && s < coarse.Count; s++)
+        {
+            var expected = coarse[s];
+            var actual = LocalShapes[s].Points;
+            if (expected.Count != actual.Count) { aligned = false; break; }
+            for (var p = 0; p < expected.Count; p++)
+            {
+                if (Math.Abs(expected[p].X - actual[p].X) > 1e-6 || Math.Abs(expected[p].Y - actual[p].Y) > 1e-6)
+                {
+                    aligned = false;
+                    break;
+                }
+            }
+        }
+
+        _alignedPath = path;
+        _alignedShapes = LocalShapes;
+        _alignedResult = aligned;
+        return aligned;
+    }
 
     /// <summary>This object's VectorPath with Transform applied to every node's anchor AND both
     /// handles — the curve-preserving counterpart to GetWorldShapes, used when an operation (Group)
@@ -259,6 +332,37 @@ public sealed partial class SceneObject : ObservableObject
         };
     }
 
+    /// <summary>Why this bitmap cannot be engraved as placed, or null. The raster planner scans
+    /// axis-aligned rows only, so a rotated or mirrored bitmap would silently burn upright and unflipped;
+    /// output is withheld with this message instead.</summary>
+    public string? RasterOutputBlockReason
+    {
+        get
+        {
+            if (!IsRaster) return null;
+            var turns = Math.Abs(Transform.RotationDeg) % 360;
+            var rotated = turns > 0.01 && Math.Abs(turns - 360) > 0.01;
+            return rotated || Transform.ScaleX < 0 || Transform.ScaleY < 0
+                ? $"Bitmapa „{Name}“ je otočená nebo převrácená – výstup není podporován. Vraťte ji do původní polohy."
+                : null;
+        }
+    }
+
+    /// <summary>Raster options for re-opening the import dialog: the stored options at the bitmap's
+    /// CURRENT canvas size (not the size it was imported at). The height is only set explicitly when the
+    /// current proportions differ from the picture's own, so the dialog's aspect lock reflects reality.</summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public RasterImportOptions? BuildRasterEditOptions()
+    {
+        if (RasterOptions is null || RasterFilePath is null) return null;
+        var width = LocalBounds.Width * Math.Abs(Transform.ScaleX);
+        var height = LocalBounds.Height * Math.Abs(Transform.ScaleY);
+        if (width <= 0 || height <= 0) return RasterOptions;
+        var natural = RasterImporter.GetPlacedSizeMm(RasterFilePath, width).HeightMm;
+        var uniform = Math.Abs(natural - height) <= 1e-3 * Math.Max(height, 1);
+        return RasterOptions with { TargetWidthMm = width, TargetHeightMm = uniform ? null : height };
+    }
+
     /// <summary>Builds placement-aware raster options and overlays the shared editable bitmap layer.
     /// This makes the layer panel the single source of truth for the parameters sent to GRBL.</summary>
     public RasterImportOptions? BuildRasterOutputOptions(LayerSettings layer, double offsetX = 0, double offsetY = 0)
@@ -314,6 +418,62 @@ public sealed partial class SceneObject : ObservableObject
         if (IsPivotAtBoundsCenter) return this;
         var pivot = LocalBoundsCenter;
         return CopyWith(Id, pivot, Transform.WithPivotMoved(LocalPivot, pivot));
+    }
+
+    /// <summary>
+    /// For an editable path, makes sure the cached LocalShapes really are the flattening of
+    /// <see cref="VectorPath"/>: same contour count and closedness, same bounds. A project edited by
+    /// hand, written by an older build or partly corrupted can disagree, and every node edit would then
+    /// misalign layer metadata or jump. When they disagree the shapes are re-derived from the nodes
+    /// (layer/mode metadata is kept per contour where counts allow, else from the first contour) and
+    /// LocalBounds is recomputed; the pivot is NOT touched here, so call <see cref="WithPivotAtBoundsCenter"/>
+    /// afterwards. Returns true when anything was changed. No-op for objects without a VectorPath.
+    /// </summary>
+    public bool ReconcileVectorGeometry()
+    {
+        if (VectorPath is not { } path || path.Subpaths.Count == 0) return false;
+
+        var contours = VectorPathSceneFactory.FlattenRetained(path, VectorPath.DefaultFlattenToleranceMm);
+        if (contours.Count == 0) return false;
+        var retained = VectorPathSceneFactory.RetainedSubpathIndices(path, VectorPath.DefaultFlattenToleranceMm);
+
+        var bounds = BoundingBox2D.Empty;
+        foreach (var contour in contours)
+            foreach (var point in contour)
+                bounds = bounds.Include(point.X, point.Y);
+
+        const double boundsToleranceMm = 0.01;
+        var consistent = contours.Count == LocalShapes.Count
+            && Enumerable.Range(0, contours.Count).All(index =>
+                LocalShapes[index].IsClosed == path.Subpaths[retained[index]].IsClosed)
+            && Math.Abs(bounds.MinX - LocalBounds.MinX) <= boundsToleranceMm
+            && Math.Abs(bounds.MinY - LocalBounds.MinY) <= boundsToleranceMm
+            && Math.Abs(bounds.MaxX - LocalBounds.MaxX) <= boundsToleranceMm
+            && Math.Abs(bounds.MaxY - LocalBounds.MaxY) <= boundsToleranceMm;
+        if (consistent) return false;
+
+        var fallback = LocalShapes.FirstOrDefault();
+        var rebuilt = new List<ImportedShape>(contours.Count);
+        for (var index = 0; index < contours.Count; index++)
+        {
+            var template = contours.Count == LocalShapes.Count ? LocalShapes[index] : fallback;
+            var closed = path.Subpaths[retained[index]].IsClosed;
+            rebuilt.Add(new ImportedShape
+            {
+                GeometrySetId = template?.GeometrySetId ?? Guid.NewGuid(),
+                LayerId = template?.LayerId ?? Guid.Empty,
+                LayerColor = template?.LayerColor ?? RgbColor.Black,
+                PreferredMode = template?.PreferredMode ?? (closed ? LayerMode.Fill : LayerMode.Cut),
+                Points = contours[index],
+                IsClosed = closed,
+            });
+        }
+
+        LocalShapes = rebuilt;
+        LocalBounds = bounds;
+        OnPropertyChanged(nameof(LocalShapes));
+        OnPropertyChanged(nameof(LocalBounds));
+        return true;
     }
 
     /// <summary>A copy with a new Id, sharing the same (immutable) local geometry — used by duplicate.</summary>

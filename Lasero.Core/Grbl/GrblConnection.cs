@@ -43,6 +43,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
     // controller is reset. Decides whether closing the session must first force the beam off.
     private int _beamMayBeOn;
     private int _powerProfileVersion;
+    private Position? _lastWco;
     private MachineAlert? _activeAlert;
     private GrblDeviceProfile? _deviceProfile;
 
@@ -219,7 +220,8 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
     public Task<GrblCommandResult> JogAsync(double x, double y, double z, double feedRatePerMinute, bool relative = true)
     {
         var mode = relative ? "G91" : "G90";
-        return SendCommandAsync($"$J={mode}{FormatAxes(x, y, z)}F{feedRatePerMinute.ToString("0.###", CultureInfo.InvariantCulture)}");
+        // G21 is explicit: a parser left in inches (G20) would otherwise turn a millimetre jog into 25.4x motion.
+        return SendCommandAsync($"$J=G21{mode}{FormatAxes(x, y, z)}F{feedRatePerMinute.ToString("0.###", CultureInfo.InvariantCulture)}");
     }
 
     public Task<GrblCommandResult> HomeAsync() => SendCommandAsync("$H");
@@ -316,7 +318,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
                         if (spindle == SpindleWord.On) Volatile.Write(ref _beamMayBeOn, 1);
                         _transport.WriteLine(command.Text);
                     }
-                    var outcome = command.Completion.Task.WaitAsync(CommandTimeout, cancellationToken).GetAwaiter().GetResult();
+                    var outcome = WaitForResponse(command.Completion.Task, cancellationToken);
                     if (outcome.IsOk && ClassifySpindle(command.Text) == SpindleWord.Off)
                         Volatile.Write(ref _beamMayBeOn, 0);
                 }
@@ -355,6 +357,55 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
         }
     }
 
+    /// <summary>
+    /// Longest a command may stay unanswered while the controller keeps proving it is alive and
+    /// busy (Run/Jog/Home). A feed hold (Hold/Door) is a deliberate operator pause and is not capped.
+    /// </summary>
+    private static readonly TimeSpan BusyResponseCeiling = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// Waits for the response to the in-flight command. GRBL withholds `ok` for a line while a feed
+    /// hold is active, or while a long block executes with a full planner, so a plain timeout would
+    /// declare a healthy paused machine dead. The timeout is therefore extended only while a status
+    /// report received within the last timeout window shows the machine in a busy mode. A silent
+    /// link (no fresh status) still times out and closes the session.
+    /// </summary>
+    private GrblCommandResult WaitForResponse(Task<GrblCommandResult> completion, CancellationToken cancellationToken)
+    {
+        var started = DateTime.UtcNow;
+        while (true)
+        {
+            var timeout = CommandTimeout;
+            try
+            {
+                return completion.WaitAsync(timeout, cancellationToken).GetAwaiter().GetResult();
+            }
+            catch (TimeoutException)
+            {
+                if (!MachineAliveAndBusy(timeout, DateTime.UtcNow - started)) throw;
+            }
+        }
+    }
+
+    private bool MachineAliveAndBusy(TimeSpan freshness, TimeSpan waited)
+    {
+        MachineStatus? status;
+        DateTime? receivedUtc;
+        lock (_statusLock)
+        {
+            status = LastStatus;
+            receivedUtc = LastStatusReceivedUtc;
+        }
+        if (status is null || receivedUtc is null) return false;
+        if (DateTime.UtcNow - receivedUtc.Value > freshness) return false;
+        return status.Mode switch
+        {
+            GrblMachineMode.Hold or GrblMachineMode.Door => true,
+            GrblMachineMode.Run or GrblMachineMode.Jog or GrblMachineMode.Home => waited < BusyResponseCeiling,
+            _ => false,
+        };
+    }
+
     private void OnLineReceived(string line)
     {
         InvokeSafely(RawLineReceived, line, nameof(RawLineReceived));
@@ -366,6 +417,7 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
                 lock (_statusLock)
                 {
                     if (Volatile.Read(ref _resetting) != 0 || Volatile.Read(ref _disconnecting) != 0) return;
+                    status = ApplyRememberedWco(status);
                     LastStatus = status;
                     LastStatusReceivedUtc = DateTime.UtcNow;
                 }
@@ -542,10 +594,32 @@ public sealed class GrblConnection : ILaserMachine, IGrblDeviceProfileSource
         return result;
     }
 
+    /// <summary>
+    /// GRBL sends WCO only every 10-30 reports. Remember the last one for this session and use it
+    /// to derive the missing WPos (when $10 reports MPos) or MPos (when it reports WPos). Caller
+    /// holds _statusLock.
+    /// </summary>
+    private MachineStatus ApplyRememberedWco(MachineStatus status)
+    {
+        if (status.WorkCoordinateOffsetKnown)
+        {
+            _lastWco = status.WorkCoordinateOffset;
+            return status;
+        }
+        if (_lastWco is not { } wco) return status;
+
+        if (status.ReportedMachinePosition && !status.ReportedWorkPosition)
+            return status with { WorkPosition = status.MachinePosition.Minus(wco), WorkCoordinateOffset = wco, WorkCoordinateOffsetKnown = true };
+        if (status.ReportedWorkPosition && !status.ReportedMachinePosition)
+            return status with { MachinePosition = status.WorkPosition.Offset(wco), WorkCoordinateOffset = wco, WorkCoordinateOffsetKnown = true };
+        return status with { WorkCoordinateOffset = wco, WorkCoordinateOffsetKnown = true };
+    }
+
     private void InvalidateStatus()
     {
         lock (_statusLock)
         {
+            _lastWco = null;
             LastStatus = null;
             LastStatusReceivedUtc = null;
         }

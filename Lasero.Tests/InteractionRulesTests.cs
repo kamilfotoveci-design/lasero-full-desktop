@@ -242,6 +242,23 @@ public sealed class InteractionRulesTests
     public void TextFieldsKeepTheirOwnEditingKeysOnEveryScreen(Key key, ModifierKeys modifiers) =>
         Assert.False(InteractionRules.SuppressSceneShortcut(false, key, modifiers, focusInTextInput: true));
 
+    [Theory]
+    [InlineData(Key.D, ModifierKeys.Control)]
+    [InlineData(Key.Z, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.U, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.O, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.T, ModifierKeys.Alt)]
+    public void DesignShortcutsAreSwallowedInsideAFieldOnTheDesignerToo(Key key, ModifierKeys modifiers) =>
+        Assert.True(InteractionRules.SuppressSceneShortcut(true, key, modifiers, focusInTextInput: true));
+
+    [Fact]
+    public void DeleteInAReadOnlyFieldOrDropDownDoesNotDeleteTheDesign()
+    {
+        Assert.True(InteractionRules.SuppressSceneShortcut(true, Key.Delete, ModifierKeys.None, true, fieldEditable: false));
+        Assert.False(InteractionRules.SuppressSceneShortcut(true, Key.Delete, ModifierKeys.None, true, fieldEditable: true));
+        Assert.False(InteractionRules.SuppressSceneShortcut(true, Key.C, ModifierKeys.Control, true, fieldEditable: false));
+    }
+
     [Fact]
     public void KeysThatAreNotDesignShortcutsAreNeverSuppressed()
     {

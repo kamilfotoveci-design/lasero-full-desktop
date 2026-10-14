@@ -13,7 +13,7 @@ namespace Lasero.App;
 public static class ProcessedImagePreviewRenderer
 {
     public static BitmapSource RenderFile(string filePath, RasterImportOptions options) =>
-        Render(RasterImporter.LoadProcessedPreview(filePath, options));
+        Render(RasterImporter.LoadProcessedPreview(filePath, options, allowUpscale: false));
 
     /// <summary>
     /// Continuous-tone version for the scene canvas.
@@ -27,8 +27,7 @@ public static class ProcessedImagePreviewRenderer
     /// </summary>
     public static BitmapSource RenderFileForCanvas(string filePath, RasterImportOptions options)
     {
-        var (widthMm, placedHeightMm) = RasterImporter.GetPlacedSizeMm(filePath, options.TargetWidthMm);
-        var heightMm = options.TargetHeightMm ?? placedHeightMm;
+        var (widthMm, heightMm) = RasterImporter.GetPlacedSizeMm(filePath, options.TargetWidthMm, options.TargetHeightMm);
         var previewDpi = Math.Min(options.Dpi,
             RasterPreviewLoader.MaxLongSidePixels * 25.4 / Math.Max(widthMm, heightMm));
         var previewOptions = options with
@@ -37,7 +36,7 @@ public static class ProcessedImagePreviewRenderer
             UseDithering = false,
             UseThreshold = false,
         };
-        return Render(RasterImporter.LoadProcessedPreview(filePath, previewOptions));
+        return Render(RasterImporter.LoadProcessedPreview(filePath, previewOptions, allowUpscale: false));
     }
 
     public static BitmapSource Render(ProcessedImage image)

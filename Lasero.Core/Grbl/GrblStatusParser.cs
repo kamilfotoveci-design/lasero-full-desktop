@@ -6,9 +6,9 @@ namespace Lasero.Core.Grbl;
 /// Parses GRBL 1.1 real-time status reports of the form
 /// "&lt;Idle|MPos:0.000,0.000,0.000|FS:0,0|WCO:0.000,0.000,0.000&gt;".
 /// Pure/stateless: if only MPos or only WPos is present on this particular
-/// line, the other is left at Position.Zero here — GrblConnection combines
-/// this with the last-known WCO to fill in the gap, since WCO is only sent
-/// periodically, not on every report.
+/// line and no WCO is on the same line, the other is left at Position.Zero here
+/// (WorkCoordinateOffsetKnown = false) — GrblConnection remembers the last WCO
+/// per session and fills in the gap, since WCO is only sent periodically.
 /// </summary>
 public static class GrblStatusParser
 {
@@ -88,6 +88,9 @@ public static class GrblStatusParser
             MachinePosition = mPos,
             WorkPosition = wPos,
             WorkCoordinateOffset = wco ?? Position.Zero,
+            WorkCoordinateOffsetKnown = wco is not null,
+            ReportedMachinePosition = hasMPos,
+            ReportedWorkPosition = hasWPos,
             FeedRate = feed,
             SpindleSpeed = spindle,
             FeedOverridePercent = feedOv,

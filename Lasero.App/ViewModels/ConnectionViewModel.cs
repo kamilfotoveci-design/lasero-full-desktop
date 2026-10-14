@@ -220,7 +220,12 @@ public partial class ConnectionViewModel : ObservableObject
         {
             Log.Warning(ex, "GRBL device identification failed");
             RunOnUiThread(() =>
-                IdentificationMessage = "Laser je připojen, ale jeho nastavení se nepodařilo načíst. Je potřeba zařízení odpojit, zkontrolovat USB kabel a připojit znovu.");
+            {
+                // A stale attempt (cancelled, or the device was unplugged meanwhile) must not
+                // announce "connected" in the operator's words after the fact.
+                if (cancellationToken.IsCancellationRequested || !IsConnected) return;
+                IdentificationMessage = "Laser je připojen, ale jeho nastavení se nepodařilo načíst. Je potřeba zařízení odpojit, zkontrolovat USB kabel a připojit znovu.";
+            });
         }
     }
 

@@ -30,12 +30,46 @@ public sealed class ProjectRecoveryStore
     public bool HasSnapshot => _snapshotPath is not null && File.Exists(_snapshotPath);
     public DateTime? LastWriteTimeUtc => HasSnapshot ? File.GetLastWriteTimeUtc(_snapshotPath!) : null;
 
-    public void Save(LaseroProjectFile project)
+    /// <summary>Sidecar remembering which project file the snapshot was taken from. Kept beside the
+    /// snapshot rather than inside the project schema, so the .lasero format is unchanged.</summary>
+    private string? OriginPath => _snapshotPath is null ? null : _snapshotPath + ".origin";
+
+    public void Save(LaseroProjectFile project, string? originalProjectPath = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         if (_snapshotPath is null) return;
         Directory.CreateDirectory(Path.GetDirectoryName(_snapshotPath)!);
         ProjectFileSerializer.Save(_snapshotPath, project);
+        WriteOrigin(originalProjectPath);
+    }
+
+    private void WriteOrigin(string? originalProjectPath)
+    {
+        var originPath = OriginPath;
+        if (originPath is null) return;
+        if (string.IsNullOrWhiteSpace(originalProjectPath))
+        {
+            if (File.Exists(originPath)) File.Delete(originPath);
+            return;
+        }
+        File.WriteAllText(originPath, originalProjectPath);
+    }
+
+    /// <summary>The project file the snapshot was taken from, or null when it was never saved or that
+    /// file no longer exists (Ctrl+S then asks for a location instead of writing somewhere stale).</summary>
+    public string? TryLoadOriginalPath()
+    {
+        var originPath = OriginPath;
+        if (originPath is null || !File.Exists(originPath)) return null;
+        try
+        {
+            var path = File.ReadAllText(originPath).Trim();
+            return path.Length > 0 && File.Exists(path) ? path : null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     public LaseroProjectFile? TryLoad() => HasSnapshot ? ProjectFileSerializer.Load(_snapshotPath!) : null;
@@ -44,5 +78,7 @@ public sealed class ProjectRecoveryStore
     {
         if (HasSnapshot)
             File.Delete(_snapshotPath!);
+        if (OriginPath is { } originPath && File.Exists(originPath))
+            File.Delete(originPath);
     }
 }

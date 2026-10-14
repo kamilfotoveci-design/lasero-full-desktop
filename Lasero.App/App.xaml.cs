@@ -146,6 +146,27 @@ public partial class App : Application
             .WriteTo.File(Path.Combine(logDir, "lasero-.log"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
+        // One Lasero per session: a second launch forwards its .lasero argument to the running window and exits.
+        var projectPath = e.Args.FirstOrDefault(argument =>
+            string.Equals(Path.GetExtension(argument), ".lasero", StringComparison.OrdinalIgnoreCase));
+        _singleInstance = new SingleInstanceGuard();
+        if (!_singleInstance.IsPrimary)
+        {
+            string? forwardedPath = null;
+            try { forwardedPath = string.IsNullOrWhiteSpace(projectPath) ? null : Path.GetFullPath(projectPath); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                Log.Warning(ex, "Ignoring an invalid project path argument");
+            }
+            var forwarded = _singleInstance.TryForward(forwardedPath, TimeSpan.FromSeconds(5));
+            Log.Information("Another Lasero instance is running; forwarded={Forwarded}", forwarded);
+            _singleInstance.Dispose();
+            _singleInstance = null;
+            Log.CloseAndFlush();
+            Shutdown();
+            return;
+        }
+
         var settingsStore = AppSettingsStore.CreateDefault();
         var settings = settingsStore.Load();
         Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion = settings.Editor.ReduceMotion; // before the splash starts
@@ -251,11 +272,22 @@ public partial class App : Application
         MainWindow = window;
         StartupSplash.Reveal(window, splash);
 
-        var projectPath = e.Args.FirstOrDefault(argument =>
-            string.Equals(Path.GetExtension(argument), ".lasero", StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(projectPath))
             viewModel.OpenProjectFromShell(projectPath);
+
+        _singleInstance?.StartListening(forwardedPath => Dispatcher.BeginInvoke(() =>
+        {
+            if (MainWindow is { } main)
+            {
+                if (main.WindowState == WindowState.Minimized) main.WindowState = WindowState.Normal;
+                main.Activate();
+            }
+            // Asks about unsaved changes and refuses while a job is active, like a file dropped on the window.
+            if (forwardedPath is not null) viewModel.OpenProjectDropped(forwardedPath);
+        }));
     }
+
+    private SingleInstanceGuard? _singleInstance;
 
     protected override void OnExit(ExitEventArgs e)
     {
@@ -266,6 +298,7 @@ public partial class App : Application
         _host?.Services.GetService<ILaserMachine>()?.Dispose();
         _host?.StopAsync().GetAwaiter().GetResult();
         _host?.Dispose();
+        _singleInstance?.Dispose();
         Log.CloseAndFlush();
         base.OnExit(e);
     }

@@ -65,13 +65,8 @@ public partial class SceneCanvas
 
     /// <summary>When source and its derived offset are selected together, move the source once.
     /// The offset is regenerated from it after the gesture; transforming both would double-move it.</summary>
-    private static IReadOnlyList<SceneObject> IndependentTransformTargets(IEnumerable<SceneObject> selection)
-    {
-        var items = selection.ToList();
-        var ids = items.Select(item => item.Id).ToHashSet();
-        return items.Where(item => item.OffsetLink is not { } link ||
-            !link.SourceIds.Any(ids.Contains)).ToList();
-    }
+    private static IReadOnlyList<SceneObject> IndependentTransformTargets(IEnumerable<SceneObject> selection) =>
+        Lasero.App.ViewModels.SceneViewModel.IndependentTransformTargets(selection);
 
     // ------------------------------------------------------------------
     // Overlay

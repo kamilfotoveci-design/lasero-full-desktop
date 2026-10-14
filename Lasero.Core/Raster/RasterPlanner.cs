@@ -57,7 +57,9 @@ public static class RasterPlanner
 
         for (int py = 0; py < image.Height; py += rowStepPx)
         {
-            var rowY = heightMm - py * verticalScale + options.OffsetY;
+            // Row centre, not the pixel's top edge: the scan line runs through the middle of the
+            // pixel it samples, so the engraving is not shifted half a pixel against the placement.
+            var rowY = heightMm - (py + 0.5) * verticalScale + options.OffsetY;
             PlanRow(image, py, rowY, horizontalScale, options, moves);
         }
 
@@ -75,6 +77,10 @@ public static class RasterPlanner
         {
             if (image.At(px, py) <= options.MinBurnFraction) { px++; continue; }
 
+            // Each Burn move after the first is a segment END edge carrying that segment's OWN power
+            // (GRBL applies the S word of a G1 to the move it ends). The first Burn only arms the laser
+            // at the left edge of the run's first pixel. A run [start, end) therefore burns the full
+            // width of every pixel, and a single pixel gets a real one-pixel-long segment.
             var runStart = px;
             var currentPower = QuantizePower(image.At(px, py), options);
             moves.Add(new RasterMove { Kind = RasterMoveKind.Travel, X = runStart * scale + options.OffsetX, Y = rowY });
@@ -85,16 +91,15 @@ public static class RasterPlanner
                 var power = QuantizePower(image.At(px, py), options);
                 if (Math.Abs(power - currentPower) > 0.01)
                 {
-                    currentPower = power;
+                    // Close the segment that ran at the old power at this pixel's left edge.
                     moves.Add(new RasterMove { Kind = RasterMoveKind.Burn, X = px * scale + options.OffsetX, Y = rowY, Power = currentPower });
+                    currentPower = power;
                 }
                 px++;
             }
 
-            // Always add a move for the run's last pixel — even if it duplicates the previous point —
-            // so GrblRasterGenerator always has at least one point to hang a feed-rate word on.
-            var lastX = (px - 1) * scale + options.OffsetX;
-            moves.Add(new RasterMove { Kind = RasterMoveKind.Burn, X = lastX, Y = rowY, Power = currentPower });
+            // px is now the exclusive end of the run: close the last segment at its right edge.
+            moves.Add(new RasterMove { Kind = RasterMoveKind.Burn, X = px * scale + options.OffsetX, Y = rowY, Power = currentPower });
         }
     }
 

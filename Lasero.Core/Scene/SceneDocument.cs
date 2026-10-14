@@ -63,10 +63,18 @@ public sealed class SceneDocument
         var added = new List<LayerSettings>();
         var candidatesById = new Dictionary<Guid, LayerSettings>();
         var candidatesByColor = new List<(RgbColor Color, LayerSettings Layer)>();
+        var claimed = new HashSet<LayerSettings>();
         foreach (var candidate in candidates)
         {
+            // A fill and an outline in the same colour are two different operations, so the same
+            // colour only shares a layer when the mode also agrees. A colour-only match (the layer the
+            // operator re-moded) is accepted only for a layer no other candidate of this call took,
+            // otherwise a black fill and a black cut from one import would collapse into one layer.
             var resolved = Layers.FirstOrDefault(layer => layer.Id == candidate.Id)
-                ?? Layers.FirstOrDefault(layer => layer.Color.IsApproximately(candidate.Color));
+                ?? Layers.FirstOrDefault(layer => layer.Mode == candidate.Mode && layer.IsRaster == candidate.IsRaster
+                    && layer.Color.IsApproximately(candidate.Color))
+                ?? Layers.FirstOrDefault(layer => !claimed.Contains(layer) && layer.IsRaster == candidate.IsRaster
+                    && layer.Color.IsApproximately(candidate.Color));
             if (resolved is null)
             {
                 resolved = candidate;
@@ -74,6 +82,7 @@ public sealed class SceneDocument
                 added.Add(resolved);
             }
 
+            claimed.Add(resolved);
             candidatesById[candidate.Id] = resolved;
             candidatesByColor.Add((candidate.Color, resolved));
         }

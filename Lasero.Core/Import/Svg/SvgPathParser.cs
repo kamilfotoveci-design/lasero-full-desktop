@@ -5,17 +5,21 @@ namespace Lasero.Core.Import.Svg;
 
 /// <summary>
 /// Flattens an SVG path `d` attribute into polylines (subpaths of straight
-/// line segments). Curves are sampled at a fixed step count per segment
-/// rather than adaptively by arc-length — simpler to get right, and at laser
-/// resolution (sub-mm) the difference is invisible. Supports all standard
-/// commands including the S/T shorthand-reflection forms.
+/// line segments). Curves and arcs are subdivided adaptively until they are
+/// flat within the caller's tolerance (in path user units). Supports all
+/// standard commands including the S/T shorthand-reflection forms.
 /// </summary>
 internal static class SvgPathParser
 {
-    private const int CurveSteps = 16;
+    /// <summary>Default flatness tolerance in user units when the caller does not know the output scale.</summary>
+    public const double DefaultTolerance = 0.05;
 
-    public static List<SvgSubpath> Flatten(string d)
+    private static bool SamePoint(double ax, double ay, double bx, double by) =>
+        Math.Abs(ax - bx) < 1e-9 && Math.Abs(ay - by) < 1e-9;
+
+    public static List<SvgSubpath> Flatten(string d, double tolerance = DefaultTolerance)
     {
+        if (!double.IsFinite(tolerance) || tolerance <= 0) tolerance = DefaultTolerance;
         var subpaths = new List<SvgSubpath>();
         var tokenizer = new SvgPathTokenizer(d);
 
@@ -24,6 +28,9 @@ internal static class SvgPathParser
         double? prevCubicCtrlX = null, prevCubicCtrlY = null;
         double? prevQuadCtrlX = null, prevQuadCtrlY = null;
         SvgSubpath? current = null;
+        // After Z the current point is the closed subpath's start, and a drawing command that is not
+        // an M begins a NEW subpath there (SVG spec 9.3.4) instead of extending the closed one.
+        var afterClose = false;
         char lastCommand = '\0';
 
         void StartSubpath(double x, double y)
@@ -33,12 +40,17 @@ internal static class SvgPathParser
             subpaths.Add(current);
             subpathStartX = x;
             subpathStartY = y;
+            afterClose = false;
         }
 
         void LineTo(double x, double y)
         {
-            current ??= StartAt(x, y);
-            current.Points.Add((x, y));
+            if (current is null)
+            {
+                if (afterClose) StartSubpath(subpathStartX, subpathStartY);
+                else StartSubpath(x, y);
+            }
+            current!.Points.Add((x, y));
         }
 
         SvgSubpath StartAt(double x, double y) { StartSubpath(x, y); return current!; }
@@ -102,7 +114,7 @@ internal static class SvgPathParser
                         var x2 = tokenizer.ReadNumber(); var y2 = tokenizer.ReadNumber();
                         var x = tokenizer.ReadNumber(); var y = tokenizer.ReadNumber();
                         if (relative) { x1 += curX; y1 += curY; x2 += curX; y2 += curY; x += curX; y += curY; }
-                        SampleCubic(current ??= StartAt(curX, curY), curX, curY, x1, y1, x2, y2, x, y);
+                        SampleCubic(current ??= StartAt(curX, curY), tolerance, curX, curY, x1, y1, x2, y2, x, y);
                         prevCubicCtrlX = x2; prevCubicCtrlY = y2;
                         prevQuadCtrlX = prevQuadCtrlY = null;
                         curX = x; curY = y;
@@ -115,7 +127,7 @@ internal static class SvgPathParser
                         if (relative) { x2 += curX; y2 += curY; x += curX; y += curY; }
                         var x1 = prevCubicCtrlX is { } pcx ? 2 * curX - pcx : curX;
                         var y1 = prevCubicCtrlY is { } pcy ? 2 * curY - pcy : curY;
-                        SampleCubic(current ??= StartAt(curX, curY), curX, curY, x1, y1, x2, y2, x, y);
+                        SampleCubic(current ??= StartAt(curX, curY), tolerance, curX, curY, x1, y1, x2, y2, x, y);
                         prevCubicCtrlX = x2; prevCubicCtrlY = y2;
                         prevQuadCtrlX = prevQuadCtrlY = null;
                         curX = x; curY = y;
@@ -126,7 +138,7 @@ internal static class SvgPathParser
                         var x1 = tokenizer.ReadNumber(); var y1 = tokenizer.ReadNumber();
                         var x = tokenizer.ReadNumber(); var y = tokenizer.ReadNumber();
                         if (relative) { x1 += curX; y1 += curY; x += curX; y += curY; }
-                        SampleQuadratic(current ??= StartAt(curX, curY), curX, curY, x1, y1, x, y);
+                        SampleQuadratic(current ??= StartAt(curX, curY), tolerance, curX, curY, x1, y1, x, y);
                         prevQuadCtrlX = x1; prevQuadCtrlY = y1;
                         prevCubicCtrlX = prevCubicCtrlY = null;
                         curX = x; curY = y;
@@ -138,7 +150,7 @@ internal static class SvgPathParser
                         if (relative) { x += curX; y += curY; }
                         var x1 = prevQuadCtrlX is { } pqx ? 2 * curX - pqx : curX;
                         var y1 = prevQuadCtrlY is { } pqy ? 2 * curY - pqy : curY;
-                        SampleQuadratic(current ??= StartAt(curX, curY), curX, curY, x1, y1, x, y);
+                        SampleQuadratic(current ??= StartAt(curX, curY), tolerance, curX, curY, x1, y1, x, y);
                         prevQuadCtrlX = x1; prevQuadCtrlY = y1;
                         prevCubicCtrlX = prevCubicCtrlY = null;
                         curX = x; curY = y;
@@ -153,8 +165,19 @@ internal static class SvgPathParser
                         var x = tokenizer.ReadNumber(); var y = tokenizer.ReadNumber();
                         if (relative) { x += curX; y += curY; }
                         var sub = current ??= StartAt(curX, curY);
-                        foreach (var pt in SvgArcMath.FlattenArc(curX, curY, rx, ry, rot, large, sweep, x, y, CurveSteps))
-                            sub.Points.Add(pt);
+                        // Spec F.6.2: identical endpoints omit the arc entirely; a zero radius is a straight line.
+                        if (!SamePoint(x, y, curX, curY))
+                        {
+                            var anySegment = false;
+                            var arcStartX = curX; var arcStartY = curY;
+                            foreach (var seg in SvgArcMath.ArcToBezierSegments(curX, curY, rx, ry, rot, large, sweep, x, y))
+                            {
+                                anySegment = true;
+                                AppendCubic(sub, tolerance, arcStartX, arcStartY, seg.C1.X, seg.C1.Y, seg.C2.X, seg.C2.Y, seg.End.X, seg.End.Y);
+                                arcStartX = seg.End.X; arcStartY = seg.End.Y;
+                            }
+                            if (!anySegment) sub.Points.Add((x, y));
+                        }
                         prevCubicCtrlX = prevCubicCtrlY = prevQuadCtrlX = prevQuadCtrlY = null;
                         curX = x; curY = y;
                         break;
@@ -163,9 +186,15 @@ internal static class SvgPathParser
                     {
                         if (current is not null)
                         {
-                            current.Points.Add((subpathStartX, subpathStartY));
+                            // "L start Z" already put the start point last; adding it again would leave a
+                            // zero-length duplicate vertex.
+                            var last = current.Points[^1];
+                            if (!SamePoint(last.X, last.Y, subpathStartX, subpathStartY))
+                                current.Points.Add((subpathStartX, subpathStartY));
                             current.Closed = true;
                         }
+                        current = null;
+                        afterClose = true;
                         curX = subpathStartX; curY = subpathStartY;
                         prevCubicCtrlX = prevCubicCtrlY = prevQuadCtrlX = prevQuadCtrlY = null;
                         break;
@@ -218,6 +247,7 @@ internal static class SvgPathParser
         double? prevQuadCtrlX = null, prevQuadCtrlY = null;
         List<VectorNode>? nodes = null;
         var closed = false;
+        var afterClose = false;
 
         void FinishCurrentSubpath()
         {
@@ -229,12 +259,18 @@ internal static class SvgPathParser
             FinishCurrentSubpath();
             nodes = [VectorNode.CornerAt(new Position(x, y, 0))];
             closed = false;
+            afterClose = false;
             subpathStartX = x; subpathStartY = y;
         }
 
         void LineTo(double x, double y)
         {
-            if (nodes is null) StartSubpath(x, y);
+            if (nodes is null)
+            {
+                // After Z a drawing command without M continues from the closed subpath's start.
+                if (afterClose) { StartSubpath(subpathStartX, subpathStartY); nodes!.Add(VectorNode.CornerAt(new Position(x, y, 0))); }
+                else StartSubpath(x, y);
+            }
             else nodes.Add(VectorNode.CornerAt(new Position(x, y, 0)));
         }
 
@@ -378,7 +414,22 @@ internal static class SvgPathParser
                     }
                     case 'Z':
                     {
-                        closed = true;
+                        if (nodes is not null)
+                        {
+                            closed = true;
+                            // "L start Z": the explicit return point and the implicit closing segment would
+                            // otherwise leave two coincident nodes. Fold the last node into the first.
+                            if (nodes.Count > 2 && nodes[^1].HandleOut is null &&
+                                SamePoint(nodes[^1].Anchor.X, nodes[^1].Anchor.Y, nodes[0].Anchor.X, nodes[0].Anchor.Y))
+                            {
+                                nodes[0] = nodes[0] with { HandleIn = nodes[0].HandleIn ?? nodes[^1].HandleIn };
+                                nodes.RemoveAt(nodes.Count - 1);
+                            }
+                            FinishCurrentSubpath();
+                            nodes = null;
+                            closed = false;
+                        }
+                        afterClose = true;
                         curX = subpathStartX; curY = subpathStartY;
                         prevCubicCtrlX = prevCubicCtrlY = prevQuadCtrlX = prevQuadCtrlY = null;
                         break;
@@ -394,27 +445,22 @@ internal static class SvgPathParser
         return subpaths;
     }
 
-    private static void SampleCubic(SvgSubpath sub, double x0, double y0, double x1, double y1, double x2, double y2, double x3, double y3)
+    private static void SampleCubic(SvgSubpath sub, double tolerance, double x0, double y0, double x1, double y1, double x2, double y2, double x3, double y3) =>
+        AppendCubic(sub, tolerance, x0, y0, x1, y1, x2, y2, x3, y3);
+
+    /// <summary>Adaptive subdivision of one cubic (its start point is already present in <paramref name="sub"/>).</summary>
+    private static void AppendCubic(SvgSubpath sub, double tolerance, double x0, double y0, double x1, double y1, double x2, double y2, double x3, double y3)
     {
-        for (int i = 1; i <= CurveSteps; i++)
-        {
-            var t = (double)i / CurveSteps;
-            var mt = 1 - t;
-            var x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
-            var y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
-            sub.Points.Add((x, y));
-        }
+        var points = new List<Position>();
+        CubicBezier.Flatten(new Position(x0, y0, 0), new Position(x1, y1, 0), new Position(x2, y2, 0), new Position(x3, y3, 0), tolerance, points);
+        foreach (var point in points)
+            sub.Points.Add((point.X, point.Y));
     }
 
-    private static void SampleQuadratic(SvgSubpath sub, double x0, double y0, double x1, double y1, double x2, double y2)
-    {
-        for (int i = 1; i <= CurveSteps; i++)
-        {
-            var t = (double)i / CurveSteps;
-            var mt = 1 - t;
-            var x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
-            var y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
-            sub.Points.Add((x, y));
-        }
-    }
+    /// <summary>Quadratics are elevated to the exactly equivalent cubic, then flattened adaptively.</summary>
+    private static void SampleQuadratic(SvgSubpath sub, double tolerance, double x0, double y0, double x1, double y1, double x2, double y2) =>
+        AppendCubic(sub, tolerance, x0, y0,
+            x0 + 2.0 / 3.0 * (x1 - x0), y0 + 2.0 / 3.0 * (y1 - y0),
+            x2 + 2.0 / 3.0 * (x1 - x2), y2 + 2.0 / 3.0 * (y1 - y2),
+            x2, y2);
 }

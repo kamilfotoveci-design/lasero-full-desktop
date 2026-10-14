@@ -23,7 +23,7 @@ public sealed class BooleanPreviewWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.CanResize;
         ShowInTaskbar = false;
-        Background = Brushes.White;
+        Background = ThemeBrush("Brush.Background", Brushes.White);
 
         var root = new Grid { Margin = new Thickness(22) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -34,28 +34,28 @@ public sealed class BooleanPreviewWindow : Window
         intro.Children.Add(new TextBlock
         {
             Text = preview.Title, FontSize = 22, FontWeight = FontWeights.SemiBold,
-            Foreground = Brushes.Black,
+            Foreground = ThemeBrush("Brush.TextPrimary", Brushes.Black),
         });
         intro.Children.Add(new TextBlock
         {
             Text = preview.Sources.Count == 2
                 ? $"A = spodní tvar, B = horní tvar · Výsledná vrstva: {preview.ResultLayer}"
                 : $"Vstupů: {preview.Sources.Count} · Výsledná vrstva: {preview.ResultLayer}",
-            Margin = new Thickness(0, 7, 0, 0), Foreground = Brushes.DimGray,
+            Margin = new Thickness(0, 7, 0, 0), Foreground = ThemeBrush("Brush.TextSecondary", Brushes.DimGray),
             TextWrapping = TextWrapping.Wrap,
         });
         if (preview.ApproximatesCurves)
             intro.Children.Add(new TextBlock
             {
                 Text = "Bézierovy křivky se pro tuto operaci převádějí na obrysy s tolerancí 0,05 mm. Výsledek bude tvořen úsečkami.",
-                Margin = new Thickness(0, 8, 0, 0), Foreground = Brushes.DarkRed,
+                Margin = new Thickness(0, 8, 0, 0), Foreground = ThemeBrush("Brush.Danger", Brushes.DarkRed),
                 TextWrapping = TextWrapping.Wrap,
             });
         if (preview.GeometryNotice is { } notice)
             intro.Children.Add(new TextBlock
             {
                 Text = notice, Margin = new Thickness(0, 8, 0, 0),
-                Foreground = Brushes.DarkGoldenrod, TextWrapping = TextWrapping.Wrap,
+                Foreground = ThemeBrush("Brush.Warning", Brushes.DarkGoldenrod), TextWrapping = TextWrapping.Wrap,
             });
         root.Children.Add(intro);
 
@@ -95,6 +95,11 @@ public sealed class BooleanPreviewWindow : Window
         Content = root;
     }
 
+    /// <summary>The app theme's brush, so the preview follows the same palette as every other window;
+    /// the fallback only matters where no application resources are loaded.</summary>
+    private static Brush ThemeBrush(string key, Brush fallback) =>
+        Application.Current?.TryFindResource(key) as Brush ?? fallback;
+
     private static Border CreatePane(string heading, IReadOnlyList<SceneObject> objects,
         (double MinX, double MinY, double MaxX, double MaxY) bounds)
     {
@@ -103,7 +108,7 @@ public sealed class BooleanPreviewWindow : Window
         {
             Text = heading == "Před" && objects.Count == 2
                 ? "Před · A modrá, B oranžová" : heading,
-            FontWeight = FontWeights.SemiBold, Foreground = Brushes.Black,
+            FontWeight = FontWeights.SemiBold, Foreground = ThemeBrush("Brush.TextPrimary", Brushes.Black),
             Margin = new Thickness(12, 10, 12, 8),
         };
         DockPanel.SetDock(label, Dock.Top);
@@ -111,7 +116,7 @@ public sealed class BooleanPreviewWindow : Window
         var canvas = new Canvas
         {
             Width = PreviewWidth, Height = PreviewHeight,
-            Background = Brushes.White, ClipToBounds = true,
+            Background = ThemeBrush("Brush.Canvas.WorkArea", Brushes.White), ClipToBounds = true,
         };
         var width = Math.Max(bounds.MaxX - bounds.MinX, 0.001);
         var height = Math.Max(bounds.MaxY - bounds.MinY, 0.001);
@@ -153,7 +158,7 @@ public sealed class BooleanPreviewWindow : Window
         panel.Children.Add(new Viewbox { Stretch = Stretch.Uniform, Child = canvas });
         return new Border
         {
-            Child = panel, BorderBrush = new SolidColorBrush(Color.FromRgb(205, 209, 214)),
+            Child = panel, BorderBrush = ThemeBrush("Brush.PanelBorder", new SolidColorBrush(Color.FromRgb(205, 209, 214))),
             BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7),
         };
     }

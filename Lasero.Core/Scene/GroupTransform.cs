@@ -93,6 +93,33 @@ public static class GroupTransform
         var rad = t.RotationDeg * Math.PI / 180.0;
         var c = Math.Cos(rad);
         var s = Math.Sin(rad);
+
+        if ((gx < 0 || gy < 0) && Math.Abs(c * s) > 1e-9)
+        {
+            // A flip. The projection formula below goes through zero (cos 2a = 0 at 45 degrees) and
+            // would collapse the object, so rebuild the linear part G * R(a) * diag(Sx, Sy) from its
+            // columns. When the columns are orthogonal (|gx| == |gy|, or an axis-aligned child) the
+            // result is exactly R(phi) * diag(sx, sy); otherwise the column lengths and the sign of
+            // the determinant are the closest representable, non-degenerate answer.
+            var col1X = gx * c * t.ScaleX;
+            var col1Y = gy * s * t.ScaleX;
+            var col2X = -gx * s * t.ScaleY;
+            var col2Y = gy * c * t.ScaleY;
+            var len1 = Math.Sqrt(col1X * col1X + col1Y * col1Y);
+            var len2 = Math.Sqrt(col2X * col2X + col2Y * col2Y);
+            var detSign = Math.Sign(gx * gy * t.ScaleX * t.ScaleY);
+            if (detSign == 0) detSign = 1;
+            var phi = Math.Atan2(col1Y, col1X) * 180.0 / Math.PI;
+            return t with
+            {
+                X = newPivotX - pivot.X,
+                Y = newPivotY - pivot.Y,
+                RotationDeg = phi,
+                ScaleX = KeepAboveMinimum(len1, 1),
+                ScaleY = KeepAboveMinimum(detSign * len2, detSign),
+            };
+        }
+
         var scaleX = KeepAboveMinimum(t.ScaleX * (gx * c * c + gy * s * s), t.ScaleX);
         var scaleY = KeepAboveMinimum(t.ScaleY * (gx * s * s + gy * c * c), t.ScaleY);
 

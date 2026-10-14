@@ -250,6 +250,8 @@ public partial class MainViewModel : ObservableObject
         // Homing is refused while a job is active; the Jog view model asks, the shell answers.
         Jog.IsJobActive = () => GCode.IsJobActive;
         GCode.IsPositioningLaserBusy = () => Jog.IsPositioningLaserBusy;
+        // A changed work origin invalidates a completed frame.
+        Jog.WorkOriginChanged += GCode.InvalidateFraming;
         Jog.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(JogViewModel.IsPositioningLaserBusy))
@@ -454,7 +456,10 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NewProject()
     {
+        if (RefuseProjectReplacementDuringJob()) return;
         if (!ConfirmProjectReplacement()) return;
+        // The confirmation dialog is modal-but-pumping: a job may have started meanwhile.
+        if (RefuseProjectReplacementDuringJob()) return;
         Scene.ResetDocument();
         ProjectName = "Nový projekt";
         ProjectPath = null;
@@ -493,12 +498,14 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var project = CreateProjectSnapshot();
-            ProjectFileSerializer.Save(path, project);
+            var saveWarnings = ProjectFileSerializer.Save(path, project, keepBackup: true);
             ProjectPath = path;
             ProjectName = Path.GetFileNameWithoutExtension(path);
             IsDirty = false;
             _recoveryStore.Discard();
-            GCode.LastMessage = "Projekt byl uložen.";
+            GCode.LastMessage = saveWarnings.Count == 0
+                ? "Projekt byl uložen."
+                : "Projekt byl uložen. Upozornění: " + string.Join(" ", saveWarnings);
             UpdateRecentProject();
             return true;
         }
@@ -518,10 +525,19 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenProject()
     {
+        if (RefuseProjectReplacementDuringJob()) return;
         var dialog = new OpenFileDialog { Filter = "Projekt Lasero (*.lasero)|*.lasero|Všechny soubory (*.*)|*.*" };
         if (dialog.ShowDialog() != true) return;
         if (!ConfirmProjectReplacement()) return;
         LoadProject(dialog.FileName);
+    }
+
+    /// <summary>A project file dropped onto the window: same as Otevřít projekt, so unsaved changes are asked about first.</summary>
+    public void OpenProjectDropped(string path)
+    {
+        if (RefuseProjectReplacementDuringJob()) return;
+        if (!ConfirmProjectReplacement()) return;
+        OpenProjectFromShell(path);
     }
 
     public void OpenProjectFromShell(string path)
@@ -545,6 +561,8 @@ public partial class MainViewModel : ObservableObject
 
     private void LoadProject(string path)
     {
+        // Last gate before the scene is replaced: covers the dialog, drop and shell/second-instance paths.
+        if (RefuseProjectReplacementDuringJob()) return;
         try
         {
             var project = ProjectFileSerializer.Load(path);
@@ -555,7 +573,9 @@ public partial class MainViewModel : ObservableObject
             IsDirty = false;
             _recoveryStore.Discard();
             GCode.RegenerateFromSceneCommand.Execute(null);
-            GCode.LastMessage = "Projekt byl otevřen.";
+            GCode.LastMessage = project.LoadWarnings.Count == 0
+                ? "Projekt byl otevřen."
+                : "Projekt byl otevřen. Upozornění: " + string.Join(" ", project.LoadWarnings);
             UpdateRecentProject();
             CurrentScreen = AppScreen.Designer;
         }
@@ -580,7 +600,8 @@ public partial class MainViewModel : ObservableObject
             Scene.LoadProject(project);
             GCode.RestorePlacement(project.Placement);
             ProjectName = string.IsNullOrWhiteSpace(project.Name) ? "Obnovený projekt" : project.Name;
-            ProjectPath = null;
+            // Keep saving to the project the snapshot came from; null when it was never saved or is gone.
+            ProjectPath = _recoveryStore.TryLoadOriginalPath();
             IsDirty = true;
             GCode.RegenerateFromSceneCommand.Execute(null);
             GCode.LastMessage = "Projekt byl obnoven z automatické zálohy.";
@@ -607,12 +628,33 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var project = CreateProjectSnapshot();
-            _recoveryStore.Save(project);
+            _recoveryStore.Save(project, ProjectPath);
+            _autosaveFailures = 0;
         }
         catch (Exception ex)
         {
             Serilog.Log.Warning(ex, "Autosave snapshot failed");
+            _autosaveFailures++;
+            // A single failure is noise; repeated ones mean the operator is working without a safety net.
+            if (_autosaveFailures == AutosaveFailureNoticeThreshold)
+                GCode.LastMessage = "Automatické zálohování selhává. Je potřeba projekt uložit ručně (Ctrl+S).";
         }
+    }
+
+    private const int AutosaveFailureNoticeThreshold = 3;
+    private int _autosaveFailures;
+
+    /// <summary>The operator-facing reason a project cannot be replaced right now, or null when it can.
+    /// A running, paused or framing job streams from the current document, so New/Open must wait.</summary>
+    private string? ProjectReplacementBlockedReason() => GCode.IsJobActive
+        ? "Během úlohy nelze otevřít ani vytvořit jiný projekt. Je potřeba počkat na dokončení nebo úlohu zastavit."
+        : null;
+
+    private bool RefuseProjectReplacementDuringJob()
+    {
+        if (ProjectReplacementBlockedReason() is not { } reason) return false;
+        GCode.LastMessage = reason;
+        return true;
     }
 
     private LaseroProjectFile CreateProjectSnapshot()

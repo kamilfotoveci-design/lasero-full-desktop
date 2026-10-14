@@ -85,7 +85,6 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isComputing;
     [ObservableProperty] private bool _isPreviewComputing;
     [ObservableProperty] private string? _statusMessage;
-    [ObservableProperty] private bool _isFraming;
 
     public bool HasJob => !IsComputing && PlannedJob is { Moves.Count: > 0 };
     public double LineIntervalMm
@@ -105,9 +104,6 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     {
         _machine = machine;
         _settingsStore = settingsStore;
-        _machine.ConnectionStateChanged += OnMachineStateChanged;
-        _machine.StatusUpdated += OnMachineStatusUpdated;
-        _machine.AlertChanged += OnMachineAlertChanged;
         FilePath = filePath;
         FileName = System.IO.Path.GetFileName(filePath);
         IsEditing = isEditing;
@@ -124,7 +120,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
         _suppressRecompute = true;
         if (initialOptions is null)
         {
-            ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
+            ApplyRecommendation(ImageAutoAdjuster.Recommend(Lasero.Core.Raster.BitmapLoader.LoadGrayscale(FilePath)));
             _targetHeightMm = _sourceImage.Height * (targetWidthMm / _sourceImage.Width);
         }
         else
@@ -172,7 +168,7 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     {
         _suppressRecompute = true;
         if (_initialOptions is { } options) ApplyOptions(options);
-        else ApplyRecommendation(ImageAutoAdjuster.Recommend(_sourceImage));
+        else ApplyRecommendation(ImageAutoAdjuster.Recommend(Lasero.Core.Raster.BitmapLoader.LoadGrayscale(FilePath)));
         _suppressRecompute = false;
         ScheduleRecompute();
     }
@@ -318,10 +314,8 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     partial void OnPlannedJobChanged(LaserJob? value)
     {
         OnPropertyChanged(nameof(HasJob));
-        FrameThisCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnIsFramingChanged(bool value) => FrameThisCommand.NotifyCanExecuteChanged();
     partial void OnIsComputingChanged(bool value)
     {
         OnPropertyChanged(nameof(HasJob));
@@ -420,84 +414,13 @@ public partial class RasterImportViewModel : ObservableObject, IDisposable
     private static bool NullableNearlyEquals(double? left, double? right) =>
         left is null ? right is null : right is not null && NearlyEquals(left.Value, right.Value);
 
-    private bool CanFrame() => !IsFraming
-        && PlannedJob is { Moves.Count: > 0 }
-        && _machine.State == GrblConnectionState.Connected
-        && _machine.LastStatusReceivedUtc is { } timestamp
-        && DateTime.UtcNow - timestamp <= TimeSpan.FromSeconds(2)
-        && _machine.LastStatus?.Mode == GrblMachineMode.Idle
-        && _machine.ActiveAlert is null;
-
-    [RelayCommand(CanExecute = nameof(CanFrame))]
-    private async Task FrameThis()
-    {
-        if (PlannedJob is not { } job) return;
-
-        IsFraming = true;
-        StatusMessage = null;
-        try
-        {
-            var controllerMaximumS = (_machine as IGrblDeviceProfileSource)?.DeviceProfile?.MaxSpindleSpeed;
-            var frameLines = FramingService.BuildFrameGCode(job.Bounds, new FramingOptions
-            {
-                FeedRatePerMinute = 3000,
-                Mode = FramingMode.FullOutline,
-                LaserPower = controllerMaximumS is > 0 ? _settingsStore.Current.Machine.GetFramingPowerPercent() : 0,
-            }, controllerMaximumS);
-
-            var document = GCodeParser.Parse(frameLines);
-            var preflight = JobPreflight.Evaluate(new JobPreflightContext
-            {
-                IsConnected = _machine.State == GrblConnectionState.Connected,
-                Document = document,
-                MachineStatus = _machine.LastStatus,
-                MachineStatusAge = _machine.LastStatusReceivedUtc is { } ts ? DateTime.UtcNow - ts : null,
-                RequireFraming = false,
-                HasFramedCurrentDocument = false,
-                WorkAreaWidthMm = _settingsStore.Current.Machine.WorkAreaWidthMm,
-                WorkAreaHeightMm = _settingsStore.Current.Machine.WorkAreaHeightMm,
-            });
-
-            if (!preflight.CanStart)
-            {
-                StatusMessage = preflight.FirstBlockingIssue?.Message ?? "Rámování nelze spustit.";
-                return;
-            }
-
-            var runner = new GCodeJobRunner(_machine);
-            await runner.RunAsync(document.RawLines, abortOnError: true);
-            StatusMessage = runner.State == JobRunState.Completed
-                ? "Rámování dokončeno."
-                : "Rámování nebylo dokončeno.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Rámování se nepodařilo spustit: {ex.Message}";
-        }
-        finally
-        {
-            IsFraming = false;
-        }
-    }
-
-    private void OnMachineStateChanged(GrblConnectionState _) => NotifyFrameAvailability();
-    private void OnMachineStatusUpdated(MachineStatus _) => NotifyFrameAvailability();
-    private void OnMachineAlertChanged(MachineAlert? _) => NotifyFrameAvailability();
-
-    private void NotifyFrameAvailability()
-    {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess()) FrameThisCommand.NotifyCanExecuteChanged();
-        else dispatcher.BeginInvoke(FrameThisCommand.NotifyCanExecuteChanged);
-    }
+    // No framing here on purpose: the dialog has no scene placement, no layer/laser-mode context and
+    // cannot mark the document as framed. Framing happens from the main window against the real job.
 
     public void Dispose()
     {
         _recomputeCancellation?.Cancel();
         _recomputeCancellation?.Dispose();
-        _machine.ConnectionStateChanged -= OnMachineStateChanged;
-        _machine.StatusUpdated -= OnMachineStatusUpdated;
-        _machine.AlertChanged -= OnMachineAlertChanged;
         GC.SuppressFinalize(this);
     }
 }

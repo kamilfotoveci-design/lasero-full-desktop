@@ -410,7 +410,7 @@ public partial class SceneCanvas : UserControl
 
     private void ZoomAroundCenter(double factor)
     {
-        if (ActualWidth <= 0 || ActualHeight <= 0) return;
+        if (ActualWidth <= 0 || ActualHeight <= 0 || !double.IsFinite(factor) || factor <= 0) return;
         _autoFit = false;
         var center = new Point(ActualWidth / 2, ActualHeight / 2);
         var worldBefore = new Position(ToWorldX(center.X), ToWorldY(center.Y), 0);
@@ -436,7 +436,8 @@ public partial class SceneCanvas : UserControl
             var availableH = Math.Max(1, ActualHeight - 2 * MarginPx);
             var scaleX = box.Width < 1e-6 ? availableW : availableW / box.Width;
             var scaleY = box.Height < 1e-6 ? availableH : availableH / box.Height;
-            _scale = Math.Clamp(Math.Min(scaleX, scaleY), MinScale, MaxScale);
+            var fitted = Math.Min(scaleX, scaleY);
+            _scale = double.IsFinite(fitted) ? Math.Clamp(fitted, MinScale, MaxScale) : DefaultScale;
             _offsetXMm = box.MinX - MarginPx / _scale;
             _offsetYMm = box.MinY - MarginPx / _scale;
         }
@@ -444,8 +445,13 @@ public partial class SceneCanvas : UserControl
         RepositionAll();
     }
 
+    // A broken import can hand back NaN or infinite bounds; one such object must not turn the whole
+    // view scale into NaN, so a non-finite box is simply left out of the fit.
     private static BoundingBox2D Union(BoundingBox2D a, BoundingBox2D b) =>
-        b.IsEmpty ? a : a.Include(b.MinX, b.MinY).Include(b.MaxX, b.MaxY);
+        b.IsEmpty || !double.IsFinite(b.MinX) || !double.IsFinite(b.MinY) ||
+        !double.IsFinite(b.MaxX) || !double.IsFinite(b.MaxY)
+            ? a
+            : a.Include(b.MinX, b.MinY).Include(b.MaxX, b.MaxY);
 
     // ------------------------------------------------------------------
     // Coordinate mapping — mirrors WorkspaceCanvas's ToCanvasX/Y, plus the
@@ -1573,8 +1579,14 @@ public partial class SceneCanvas : UserControl
         // (docs/interaction-rules.md 1.5).
         var additive = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         _marqueeSubtracts = !additive && Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        _marqueeRestore = null;
         if (!additive && !_marqueeSubtracts)
+        {
+            // Remembered so that Esc, or a lost capture, mid-marquee puts the old selection back
+            // instead of leaving the operator with nothing selected after a cancelled gesture.
+            _marqueeRestore = ViewModel.SelectedObjects.ToList();
             ViewModel.SelectedObjects.Clear();
+        }
 
         _dragMode = DragMode.Select;
         _dragStartScreen = e.GetPosition(DrawCanvas);
@@ -2085,7 +2097,7 @@ public partial class SceneCanvas : UserControl
 
     private void OnDrawCanvasPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_dragMode != DragMode.Pan || !_isSpacePressed) return;
+        if (_dragMode != DragMode.Pan || !(_isSpacePressed || ViewModel?.ActiveTool == DesignerTool.Pan)) return;
         EndPan();
         e.Handled = true;
     }
@@ -2094,6 +2106,11 @@ public partial class SceneCanvas : UserControl
     {
         if (e.ChangedButton != MouseButton.Middle) return;
         Focus();
+        // A gesture already in flight (move, resize, draw, node drag) owns the transforms and the
+        // pointer capture. Starting a pan over it left the preview transform and start transforms
+        // behind, so roll the gesture back first, as Esc does, and only then pan.
+        if (_dragMode is not (DragMode.None or DragMode.Pan))
+            CancelActiveInteraction();
         BeginPan(e.GetPosition(DrawCanvas));
         e.Handled = true;
     }
@@ -2167,11 +2184,49 @@ public partial class SceneCanvas : UserControl
         UpdateToolCursor();
     }
 
+    // Snap feedback for the gestures that have no node overlay of their own (move, resize, draw and
+    // the path tool): the node-edit overlay already rings its own target in DrawNodeEditOverlay.
+    // The ring is moved out of _selectionVisuals so it is not swept up by a selection redraw or
+    // handed a drag preview transform; it lives only as long as the gesture holds the snap.
+    private readonly List<FrameworkElement> _gestureSnapVisuals = [];
+    private SnapCandidate? _gestureSnapShown;
+
+    private void RefreshGestureSnapIndicator()
+    {
+        var showing = _dragMode is DragMode.Move or DragMode.Resize or DragMode.Draw or DragMode.PathTool ||
+                      (_dragMode == DragMode.None && ViewModel?.ActiveTool == DesignerTool.Line);
+        if (!showing || _activeSnapTarget is not { } snap)
+        {
+            ClearGestureSnapIndicator();
+            return;
+        }
+
+        if (_gestureSnapVisuals.Count > 0 && Equals(_gestureSnapShown, snap)) return;
+        ClearGestureSnapIndicator();
+        var start = _selectionVisuals.Count;
+        DrawActiveSnapIndicator(snap);
+        for (var i = start; i < _selectionVisuals.Count; i++) _gestureSnapVisuals.Add(_selectionVisuals[i]);
+        _selectionVisuals.RemoveRange(start, _selectionVisuals.Count - start);
+        _gestureSnapShown = snap;
+    }
+
+    private void ClearGestureSnapIndicator()
+    {
+        if (_gestureSnapVisuals.Count == 0) return;
+        foreach (var visual in _gestureSnapVisuals) DrawCanvas.Children.Remove(visual);
+        _gestureSnapVisuals.Clear();
+        _gestureSnapShown = null;
+    }
+
     private void OnDrawCanvasMouseMove(object sender, MouseEventArgs e)
     {
+        // The Pan tool (H) pans with the left button, so a held left button keeps that gesture alive
+        // exactly as Space+drag does; without this the first move after the press ended the pan.
+        var leftDragPans = e.LeftButton == MouseButtonState.Pressed &&
+                           (_isSpacePressed || ViewModel?.ActiveTool == DesignerTool.Pan);
         if (_dragMode == DragMode.Pan &&
             e.MiddleButton != MouseButtonState.Pressed &&
-            !(_isSpacePressed && e.LeftButton == MouseButtonState.Pressed))
+            !leftDragPans)
         {
             EndPan();
             return;
@@ -2226,6 +2281,8 @@ public partial class SceneCanvas : UserControl
                 UpdateRubberBand(screen);
                 break;
         }
+
+        RefreshGestureSnapIndicator();
     }
 
     private void OnDrawCanvasMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -2243,6 +2300,7 @@ public partial class SceneCanvas : UserControl
             case DragMode.NodeSegmentDrag: FinishNodeEditDrag(); break;
             case DragMode.NodeMarquee: FinishNodeMarquee(); break;
         }
+        ClearGestureSnapIndicator();
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
         UpdateToolCursor();
@@ -2408,6 +2466,9 @@ public partial class SceneCanvas : UserControl
                 break;
             }
         }
+
+        // The resize snap is resolved here, after the mouse-move handler already ran for this sample.
+        if (_dragMode == DragMode.Resize) RefreshGestureSnapIndicator();
     }
 
     private void FinishResize()
@@ -2464,6 +2525,7 @@ public partial class SceneCanvas : UserControl
     }
 
     private bool _marqueeSubtracts;
+    private List<SceneObject>? _marqueeRestore;
 
     private void FinishRubberBand()
     {
@@ -2525,7 +2587,10 @@ public partial class SceneCanvas : UserControl
         var screen = e.GetPosition(DrawCanvas);
         var worldBefore = new Position(ToWorldX(screen.X), ToWorldY(screen.Y), 0);
 
-        var factor = _preferences.ZoomsIn(e.Delta) ? 1.15 : 1 / 1.15;
+        // A wheel notch is 120; a touchpad sends many small deltas, which as fixed 15 percent steps
+        // zoomed far too fast. Scale by the delta, bounded so one huge event cannot jump the view.
+        var steps = Math.Clamp(Math.Abs(e.Delta) / 120.0, 0.05, 4.0);
+        var factor = Math.Pow(1.15, _preferences.ZoomsIn(e.Delta) ? steps : -steps);
         _scale = Math.Clamp(_scale * factor, MinScale, MaxScale);
 
         _offsetXMm = worldBefore.X - (screen.X - MarginPx) / _scale;
@@ -2550,7 +2615,11 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
-        if (e.Key == Key.Space)
+        // Typing in the inline text editor or any field hosted over the canvas keeps its own keys: Space,
+        // F and the arrows are letters and caret moves there, not pan, fit and nudge.
+        var typing = IsTextEntryFocused();
+
+        if (e.Key == Key.Space && !typing)
         {
             _isSpacePressed = true;
             if (_dragMode == DragMode.None) Cursor = Cursors.Hand;
@@ -2627,8 +2696,17 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
+        if (typing) return;
+
         if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
+            // A nudge under a live drag, node drag or marquee would be committed beneath the preview.
+            if (_dragMode != DragMode.None)
+            {
+                e.Handled = true;
+                return;
+            }
+
             var step = _preferences.ArrowStepFor(
                 Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
             // VECTOR PATH TOOL HOOK: while Node Edit has a node selection, arrows must nudge those
@@ -2647,6 +2725,11 @@ public partial class SceneCanvas : UserControl
         }
     }
 
+    /// <summary>True while the inline text editor, or a text box or drop-down hosted on the canvas, owns the keyboard.</summary>
+    private bool IsTextEntryFocused() =>
+        _inlineTextEditor is not null && _inlineTextEditor.IsKeyboardFocusWithin ||
+        Keyboard.FocusedElement is TextBoxBase or ComboBox or PasswordBox;
+
     private void OnCanvasKeyUp(object sender, KeyEventArgs e)
     {
         if (e.Key is Key.LeftShift or Key.RightShift && _dragMode == DragMode.Draw)
@@ -2656,7 +2739,7 @@ public partial class SceneCanvas : UserControl
             return;
         }
 
-        if (e.Key != Key.Space) return;
+        if (e.Key != Key.Space || IsTextEntryFocused()) return;
         _isSpacePressed = false;
         if (_dragMode == DragMode.Pan && Mouse.MiddleButton != MouseButtonState.Pressed)
             EndPan();
@@ -2780,6 +2863,9 @@ public partial class SceneCanvas : UserControl
                 break;
             case DragMode.Select when _rubberBandVisual is not null:
                 _rubberBandVisual.Visibility = Visibility.Collapsed;
+                if (_marqueeRestore is { } restore && ViewModel is not null)
+                    ViewModel.SelectedObjects.ReplaceWith(restore.Where(obj => ViewModel.Objects.Contains(obj)).ToList());
+                _marqueeRestore = null;
                 break;
             case DragMode.Pan:
                 _offsetXMm = _panStartOffsetX;
@@ -2803,27 +2889,49 @@ public partial class SceneCanvas : UserControl
         }
 
         _expensiveDragUpdateScheduled = false;
+        ClearGestureSnapIndicator();
         _dragMode = DragMode.None;
         if (DrawCanvas.IsMouseCaptured) DrawCanvas.ReleaseMouseCapture();
         UpdateToolCursor();
         RepositionAll();
     }
 
+    // The newest keyboard nudge, so key auto-repeat extends one undo step instead of stacking dozens.
+    private NudgeCommand? _lastNudge;
+    private int _lastNudgeRevision;
+    private long _lastNudgeTicks;
+
     private void Nudge(Key key, double stepMm)
     {
-        if (ViewModel is null || ViewModel.SelectedObjects.Count == 0) return;
+        // Mid-gesture the transforms belong to the drag preview; a nudge would be committed under it.
+        if (ViewModel is null || _dragMode != DragMode.None || ViewModel.SelectedObjects.Count == 0) return;
         double dx = key switch { Key.Left => -stepMm, Key.Right => stepMm, _ => 0 };
         double dy = key switch { Key.Up => stepMm, Key.Down => -stepMm, _ => 0 };
 
-        var commands = new List<ISceneCommand>();
-        foreach (var obj in ViewModel.SelectedObjects)
+        // A linked-offset output is regenerated from its source, so with both selected only the source moves.
+        var targets = IndependentTransformTargets(ViewModel.SelectedObjects).Where(obj => !obj.IsLocked).ToList();
+        if (targets.Count == 0) return;
+
+        var now = Environment.TickCount64;
+        if (_lastNudge is { } previous &&
+            now - _lastNudgeTicks <= NudgeCommand.CoalesceWindow.TotalMilliseconds &&
+            ViewModel.CommandRevision == _lastNudgeRevision &&
+            previous.MovesSameObjects(targets))
         {
-            if (obj.IsLocked) continue;
-            var before = obj.Transform;
-            commands.Add(new TransformObjectCommand(obj, before, before with { X = before.X + dx, Y = before.Y + dy }));
+            var merged = previous.Extended(dx, dy);
+            if (ViewModel.TryReplaceLastCommand(_lastNudgeRevision, merged))
+            {
+                _lastNudge = merged;
+                _lastNudgeRevision = ViewModel.CommandRevision;
+                _lastNudgeTicks = now;
+                return;
+            }
         }
 
-        if (commands.Count == 1) ViewModel.Execute(commands[0]);
-        else if (commands.Count > 1) ViewModel.Execute(new CompositeSceneCommand(commands));
+        var command = NudgeCommand.Create(targets, dx, dy);
+        ViewModel.Execute(command);
+        _lastNudge = command;
+        _lastNudgeRevision = ViewModel.CommandRevision;
+        _lastNudgeTicks = now;
     }
 }

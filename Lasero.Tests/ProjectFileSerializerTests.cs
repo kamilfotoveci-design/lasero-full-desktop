@@ -218,21 +218,161 @@ public sealed class ProjectFileSerializerTests : IDisposable
         Assert.Null(loaded.Objects[0].OriginalRasterFilePath);
     }
 
+    // A source image that vanished from disk used to make every Save and autosave throw, so one
+    // moved file blocked saving the whole project. The project is now saved, the picture is reported
+    // as missing, and its path is kept so it is found again if the file reappears.
     [Fact]
-    public void FailedAssetSave_PreservesPreviousProject()
+    public void Save_WithMissingRasterSource_SucceedsReportsItAndKeepsThePath()
     {
         var projectPath = Path.Combine(_directory, "safe.lasero");
+        var missingPath = Path.Combine(_directory, "missing.png");
         ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Původní" });
-        var invalid = new LaseroProjectFile
+        var project = new LaseroProjectFile
         {
-            Name = "Poškozený",
-            Objects = [new ProjectObject { Name = "Chybějící", RasterFilePath = Path.Combine(_directory, "missing.png") }]
+            Name = "S chybějícím obrázkem",
+            Objects =
+            [
+                new ProjectObject { Name = "Chybějící", RasterFilePath = missingPath },
+                new ProjectObject { Name = "Křivka" },
+            ]
         };
 
-        Assert.Throws<FileNotFoundException>(() => ProjectFileSerializer.Save(projectPath, invalid));
+        var warnings = ProjectFileSerializer.Save(projectPath, project);
 
-        Assert.Equal("Původní", ProjectFileSerializer.Load(projectPath).Name);
+        Assert.Contains("Chybějící", Assert.Single(warnings));
+        var loaded = ProjectFileSerializer.Load(projectPath, Path.Combine(_directory, "cache-missing"));
+        Assert.Equal("S chybějícím obrázkem", loaded.Name);
+        Assert.Equal(2, loaded.Objects.Count);
+        Assert.Equal(missingPath, loaded.Objects[0].RasterFilePath);
+        Assert.Contains(loaded.LoadWarnings, warning => warning.Contains("Chybějící", StringComparison.Ordinal));
         Assert.Single(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void Save_WithKeepBackup_KeepsThePreviousVersionBesideTheProject()
+    {
+        var projectPath = Path.Combine(_directory, "versioned.lasero");
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "První" });
+
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Druhý" }, keepBackup: true);
+
+        Assert.Equal("Druhý", ProjectFileSerializer.Load(projectPath).Name);
+        Assert.Equal("První", ProjectFileSerializer.Load(projectPath + ".bak").Name);
+    }
+
+    [Fact]
+    public void Save_WithKeepBackup_DoesNotReplaceAGoodBackupWithAnUnreadableFile()
+    {
+        var projectPath = Path.Combine(_directory, "damaged.lasero");
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Dobrá" });
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Střední" }, keepBackup: true);
+        File.WriteAllText(projectPath, "toto není projekt");
+
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Nová" }, keepBackup: true);
+
+        Assert.Equal("Dobrá", ProjectFileSerializer.Load(projectPath + ".bak").Name);
+    }
+
+    [Fact]
+    public void Save_RemovesOldTemporaryFilesLeftByACrashedSave()
+    {
+        var projectPath = Path.Combine(_directory, "crashy.lasero");
+        var stale = Path.Combine(_directory, ".crashy.lasero.0123456789abcdef.tmp");
+        var fresh = Path.Combine(_directory, ".crashy.lasero.fedcba9876543210.tmp");
+        File.WriteAllText(stale, "x");
+        File.WriteAllText(fresh, "x");
+        File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddHours(-2));
+
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile { Name = "Projekt" });
+
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(fresh)); // may belong to a save that is still running
+    }
+
+    [Fact]
+    public void Save_KeepsAssetExtensionAndRecognisesImagesWithoutOne()
+    {
+        var tiffPath = Path.Combine(_directory, "scan.tiff");
+        var noExtensionPath = Path.Combine(_directory, "picture");
+        var unknownPath = Path.Combine(_directory, "blob");
+        File.WriteAllBytes(tiffPath, [1, 2, 3]);
+        File.WriteAllBytes(noExtensionPath, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        File.WriteAllBytes(unknownPath, [9, 9, 9, 9]);
+        var projectPath = Path.Combine(_directory, "assets.lasero");
+
+        ProjectFileSerializer.Save(projectPath, new LaseroProjectFile
+        {
+            Objects =
+            [
+                new ProjectObject { Name = "A", RasterFilePath = tiffPath },
+                new ProjectObject { Name = "B", RasterFilePath = noExtensionPath },
+                new ProjectObject { Name = "C", RasterFilePath = unknownPath },
+            ]
+        });
+
+        using var archive = ZipFile.OpenRead(projectPath);
+        Assert.NotNull(archive.GetEntry("assets/raster-0000.tiff"));
+        Assert.NotNull(archive.GetEntry("assets/raster-0001.png"));
+        Assert.NotNull(archive.GetEntry("assets/raster-0002.bin"));
+    }
+
+    [Fact]
+    public void NonFiniteNumbersDoNotBlockSaveAndTheCorruptObjectIsDroppedOnLoad()
+    {
+        var good = new ProjectObject
+        {
+            Name = "Dobrý",
+            Shapes = [new ProjectShape { Points = [new Position(0, 0, 0), new Position(5, 5, 0)] }],
+        };
+        var poisoned = new ProjectObject
+        {
+            Name = "Poškozený",
+            Shapes = [new ProjectShape { Points = [new Position(0, 0, 0), new Position(double.NaN, 5, 0)] }],
+        };
+        var infiniteTransform = new ProjectObject
+        {
+            Name = "Nekonečný",
+            Transform = new ObjectTransform(double.PositiveInfinity, 0, 0, 1, 1),
+        };
+        var path = Path.Combine(_directory, "nan.lasero");
+
+        ProjectFileSerializer.Save(path, new LaseroProjectFile { Objects = [good, poisoned, infiniteTransform] });
+        var loaded = ProjectFileSerializer.Load(path);
+
+        Assert.Equal("Dobrý", Assert.Single(loaded.Objects).Name);
+        Assert.Equal(2, loaded.LoadWarnings.Count);
+        Assert.Contains(loaded.LoadWarnings, warning => warning.Contains("Poškozený", StringComparison.Ordinal));
+        Assert.Contains(loaded.LoadWarnings, warning => warning.Contains("Nekonečný", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NonFiniteVectorHandleDropsTheObject()
+    {
+        var path = VectorPath.SingleOpen(
+        [
+            VectorNode.CornerAt(new Position(1, 2, 0)),
+            new VectorNode(new Position(8, 9, 0), new Position(double.NaN, 8, 0), null, VectorNodeType.Corner),
+        ]);
+
+        var restored = ProjectFileSerializer.Deserialize(ProjectFileSerializer.Serialize(
+            new LaseroProjectFile { Objects = [new ProjectObject { Name = "Křivka", VectorPath = path }] }));
+
+        Assert.Empty(restored.Objects);
+        Assert.Single(restored.LoadWarnings);
+    }
+
+    [Fact]
+    public void NonFiniteLayerSettingsAreResetToModeDefaults()
+    {
+        var restored = ProjectFileSerializer.Deserialize(ProjectFileSerializer.Serialize(new LaseroProjectFile
+        {
+            Layers = [new ProjectLayer { Name = "Rez", Mode = LayerMode.Cut, Speed = double.NaN, Power = double.PositiveInfinity, FillLineIntervalMm = 0.1 }],
+        }));
+
+        var layer = Assert.Single(restored.Layers);
+        Assert.Equal(350, layer.Speed);
+        Assert.Equal(95, layer.Power);
+        Assert.Single(restored.LoadWarnings);
     }
 
     [Fact]

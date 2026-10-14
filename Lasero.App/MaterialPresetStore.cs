@@ -119,8 +119,24 @@ public sealed class MaterialPresetStore
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            // Keep the unreadable file aside before starting empty: the next Save() would otherwise
+            // overwrite the operator's saved recipes with an empty list.
             Log.Warning(ex, "Materials file is invalid; starting with an empty list");
+            PreserveCorruptFile();
             return [];
+        }
+    }
+
+    private void PreserveCorruptFile()
+    {
+        if (_path is null) return;
+        try
+        {
+            File.Move(_path, _path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"), overwrite: false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Invalid materials file could not be preserved");
         }
     }
 

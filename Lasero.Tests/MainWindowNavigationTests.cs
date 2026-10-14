@@ -57,14 +57,13 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("ConverterParameter=Text", rail, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=Line", rail, StringComparison.Ordinal);
 
-        // Pan is not a button anywhere any more. It is the middle mouse button, space+drag and the H
-        // shortcut — all of which work without leaving the tool you are in. A pan *mode* in the rail
-        // was a state to get stuck in for something already reachable three ways, so what the cluster
-        // carries instead is the thing that was actually missing: a way back to the work area.
+        // Pan is not in the rail: it is the middle mouse button, space+drag and the H shortcut. The
+        // floating view cluster carries the visible mouse-only route (a toggle back to Vybrat) and the
+        // way back to the work area.
         var cluster = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "CanvasViewControls.xaml"));
         var shortcuts = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml.cs"));
         Assert.DoesNotContain("ConverterParameter=Pan", rail, StringComparison.Ordinal);
-        Assert.DoesNotContain("ConverterParameter=Pan", cluster, StringComparison.Ordinal);
+        Assert.Contains("ConverterParameter=Pan", cluster, StringComparison.Ordinal);
         Assert.Contains("Key.H => DesignerTool.Pan", shortcuts, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnCenterClick\"", cluster, StringComparison.Ordinal);
         foreach (var tool in new[]

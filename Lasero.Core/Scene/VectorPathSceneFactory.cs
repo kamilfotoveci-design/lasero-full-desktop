@@ -39,6 +39,45 @@ public static class VectorPathSceneFactory
         };
     }
 
+    /// <summary>Turns a plain curve object into an editable path whose contours were converted 1:1 to
+    /// <paramref name="path"/> subpaths. LocalShapes are re-derived from the path (so they always agree
+    /// with the nodes) and take their layer/mode metadata from <paramref name="metadata"/>, one entry per
+    /// subpath. Identity, placement, flags and group membership carry over; the pivot follows the new
+    /// bounds without moving anything on the canvas.</summary>
+    public static SceneObject FromConversion(SceneObject source, VectorPath path, IReadOnlyList<ImportedShape> metadata)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(metadata);
+        var (shapes, bounds) = BuildShapes(path, RgbColor.Black, Guid.NewGuid());
+        if (shapes.Count != metadata.Count || path.Subpaths.Count != metadata.Count)
+            throw new InvalidOperationException("Obrysy a uzly cesty si neodpovídají.");
+
+        var mapped = shapes.Select((shape, index) => shape with
+        {
+            GeometrySetId = metadata[index].GeometrySetId,
+            LayerId = metadata[index].LayerId,
+            LayerColor = metadata[index].LayerColor,
+            PreferredMode = metadata[index].PreferredMode,
+        }).ToList();
+        var pivot = CenterOf(bounds);
+        return new SceneObject
+        {
+            Id = source.Id,
+            GroupId = source.GroupId,
+            NestedGroupIds = source.NestedGroupIds.ToArray(),
+            Name = source.Name,
+            LocalShapes = mapped,
+            LocalBounds = bounds,
+            LocalPivot = pivot,
+            VectorPath = path,
+            Transform = source.Transform.WithPivotMoved(source.LocalPivot, pivot),
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked,
+            IncludeInOutput = source.IncludeInOutput,
+        };
+    }
+
     /// <summary>Re-flattens an existing vector-path object after a node edit (move/add/delete/convert
     /// node, drag handle, close path). Identity, transform, layer assignment and flags all carry
     /// over — only the geometry changes, the same contract VectorTextFactory.Rebuild uses for text.
@@ -61,14 +100,30 @@ public static class VectorPathSceneFactory
         var distinctMetadata = existing.LocalShapes
             .Select(shape => (shape.GeometrySetId, shape.LayerId, shape.LayerColor, shape.PreferredMode))
             .Distinct().Count();
-        if (shapes.Count != existing.LocalShapes.Count && distinctMetadata > 1)
+        // Shapes only exist for subpaths with 2+ flattened points, so shape index != subpath index
+        // once a short contour is skipped. Map metadata through the retained-subpath index lists.
+        var oldRetained = RetainedSubpathIndices(existing.VectorPath, VectorPath.DefaultFlattenToleranceMm);
+        var newRetained = RetainedSubpathIndices(path, VectorPath.DefaultFlattenToleranceMm);
+        var canMapBySubpath = oldRetained.Count == existing.LocalShapes.Count
+            && newRetained.Count == shapes.Count
+            && existing.VectorPath.Subpaths.Count == path.Subpaths.Count;
+        if (shapes.Count != existing.LocalShapes.Count && distinctMetadata > 1 && !canMapBySubpath)
             throw new InvalidOperationException(
                 "Změna počtu obrysů u vícevrstvého objektu vyžaduje přiřazení vrstvy pro nové obrysy.");
         var localShapes = shapes.Select((shape, index) =>
         {
-            var source = index < existing.LocalShapes.Count && shapes.Count == existing.LocalShapes.Count
-                ? existing.LocalShapes[index]
-                : previous;
+            ImportedShape? source;
+            if (canMapBySubpath)
+            {
+                var oldPosition = oldRetained.IndexOf(newRetained[index]);
+                source = oldPosition >= 0 ? existing.LocalShapes[oldPosition] : previous;
+            }
+            else
+            {
+                source = index < existing.LocalShapes.Count && shapes.Count == existing.LocalShapes.Count
+                    ? existing.LocalShapes[index]
+                    : previous;
+            }
             return source is null ? shape : shape with
             {
                 GeometrySetId = source.GeometrySetId,
@@ -96,6 +151,29 @@ public static class VectorPathSceneFactory
             IsLocked = existing.IsLocked,
             IncludeInOutput = existing.IncludeInOutput,
         };
+    }
+
+    /// <summary>Indices of the subpaths that produce an ImportedShape (2+ flattened points), in order.
+    /// LocalShapes[i] belongs to Subpaths[result[i]].</summary>
+    public static List<int> RetainedSubpathIndices(VectorPath path, double toleranceMm)
+    {
+        var result = new List<int>();
+        for (var i = 0; i < path.Subpaths.Count; i++)
+            if (path.Subpaths[i].Flatten(toleranceMm).Count >= 2) result.Add(i);
+        return result;
+    }
+
+    /// <summary>Flattens the path at <paramref name="toleranceMm"/> and returns only the contours that
+    /// become shapes, in the same order as LocalShapes (see <see cref="RetainedSubpathIndices"/>).</summary>
+    public static List<IReadOnlyList<Position>> FlattenRetained(VectorPath path, double toleranceMm)
+    {
+        var result = new List<IReadOnlyList<Position>>();
+        foreach (var subpath in path.Subpaths)
+        {
+            var points = subpath.Flatten(toleranceMm);
+            if (points.Count >= 2) result.Add(points);
+        }
+        return result;
     }
 
     private static Position CenterOf(BoundingBox2D bounds) =>

@@ -340,9 +340,34 @@ public class SelectionPivotTests
         var loaded = Assert.Single(viewModel.Objects);
         AssertPivotIsBoundsCentre(loaded);
         var actualWorld = loaded.GetWorldShapes()[0].Points;
-        Assert.Equal(expectedWorld.Count, actualWorld.Count);
+        // The object is enlarged, so its toolpath is flattened more finely than the cached local
+        // shapes: same curve, more points. Every original point must lie on the new polyline.
+        Assert.True(actualWorld.Count >= expectedWorld.Count);
+        AssertNear(expectedWorld[0], actualWorld[0], "start moved on load");
+        AssertNear(expectedWorld[^1], actualWorld[^1], "end moved on load");
         for (var index = 0; index < expectedWorld.Count; index++)
-            AssertNear(expectedWorld[index], actualWorld[index], $"point {index} did not move on load");
+        {
+            var distance = DistanceToPolyline(expectedWorld[index], actualWorld);
+            Assert.True(distance < 0.06, $"point {index} is {distance:F3} mm off the loaded geometry");
+        }
+    }
+
+    private static double DistanceToPolyline(Position point, IReadOnlyList<Position> polyline)
+    {
+        var best = double.MaxValue;
+        for (var i = 0; i + 1 < polyline.Count; i++)
+        {
+            var a = polyline[i];
+            var b = polyline[i + 1];
+            double dx = b.X - a.X, dy = b.Y - a.Y;
+            var lengthSq = dx * dx + dy * dy;
+            var t = lengthSq < 1e-18 ? 0 : Math.Clamp(((point.X - a.X) * dx + (point.Y - a.Y) * dy) / lengthSq, 0, 1);
+            var px = a.X + t * dx - point.X;
+            var py = a.Y + t * dy - point.Y;
+            best = Math.Min(best, Math.Sqrt(px * px + py * py));
+        }
+
+        return best;
     }
 
     [Theory]
