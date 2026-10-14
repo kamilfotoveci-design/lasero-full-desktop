@@ -436,8 +436,34 @@ public partial class MainViewModel : ObservableObject
 
     private void OnSceneChanged()
     {
-        IsDirty = true;
+        switch (Scene.ChangeOrigin)
+        {
+            case SceneChangeOrigin.HistoryCompleted:
+                // Undo/redo back to the saved position is clean, but only if nothing outside the history was
+                // touched since: that can never be proven equal again.
+                IsDirty = _savePointInvalid || !Scene.IsAtSavePoint;
+                break;
+            case SceneChangeOrigin.HistoryInProgress:
+                IsDirty = true; // position not final; the completion notification settles it
+                break;
+            default:
+                _savePointInvalid = true;
+                IsDirty = true;
+                break;
+        }
         OnPropertyChanged(nameof(ScreenNextStep));
+    }
+
+    /// <summary>True once something changed that the undo history does not cover (or a recovered snapshot was
+    /// loaded): the save point can no longer make the document clean. Reset only by save/load/new.</summary>
+    private bool _savePointInvalid;
+
+    /// <summary>The document now equals what is on disk (or is new/empty): record the history position and clear dirty.</summary>
+    internal void MarkDocumentSaved()
+    {
+        Scene.MarkSaved();
+        _savePointInvalid = false;
+        IsDirty = false;
     }
 
     /// <summary>Clear the prior account's live document after sign-out has resolved unsaved work.
@@ -449,7 +475,7 @@ public partial class MainViewModel : ObservableObject
         ProjectName = "Nový projekt";
         ProjectPath = null;
         MaterialName = null;
-        IsDirty = false;
+        MarkDocumentSaved();
         CurrentScreen = AppScreen.Home;
     }
 
@@ -466,7 +492,7 @@ public partial class MainViewModel : ObservableObject
         MaterialName = null;
         _recoveryStore.Discard();
         GCode.ClearDocument();
-        IsDirty = false;
+        MarkDocumentSaved();
         GCode.LastMessage = "Nový projekt je připraven.";
         CurrentScreen = AppScreen.Designer;
     }
@@ -501,7 +527,7 @@ public partial class MainViewModel : ObservableObject
             var saveWarnings = ProjectFileSerializer.Save(path, project, keepBackup: true);
             ProjectPath = path;
             ProjectName = Path.GetFileNameWithoutExtension(path);
-            IsDirty = false;
+            MarkDocumentSaved();
             _recoveryStore.Discard();
             GCode.LastMessage = saveWarnings.Count == 0
                 ? "Projekt byl uložen."
@@ -570,7 +596,7 @@ public partial class MainViewModel : ObservableObject
             GCode.RestorePlacement(project.Placement);
             ProjectPath = path;
             ProjectName = string.IsNullOrWhiteSpace(project.Name) ? Path.GetFileNameWithoutExtension(path) : project.Name;
-            IsDirty = false;
+            MarkDocumentSaved();
             _recoveryStore.Discard();
             GCode.RegenerateFromSceneCommand.Execute(null);
             GCode.LastMessage = project.LoadWarnings.Count == 0
@@ -602,6 +628,7 @@ public partial class MainViewModel : ObservableObject
             ProjectName = string.IsNullOrWhiteSpace(project.Name) ? "Obnovený projekt" : project.Name;
             // Keep saving to the project the snapshot came from; null when it was never saved or is gone.
             ProjectPath = _recoveryStore.TryLoadOriginalPath();
+            _savePointInvalid = true; // a recovered snapshot differs from the file by definition
             IsDirty = true;
             GCode.RegenerateFromSceneCommand.Execute(null);
             GCode.LastMessage = "Projekt byl obnoven z automatické zálohy.";

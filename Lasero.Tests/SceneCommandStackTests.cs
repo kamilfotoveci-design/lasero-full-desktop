@@ -216,6 +216,45 @@ public class SceneCommandStackTests
     }
 
     [Fact]
+    public void DuplicateObjectsCommandPlacesEachCloneDirectlyAboveItsSourceAndRedoRestoresPositions()
+    {
+        var scene = new SceneDocument();
+        var a = MakeObject(RgbColor.Red, "A");
+        var b = MakeObject(RgbColor.Red, "B");
+        var c = MakeObject(RgbColor.Red, "C");
+        scene.Objects.Add(a);
+        scene.Objects.Add(b);
+        scene.Objects.Add(c);
+
+        var stack = new SceneCommandStack();
+        var command = new DuplicateObjectsCommand(scene, [a, c], new Position(1, 1, 0));
+        stack.Execute(command);
+
+        var (aClone, cClone) = (command.Clones[0], command.Clones[1]);
+        Assert.Equal([a, aClone, b, c, cClone], scene.Objects.ToList());
+
+        stack.Undo();
+        Assert.Equal([a, b, c], scene.Objects.ToList());
+
+        stack.Redo();
+        Assert.Equal([a, aClone, b, c, cClone], scene.Objects.ToList());
+    }
+
+    [Fact]
+    public void DuplicateObjectsCommandAppendsClonesWhoseSourceIsNotInTheScene()
+    {
+        var scene = new SceneDocument();
+        var existing = MakeObject(RgbColor.Red, "Existing");
+        scene.Objects.Add(existing);
+        var clipboardSource = MakeObject(RgbColor.Red, "Pasted");
+
+        var command = new DuplicateObjectsCommand(scene, [clipboardSource], new Position(1, 1, 0));
+        command.Do();
+
+        Assert.Equal([existing, command.Clones[0]], scene.Objects.ToList());
+    }
+
+    [Fact]
     public void CompositeSceneCommandDoesAllAndUndoesInReverseOrder()
     {
         var scene = new SceneDocument();
