@@ -1475,23 +1475,28 @@ public partial class SceneViewModel : ObservableObject
     private void ChangeSelectedLayerColor(RgbColor color)
     {
         var source = SelectedLayer;
-        if (IsSelectedLayerRaster) return;
 
         // Color is an object-facing action in an editor: when vectors are selected, applying a
-        // swatch must recolor them immediately. This also fixes the confusing case where a newly
-        // created empty layer stayed selected while the artwork visibly remained in another layer.
-        if (SelectedObjects.Count > 0 && SelectedObjects.All(item => !item.IsRaster))
+        // swatch must recolor them immediately (Ctrl+A, then a swatch, puts everything on that one
+        // colour's layer). Bitmaps in the selection keep their own fixed layer. This also fixes the
+        // confusing case where a newly created empty layer stayed selected while the artwork visibly
+        // remained in another layer.
+        var vectors = SelectedObjects.Where(item => !item.IsRaster).ToList();
+        if (vectors.Count > 0)
         {
             // A swatch close to an existing layer's colour puts the selection on that layer.
             var destination = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
-            if (destination is not null && SelectedObjects.SelectMany(item => item.LocalShapes).All(shape =>
+            if (destination is not null && vectors.SelectMany(item => item.LocalShapes).All(shape =>
                     shape.LayerId == destination.Id && shape.LayerColor.Equals(destination.Color)))
                 return;
 
-            Execute(new SceneLayerMutationCommand(Scene, () => ApplyColorToSelection(color, source),
+            var template = source is { IsRaster: true } ? null : source;
+            Execute(new SceneLayerMutationCommand(Scene, () => ApplyColorToSelection(color, template, vectors),
                 () => SelectedLayer, layer => SelectedLayer = layer));
             return;
         }
+
+        if (IsSelectedLayerRaster) return;
 
         if (source is null || source.Color.IsApproximately(color)) return;
 
@@ -1513,10 +1518,10 @@ public partial class SceneViewModel : ObservableObject
         }, () => SelectedLayer, layer => SelectedLayer = layer));
     }
 
-    private void ApplyColorToSelection(RgbColor color, LayerSettings? template)
+    private void ApplyColorToSelection(RgbColor color, LayerSettings? template, IReadOnlyList<SceneObject> targets)
     {
         var previousLayers = new List<(Guid Id, RgbColor Color)>();
-        foreach (var shape in SelectedObjects.SelectMany(item => item.LocalShapes))
+        foreach (var shape in targets.SelectMany(item => item.LocalShapes))
         {
             if (previousLayers.All(existing => existing.Id != shape.LayerId || shape.LayerId == Guid.Empty && !existing.Color.IsApproximately(shape.LayerColor)))
                 previousLayers.Add((shape.LayerId, shape.LayerColor));
@@ -1551,18 +1556,18 @@ public partial class SceneViewModel : ObservableObject
             }
         }
 
-        foreach (var item in SelectedObjects)
+        foreach (var item in targets)
             item.AssignToLayer(destination);
 
-        // Remove only source layers made empty by this reassignment. Other user-created empty
-        // layers remain untouched, and the fixed raster layer can never be removed here.
+        // Remove the source layers this reassignment left empty. Layers that were already empty
+        // stay, and the fixed raster layer can never be removed here.
         foreach (var previous in previousLayers)
         {
             var previousLayer = Layers.FirstOrDefault(layer =>
                 layer != destination && (previous.Id != Guid.Empty
                     ? layer.Id == previous.Id
                     : layer.Color.IsApproximately(previous.Color)));
-            if (previousLayer is { RemoveWhenEmpty: true } &&
+            if (previousLayer is not null &&
                 !previousLayer.Color.IsApproximately(SceneObjectFactory.RasterEngravingColor) &&
                 CountObjectsUsingLayer(previousLayer) == 0)
                 Layers.Remove(previousLayer);

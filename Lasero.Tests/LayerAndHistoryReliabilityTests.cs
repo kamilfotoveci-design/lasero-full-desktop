@@ -229,6 +229,29 @@ public sealed class LayerAndHistoryReliabilityTests : IDisposable
     }
 
     [Fact]
+    public void SelectAllThenASwatchLeavesExactlyOneLayerOfThatColourAndUndoRestoresAll()
+    {
+        var viewModel = new SceneViewModel();
+        var colors = new[] { new RgbColor(200, 30, 30), new RgbColor(30, 200, 30), new RgbColor(30, 30, 200) };
+        var objects = colors.Select((color, index) => MakeObject($"Objekt {index}", color)).ToList();
+        foreach (var item in objects) viewModel.Scene.Objects.Add(item);
+        viewModel.Scene.EnsureLayers(
+            colors.Select((color, index) => LayerSettings.CreateDefault(color, LayerMode.Cut, $"Vrstva {index}")).ToList(), objects);
+        foreach (var item in objects) viewModel.SelectedObjects.Add(item);
+        var target = new RgbColor(240, 180, 0);
+
+        viewModel.ChangeSelectedLayerColorCommand.Execute(target);
+
+        var layer = Assert.Single(viewModel.Layers);
+        Assert.True(layer.Color.IsApproximately(target));
+        Assert.All(viewModel.Objects.SelectMany(item => item.LocalShapes), shape => Assert.Equal(layer.Id, shape.LayerId));
+
+        viewModel.UndoCommand.Execute(null);
+
+        Assert.Equal(3, viewModel.Layers.Count);
+    }
+
+    [Fact]
     public void DeletingBothSourceAndOutputDoesNotTouchTheLinkOfADeletedObject()
     {
         var scene = new SceneDocument();
