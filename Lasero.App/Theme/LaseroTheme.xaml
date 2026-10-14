@@ -1237,6 +1237,8 @@
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="CaretBrush" Value="{StaticResource Brush.Tint}" />
         <Setter Property="SelectionBrush" Value="{StaticResource Brush.TextSelection}" />
+        <!-- WPF multiplies the brush by SelectionOpacity (default 0.4), which turns the 30% tint into a 12% wash. -->
+        <Setter Property="SelectionOpacity" Value="1" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>

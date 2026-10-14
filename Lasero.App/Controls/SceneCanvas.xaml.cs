@@ -1854,6 +1854,9 @@ public partial class SceneCanvas : UserControl
             MinHeight = 0,
             Background = Brushes.Transparent,
             SelectionBrush = (Brush)FindResource("Brush.TextSelection"),
+            // Keep the selection painted if the window loses activation while the editor is open.
+            IsInactiveSelectionHighlightEnabled = true,
+            SelectionOpacity = 1,
             // The letters are drawn as an outline by _inlineEditorOutline; the box keeps measuring,
             // laying out, placing the caret and painting the selection.
             Foreground = Brushes.Transparent,
@@ -1989,7 +1992,10 @@ public partial class SceneCanvas : UserControl
             Brushes.Black,
             1);
 
-        var geometry = PathGeometry.CreateFromGeometry(formatted.BuildGeometry(new Point(0, 0)));
+        // The box sits InlineTextEditorLayout.TextBoxHorizontalInset before the text (caret room); the outline, positioned at
+        // the box, has to start the same distance in or it lands that much left of the letters it replaces.
+        var geometry = PathGeometry.CreateFromGeometry(
+            formatted.BuildGeometry(new Point(InlineTextEditorLayout.TextBoxHorizontalInset, 0)));
         geometry.Transform = new MatrixTransform(_inlineEditorMatrix);
         Canvas.SetLeft(_inlineEditorOutline, _inlineEditorOrigin.X);
         Canvas.SetTop(_inlineEditorOutline, _inlineEditorOrigin.Y);
