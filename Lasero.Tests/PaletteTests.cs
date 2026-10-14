@@ -63,6 +63,7 @@ public sealed class PaletteTests
     {
         "SharedUiStyles.xaml",       // links, quiet text buttons, nav indicator, selected swatch, focus rings
         "DesignerToolRail.xaml",     // the selected tool pill
+        "CanvasViewControls.xaml",    // snap toggles: on = tint text
         "MainWindow.xaml",           // nav indicator, splitter hover, link-style Připojit, unsaved dot
         "MaterialsWindow.xaml",      // selected tab indicator, selected material card
         "DeviceWizardOverlay.xaml",  // selected device card, running scan ring

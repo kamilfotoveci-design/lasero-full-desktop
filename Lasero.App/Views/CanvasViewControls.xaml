@@ -31,6 +31,48 @@
             <Setter Property="Margin" Value="0,0" />
         </Style>
 
+        <!-- Text switch in the cluster (Mřížka, Objekty). On = red text on a quiet raised chip, not a
+             solid red block: two filled red pills side by side read as one slab. -->
+        <Style x:Key="ClusterTextToggle" TargetType="ToggleButton">
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="FontSize" Value="{StaticResource Size.Text.Meta}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Chip" Background="Transparent" CornerRadius="{StaticResource Radius.Sm}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource Brush.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Tint}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource Brush.PanelRaised}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ClusterDivider" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Height" Value="16" />
@@ -84,15 +126,15 @@
 
             <!-- The same two switches as Nastavení, within reach while dragging: the operator who
                  wonders why an object will not land where the pointer is finds the answer here. -->
-            <ToggleButton x:Name="SnapGridToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapGridClick"
+            <ToggleButton x:Name="SnapGridToggle" Style="{StaticResource ClusterTextToggle}" Click="OnSnapGridClick"
                           ToolTip="Přichytávat k mřížce. Přichytávání lze při tažení dočasně vypnout klávesou Ctrl"
                           AutomationProperties.Name="Přichytávat k mřížce">
-                <TextBlock Text="Mřížka" Margin="12,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Text="Mřížka" />
             </ToggleButton>
-            <ToggleButton x:Name="SnapObjectsToggle" Style="{StaticResource ClusterToggle}" Width="Auto" Click="OnSnapObjectsClick"
+            <ToggleButton x:Name="SnapObjectsToggle" Style="{StaticResource ClusterTextToggle}" Click="OnSnapObjectsClick"
                           ToolTip="Přichytávat k okrajům a středům ostatních objektů. Při tažení lze dočasně vypnout klávesou Ctrl"
                           AutomationProperties.Name="Přichytávat k objektům">
-                <TextBlock Text="Objekty" Margin="12,0" FontSize="{StaticResource Size.Text.Meta}" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Text="Objekty" />
             </ToggleButton>
 
             <Border Style="{StaticResource ClusterDivider}" />

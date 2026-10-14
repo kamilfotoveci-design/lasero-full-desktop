@@ -1482,14 +1482,8 @@ public partial class SceneViewModel : ObservableObject
         // created empty layer stayed selected while the artwork visibly remained in another layer.
         if (SelectedObjects.Count > 0 && SelectedObjects.All(item => !item.IsRaster))
         {
+            // A swatch close to an existing layer's colour puts the selection on that layer.
             var destination = Layers.FirstOrDefault(layer => layer.Color.IsApproximately(color));
-            if (destination is not null && !destination.Color.Equals(color))
-            {
-                // A merely similar colour (within the shared layer-match tolerance) would silently move
-                // the selection onto another layer's settings. Ask for the exact colour instead.
-                VectorOperationRejected?.Invoke($"Tato barva je příliš blízká vrstvě „{destination.Name}“. Pro přesun do ní použij přesně její barvu nebo „Přiřadit do vrstvy“.");
-                return;
-            }
             if (destination is not null && SelectedObjects.SelectMany(item => item.LocalShapes).All(shape =>
                     shape.LayerId == destination.Id && shape.LayerColor.Equals(destination.Color)))
                 return;

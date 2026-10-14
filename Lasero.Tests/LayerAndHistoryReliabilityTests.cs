@@ -205,6 +205,30 @@ public sealed class LayerAndHistoryReliabilityTests : IDisposable
     }
 
     [Fact]
+    public void ASwatchNearAnExistingLayerMovesEverySelectedObjectOntoThatLayer()
+    {
+        var viewModel = new SceneViewModel();
+        var nearBlack = new RgbColor(10, 10, 10);
+        var first = MakeObject("První", nearBlack);
+        var second = MakeObject("Druhý", new RgbColor(200, 30, 30));
+        viewModel.Scene.Objects.Add(first);
+        viewModel.Scene.Objects.Add(second);
+        viewModel.Scene.EnsureLayers(
+            [LayerSettings.CreateDefault(nearBlack, LayerMode.Cut, "Gravír"),
+             LayerSettings.CreateDefault(new RgbColor(200, 30, 30), LayerMode.Cut, "Řez")], [first, second]);
+        var rejected = false;
+        viewModel.VectorOperationRejected += _ => rejected = true;
+        viewModel.SelectedObjects.Add(first);
+        viewModel.SelectedObjects.Add(second);
+
+        viewModel.ChangeSelectedLayerColorCommand.Execute(RgbColor.Black);
+
+        Assert.False(rejected);
+        var layerIds = viewModel.Objects.SelectMany(item => item.LocalShapes).Select(shape => shape.LayerId).Distinct().ToList();
+        Assert.Single(layerIds);
+    }
+
+    [Fact]
     public void DeletingBothSourceAndOutputDoesNotTouchTheLinkOfADeletedObject()
     {
         var scene = new SceneDocument();
