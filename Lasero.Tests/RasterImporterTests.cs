@@ -191,7 +191,17 @@ public sealed class RasterImporterTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_directory))
-            Directory.Delete(_directory, recursive: true);
+        // The import view model's background preview may still be reading the file for a moment.
+        for (var attempt = 0; attempt < 20 && Directory.Exists(_directory); attempt++)
+        {
+            try
+            {
+                Directory.Delete(_directory, recursive: true);
+            }
+            catch (IOException)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 }

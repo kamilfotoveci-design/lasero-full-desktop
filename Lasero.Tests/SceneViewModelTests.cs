@@ -1657,9 +1657,8 @@ public class SceneViewModelTests
 
         viewModel.DeleteCommand.Execute(null);
 
-        // The fixed raster layer is not created on demand (RemoveWhenEmpty is false), so it outlives its bitmap.
         Assert.Empty(viewModel.Objects);
-        Assert.Same(layer, Assert.Single(viewModel.Layers));
+        Assert.Empty(viewModel.Layers);
 
         viewModel.UndoCommand.Execute(null);
 

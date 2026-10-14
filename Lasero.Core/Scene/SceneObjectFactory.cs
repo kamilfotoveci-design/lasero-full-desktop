@@ -53,6 +53,7 @@ public static class SceneObjectFactory
         FillLineIntervalMm = options.LineIntervalMm,
         IsEnabled = true,
         IsRaster = true,
+        RemoveWhenEmpty = true,
     };
 
     /// <summary>Wraps a raster (PNG/JPG/BMP) import into a SceneObject. Its LocalShapes is just a
