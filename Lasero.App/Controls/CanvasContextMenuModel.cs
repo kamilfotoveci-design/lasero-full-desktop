@@ -246,7 +246,7 @@ public static class CanvasContextMenuBuilder
         if (s.CanPaste)
             edit.Add(ContextMenuItemModel.Command(ContextAction.Paste, "Vložit", "Ctrl+V", "Glyph.Paste"));
         edit.Add(ContextMenuItemModel.Command(ContextAction.Duplicate, "Duplikovat", "Ctrl+D", "Glyph.Duplicate"));
-        edit.Add(ContextMenuItemModel.Command(ContextAction.Delete, "Odstranit", "Del", "Glyph.Delete"));
+        edit.Add(ContextMenuItemModel.Command(ContextAction.Delete, "Odstranit", "Delete", "Glyph.Delete"));
         groups.Add(edit);
 
         var structure = new List<ContextMenuItemModel>();
@@ -306,7 +306,7 @@ public static class CanvasContextMenuBuilder
 
         var delete = new List<ContextMenuItemModel>
         {
-            ContextMenuItemModel.Command(ContextAction.Delete, "Odstranit", "Del", "Glyph.Delete"),
+            ContextMenuItemModel.Command(ContextAction.Delete, "Odstranit", "Delete", "Glyph.Delete"),
         };
 
         var structure = new List<ContextMenuItemModel>
@@ -473,8 +473,8 @@ public static class CanvasContextMenuBuilder
 
         groups.Add(
         [
-            ContextMenuItemModel.Command(ContextAction.NodeDelete, many ? "Odstranit uzly" : "Odstranit uzel", "Del", "Glyph.Delete"),
-            ContextMenuItemModel.Command(ContextAction.NodeDeleteNoRefit, "Odstranit bez dopasování křivky", "Ctrl+Del"),
+            ContextMenuItemModel.Command(ContextAction.NodeDelete, many ? "Odstranit uzly" : "Odstranit uzel", "Delete", "Glyph.Delete"),
+            ContextMenuItemModel.Command(ContextAction.NodeDeleteNoRefit, "Odstranit bez dopasování křivky", "Ctrl+Delete"),
         ]);
         return Assemble(groups);
     }
@@ -492,7 +492,7 @@ public static class CanvasContextMenuBuilder
                 ContextMenuItemModel.Command(ContextAction.SegmentInsertHere, "Vložit uzel zde"),
                 ContextMenuItemModel.Command(ContextAction.SegmentInsertMidpoint, "Vložit uzel doprostřed", "Shift+M"),
             ],
-            // No "Del" hint: with no node selected Delete acts on the segment under the pointer, which
+            // No "Delete" hint: with no node selected Delete acts on the segment under the pointer, which
             // is not necessarily this one once the menu is open.
             [
                 ContextMenuItemModel.Command(ContextAction.SegmentTrim, "Oříznout k průsečíkům", "Shift+T",

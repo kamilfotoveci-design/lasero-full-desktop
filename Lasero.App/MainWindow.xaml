@@ -168,6 +168,24 @@
         <KeyBinding Modifiers="Alt" Key="T" Command="{Binding Scene.TraceSelectedRasterCommand}" />
         <KeyBinding Modifiers="Control+Shift" Key="U" Command="{Binding Scene.UniteSelectionCommand}" />
         <KeyBinding Modifiers="Control+Shift" Key="O" Command="{Binding Scene.OffsetSelectionCommand}" />
+        <KeyBinding Modifiers="Alt" Key="B" Command="{Binding Scene.BreakApartSelectionCommand}" />
+        <KeyBinding Modifiers="Control" Key="W" Command="{Binding Scene.WeldSelectionCommand}" />
+        <KeyBinding Modifiers="Control" Key="K" Command="{Binding Scene.CombinePathsCommand}" />
+        <KeyBinding Modifiers="Control+Alt" Key="V" Command="{Binding Scene.PasteInPlaceCommand}" />
+        <KeyBinding Modifiers="Control" Key="I" Command="{Binding GCode.LoadFileCommand}" />
+        <KeyBinding Modifiers="Alt" Key="OemMinus" Command="{Binding Scene.SubtractSelectionCommand}" />
+        <KeyBinding Modifiers="Alt" Key="Multiply" Command="{Binding Scene.IntersectSelectionCommand}" />
+        <KeyBinding Modifiers="Control+Shift" Key="X" Command="{Binding Scene.ExcludeSelectionCommand}" />
+        <KeyBinding Modifiers="Control+Shift" Key="H" Command="{Binding Scene.FlipHorizontalCommand}" />
+        <KeyBinding Modifiers="Control+Shift" Key="V" Command="{Binding Scene.FlipVerticalCommand}" />
+        <KeyBinding Key="OemComma" Command="{Binding Scene.RotateLeftCommand}" />
+        <KeyBinding Key="OemPeriod" Command="{Binding Scene.RotateRightCommand}" />
+        <KeyBinding Key="PageUp" Command="{Binding Scene.BringForwardCommand}" />
+        <KeyBinding Key="PageDown" Command="{Binding Scene.SendBackwardCommand}" />
+        <KeyBinding Modifiers="Control" Key="PageUp" Command="{Binding Scene.BringToFrontCommand}" />
+        <KeyBinding Modifiers="Control" Key="PageDown" Command="{Binding Scene.SendToBackCommand}" />
+        <KeyBinding Key="Home" Command="{Binding Scene.BringToFrontCommand}" />
+        <KeyBinding Key="End" Command="{Binding Scene.SendToBackCommand}" />
     </Window.InputBindings>
     <!-- "F" for fit-to-view is deliberately NOT a KeyBinding here — an unmodified single-letter
          binding fires even while a TextBox has focus. See OnPreviewKeyDown in the code-behind. -->

@@ -127,7 +127,7 @@ public class CanvasContextMenuTests
         Assert.True(order.IndexOf(ContextAction.Paste) < order.IndexOf(ContextAction.Duplicate));
         Assert.True(order.IndexOf(ContextAction.Duplicate) < order.IndexOf(ContextAction.Delete));
         Assert.Equal("Ctrl+D", Find(rows, ContextAction.Duplicate)!.Gesture);
-        Assert.Equal("Del", Find(rows, ContextAction.Delete)!.Gesture);
+        Assert.Equal("Delete", Find(rows, ContextAction.Delete)!.Gesture);
     }
 
     [Fact]
@@ -346,7 +346,7 @@ public class CanvasContextMenuTests
         Assert.False(Find(rows, ContextAction.NodeCorner)!.IsChecked);
         Assert.True(Has(rows, ContextAction.NodeBreak));
         Assert.False(Has(rows, ContextAction.NodeClosePath));
-        Assert.Equal("Del", Find(rows, ContextAction.NodeDelete)!.Gesture);
+        Assert.Equal("Delete", Find(rows, ContextAction.NodeDelete)!.Gesture);
         Assert.Equal("Odstranit uzel", Find(rows, ContextAction.NodeDelete)!.Header);
     }
 

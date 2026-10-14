@@ -500,8 +500,8 @@
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.FillBetween}" />
                 </Button>
                 <Button Style="{StaticResource RailButton}" Command="{Binding Scene.FractureSelectionCommand}"
-                        ToolTip="Fracture — rozdělí překryvy dvou nebo více uzavřených vektorů či skupin na oblasti"
-                        AutomationProperties.Name="Fracture">
+                        ToolTip="Rozdělit překryvy dvou nebo více uzavřených vektorů či skupin na samostatné oblasti"
+                        AutomationProperties.Name="Rozdělit překryv">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Fracture}" />
                 </Button>
 
@@ -532,17 +532,17 @@
                         <MenuItem.Header>
                             <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Union}" />
                         </MenuItem.Header>
-                        <MenuItem Header="Sjednotit tvary" Command="{Binding Scene.UniteSelectionCommand}"
+                        <MenuItem Header="Sjednotit tvary" Command="{Binding Scene.UniteSelectionCommand}" ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Boolean Union: spojit dva nebo více uzavřených tvarů do jednoho" />
-                        <MenuItem Header="Svařit tvary" Command="{Binding Scene.WeldSelectionCommand}"
+                        <MenuItem Header="Svařit tvary" Command="{Binding Scene.WeldSelectionCommand}" ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
-                        <MenuItem Header="Odečíst tvary" Command="{Binding Scene.SubtractSelectionCommand}"
-                                  ToolTip="Přesně dva tvary: přední se odečte od zadního; pořadí určuje vrstvení na ploše" />
-                        <MenuItem Header="Průnik tvarů" Command="{Binding Scene.IntersectSelectionCommand}"
+                        <MenuItem Header="Odečíst tvary" Command="{Binding Scene.SubtractSelectionCommand}" ToolTipService.ShowOnDisabled="True"
+                                  ToolTip="Přesně dva tvary. Přední tvar se odečte od zadního podle pořadí vrstev." />
+                        <MenuItem Header="Průnik tvarů" Command="{Binding Scene.IntersectSelectionCommand}" ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Zachovat jen společnou plochu vybraných tvarů" />
-                        <MenuItem Header="Vyloučit tvary" Command="{Binding Scene.ExcludeSelectionCommand}"
+                        <MenuItem Header="Vyloučit tvary" Command="{Binding Scene.ExcludeSelectionCommand}" ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Zachovat plochu pokrytou právě jedním tvarem" />
-                        <MenuItem Header="Rozdělit překryv" Command="{Binding Scene.DivideSelectionCommand}"
+                        <MenuItem Header="Rozdělit překryv" Command="{Binding Scene.DivideSelectionCommand}" ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Rozdělit dva tvary na nepřekrývající a společné části" />
                         <Separator />
                         <MenuItem Header="Zvětšit (offset ven)" Command="{Binding Scene.ExpandSelectionCommand}"

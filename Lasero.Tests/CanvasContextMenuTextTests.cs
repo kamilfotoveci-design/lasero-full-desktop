@@ -71,7 +71,7 @@ public class CanvasContextMenuTextTests
         [
             "Vyjmout|Ctrl+X", "Kopírovat|Ctrl+C", "Vložit|Ctrl+V", "Duplikovat|Ctrl+D",
             "-",
-            "Odstranit|Del",
+            "Odstranit|Delete",
             "-",
             "Vybrat vše|Ctrl+A", "Seskupit|Ctrl+G (off)", "Zrušit skupinu|Ctrl+Shift+G (off)", "Oddělit obrysy| (off)", "Zamknout vybrané tvary|",
             "-",
@@ -250,7 +250,7 @@ public class CanvasContextMenuTextTests
         Assert.Equal(
             new HashSet<string?>
             {
-                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Del", "Ctrl+A", "Ctrl+G", "Ctrl+Shift+G",
+                "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+D", "Delete", "Ctrl+A", "Ctrl+G", "Ctrl+Shift+G",
                 "Ctrl+Shift+C", "Ctrl+Shift+B", "Alt+P", "Ctrl+Shift+O",
             },
             shown);

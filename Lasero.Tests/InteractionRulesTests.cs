@@ -227,6 +227,22 @@ public sealed class InteractionRulesTests
     [InlineData(Key.G, ModifierKeys.Control)]
     [InlineData(Key.T, ModifierKeys.Alt)]
     [InlineData(Key.U, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.B, ModifierKeys.Alt)]
+    [InlineData(Key.W, ModifierKeys.Control)]
+    [InlineData(Key.K, ModifierKeys.Control)]
+    [InlineData(Key.I, ModifierKeys.Control)]
+    [InlineData(Key.V, ModifierKeys.Control | ModifierKeys.Alt)]
+    [InlineData(Key.X, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.H, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.V, ModifierKeys.Control | ModifierKeys.Shift)]
+    [InlineData(Key.OemMinus, ModifierKeys.Alt)]
+    [InlineData(Key.Multiply, ModifierKeys.Alt)]
+    [InlineData(Key.PageUp, ModifierKeys.None)]
+    [InlineData(Key.PageDown, ModifierKeys.Control)]
+    [InlineData(Key.Home, ModifierKeys.None)]
+    [InlineData(Key.End, ModifierKeys.None)]
+    [InlineData(Key.OemComma, ModifierKeys.None)]
+    [InlineData(Key.OemPeriod, ModifierKeys.None)]
     public void DesignShortcutsDoNotReachTheHiddenDesignOffTheDesignerScreen(Key key, ModifierKeys modifiers)
     {
         Assert.True(InteractionRules.IsSceneShortcut(key, modifiers));
@@ -240,6 +256,12 @@ public sealed class InteractionRulesTests
     [InlineData(Key.V, ModifierKeys.Control)]
     [InlineData(Key.Z, ModifierKeys.Control)]
     [InlineData(Key.A, ModifierKeys.Control)]
+    [InlineData(Key.OemComma, ModifierKeys.None)]
+    [InlineData(Key.OemPeriod, ModifierKeys.None)]
+    [InlineData(Key.PageUp, ModifierKeys.None)]
+    [InlineData(Key.PageDown, ModifierKeys.None)]
+    [InlineData(Key.Home, ModifierKeys.None)]
+    [InlineData(Key.End, ModifierKeys.None)]
     public void TextFieldsKeepTheirOwnEditingKeysOnEveryScreen(Key key, ModifierKeys modifiers) =>
         Assert.False(InteractionRules.SuppressSceneShortcut(false, key, modifiers, focusInTextInput: true));
 
@@ -420,6 +442,31 @@ public sealed class InteractionRulesTests
         Assert.Contains("InteractionRules.SuppressSceneShortcut(", window, StringComparison.Ordinal);
         Assert.Contains("DesignerCanvas.IsPointerGestureActive", window, StringComparison.Ordinal);
         Assert.Contains("_viewModel.Kamil.StepBack()", window, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ObjectParityShortcutsAreDocumentedAndDisabledBooleanReasonsStayReachable()
+    {
+        var root = Root();
+        var shortcuts = File.ReadAllText(Path.Combine(root, "Lasero.App", "KeyboardShortcutsWindow.xaml"));
+        foreach (var label in new[] { "Ctrl + I", "Ctrl + K", "Ctrl + W", "Alt + B", "Ctrl + Alt + V", "PgUp / PgDn", "Home / End", "Ctrl + Shift + H / V", "Ctrl + Shift + U / O", "Ctrl + Shift + C / B", "Alt + I" })
+            Assert.Contains(label, shortcuts, StringComparison.Ordinal);
+
+        var selectionBar = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "SelectionPropertiesBar.xaml"));
+        var rail = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerToolRail.xaml"));
+        var inspector = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
+        var inspectorCode = File.ReadAllText(Path.Combine(root, "Lasero.App", "Views", "DesignerInspectorView.xaml.cs"));
+        var contextMenu = File.ReadAllText(Path.Combine(root, "Lasero.App", "Controls", "CanvasContextMenuModel.cs"));
+        Assert.Contains("ToolTipService.ShowOnDisabled=\"True\"", selectionBar, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.ShowOnDisabled=\"True\"", rail, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight=\"420\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("IndexToLayerNumber", inspector, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LayerDropIndicator\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("LayerDropIndicator.Visibility = Visibility.Visible", inspectorCode, StringComparison.Ordinal);
+        Assert.Contains("MoveLayerTo(layer, newIndex)", inspectorCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"Del\"", contextMenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("odečteš", selectionBar, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Fracture —", rail, StringComparison.Ordinal);
     }
 
     [Fact]

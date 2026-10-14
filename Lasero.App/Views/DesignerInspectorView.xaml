@@ -213,12 +213,13 @@
                                Style="{StaticResource Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,8"
                                Visibility="{Binding Scene.CanReorderLayers, Converter={StaticResource BoolToVisibility}}" />
 
+                    <Grid MaxHeight="420">
                     <ListBox x:Name="LayersList" VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False"
                              AllowDrop="True" PreviewMouseLeftButtonDown="OnLayerDragStart" PreviewMouseMove="OnLayerDragMove"
-                             DragOver="OnLayerDragOver" Drop="OnLayerDrop"
+                             DragOver="OnLayerDragOver" DragLeave="OnLayerDragLeave" Drop="OnLayerDrop"
                              ItemsSource="{Binding GCode.Layers}"
                              SelectedItem="{Binding Scene.SelectedLayer, Mode=TwoWay}"
-                             MaxHeight="264"
+                             MaxHeight="420"
                              BorderThickness="0"
                              Background="Transparent"
                              AlternationCount="999"
@@ -355,20 +356,23 @@
                                     </Grid.ContextMenu>
 
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}"
+                                               Text="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource IndexToLayerNumber}}" />
 
-                                    <Border Grid.Column="1" Width="16" Height="16" CornerRadius="{StaticResource Radius.Xs}"
+                                    <Border Grid.Column="2" Width="16" Height="16" CornerRadius="{StaticResource Radius.Xs}"
                                             VerticalAlignment="Center" Margin="0,0,12,0"
                                             Background="{Binding Color, Converter={StaticResource RgbColorToBrush}}"
                                             BorderBrush="{DynamicResource Brush.PanelBorderStrong}" BorderThickness="1"
                                             ToolTip="Barva vrstvy. Objekty stejné barvy se zpracují stejným nastavením" />
 
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                         <!-- Keep every production value visible. Individual tokens wrap as units,
                                              so a narrow inspector never cuts power or pass count mid-summary. -->
@@ -382,7 +386,7 @@
                                         </WrapPanel>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                                         <ToggleButton Style="{StaticResource Toggle.LayerState}" IsChecked="{Binding IsEnabled}"
                                                       automation:AutomationProperties.Name="Zpracovat vrstvu">
                                             <ToggleButton.ToolTip>
@@ -450,6 +454,10 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <Canvas IsHitTestVisible="False" Panel.ZIndex="10">
+                        <Border x:Name="LayerDropIndicator" Height="2" Background="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
+                    </Canvas>
+                    </Grid>
 
                     <!-- No operations yet: only explain when one appears. No action here; the import
                          call-to-action lives once, in the empty-canvas card, plus the persistent

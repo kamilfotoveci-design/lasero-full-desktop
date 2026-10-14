@@ -366,21 +366,27 @@
                              see SceneViewModel.UniteSelectionDisabledReason / HANDOFF.md 2026-09-14. -->
                         <MenuItem Header="Sjednotit tvary" InputGestureText="Ctrl+Shift+U"
                                   Command="{Binding Scene.UniteSelectionCommand}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   ToolTip="{Binding Scene.UniteOperandsDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Spojit dva nebo více uzavřených tvarů do jednoho'}" />
                         <MenuItem Header="Odečíst tvary"
                                   Command="{Binding Scene.SubtractSelectionCommand}"
-                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: přední odečteš od zadního'}" />
+                                  ToolTipService.ShowOnDisabled="True"
+                                  ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary. Přední tvar se odečte od zadního podle pořadí vrstev.'}" />
                         <MenuItem Header="Průnik tvarů"
                                   Command="{Binding Scene.IntersectSelectionCommand}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: zůstane jen společná plocha'}" />
                         <MenuItem Header="Vyloučit tvary"
                                   Command="{Binding Scene.ExcludeSelectionCommand}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   ToolTip="{Binding Scene.BooleanPairSelectionDisabledReason, Converter={StaticResource DisabledReasonOrFallback}, ConverterParameter='Přesně dva tvary: ponechat nepřekryté části'}" />
                         <MenuItem Header="Rozdělit překryv"
                                   Command="{Binding Scene.DivideSelectionCommand}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Rozdělit dva tvary na nepřekrývající a společné části" />
                         <MenuItem Header="Svařit tvary"
                                   Command="{Binding Scene.WeldSelectionCommand}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
                         <MenuItem Header="Offset křivky…" InputGestureText="Ctrl+Shift+O"
                                   Command="{Binding Scene.OffsetSelectionCommand}"

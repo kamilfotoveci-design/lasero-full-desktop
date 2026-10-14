@@ -117,11 +117,14 @@ public static class InteractionRules
     public static bool IsSceneShortcut(Key key, ModifierKeys modifiers) => (key, modifiers) switch
     {
         (Key.Delete, ModifierKeys.None) => true,
-        (Key.D or Key.Z or Key.Y or Key.C or Key.X or Key.V or Key.A or Key.G, ModifierKeys.Control) => true,
+        (Key.D or Key.Z or Key.Y or Key.C or Key.X or Key.V or Key.A or Key.G or Key.W or Key.K or Key.I or Key.PageUp or Key.PageDown, ModifierKeys.Control) => true,
         (Key.Z or Key.G, ModifierKeys.Control | ModifierKeys.Shift) => true,
-        (Key.U or Key.O or Key.C or Key.B, ModifierKeys.Control | ModifierKeys.Shift) => true,
+        (Key.U or Key.O or Key.C or Key.B or Key.H or Key.V or Key.X, ModifierKeys.Control | ModifierKeys.Shift) => true,
         (Key.U, ModifierKeys.Control) => true,
-        (Key.T or Key.P or Key.I, ModifierKeys.Alt) => true,
+        (Key.T or Key.P or Key.I or Key.B or Key.OemMinus or Key.Multiply, ModifierKeys.Alt) => true,
+        (Key.V, ModifierKeys.Control | ModifierKeys.Alt) => true,
+        (Key.PageUp or Key.PageDown or Key.Home or Key.End, ModifierKeys.None) => true,
+        (Key.OemComma or Key.OemPeriod, ModifierKeys.None) => true,
         _ => false,
     };
 
@@ -131,6 +134,7 @@ public static class InteractionRules
     {
         (Key.Delete, ModifierKeys.None) => true,
         (Key.A or Key.C or Key.X or Key.V or Key.Z or Key.Y, ModifierKeys.Control) => true,
+        (Key.OemComma or Key.OemPeriod or Key.PageUp or Key.PageDown or Key.Home or Key.End, ModifierKeys.None) => true,
         _ => false,
     };
 

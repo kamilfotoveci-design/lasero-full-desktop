@@ -2896,7 +2896,7 @@ public partial class SceneViewModel : ObservableObject
             {
                 var representative = partition.Owner.GetWorldShapes().FirstOrDefault(shape => shape.IsClosed);
                 if (representative is null) continue;
-                var components = CreateCurveResults(partition.Path, representative, "Fracture díl",
+                var components = CreateCurveResults(partition.Path, representative, "Díl rozděleného překryvu",
                     partition.Owner.IsVisible, partition.Owner.IncludeInOutput);
                 if (components.Any(item => !IsSafeBooleanResult(
                     sources.SelectMany(source => source.GetWorldShapes()).ToList(), item.GetWorldShapes())))
@@ -2906,14 +2906,14 @@ public partial class SceneViewModel : ObservableObject
 
             if (pieces.Count == 0)
             {
-                RejectVectorUnion("Vybrané tvary nevytvářejí žádné oblasti pro Fracture.");
+                RejectVectorUnion("Vybrané tvary nevytvářejí žádné oblasti pro rozdělení překryvu.");
                 return;
             }
-            PreviewBooleanChange("Fracture", sources, pieces, layerRule: BooleanLayerRule.PerRegion);
+            PreviewBooleanChange("Rozdělit překryv", sources, pieces, layerRule: BooleanLayerRule.PerRegion);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
         {
-            RejectVectorUnion($"Fracture se nepodařilo bezpečně vytvořit. {exception.Message}");
+            RejectVectorUnion($"Překryv se nepodařilo bezpečně rozdělit. {exception.Message}");
         }
     }
 

@@ -122,6 +122,7 @@ public partial class DesignerInspectorView : UserControl
 
     private Point _layerDragStart;
     private LayerSettings? _layerDragCandidate;
+    private int _layerDropIndex = -1;
 
     private void OnLayerDragStart(object sender, MouseButtonEventArgs e)
     {
@@ -142,12 +143,49 @@ public partial class DesignerInspectorView : UserControl
         var layer = _layerDragCandidate;
         _layerDragCandidate = null;
         DragDrop.DoDragDrop(LayersList, new DataObject(typeof(LayerSettings), layer), DragDropEffects.Move);
+        HideLayerDropIndicator();
     }
 
     private void OnLayerDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(LayerSettings)) ? DragDropEffects.Move : DragDropEffects.None;
+        if (!e.Data.GetDataPresent(typeof(LayerSettings)))
+        {
+            e.Effects = DragDropEffects.None;
+            HideLayerDropIndicator();
+            e.Handled = true;
+            return;
+        }
+
+        e.Effects = DragDropEffects.Move;
+        var point = e.GetPosition(LayersList);
+        var target = ItemsControl.ContainerFromElement(LayersList, e.OriginalSource as DependencyObject) as ListBoxItem;
+        var layers = (DataContext as MainViewModel)?.Scene.Layers;
+        if (layers is null) return;
+
+        var insertionIndex = layers.Count;
+        var lineY = LayersList.ActualHeight;
+        if (target?.DataContext is LayerSettings over)
+        {
+            var index = layers.IndexOf(over);
+            var topLeft = target.TranslatePoint(new Point(0, 0), LayersList);
+            var before = point.Y < topLeft.Y + target.ActualHeight / 2;
+            insertionIndex = index + (before ? 0 : 1);
+            lineY = topLeft.Y + (before ? 0 : target.ActualHeight);
+        }
+
+        _layerDropIndex = insertionIndex;
+        LayerDropIndicator.Width = Math.Max(0, LayersList.ActualWidth - 12);
+        Canvas.SetLeft(LayerDropIndicator, 6);
+        Canvas.SetTop(LayerDropIndicator, lineY);
+        LayerDropIndicator.Visibility = Visibility.Visible;
         e.Handled = true;
+    }
+
+    private void OnLayerDragLeave(object sender, DragEventArgs e)
+    {
+        var point = e.GetPosition(LayersList);
+        if (point.X < 0 || point.Y < 0 || point.X > LayersList.ActualWidth || point.Y > LayersList.ActualHeight)
+            HideLayerDropIndicator();
     }
 
     private void OnLayerDrop(object sender, DragEventArgs e)
@@ -155,12 +193,19 @@ public partial class DesignerInspectorView : UserControl
         if (e.Data.GetData(typeof(LayerSettings)) is not LayerSettings layer) return;
         if (DataContext is not MainViewModel main) return;
 
-        var target = ItemsControl.ContainerFromElement(LayersList, e.OriginalSource as DependencyObject) as ListBoxItem;
         var layers = main.Scene.Layers;
-        // Dropped on a row: takes that row's place. Dropped below the last row: goes to the end.
-        var newIndex = target?.DataContext is LayerSettings over ? layers.IndexOf(over) : layers.Count - 1;
+        var insertionIndex = _layerDropIndex >= 0 ? _layerDropIndex : layers.Count;
+        var oldIndex = layers.IndexOf(layer);
+        var newIndex = insertionIndex - (oldIndex >= 0 && oldIndex < insertionIndex ? 1 : 0);
         main.Scene.MoveLayerTo(layer, newIndex);
+        HideLayerDropIndicator();
         e.Handled = true;
+    }
+
+    private void HideLayerDropIndicator()
+    {
+        _layerDropIndex = -1;
+        LayerDropIndicator.Visibility = Visibility.Collapsed;
     }
 
     private static bool IsInsideButton(DependencyObject? node)
