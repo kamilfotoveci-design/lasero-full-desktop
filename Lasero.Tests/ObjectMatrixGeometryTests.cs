@@ -152,7 +152,7 @@ public sealed class ObjectMatrixGeometryTests
     }
 
     [Fact]
-    public void StrokeStaysOnePointFourPixelsWhateverTheObjectScale()
+    public void StrokeStaysOnePixelWhateverTheObjectScale()
     {
         Ui.Invoke(() =>
         {
@@ -161,11 +161,12 @@ public sealed class ObjectMatrixGeometryTests
             {
                 var path = PathOf(canvas, obj);
                 var scale = (double)typeof(SceneCanvas).GetField("_scale", Private)!.GetValue(canvas)!;
-                Assert.Equal(1.4, path.StrokeThickness * scale * 3, 6);
+                // SceneCanvas.ObjectStrokePx is 1.0: the thin object outline is a deliberate canvas choice.
+                Assert.Equal(1.0, path.StrokeThickness * scale * 3, 6);
 
                 vm.Execute(new TransformObjectCommand(obj, obj.Transform, obj.Transform with { ScaleX = 0.5, ScaleY = 0.5 }));
                 canvas.UpdateLayout();
-                Assert.Equal(1.4, PathOf(canvas, obj).StrokeThickness * scale * 0.5, 6);
+                Assert.Equal(1.0, PathOf(canvas, obj).StrokeThickness * scale * 0.5, 6);
             }
             finally
             {

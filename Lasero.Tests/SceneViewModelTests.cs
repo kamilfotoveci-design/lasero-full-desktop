@@ -269,14 +269,30 @@ public class SceneViewModelTests
         }
     }
 
+    // Group is membership, not a geometry operation (SceneViewModel.GroupSelection, SetObjectGroupCommand):
+    // members stay separate objects with their own VectorPath, layers and GeometrySetIds and only share
+    // a GroupId. Ungroup releases that id again. The tests below pin exactly that.
+
+    private static SceneViewModel ViewModelWith(params SceneObject[] objects)
+    {
+        var viewModel = new SceneViewModel();
+        foreach (var item in objects)
+        {
+            viewModel.Objects.Add(item);
+            viewModel.SelectedObjects.Add(item);
+        }
+        return viewModel;
+    }
+
     [Fact]
-    public void GroupSelectionProducesANodeEditableVectorPath()
+    public void GroupSelectionKeepsEachMemberAsItsOwnObjectSharingOneGroupId()
     {
         var viewModel = new SceneViewModel();
         var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
         viewModel.Layers.Add(layer);
         var back = MakeClosedObject(layer);
         var front = MakeClosedObject(layer, 30);
+        var shapesBefore = (back.LocalShapes, front.LocalShapes);
         viewModel.Objects.Add(back);
         viewModel.Objects.Add(front);
         viewModel.SelectedObjects.Add(back);
@@ -284,31 +300,34 @@ public class SceneViewModelTests
 
         viewModel.GroupSelectionCommand.Execute(null);
 
-        var group = Assert.Single(viewModel.Objects);
-        AssertVectorPathMatchesLocalShapes(group);
+        Assert.Equal([back, front], viewModel.Objects);
+        Assert.NotNull(back.GroupId);
+        Assert.Equal(back.GroupId, front.GroupId);
+        Assert.Same(shapesBefore.Item1, back.LocalShapes);
+        Assert.Same(shapesBefore.Item2, front.LocalShapes);
+        Assert.Equal([back, front], viewModel.SelectedObjects);
     }
 
     [Fact]
-    public void UngroupSelectionProducesNodeEditableVectorPathParts()
+    public void UngroupSelectionReleasesTheMembersWithoutTouchingTheirGeometry()
     {
-        var viewModel = new SceneViewModel();
-        var text = VectorTextFactory.Create("e", Position.Zero, 40, new RgbColor(52, 52, 52));
-        viewModel.Objects.Add(text);
-        viewModel.SelectedObjects.Add(text);
+        var curve = MakeCurvedVectorObject();
+        var square = MakeSquareObject(40);
+        var curvePath = curve.VectorPath;
+        var viewModel = ViewModelWith(curve, square);
+        viewModel.GroupSelectionCommand.Execute(null);
+        Assert.NotNull(curve.GroupId);
 
         viewModel.UngroupSelectionCommand.Execute(null);
 
-        Assert.Equal(2, viewModel.Objects.Count);
-        foreach (var part in viewModel.Objects)
-            AssertVectorPathMatchesLocalShapes(part);
+        Assert.Equal([curve, square], viewModel.Objects);
+        Assert.Null(curve.GroupId);
+        Assert.Null(square.GroupId);
+        Assert.Same(curvePath, curve.VectorPath);
     }
 
     // -----------------------------------------------------------------------------------------
-    // Curve-preserving Group/Ungroup (docs/reference/NODE_EDIT_PARITY_AUDIT_2026-09-16.md
-    // addendum's proposal) — Group must carry each source's REAL Bezier geometry into the
-    // combined VectorPath (not flatten it to straight segments the way the plain VectorPath-
-    // editability fix above does for sources that have no curve data), and Ungroup must recover
-    // each part's exact original subpath.
+    // Curve-preserving Group/Ungroup — membership never rewrites a member's Bezier geometry.
     // -----------------------------------------------------------------------------------------
 
     private static SceneObject MakeCurvedVectorObject(double x = 0, double y = 0, Guid? layerId = null)
@@ -332,29 +351,17 @@ public class SceneViewModelTests
     [Fact]
     public void GroupThenUngroupPreservesTheOriginalCurveExactlyNotFlattenedToStraightSegments()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject();
         var straight = MakeSquareObject(40);
-        viewModel.Objects.Add(curve);
-        viewModel.Objects.Add(straight);
-        viewModel.SelectedObjects.Add(curve);
-        viewModel.SelectedObjects.Add(straight);
+        var viewModel = ViewModelWith(curve, straight);
         var originalWorldCurveSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
 
         viewModel.GroupSelectionCommand.Execute(null);
-        var group = Assert.Single(viewModel.Objects);
-        AssertVectorPathMatchesLocalShapes(group);
-
-        viewModel.SelectedObjects.Clear();
-        viewModel.SelectedObjects.Add(group);
         viewModel.UngroupSelectionCommand.Execute(null);
 
-        var parts = viewModel.Objects.ToList();
-        Assert.Equal(2, parts.Count);
-        foreach (var part in parts) AssertVectorPathMatchesLocalShapes(part);
-
-        var recoveredCurve = Assert.Single(parts, part => part.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
-        var recoveredWorldSubpath = recoveredCurve.GetWorldVectorPath()!.Subpaths[0];
+        Assert.Equal(2, viewModel.Objects.Count);
+        AssertVectorPathMatchesLocalShapes(curve);
+        var recoveredWorldSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
         Assert.Equal(originalWorldCurveSubpath.Nodes.Count, recoveredWorldSubpath.Nodes.Count);
         for (var i = 0; i < originalWorldCurveSubpath.Nodes.Count; i++)
         {
@@ -376,62 +383,35 @@ public class SceneViewModelTests
     }
 
     [Fact]
-    public void GroupThenUngroupSurvivesACompoundPathWithAHole()
+    public void GroupingATextKeepsItsCompoundPathWithTheHoleAsOneSharedGeometrySet()
     {
-        var viewModel = new SceneViewModel();
         var text = VectorTextFactory.Create("e", Position.Zero, 40, new RgbColor(52, 52, 52));
         var compoundId = text.LocalShapes.Select(shape => shape.GeometrySetId).Distinct().Single();
-        viewModel.Objects.Add(text);
-        viewModel.SelectedObjects.Add(text);
+        var shapesBefore = text.LocalShapes;
+        var square = MakeSquareObject(80);
+        var viewModel = ViewModelWith(text, square);
 
-        // Ungroup first to get two standalone parts (outer glyph contour + counter hole), matching
-        // UngroupGroupAndUnitePreservesTextCounter's own precedent, then re-group and ungroup again
-        // to exercise THIS fix's own round trip.
-        viewModel.UngroupSelectionCommand.Execute(null);
-        var initialParts = viewModel.Objects.ToList();
-        Assert.Equal(2, initialParts.Count);
-
-        viewModel.SelectedObjects.Clear();
-        foreach (var part in initialParts) viewModel.SelectedObjects.Add(part);
         viewModel.GroupSelectionCommand.Execute(null);
-        var group = Assert.Single(viewModel.Objects);
-        AssertVectorPathMatchesLocalShapes(group);
-        Assert.Equal(2, group.VectorPath!.Subpaths.Count);
-
-        viewModel.SelectedObjects.Clear();
-        viewModel.SelectedObjects.Add(group);
         viewModel.UngroupSelectionCommand.Execute(null);
 
-        var finalParts = viewModel.Objects.ToList();
-        Assert.Equal(2, finalParts.Count);
-        foreach (var part in finalParts) AssertVectorPathMatchesLocalShapes(part);
-        // Both parts still share one GeometrySetId, so a later Union recombines the outer contour
-        // with its counter instead of treating them as unrelated overlapping shapes.
-        Assert.Equal(compoundId,
-            Assert.Single(finalParts.SelectMany(part => part.LocalShapes).Select(s => s.GeometrySetId).Distinct()));
+        Assert.Equal(2, text.LocalShapes.Count);
+        Assert.Same(shapesBefore, text.LocalShapes);
+        Assert.Equal(compoundId, Assert.Single(text.LocalShapes.Select(shape => shape.GeometrySetId).Distinct()));
     }
 
     [Fact]
     public void GroupThenUngroupPreservesATransformedSourcesWorldGeometry()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject(x: 50, y: -30);
         curve.Transform = curve.Transform with { RotationDeg = 40, ScaleX = 1.5, ScaleY = 1.5 };
         var expectedWorldSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
         var square = MakeSquareObject(x: -20);
-        viewModel.Objects.Add(curve);
-        viewModel.Objects.Add(square);
-        viewModel.SelectedObjects.Add(curve);
-        viewModel.SelectedObjects.Add(square);
+        var viewModel = ViewModelWith(curve, square);
 
         viewModel.GroupSelectionCommand.Execute(null);
-        viewModel.SelectedObjects.Clear();
-        viewModel.SelectedObjects.Add(Assert.Single(viewModel.Objects));
         viewModel.UngroupSelectionCommand.Execute(null);
 
-        var recoveredCurve = Assert.Single(viewModel.Objects,
-            part => part.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
-        var actualWorldSubpath = recoveredCurve.GetWorldVectorPath()!.Subpaths[0];
+        var actualWorldSubpath = curve.GetWorldVectorPath()!.Subpaths[0];
         for (var i = 0; i < expectedWorldSubpath.Nodes.Count; i++)
             AssertPositionApproximately(expectedWorldSubpath.Nodes[i].Anchor, actualWorldSubpath.Nodes[i].Anchor);
     }
@@ -439,124 +419,100 @@ public class SceneViewModelTests
     [Fact]
     public void UndoGroupRestoresBothOriginalObjectsWithTheirExactVectorPaths()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject();
         var originalPath = curve.VectorPath;
         var square = MakeSquareObject(40);
-        viewModel.Objects.Add(curve);
-        viewModel.Objects.Add(square);
-        viewModel.SelectedObjects.Add(curve);
-        viewModel.SelectedObjects.Add(square);
+        var viewModel = ViewModelWith(curve, square);
 
         viewModel.GroupSelectionCommand.Execute(null);
-        Assert.Single(viewModel.Objects);
+        Assert.NotNull(curve.GroupId);
 
         viewModel.UndoCommand.Execute(null);
 
-        var restored = viewModel.Objects.ToList();
-        Assert.Equal(2, restored.Count);
-        var restoredCurve = Assert.Single(restored, o => o.IsVectorPath && o.VectorPath!.Subpaths[0].Nodes.Any(n => n.HasAnyHandle));
-        Assert.Equal(originalPath, restoredCurve.VectorPath);
+        Assert.Equal([curve, square], viewModel.Objects);
+        Assert.Null(curve.GroupId);
+        Assert.Null(square.GroupId);
+        Assert.Equal(originalPath, curve.VectorPath);
     }
 
     [Fact]
-    public void RedoGroupReappliesTheCurvePreservingGroupResult()
+    public void RedoGroupReappliesTheMembershipAndKeepsTheCurve()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject();
         var square = MakeSquareObject(40);
-        viewModel.Objects.Add(curve);
-        viewModel.Objects.Add(square);
-        viewModel.SelectedObjects.Add(curve);
-        viewModel.SelectedObjects.Add(square);
+        var viewModel = ViewModelWith(curve, square);
         viewModel.GroupSelectionCommand.Execute(null);
-        var subpathsBefore = Assert.Single(viewModel.Objects).VectorPath!.Subpaths.Count;
+        var groupId = curve.GroupId;
+        Assert.NotNull(groupId);
 
         viewModel.UndoCommand.Execute(null);
         viewModel.RedoCommand.Execute(null);
 
-        var group = Assert.Single(viewModel.Objects);
-        AssertVectorPathMatchesLocalShapes(group);
-        Assert.Equal(subpathsBefore, group.VectorPath!.Subpaths.Count);
-        Assert.Contains(group.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.Equal(groupId, curve.GroupId);
+        Assert.Equal(groupId, square.GroupId);
+        AssertVectorPathMatchesLocalShapes(curve);
+        Assert.Contains(curve.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
     }
 
     [Fact]
-    public void UndoUngroupRestoresTheExactPreUngroupGroupObject()
+    public void UndoUngroupRestoresTheExactPreUngroupMembership()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject();
         var square = MakeSquareObject(40);
-        viewModel.Objects.Add(curve);
-        viewModel.Objects.Add(square);
-        viewModel.SelectedObjects.Add(curve);
-        viewModel.SelectedObjects.Add(square);
+        var viewModel = ViewModelWith(curve, square);
         viewModel.GroupSelectionCommand.Execute(null);
-        var group = Assert.Single(viewModel.Objects);
-        var groupPath = group.VectorPath;
+        var groupId = curve.GroupId;
+        var curvePath = curve.VectorPath;
 
-        viewModel.SelectedObjects.Clear();
-        viewModel.SelectedObjects.Add(group);
         viewModel.UngroupSelectionCommand.Execute(null);
-        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.Null(curve.GroupId);
 
         viewModel.UndoCommand.Execute(null);
 
-        var restoredGroup = Assert.Single(viewModel.Objects);
-        Assert.Equal(groupPath, restoredGroup.VectorPath);
+        Assert.Equal(groupId, curve.GroupId);
+        Assert.Equal(groupId, square.GroupId);
+        Assert.Equal(curvePath, curve.VectorPath);
     }
 
     [Fact]
     public void GroupPreservesLayerIdFromEachSource()
     {
-        var viewModel = new SceneViewModel();
         var layerA = Guid.NewGuid();
         var layerB = Guid.NewGuid();
         var curveA = MakeCurvedVectorObject(layerId: layerA);
         var curveB = MakeCurvedVectorObject(x: 100, layerId: layerB);
-        viewModel.Objects.Add(curveA);
-        viewModel.Objects.Add(curveB);
-        viewModel.SelectedObjects.Add(curveA);
-        viewModel.SelectedObjects.Add(curveB);
+        var viewModel = ViewModelWith(curveA, curveB);
 
         viewModel.GroupSelectionCommand.Execute(null);
 
-        var group = Assert.Single(viewModel.Objects);
-        Assert.Contains(group.LocalShapes, shape => shape.LayerId == layerA);
-        Assert.Contains(group.LocalShapes, shape => shape.LayerId == layerB);
+        Assert.All(curveA.LocalShapes, shape => Assert.Equal(layerA, shape.LayerId));
+        Assert.All(curveB.LocalShapes, shape => Assert.Equal(layerB, shape.LayerId));
     }
 
     [Fact]
-    public void GroupGivesEachSourceItsOwnGeometrySetIdWhenSourcesHadNone()
+    public void GroupKeepsEachSourcesOwnGeometrySetIdWhenSourcesHadNone()
     {
-        var viewModel = new SceneViewModel();
         var curveA = MakeCurvedVectorObject();
         var curveB = MakeCurvedVectorObject(x: 100);
-        viewModel.Objects.Add(curveA);
-        viewModel.Objects.Add(curveB);
-        viewModel.SelectedObjects.Add(curveA);
-        viewModel.SelectedObjects.Add(curveB);
+        var viewModel = ViewModelWith(curveA, curveB);
 
         viewModel.GroupSelectionCommand.Execute(null);
 
-        var group = Assert.Single(viewModel.Objects);
-        Assert.Equal(2, group.LocalShapes.Select(shape => shape.GeometrySetId).Distinct().Count());
-        Assert.All(group.LocalShapes, shape => Assert.NotEqual(Guid.Empty, shape.GeometrySetId));
+        var shapes = viewModel.Objects.SelectMany(item => item.LocalShapes).ToList();
+        Assert.Equal(2, shapes.Select(shape => shape.GeometrySetId).Distinct().Count());
+        Assert.All(shapes, shape => Assert.NotEqual(Guid.Empty, shape.GeometrySetId));
     }
 
     /// <summary>Duplicating (SceneObject.Clone, shares LocalShapes/VectorPath by reference per its own
     /// doc comment — both are immutable record types so sharing is intentional and safe) and then
     /// Grouping must never let an edit to one object's VectorPath reach back and mutate another's.
-    /// VectorPath/VectorSubpath/VectorNode are all immutable records, so this is really asserting the
-    /// group/duplicate code paths never mutate a node in place — RecenterVectorPath/BuildCombinedWorld
-    /// VectorPath both build new lists rather than mutating shared ones, which this pins down.</summary>
+    /// Grouping only writes GroupId, so the original must stay outside the group untouched.</summary>
     [Fact]
     public void DuplicateThenGroupDoesNotShareMutableVectorPathStateBetweenObjects()
     {
-        var viewModel = new SceneViewModel();
         var curve = MakeCurvedVectorObject();
-        viewModel.Objects.Add(curve);
-        viewModel.SelectedObjects.Add(curve);
+        var viewModel = ViewModelWith(curve);
 
         viewModel.DuplicateCommand.Execute(null);
         var duplicate = Assert.Single(viewModel.SelectedObjects);
@@ -566,12 +522,14 @@ public class SceneViewModelTests
         viewModel.Objects.Add(square);
         viewModel.SelectedObjects.Add(square);
         viewModel.GroupSelectionCommand.Execute(null);
-        var group = Assert.Single(viewModel.SelectedObjects);
 
-        // The original (never grouped) and the duplicate-turned-group-member must each still report
-        // their own independent, correct anchors — proving no shared mutable list/array was reused.
+        // The original (never grouped) stays outside the group with its own, correct anchors; the
+        // duplicate became a member and still carries its curve handles.
+        Assert.Null(curve.GroupId);
+        Assert.NotNull(duplicate.GroupId);
+        Assert.Equal(duplicate.GroupId, square.GroupId);
         Assert.Equal(new Position(0, 0, 0), curve.VectorPath!.Subpaths[0].Nodes[0].Anchor);
-        Assert.Contains(group.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
+        Assert.Contains(duplicate.VectorPath!.Subpaths, s => s.Nodes.Any(n => n.HasAnyHandle));
     }
 
     // -----------------------------------------------------------------------------------------
@@ -906,9 +864,9 @@ public class SceneViewModelTests
         var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
         viewModel.Layers.Add(layer);
         var single = MakeClosedObject(layer);
-        single.IsLocked = true;
         viewModel.Objects.Add(single);
         viewModel.SelectedObjects.Add(single);
+        single.IsLocked = true; // a locked object cannot be added to a selection, so lock it once selected
 
         Assert.Equal("Zamknuté objekty nelze upravit offsetem. Nejprve je potřeba je odemknout.", viewModel.OffsetSelectionDisabledReason);
     }
@@ -941,18 +899,17 @@ public class SceneViewModelTests
         var viewModel = new SceneViewModel();
         var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
         viewModel.Layers.Add(layer);
-        var originals = Enumerable.Range(0, 4)
-            .Select(_ => MakeClosedObject(layer))
-            .ToList();
-        foreach (var item in originals)
-        {
-            viewModel.Objects.Add(item);
-            viewModel.SelectedObjects.Add(item);
-        }
+        // Three identical squares plus one shifted by 10: two of the identical ones are grouped, so the
+        // boolean sees two operands (the group and the loose square) and the stacked squares inside the
+        // group must merge rather than cancel each other by even-odd parity.
+        var originals = new[] { MakeClosedObject(layer), MakeClosedObject(layer), MakeClosedObject(layer, 10) };
+        foreach (var item in originals) viewModel.Objects.Add(item);
+        viewModel.SelectedObjects.Add(originals[0]);
+        viewModel.SelectedObjects.Add(originals[1]);
 
         viewModel.GroupSelectionCommand.Execute(null);
-        var group = Assert.Single(viewModel.Objects);
-        Assert.Equal(4, group.LocalShapes.Select(shape => shape.GeometrySetId).Distinct().Count());
+        Assert.Equal(originals[0].GroupId, originals[1].GroupId);
+        viewModel.SelectedObjects.Add(originals[2]);
 
         string? explanation = null;
         viewModel.VectorOperationRejected += message => explanation = message;
@@ -961,13 +918,13 @@ public class SceneViewModelTests
         var result = Assert.Single(viewModel.Objects);
         Assert.Equal("Sjednocený vektor", result.Name);
         Assert.Null(explanation);
-        Assert.Equal(20, result.WorldBounds().Width, precision: 6);
+        Assert.Equal(30, result.WorldBounds().Width, precision: 6);
         Assert.Equal(10, result.WorldBounds().Height, precision: 6);
         Assert.Single(result.LocalShapes.Select(shape => shape.GeometrySetId).Distinct());
     }
 
     [Fact]
-    public void UngroupGroupAndUnitePreservesTextCounter()
+    public void UnitePreservesTextCounter()
     {
         var viewModel = new SceneViewModel();
         var text = VectorTextFactory.Create(
@@ -975,28 +932,22 @@ public class SceneViewModelTests
             Position.Zero,
             40,
             new RgbColor(52, 52, 52));
-        viewModel.Objects.Add(text);
-        viewModel.SelectedObjects.Add(text);
-
-        viewModel.UngroupSelectionCommand.Execute(null);
-
-        var parts = viewModel.Objects.ToList();
-        Assert.Equal(2, parts.Count);
-        var compoundId = Assert.Single(parts
-            .SelectMany(part => part.LocalShapes)
-            .Select(shape => shape.GeometrySetId)
-            .Distinct());
+        var compoundId = Assert.Single(text.LocalShapes.Select(shape => shape.GeometrySetId).Distinct());
         Assert.NotEqual(Guid.Empty, compoundId);
+        Assert.Equal(2, text.LocalShapes.Count);
+        // A far-away square: Unite yields one object per island, and the letter keeps its counter.
+        var square = MakeSquareObject(500);
+        viewModel.Objects.Add(text);
+        viewModel.Objects.Add(square);
+        viewModel.SelectedObjects.Add(text);
+        viewModel.SelectedObjects.Add(square);
 
-        viewModel.SelectedObjects.Clear();
-        foreach (var part in parts)
-            viewModel.SelectedObjects.Add(part);
-        viewModel.GroupSelectionCommand.Execute(null);
         viewModel.UniteSelectionCommand.Execute(null);
 
-        var result = Assert.Single(viewModel.Objects);
-        Assert.Equal("Sjednocený vektor", result.Name);
-        Assert.Equal(2, result.LocalShapes.Count);
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, result => Assert.Equal("Sjednocený vektor", result.Name));
+        var letter = Assert.Single(viewModel.Objects, result => result.LocalShapes.Count == 2);
+        Assert.NotEqual(Math.Sign(SignedArea(letter.LocalShapes[0].Points)), Math.Sign(SignedArea(letter.LocalShapes[1].Points)));
     }
 
     [Fact]
@@ -1118,9 +1069,22 @@ public class SceneViewModelTests
 
         viewModel.IntersectSelectionCommand.Execute(null);
 
-        var result = Assert.Single(viewModel.Objects);
-        Assert.Equal(2, result.LocalShapes.Count);
-        AssertBoundsApproximately(new BoundingBox2D(0, 2, 30, 8), result.WorldBounds());
+        // Each disconnected island of the result is its own object (CreateCurveResults), so the two
+        // figures of the back object each intersect the strip into one object.
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, result => Assert.Single(result.LocalShapes));
+        AssertBoundsApproximately(new BoundingBox2D(0, 2, 30, 8), UnionOfWorldBounds(viewModel.Objects));
+    }
+
+    private static BoundingBox2D UnionOfWorldBounds(IEnumerable<SceneObject> objects)
+    {
+        var box = BoundingBox2D.Empty;
+        foreach (var item in objects)
+        {
+            var bounds = item.WorldBounds();
+            box = box.Include(bounds.MinX, bounds.MinY).Include(bounds.MaxX, bounds.MaxY);
+        }
+        return box;
     }
 
     [Fact]
@@ -1130,10 +1094,14 @@ public class SceneViewModelTests
 
         viewModel.ExcludeSelectionCommand.Execute(null);
 
-        var result = Assert.Single(viewModel.Objects);
-        Assert.Equal("Vyloučený vektor", result.Name);
-        Assert.Equal(2, result.LocalShapes.Count);
-        AssertBoundsApproximately(new BoundingBox2D(0, 0, 30, 10), result.WorldBounds());
+        // The two remaining slices do not touch, so each is its own object.
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, result =>
+        {
+            Assert.Equal("Vyloučený vektor", result.Name);
+            Assert.Single(result.LocalShapes);
+        });
+        AssertBoundsApproximately(new BoundingBox2D(0, 0, 30, 10), UnionOfWorldBounds(viewModel.Objects));
     }
 
     private static double SignedArea(IReadOnlyList<Position> points)
@@ -1170,15 +1138,18 @@ public class SceneViewModelTests
         var layer = LayerSettings.CreateDefault(RgbColor.Black, LayerMode.Cut, "Vektor");
         viewModel.Layers.Add(layer);
 
-        // A 20x20 square with a 4x4 hole punched in its centre — one GeometrySetId, two rings.
+        // A 20x20 square with a 4x4 hole punched in its centre — one GeometrySetId, two rings. The fill
+        // contract (NonZero per set) declares a hole by opposite winding, so the inner ring is reversed.
         var donutGroupId = Guid.NewGuid();
+        var hole = Rectangle(donutGroupId, layer, 8, 8, 12, 12);
+        hole = hole with { Points = hole.Points.Reverse().ToList() };
         var donut = new SceneObject
         {
             Name = "Mezikruží",
             LocalShapes =
             [
                 Rectangle(donutGroupId, layer, 0, 0, 20, 20),
-                Rectangle(donutGroupId, layer, 8, 8, 12, 12),
+                hole,
             ],
             LocalPivot = Position.Zero,
             LocalBounds = new BoundingBox2D(0, 0, 20, 20),
@@ -1200,14 +1171,17 @@ public class SceneViewModelTests
 
         viewModel.UniteSelectionCommand.Execute(null);
 
-        var result = Assert.Single(viewModel.Objects);
-        Assert.Equal(3, result.LocalShapes.Count);
+        // Two islands: the donut (outer ring plus its hole, kept together as one object) and the square.
+        Assert.Equal(2, viewModel.Objects.Count);
+        var result = Assert.Single(viewModel.Objects, item => item.LocalShapes.Count == 2);
+        var all = viewModel.Objects.SelectMany(item => item.LocalShapes).ToList();
+        Assert.Equal(3, all.Count);
         // Summed as individual ring magnitudes (the same convention IsSafeUnionResult/
         // IsSafeBooleanResult already use elsewhere in SceneViewModel.cs — a hole ring's area adds
         // to this total rather than netting out of it): outer 400 + hole 16 + untouched square 400 =
         // 816. If the hole had silently been filled in instead of preserved, only 2 shapes would come
         // back at all (800, and Assert.Equal(3, ...) above would already have failed).
-        var totalArea = result.LocalShapes.Sum(shape => Math.Abs(SignedArea(shape.Points)));
+        var totalArea = all.Sum(shape => Math.Abs(SignedArea(shape.Points)));
         Assert.Equal(816, totalArea, precision: 2);
         // The hole ring and its parent must wind in opposite directions — that is the only signal
         // (besides nesting) that tells a consumer which ring is a hole.
@@ -1683,8 +1657,9 @@ public class SceneViewModelTests
 
         viewModel.DeleteCommand.Execute(null);
 
+        // The fixed raster layer is not created on demand (RemoveWhenEmpty is false), so it outlives its bitmap.
         Assert.Empty(viewModel.Objects);
-        Assert.Empty(viewModel.Layers);
+        Assert.Same(layer, Assert.Single(viewModel.Layers));
 
         viewModel.UndoCommand.Execute(null);
 
@@ -2086,9 +2061,9 @@ public class SceneViewModelTests
     {
         var viewModel = new SceneViewModel();
         var obj = MakeSquareObject();
-        obj.IsLocked = true;
         viewModel.Objects.Add(obj);
         viewModel.SelectedObjects.Add(obj);
+        obj.IsLocked = true; // a locked object cannot be added to a selection, so lock it once selected
 
         Assert.False(viewModel.RotateRightCommand.CanExecute(null));
         viewModel.ToggleLockCommand.Execute(null);

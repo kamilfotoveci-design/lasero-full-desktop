@@ -459,7 +459,7 @@ public static class CanvasContextMenuBuilder
     private const string ConvertTextReason = "Zamčený text nelze převést na dráhu. Nejdřív je potřeba ho odemknout.";
 
     private static string NotInGroupReason(ObjectContextState s) =>
-        s.SelectionCount > 1 ? "Ze skupiny lze uvolnit vždy jen jeden vybraný objekt."
+        s.SelectionCount > 1 ? "Vybrané objekty nejsou součástí skupiny."
         : s.Kind == SelectionKind.Text ? "Vybraný text není součástí skupiny."
         : "Vybraný objekt není skupina.";
 

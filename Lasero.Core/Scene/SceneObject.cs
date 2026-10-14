@@ -100,14 +100,16 @@ public sealed partial class SceneObject : ObservableObject
     public bool ReplaceLayerColor(RgbColor source, RgbColor target)
     {
         var changed = false;
-        LocalShapes = LocalShapes.Select(shape =>
+        var rewritten = LocalShapes.Select(shape =>
         {
             if (!shape.LayerColor.IsApproximately(source)) return shape;
             changed = true;
             return shape with { LayerColor = target };
         }).ToList();
-        if (changed) OnPropertyChanged(nameof(LocalShapes));
-        return changed;
+        if (!changed) return false; // keep the list instance: undo/redo and callers rely on its identity
+        LocalShapes = rewritten;
+        OnPropertyChanged(nameof(LocalShapes));
+        return true;
     }
 
     /// <summary>Moves geometry from one stable layer to another. Color is retained as a visual
@@ -116,7 +118,7 @@ public sealed partial class SceneObject : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(target);
         var changed = false;
-        LocalShapes = LocalShapes.Select(shape =>
+        var rewritten = LocalShapes.Select(shape =>
         {
             var matches = shape.LayerId != Guid.Empty
                 ? shape.LayerId == sourceId
@@ -126,8 +128,10 @@ public sealed partial class SceneObject : ObservableObject
             changed = true;
             return shape with { LayerId = target.Id, LayerColor = target.Color };
         }).ToList();
-        if (changed) OnPropertyChanged(nameof(LocalShapes));
-        return changed;
+        if (!changed) return false;
+        LocalShapes = rewritten;
+        OnPropertyChanged(nameof(LocalShapes));
+        return true;
     }
 
     /// <summary>Assigns the complete logical object to one processing layer.</summary>
@@ -171,7 +175,7 @@ public sealed partial class SceneObject : ObservableObject
         IReadOnlyList<(RgbColor Color, LayerSettings Layer)> candidatesByColor)
     {
         var changed = false;
-        LocalShapes = LocalShapes.Select(shape =>
+        var rewritten = LocalShapes.Select(shape =>
         {
             LayerSettings? target = null;
             if (shape.LayerId != Guid.Empty)
@@ -186,8 +190,10 @@ public sealed partial class SceneObject : ObservableObject
             return shape with { LayerId = target.Id, LayerColor = target.Color };
         }).ToList();
 
-        if (changed) OnPropertyChanged(nameof(LocalShapes));
-        return changed;
+        if (!changed) return false;
+        LocalShapes = rewritten;
+        OnPropertyChanged(nameof(LocalShapes));
+        return true;
     }
 
     /// <summary>Requests a redraw when layer settings such as mode or visibility change.</summary>

@@ -44,9 +44,9 @@ public static class CanvasContextMenuStates
             BitmapReason = scene.ConvertSelectionToBitmapDisabledReason,
             CanEditText = scene.CanEditSelectedText && single is { IsText: true },
             CanGroup = scene.CanGroupSelection,
-            // Splitting text into contours would silently throw away the editable wording, and the
-            // command is not the same thing as "convert to path", so it is not offered for text.
-            CanUngroup = scene.CanUngroupSelection && single is { IsText: false },
+            // Ungroup only releases GroupId membership, so it applies to a whole selected group
+            // (several members) and to text inside a group; an ungrouped object is never offered it.
+            CanUngroup = scene.CanUngroupSelection,
             CanSelectAll = scene.SelectAllCommand.CanExecute(null) && scene.Objects.Count > selection.Count,
             CanConvertTextToPath = scene.CanConvertSelectedTextToPath,
             ShowPreview = reach.HasPreview,

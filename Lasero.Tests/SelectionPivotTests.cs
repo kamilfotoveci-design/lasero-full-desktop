@@ -290,7 +290,9 @@ public class SelectionPivotTests
 
         viewModel.GroupSelectionCommand.Execute(null);
 
-        AssertPivotIsBoundsCentre(Assert.Single(viewModel.Objects));
+        // Group is membership only: each member stays its own object, pivot still at its bounds centre.
+        Assert.Equal(2, viewModel.Objects.Count);
+        Assert.All(viewModel.Objects, AssertPivotIsBoundsCentre);
     }
 
     [Fact]

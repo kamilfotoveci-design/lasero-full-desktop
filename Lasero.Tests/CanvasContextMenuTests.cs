@@ -171,7 +171,7 @@ public class CanvasContextMenuTests
         AssertWellFormed(rows);
         Assert.True(Has(rows, ContextAction.Group));
         Assert.Equal("Ctrl+G", Find(rows, ContextAction.Group)!.Gesture);
-        Assert.Equal(6, Submenu(rows, "Zarovnat")!.Children.Count(child => !child.IsSeparator));
+        Assert.Equal(8, Submenu(rows, "Zarovnat")!.Children.Count(child => !child.IsSeparator));
         Assert.Equal(4, Submenu(rows, "Booleovské operace")!.Children.Count);
         Assert.Null(Submenu(rows, "Pořadí"));
         Assert.Null(Submenu(rows, "Otočit a převrátit"));
