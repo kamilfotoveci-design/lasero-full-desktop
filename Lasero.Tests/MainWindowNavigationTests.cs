@@ -25,8 +25,7 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("Command=\"{Binding Connection.SmartConnectCommand}\"", mainWindow, StringComparison.Ordinal);
         Assert.Contains("CurrentScreen != AppScreen.Designer", mainViewModel, StringComparison.Ordinal);
         Assert.Contains("Text=\"Polohovací paprsek\"", machinePanel, StringComparison.Ordinal);
-        Assert.Contains("PreviewMouseLeftButtonDown=\"OnPositioningLaserPressed\"", machinePanel, StringComparison.Ordinal);
-        Assert.Contains("PreviewMouseLeftButtonUp=\"OnPositioningLaserReleased\"", machinePanel, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnPositioningLaserClick\"", machinePanel, StringComparison.Ordinal); // a toggle with a 30 s automatic switch-off since the audit fixes
         Assert.DoesNotContain("Connection.SaveWorkspaceAsDefaultCommand", machinePanel, StringComparison.Ordinal);
     }
 
@@ -83,9 +82,11 @@ public sealed class MainWindowNavigationTests
         Assert.Contains("AutomationProperties.Name=\"Importovat grafiku\"", rail, StringComparison.Ordinal);
 
         // An icon-only rail is unusable without these, so the count has to match the entries.
+        // Text menu entries (the Boolean operations menu) carry their name as a Header, so only icon-only entries count.
+        var iconOnly = System.Text.RegularExpressions.Regex.Replace(rail, "<MenuItem Header=\"[^\"]*\"[^>]*/>", string.Empty);
         Assert.Equal(
-            CountOccurrences(rail, "AutomationProperties.Name="),
-            CountOccurrences(rail, "ToolTip="));
+            CountOccurrences(iconOnly, "AutomationProperties.Name="),
+            CountOccurrences(iconOnly, "ToolTip="));
     }
 
     /// <summary>
@@ -201,13 +202,13 @@ public sealed class MainWindowNavigationTests
             root, "Lasero.App", "Views", "DesignerInspectorView.xaml"));
         var mainWindow = File.ReadAllText(Path.Combine(root, "Lasero.App", "MainWindow.xaml"));
 
-        // Position, size, rotation and the type settings all live on the bar, the way LightBurn,
+        // Position, size, rotation and the type settings all live on the bar (the text content itself is edited inline on the canvas), the way LightBurn,
         // Illustrator and CorelDRAW place them.
         foreach (var property in new[]
                  {
                      "Scene.SelectedX", "Scene.SelectedY", "Scene.SelectedWidth", "Scene.SelectedHeight",
                      "Scene.SelectedRotation", "Scene.LockAspectRatio",
-                     "Scene.SelectedTextValue", "Scene.SelectedTextFontFamily", "Scene.SelectedTextHeight",
+                     "Scene.SelectedTextFontFamily", "Scene.SelectedTextHeight",
                      "Scene.SelectedTextBold", "Scene.SelectedTextItalic",
                      "Scene.SelectedTextUppercase", "Scene.SelectedTextWeld",
                  })
@@ -251,8 +252,8 @@ public sealed class MainWindowNavigationTests
         // instead of opening a separate window, and a back control returns to the operation editor
         // without tearing either panel down (so selection/scroll/settings survive the round trip).
         Assert.Contains("<views:MachinePanelView", inspector, StringComparison.Ordinal);
-        Assert.Contains("Click=\"OnMachineControlClick\"", inspector, StringComparison.Ordinal);
-        Assert.Contains("Click=\"OnMachineControlBackClick\"", inspector, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnMachineTabClick\"", inspector, StringComparison.Ordinal); // the top Vrstvy / Ovládání stroje switch
+        Assert.Contains("Click=\"OnOperationsTabClick\"", inspector, StringComparison.Ordinal); // and its way back
         Assert.Contains("MachineStatus.DisplayState", inspector, StringComparison.Ordinal);
         Assert.DoesNotContain("MachineControlWindow", inspector, StringComparison.Ordinal);
     }

@@ -209,7 +209,7 @@ public sealed class DeviceSettingsPreferencesTests : IDisposable
         var headers = Regex.Matches(xaml, @"<TabItem\b[^>]*\bHeader=""([^""]+)""").Select(m => m.Groups[1].Value).ToArray();
 
         Assert.Equal(["Připojení a ovládání", "Rozměry / Jednotky", "Základní nastavení", "G-code", "Další nastavení"], headers);
-        Assert.Equal(1, Regex.Matches(xaml, "<TabControl\b").Count);
+        Assert.Equal(1, Regex.Matches(xaml, @"<TabControl\b").Count);
         // The strip and the settings pages are driven by the one enum, declared in the same order as the tabs.
         Assert.Equal(["Connection", "Dimensions", "Basic", "GCode", "More"], Enum.GetNames<Lasero.App.ViewModels.DeviceScreenTab>());
         Assert.Contains("<views:DeviceSettingsView", xaml, StringComparison.Ordinal);

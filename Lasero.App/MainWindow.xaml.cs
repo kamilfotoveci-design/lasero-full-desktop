@@ -538,7 +538,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "Could not read raster size for edit {RasterPath}", path);
-            OnRasterOperationRejected("Obrázek nelze upravit. Ověřte, že soubor není poškozený a je dostupný.");
+            OnRasterOperationRejected("Obrázek nelze upravit. Soubor může být poškozený nebo nedostupný.");
             return;
         }
 
@@ -576,7 +576,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to edit raster image {RasterPath}", path);
-            OnRasterOperationRejected("Obrázek nelze upravit. Ověřte, že soubor není poškozený a je dostupný.");
+            OnRasterOperationRejected("Obrázek nelze upravit. Soubor může být poškozený nebo nedostupný.");
         }
     }
 
@@ -693,7 +693,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException or InvalidDataException)
         {
             Log.Warning(ex, "Clipboard image import failed");
-            OnRasterOperationRejected("Schránka je dočasně nedostupná nebo neobsahuje podporovaný obrázek. Zkuste to znovu.");
+            OnRasterOperationRejected("Schránka je dočasně nedostupná nebo neobsahuje podporovaný obrázek. Akci lze zopakovat.");
             return true;
         }
 

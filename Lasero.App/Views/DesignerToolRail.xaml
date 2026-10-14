@@ -486,16 +486,16 @@
 
                 <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
                              IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=Line, Mode=TwoWay}"
-                             ToolTip="Pero (P) — klikáním přidávejte uzly, tažením tvořte Bézierovy křivky" AutomationProperties.Name="Pero">
+                             ToolTip="Pero (P) — klikáním se přidávají uzly, tažením vznikají Bézierovy křivky" AutomationProperties.Name="Pero">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Vector}" />
                 </RadioButton>
                 <RadioButton Style="{StaticResource RailTool}" GroupName="DesignerRailTools"
                              IsChecked="{Binding Scene.ActiveTool, Converter={StaticResource EnumToBoolean}, ConverterParameter=TrimPath, Mode=TwoWay}"
-                             ToolTip="Oříznout cestu — klikněte na úsek, který chcete odstranit" AutomationProperties.Name="Oříznout cestu">
+                             ToolTip="Oříznout cestu — kliknutím na úsek se odstraní" AutomationProperties.Name="Oříznout cestu">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Cut}" />
                 </RadioButton>
                 <Button Style="{StaticResource RailButton}" Command="{Binding Scene.FillBetweenPathsCommand}"
-                        ToolTip="Výplň mezi cestami — vyberte dvě otevřené vektorové cesty"
+                        ToolTip="Výplň mezi cestami — je potřeba vybrat dvě otevřené vektorové cesty"
                         AutomationProperties.Name="Výplň mezi cestami">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.FillBetween}" />
                 </Button>
@@ -526,8 +526,7 @@
                         AutomationProperties.Name="Dynamický offset">
                     <components:IconGlyph Style="{StaticResource RailGlyph}" IconData="{StaticResource Glyph.Offset}" />
                 </Button>
-                <Menu Width="40" Height="40" Background="Transparent" HorizontalAlignment="Center"
-                      ToolTip="Booleovské operace">
+                <Menu Width="40" Height="40" Background="Transparent" HorizontalAlignment="Center">
                     <MenuItem Width="40" Height="40" Padding="8" HorizontalContentAlignment="Center"
                               ToolTip="Booleovské operace" AutomationProperties.Name="Booleovské operace">
                         <MenuItem.Header>
@@ -538,7 +537,7 @@
                         <MenuItem Header="Svařit tvary" Command="{Binding Scene.WeldSelectionCommand}"
                                   ToolTip="Sloučit dva nebo více uzavřených tvarů a odstranit vnitřní hrany" />
                         <MenuItem Header="Odečíst tvary" Command="{Binding Scene.SubtractSelectionCommand}"
-                                  ToolTip="Přesně dva tvary: přední odečteš od zadního; pořadí určuje vrstvení na ploše" />
+                                  ToolTip="Přesně dva tvary: přední se odečte od zadního; pořadí určuje vrstvení na ploše" />
                         <MenuItem Header="Průnik tvarů" Command="{Binding Scene.IntersectSelectionCommand}"
                                   ToolTip="Zachovat jen společnou plochu vybraných tvarů" />
                         <MenuItem Header="Vyloučit tvary" Command="{Binding Scene.ExcludeSelectionCommand}"

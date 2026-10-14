@@ -608,7 +608,7 @@
                 CornerRadius="{StaticResource Radius.Lg}" RenderTransformOrigin="1,0.5"
                 MouseLeftButtonUp="OnNudgeClick">
             <Border.RenderTransform><ScaleTransform x:Name="NudgeScale" /></Border.RenderTransform>
-            <TextBlock Text="Nevíš si rady? Zeptej se mě." TextWrapping="Wrap" FontSize="{StaticResource Size.Text.Assistant.Body}"
+            <TextBlock Text="Pomoc je po ruce. Stačí se zeptat." TextWrapping="Wrap" FontSize="{StaticResource Size.Text.Assistant.Body}"
                        Foreground="{DynamicResource Brush.TextPrimary}" />
         </Border>
         </Canvas>

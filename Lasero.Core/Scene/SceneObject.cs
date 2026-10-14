@@ -343,7 +343,7 @@ public sealed partial class SceneObject : ObservableObject
             var turns = Math.Abs(Transform.RotationDeg) % 360;
             var rotated = turns > 0.01 && Math.Abs(turns - 360) > 0.01;
             return rotated || Transform.ScaleX < 0 || Transform.ScaleY < 0
-                ? $"Bitmapa „{Name}“ je otočená nebo převrácená – výstup není podporován. Vraťte ji do původní polohy."
+                ? $"Bitmapa „{Name}“ je otočená nebo převrácená – výstup není podporován. Je potřeba ji vrátit do původní polohy."
                 : null;
         }
     }

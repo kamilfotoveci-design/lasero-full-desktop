@@ -126,11 +126,7 @@ public sealed class LayoutSystemRenderTests
         var actionsLeft = LayoutAssertions.BoundsIn(actions, home).Left;
         Assert.True(Math.Abs(headerLeft - actionsLeft) <= 1, $"the action row starts at {actionsLeft:0.#}, the header at {headerLeft:0.#}");
 
-        var panelWidth = (double)Application.Current.FindResource("Layout.PanelWidth");
-        var rail = LayoutAssertions.Descendants<SectionHeader>(home).First(s => s.Title == "Zařízení");
-        var railBorder = LayoutAssertions.Ancestor<Border>(rail)!;
-        Assert.True(Math.Abs(home.ActualWidth - LayoutAssertions.BoundsIn(railBorder, home).Left - panelWidth) <= 1,
-            "the Home device panel is not the shared 360 px panel width");
+        // Home carries no device rail any more (one scrolling column), so only the content alignment is asserted.
     });
 
     [Theory]
