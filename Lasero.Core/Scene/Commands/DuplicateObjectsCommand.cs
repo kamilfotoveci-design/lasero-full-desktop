@@ -10,6 +10,7 @@ public sealed class DuplicateObjectsCommand : ISceneCommand
     private readonly IReadOnlyList<SceneObject> _sources;
     private readonly Position _cascadeOffset;
     private List<SceneObject> _clones = [];
+    private int[]? _insertIndices; // final index of each clone after the first Do
 
     public DuplicateObjectsCommand(SceneDocument scene, IReadOnlyList<SceneObject> sources, Position cascadeOffset)
     {
@@ -65,8 +66,25 @@ public sealed class DuplicateObjectsCommand : ISceneCommand
             }
         }
 
-        foreach (var clone in _clones)
-            if (!_scene.Objects.Contains(clone)) _scene.Objects.Add(clone);
+        if (_insertIndices is not null)
+        {
+            // Redo: the scene is back in its pre-Do state, so ascending inserts reproduce the exact z-order.
+            foreach (var (clone, index) in _clones.Zip(_insertIndices).OrderBy(pair => pair.Second))
+                if (!_scene.Objects.Contains(clone)) _scene.Objects.Insert(Math.Min(index, _scene.Objects.Count), clone);
+            return;
+        }
+
+        // Each clone goes directly above its source (later in the list = higher in z-order). A source that is
+        // not in the scene (pasted from the clipboard) has nothing to sit above, so its clone is appended.
+        for (var i = 0; i < _clones.Count; i++)
+        {
+            var clone = _clones[i];
+            if (_scene.Objects.Contains(clone)) continue;
+            var sourceIndex = _scene.Objects.IndexOf(_sources[i]);
+            if (sourceIndex < 0) _scene.Objects.Add(clone);
+            else _scene.Objects.Insert(sourceIndex + 1, clone);
+        }
+        _insertIndices = _clones.Select(clone => _scene.Objects.IndexOf(clone)).ToArray();
     }
 
     public void Undo()

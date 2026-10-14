@@ -167,6 +167,10 @@ public partial class App : Application
             return;
         }
 
+        // Listen at once: a second launch during splash or sign-in must not be lost. Paths wait in the queue until the
+        // main window exists (Attach below).
+        _singleInstance.StartListening(_forwardedLaunches.Submit);
+
         var settingsStore = AppSettingsStore.CreateDefault();
         var settings = settingsStore.Load();
         Lasero.App.Controls.Motion.LaseroMotion.ForceReducedMotion = settings.Editor.ReduceMotion; // before the splash starts
@@ -275,7 +279,7 @@ public partial class App : Application
         if (!string.IsNullOrWhiteSpace(projectPath))
             viewModel.OpenProjectFromShell(projectPath);
 
-        _singleInstance?.StartListening(forwardedPath => Dispatcher.BeginInvoke(() =>
+        _forwardedLaunches.Attach(forwardedPath => Dispatcher.BeginInvoke(() =>
         {
             if (MainWindow is { } main)
             {
@@ -288,6 +292,7 @@ public partial class App : Application
     }
 
     private SingleInstanceGuard? _singleInstance;
+    private readonly ForwardedLaunchQueue _forwardedLaunches = new();
 
     protected override void OnExit(ExitEventArgs e)
     {

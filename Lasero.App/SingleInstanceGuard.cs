@@ -132,3 +132,48 @@ internal sealed class SingleInstanceGuard : IDisposable
         _mutex?.Dispose();
     }
 }
+
+/// <summary>
+/// Holds launches forwarded by second instances until the first instance has a main window to hand them to.
+/// The pipe listener starts right after the mutex is taken, long before the window exists (splash, sign-in),
+/// so a forwarded path must wait here instead of being lost. Thread-safe; delivery order is arrival order.
+/// </summary>
+internal sealed class ForwardedLaunchQueue
+{
+    internal const int MaxPending = 8;
+
+    private readonly object _gate = new();
+    private readonly List<string?> _pending = [];
+    private Action<string?>? _handler;
+
+    public int PendingCount { get { lock (_gate) return _pending.Count; } }
+
+    /// <summary>Delivers to the handler when attached, otherwise queues. A null path means "just activate".</summary>
+    public void Submit(string? projectPath)
+    {
+        lock (_gate)
+        {
+            if (_handler is { } handler)
+            {
+                handler(projectPath);
+                return;
+            }
+            if (_pending.Contains(projectPath, StringComparer.OrdinalIgnoreCase)) return; // repeated activate / same file
+            if (_pending.Count >= MaxPending) _pending.RemoveAt(0);
+            _pending.Add(projectPath);
+        }
+    }
+
+    /// <summary>Marks the application ready: flushes everything queued so far, then delivers directly.</summary>
+    public void Attach(Action<string?> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        lock (_gate)
+        {
+            _handler = handler;
+            var queued = _pending.ToArray();
+            _pending.Clear();
+            foreach (var path in queued) handler(path);
+        }
+    }
+}

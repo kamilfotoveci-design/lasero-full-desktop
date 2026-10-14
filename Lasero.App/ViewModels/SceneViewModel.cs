@@ -326,7 +326,30 @@ public partial class SceneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanRedo));
         NotifyLayerStateChanged();
         RefreshCommands();
-        Changed?.Invoke();
+        _historyCompleting = true;
+        try { Changed?.Invoke(); }
+        finally { _historyCompleting = false; }
+    }
+
+    private bool _historyCompleting;
+    private int _gesturePreviewDepth;
+
+    /// <summary>Classifies the <see cref="Changed"/> being raised right now (valid only inside a handler).</summary>
+    public SceneChangeOrigin ChangeOrigin =>
+        _historyCompleting ? SceneChangeOrigin.HistoryCompleted
+        : IsApplyingCommand && _gesturePreviewDepth == 0 ? SceneChangeOrigin.HistoryInProgress
+        : SceneChangeOrigin.Other;
+
+    /// <summary>True when undo/redo has returned to the state recorded by <see cref="MarkSaved"/>. Says nothing
+    /// about edits made outside the history; the owner tracks those via <see cref="ChangeOrigin"/>.</summary>
+    public bool IsAtSavePoint => _commandStack.IsAtSavePoint;
+
+    /// <summary>Records the current history position as the saved document. Pending layer edits are committed
+    /// first so the saved snapshot and the recorded position describe the same state.</summary>
+    public void MarkSaved()
+    {
+        FlushPendingLayerEdits();
+        _commandStack.MarkSaved();
     }
 
     private void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -515,7 +538,9 @@ public partial class SceneViewModel : ObservableObject
     /// </summary>
     public void ApplyGesturePreview(Action assign)
     {
-        ApplyCommand(assign);
+        _gesturePreviewDepth++;
+        try { ApplyCommand(assign); }
+        finally { _gesturePreviewDepth--; }
         ScheduleLinkedOffsetPreview();
     }
 
