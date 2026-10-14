@@ -143,10 +143,12 @@ public sealed class DeviceSettingsViewRenderTests
 
             page.Draft.WorkAreaWidthMm = 0;
             Invoke(ButtonLabelled(page, "Uložit"));
+            shell.Settle(); // UI Automation Invoke runs the click asynchronously on the dispatcher
             Assert.Equal(saved, vm.Connection.WorkAreaWidthMm);
             Assert.Contains("Rozměry / Jednotky", ((TextBlock)page.FindName("SettingsErrorText")).Text);
 
             Invoke(ButtonLabelled(page, "Zrušit"));
+            shell.Settle();
             Assert.Equal(saved, page.Draft.WorkAreaWidthMm);
             Assert.False(page.IsDirty);
             Assert.Equal(string.Empty, ((TextBlock)page.FindName("SettingsErrorText")).Text);
@@ -194,7 +196,7 @@ public sealed class DeviceSettingsViewRenderTests
             shell.Settle();
             var page = Find<DeviceSettingsView>(shell.Window);
 
-            var switches = LayoutAssertions.Descendants<System.Windows.Controls.Primitives.ToggleButton>(page).ToList();
+            var switches = LayoutAssertions.Descendants<System.Windows.Controls.Primitives.ToggleButton>(page).Where(toggle => toggle.TemplatedParent is not System.Windows.Controls.ComboBox).ToList(); // a ComboBox drop-down button is not a switch
             Assert.NotEmpty(switches);
             Assert.Contains(switches, toggle => toggle.IsChecked == true && toggle.ActualWidth > 0);
             Assert.All(switches.Where(toggle => toggle.ActualWidth > 0),

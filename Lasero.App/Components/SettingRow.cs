@@ -24,7 +24,13 @@ public sealed class SettingRow : UserControl
             ((SettingRow)d)._hint.Visibility = string.IsNullOrWhiteSpace((string?)e.NewValue) ? Visibility.Collapsed : Visibility.Visible));
 
     public static readonly DependencyProperty FieldProperty = DependencyProperty.Register(
-        nameof(Field), typeof(object), typeof(SettingRow), new PropertyMetadata(null));
+        nameof(Field), typeof(object), typeof(SettingRow),
+        new PropertyMetadata(null, (d, e) => ((SettingRow)d)._fieldHost.Child = e.NewValue switch
+        {
+            null => null,
+            UIElement element => element,
+            var other => new TextBlock { Text = other.ToString() },
+        }));
 
     public static readonly DependencyProperty ShowRuleProperty = DependencyProperty.Register(
         nameof(ShowRule), typeof(bool), typeof(SettingRow),
@@ -32,6 +38,16 @@ public sealed class SettingRow : UserControl
 
     private readonly Border _frame = new() { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 8, 0, 8) };
     private readonly TextBlock _hint = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
+
+    // The control sits in a plain Border (not a ContentPresenter bound to Field), so it is a logical child of
+    // the row as soon as it is set: DataContext and ElementName bindings resolve even while the page that
+    // holds the row is not the selected tab and has never been laid out.
+    private readonly Border _fieldHost = new()
+    {
+        VerticalAlignment = VerticalAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Right,
+        Margin = new Thickness(24, 0, 0, 0),
+    };
 
     public SettingRow()
     {
@@ -46,20 +62,13 @@ public sealed class SettingRow : UserControl
         labels.Children.Add(title);
         labels.Children.Add(_hint);
 
-        var field = new ContentPresenter
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(24, 0, 0, 0),
-        };
-        field.SetBinding(ContentPresenter.ContentProperty, new Binding { Source = this, Path = new PropertyPath(FieldProperty) });
-        Grid.SetColumn(field, 1);
+        Grid.SetColumn(_fieldHost, 1);
 
         var grid = new Grid { MinHeight = 40 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.Children.Add(labels);
-        grid.Children.Add(field);
+        grid.Children.Add(_fieldHost);
 
         _frame.Child = grid;
         Content = _frame;

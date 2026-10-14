@@ -99,6 +99,7 @@ public sealed class SettingsWindowTests
             shell.ViewModel.Settings.Editor.AutosaveMinutes = 5;
             shell.ViewModel.Settings.Editor.ShowGrid = false;
             var window = new SettingsWindow(shell.ViewModel, _ => true);
+            ShellHarness.Pump();
             Assert.Equal("2", Field(window, "ArrowStepInput").Text);
             Assert.Equal("5", Field(window, "AutosaveInput").Text);
             Assert.Equal("6", Field(window, "ClickToleranceInput").Text);

@@ -21,7 +21,7 @@ public sealed class KamilHeadClearanceTests
         SafeMargin, KamilAssistantHost.ContextBarClearance,
         Math.Max(0, hostWidth - SafeMargin), Math.Max(0, hostHeight - KamilAssistantHost.ContextBarClearance));
 
-    private static Rect HeadZone(Point head) => new(head.X - Gap, head.Y - Gap, 48 + 2 * Gap, 48 + 2 * Gap);
+    private static Rect HeadZone(Point head) => new(head.X - Gap, head.Y - Gap, KamilAssistantHost.HeadSize.Width + 2 * Gap, KamilAssistantHost.HeadSize.Height + 2 * Gap);
 
     [Theory]
     [MemberData(nameof(Hosts))]
@@ -29,15 +29,15 @@ public sealed class KamilHeadClearanceTests
     {
         var bounds = Bounds(hostWidth, hostHeight);
         var head = KamilAssistantHost.HeadOrigin(bounds.Right, bounds.Bottom);
-        var room = Math.Max(0, bounds.Height - 48 - Gap);
+        var room = Math.Max(0, bounds.Height - KamilAssistantHost.HeadSize.Height - Gap);
 
         var sizes = new[]
         {
-            new Size(400, Math.Min(200, room)),                       // QuickAsk
-            new Size(420, Math.Min(640, room)),                       // Expanded, default
-            new Size(420, Math.Min(500, room)),                       // Expanded, adaptive minimum
-            new Size(Math.Min(720, bounds.Width), Math.Min(760, room)), // Expanded, user-resized to the maximum
-            new Size(320, Math.Min(360, room)),                       // Expanded, user-resized to the minimum
+            new Size(440, Math.Min(300, room)),                       // QuickAsk
+            new Size(480, Math.Min(860, room)),                       // Expanded, default
+            new Size(480, Math.Min(500, room)),                       // Expanded, adaptive minimum
+            new Size(Math.Min(960, bounds.Width), Math.Min(1000, room)), // Expanded, user-resized to the maximum
+            new Size(320, Math.Min(480, room)),                       // Expanded, user-resized to the minimum
         };
 
         foreach (var size in sizes)
@@ -57,8 +57,8 @@ public sealed class KamilHeadClearanceTests
     {
         var bounds = Bounds(hostWidth, hostHeight);
         var head = KamilAssistantHost.HeadOrigin(bounds.Right, bounds.Bottom);
-        var room = Math.Max(0, bounds.Height - 48 - Gap);
-        var size = new Size(420, Math.Min(500, room));
+        var room = Math.Max(0, bounds.Height - KamilAssistantHost.HeadSize.Height - Gap);
+        var size = new Size(480, Math.Min(500, room));
 
         for (var x = bounds.Left; x <= bounds.Right; x += 25)
         for (var y = bounds.Top; y <= bounds.Bottom; y += 25)
