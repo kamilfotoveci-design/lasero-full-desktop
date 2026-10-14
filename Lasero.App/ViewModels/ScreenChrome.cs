@@ -35,11 +35,11 @@ public static class ScreenChrome
     public static bool ShowJobActionZone(AppScreen screen, JobRunState state)
         => ShowLaunchControls(screen) || ShowActiveJobControls(state);
 
-    /// <summary>The strip's Připojit. Home (device rail) and Zařízení (status card) already carry a
-    /// connect call-to-action in the same state, so repeating it in the strip is a duplicate there. Návrh and
-    /// Chat have none of their own, so the strip keeps it. The connected/disconnected condition stays on
-    /// the button itself.</summary>
-    public static bool ShowStripConnect(AppScreen screen) => screen is AppScreen.Designer or AppScreen.Chat;
+    /// <summary>The strip's Připojit. Zařízení (status card) already carries a connect
+    /// call-to-action in the same state, so repeating it in the strip is a duplicate there. Domů (its device rail is
+    /// gone), Návrh and Chat have none of their own, so the strip keeps it. The connected/disconnected condition
+    /// stays on the button itself.</summary>
+    public static bool ShowStripConnect(AppScreen screen) => screen is AppScreen.Home or AppScreen.Designer or AppScreen.Chat;
 
     /// <summary>
     /// The job badge ("Bez úlohy", "Návrh neodeslán"). On a compact window (under 1200 px) the strip has no room for it

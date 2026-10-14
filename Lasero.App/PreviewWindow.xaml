@@ -1,4 +1,4 @@
-<Window x:Class="Lasero.App.PreviewWindow"
+﻿<Window x:Class="Lasero.App.PreviewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Lasero.App.Controls"
@@ -99,7 +99,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Width="16" Height="16" Margin="0,2,12,0" VerticalAlignment="Top"
+                                                    <Border Width="16" Height="16" Margin="0,4,12,0" VerticalAlignment="Top"
                                                             Background="{Binding Swatch}" BorderBrush="{StaticResource Brush.PanelBorderStrong}"
                                                             BorderThickness="1" CornerRadius="{StaticResource Radius.Xs}" />
                                                     <StackPanel Grid.Column="1">
@@ -112,7 +112,7 @@
                                     </ItemsControl>
                                 </StackPanel>
 
-                                <TextBlock Text="Zobrazení" Style="{StaticResource Text.Heading}" Margin="0,4,0,2" />
+                                <TextBlock Text="Zobrazení" Style="{StaticResource Text.Heading}" Margin="0,4,0,4" />
                                 <components:SettingRow Title="Zobrazit šikmé pohyby">
                                     <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ShowRapids, Mode=TwoWay}"
                                               AutomationProperties.Name="Zobrazit šikmé pohyby" />

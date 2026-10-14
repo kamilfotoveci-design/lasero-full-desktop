@@ -739,8 +739,8 @@
                         <Border x:Name="Track" CornerRadius="{StaticResource Radius.Xs}"
                                 Background="{DynamicResource Brush.ToggleTrackOff}"
                                 BorderBrush="{DynamicResource Brush.ToggleTrackOffBorder}" BorderThickness="1" />
-                        <Border x:Name="Thumb" Width="12" Height="12" Margin="3,0" HorizontalAlignment="Left"
-                                CornerRadius="2" Background="{DynamicResource Brush.OnAccent}">
+                        <Border x:Name="Thumb" Width="12" Height="12" Margin="4,0" HorizontalAlignment="Left"
+                                CornerRadius="{StaticResource Radius.Xs}" Background="{DynamicResource Brush.OnAccent}">
                             <Border.RenderTransform><TranslateTransform x:Name="ThumbShift" /></Border.RenderTransform>
                         </Border>
                     </Grid>
@@ -754,7 +754,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="-18" To="0"
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="-16" To="0"
                                                          Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" FillBehavior="Stop" />
                                     </Storyboard>
                                 </BeginStoryboard>
@@ -762,7 +762,7 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="18" To="0"
+                                        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X" From="16" To="0"
                                                          Duration="{StaticResource Motion.Toggle}" EasingFunction="{StaticResource Ease.Out}" FillBehavior="Stop" />
                                     </Storyboard>
                                 </BeginStoryboard>

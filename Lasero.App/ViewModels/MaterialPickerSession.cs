@@ -45,7 +45,7 @@ public sealed partial class MaterialPickerSession : ObservableObject, IDisposabl
 
     public bool CanApply => SelectedRecipe is not null;
 
-    /// <summary>Why Aplikovat is disabled, or what it will do once enabled.</summary>
+    /// <summary>Why Aplikovat is disabled; empty once it is enabled.</summary>
     public string ApplyHint => CanApply
         ? string.Empty
         : NothingSelectedReason;

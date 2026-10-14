@@ -140,8 +140,7 @@ public sealed class VisualConsistencyTests
         var aligned = StyleBlock(ReadApp("Theme", "LaseroTheme.xaml"), "x:Key=\"Badge.Aligned\"");
         Assert.Contains("Size.Control.Base", aligned);
 
-        // The two header rows that put a status chip next to a button use it.
-        Assert.Contains("Badge.Aligned", ReadApp("MaterialsWindow.xaml"));
+        // The header row that puts a status chip next to a button uses it (the Materials picker redesign dropped its chip).
         Assert.Contains("Badge.Aligned", ReadApp("Views", "DeviceView.xaml"));
     }
 

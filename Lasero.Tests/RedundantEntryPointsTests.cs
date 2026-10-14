@@ -41,10 +41,10 @@ public sealed class RedundantEntryPointsTests
     public void EmptyOperationsStateIsBriefNeutralAndReadable()
     {
         var inspector = Read("Views", "DesignerInspectorView.xaml");
-        const string text = "Operace se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek";
+        const string text = "Vrstvy se vytvoří samy, jakmile se do návrhu přidá tvar, text nebo obrázek";
 
         var at = inspector.IndexOf(text, StringComparison.Ordinal);
-        Assert.True(at > 0, "The empty Operace explanation is missing.");
+        Assert.True(at > 0, "The empty Vrstvy explanation is missing.");
         var element = inspector.Substring(inspector.LastIndexOf("<TextBlock", at, StringComparison.Ordinal),
             inspector.IndexOf("/>", at, StringComparison.Ordinal) - inspector.LastIndexOf("<TextBlock", at, StringComparison.Ordinal));
         Assert.Contains("FontSize=\"{StaticResource Size.Text.Explain}\"", element, StringComparison.Ordinal);
@@ -67,14 +67,13 @@ public sealed class RedundantEntryPointsTests
     [Fact]
     public void StripConnectIsOnlyWhereTheScreenHasNoConnectOfItsOwn()
     {
-        Assert.False(ScreenChrome.ShowStripConnect(AppScreen.Home));
+        Assert.True(ScreenChrome.ShowStripConnect(AppScreen.Home)); // Home's device rail was removed, so the strip connects
         Assert.False(ScreenChrome.ShowStripConnect(AppScreen.Device));
         Assert.True(ScreenChrome.ShowStripConnect(AppScreen.Designer));
         Assert.True(ScreenChrome.ShowStripConnect(AppScreen.Chat));
 
         Assert.Contains("Binding ShowStripConnect", Read("MainWindow.xaml"), StringComparison.Ordinal);
-        // The screens that dropped the strip button must still offer their own.
-        Assert.Contains("OpenDeviceWizardCommand", Read("Views", "HomeView.xaml"), StringComparison.Ordinal);
+        // The screen that dropped the strip button must still offer its own.
         Assert.Contains("PrimaryCommand=\"{Binding DeviceSetup.PrimaryCommand}\"", Read("Views", "DeviceView.xaml"), StringComparison.Ordinal);
     }
 

@@ -114,8 +114,7 @@ public sealed class ScreenControlsMatrixTests
 
         // What Home is for.
         foreach (var required in new[]
-                 { "NewProjectCommand", "ImportFromHomeCommand", "OpenProjectCommand", "OpenRecentProjectCommand",
-                   "OpenDeviceWizardCommand" })
+                 { "NewProjectCommand", "ImportFromHomeCommand", "OpenProjectCommand", "OpenRecentProjectCommand" })
             Assert.Contains(required, home, StringComparison.Ordinal);
     }
 

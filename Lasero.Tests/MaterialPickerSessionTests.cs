@@ -74,7 +74,7 @@ public sealed class MaterialPickerSessionTests
 
             Assert.True(session.CanApply);
             Assert.True(session.ApplyCommand.CanExecute(null));
-            Assert.Contains("Operace 1", session.ApplyHint);
+            Assert.Empty(session.ApplyHint); // the hint now only explains a disabled Aplikovat
         }
         finally { Cleanup(root); }
     }
@@ -306,7 +306,8 @@ public sealed class MaterialPickerSessionTests
         Assert.Contains("Text=\"Hotovo\"", window);
         Assert.Contains("Text=\"Aplikovat\"", window);
         Assert.Contains("Content=\"Zrušit\"", window);
-        Assert.Contains(MaterialPickerSession.ScrapNote, window);
+        // The standalone footer carries the caution as "výchozí doporučení ... mohou výsledek změnit"; ScrapNote is no longer shown in the window.
+        Assert.Contains("Recepty jsou výchozí doporučení", window);
     }
 
     private static string AppRoot()
